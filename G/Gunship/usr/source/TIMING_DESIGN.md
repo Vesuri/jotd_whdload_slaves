@@ -2661,3 +2661,38 @@ the injected fault, and duplicate completion cannot advance it again.
 The original entry's 11 rejection cases and post-publication fault test also
 remain green (130 calls). Production hooks and lifecycle rebasing are still
 pending; this closes the standalone scheduler/control-history hand-off.
+
+
+### Deadline world commands precede player motion
+
+The native main loop calls +04E3C command decoding at +05884 before +0937C
+motion at +0588E. Deferring all world-primary commands until after the final
+field's motion would make that motion see stale engine/mode state.
+`command_phase_world_before_player` now drains the world reader while the
+scheduler is still in player phase, only when `TS_DUE=1`. It requires the
+player reader to be drained through the delivered command cutoff first,
+retains the existing bounded-drain/error contract, and leaves scheduler
+phase and completion counts unchanged. Existing command acknowledgements
+make a later post-player drain a no-op for that cutoff.
+
+The delayed scheduler/player entry enforces this ordering: when a world
+step is due, it peeks the world reader and rejects preparation with -3 if
+commands remain. It applies no commands itself. The caller drains player
+commands, drains deadline world-primary commands, then prepares motion.
+On nondeadline fields only the player reader must be drained. Retained
+lifecycle commands still stop progress for explicit handling. The original
+ordinary bridge entry retains its prior contract for comparison fixtures.
+
+`test_command_preplayer_c.py` passes 15 scenarios over queue wrap, four
+budgets, future cutoffs, pending player commands, phase/due mismatches,
+wrong queue and upstream faults (423 calls). It checks unchanged scheduler
+completion counts, retained future commands and no repeated world effects
+when draining again before or after player acknowledgement.
+`test_field_preplayer_commands_c.py` passes 1,920 delivered fields across
+PAL/NTSC batches 1/3/10/25, now including both engine toggles and mode changes
+with fuel available. Deadline motion rejects before the world drain; all
+batch sizes then produce identical player/shadow/delay state and world
+observations (28,335 calls). The delayed bridge's 12 rejection cases and
+post-publication fault regression still pass. This fixture has a world
+observer; connecting native opening, motion impulses and the complete
+post-motion world body remains necessary before gameplay installation.

@@ -457,8 +457,9 @@ the native previous-control time horizon, removing most measured reversal
 pitch drift. The ground-compatible split transaction now commits that
 history with successful player motion and rejects stale history. The
 scheduler now delivers that history through the split transaction, with
-batch-invariance and before/after-publication fault tests. Production
-adoption and trajectory acceptance remain. C4e is still not accepted: field-rate coupled
+batch-invariance and before/after-publication fault tests. Deadline world
+commands are also drained before player motion, matching native engine/mode
+ordering. Production adoption and trajectory acceptance remain. C4e is still not accepted: field-rate coupled
 trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in

@@ -55,3 +55,41 @@ command_phase_run:
 	tst.l d0
 	movem.l (sp)+,d1-d3/a0-a3
 	rts
+
+; World-primary commands at a due deadline BEFORE its player motion.
+; Native +04e3c decoding precedes +0937c; engine/mode state must therefore
+; reach the final field's motion before the post-motion world body runs.
+; Same arguments/results as command_phase_world. Require player phase with
+; TS_DUE=1 and the player reader already drained through this field's cutoff.
+; Keep scheduler phase unchanged; command acknowledgement prevents replay
+; when the post-player world drain observes the same cutoff again.
+command_phase_world_before_player:
+	movem.l d1-d3/a0-a3,-(sp)
+	cmpi.w #1,TS_STATE(a0)
+	bne .bad
+	cmpi.w #1,TS_DUE(a0)
+	bne .bad
+	move.l d0,d3
+	movea.l a0,a2
+	movea.l a1,a3
+	subq.l #8,sp
+	movea.l TS_COMMANDS(a0),a0
+	movea.l sp,a1
+	move.l TS_COMMAND(a2),d0
+	moveq #0,d1
+	bsr commands_peek
+	addq.l #8,sp
+	tst.l d0
+	bmi .done
+	bne .bad
+	movea.l a2,a0
+	movea.l a3,a1
+	move.l d3,d0
+	moveq #1,d2
+	lea control_world_next(pc),a3
+	bra command_phase_run
+.bad:
+	moveq #-3,d0
+.done:
+	movem.l (sp)+,d1-d3/a0-a3
+	rts

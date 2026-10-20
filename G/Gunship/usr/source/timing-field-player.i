@@ -87,6 +87,22 @@ field_player_prepare_common:
 	tst.l d0
 	bmi .done
 	bne .phase
+	; Enhanced deadlines must see native world-primary command state before
+	; motion. Ordinary compatibility callers retain their existing contract.
+	tst.l 8(sp)
+	beq .commands_ready
+	movea.l d5,a0
+	tst.w TS_DUE(a0)
+	beq .commands_ready
+	movea.l TS_COMMANDS(a0),a0
+	movea.l sp,a1
+	move.l d7,d0
+	moveq #1,d1
+	bsr commands_peek
+	tst.l d0
+	bmi .done
+	bne .phase
+.commands_ready:
 	movea.l FP_SHADOW(a6),a0
 	movea.l FP_PLAYER(a6),a1
 	movea.l FP_STAGES(a6),a2
