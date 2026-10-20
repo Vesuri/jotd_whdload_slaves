@@ -11,6 +11,7 @@
  include "timing-attitude.i"
  include "timing-player-step.i"
  include "timing-presentation.i"
+ include "timing-field-gauges.i"
  include "timing-camera.i"
  include "timing-clock.i"
  include "timing-history.i"

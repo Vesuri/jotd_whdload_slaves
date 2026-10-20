@@ -558,7 +558,9 @@ trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
-its native installation and elapsed-time gauge slew remain pending.
+its native installation remains pending. A separate field-clocked bar-gauge
+primitive now matches 2,000 native updates and 738 skipped-draw catch-ups;
+consumer/lifecycle/painter integration and live gauge validation remain pending.
 A read-only fractional camera adapter now exposes the first field's
 attitude changes in camera angle words; whole-tick camera arithmetic is
 preserved, while enhanced pitch removes the integer half-angle staircase.

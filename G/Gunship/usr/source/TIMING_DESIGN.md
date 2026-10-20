@@ -4100,3 +4100,34 @@ display currently reads the last committed selection; adapting its projected
 descriptor/box to the latest presentation camera without changing the world
 selection remains open. Full renderer state isolation, gauge slew, prediction,
 whole-game timing and trajectory acceptance also remain open.
+
+### Field-clocked bar gauge primitive (C4g, not installed)
+
+`timing-field-gauges.i` separates the animation state from the native painter's
+bitmap cache. Its reference cadence is one native +0ADB6 draw per video field,
+alternating the two buffers. Seven private pairs of byte heights preserve the
+native signed-byte comparison, one-pixel step and immediate-fill target bit.
+The next virtual slot advances once per consumed field regardless of actual
+render frequency; this is a field cadence, not the 3 Hz world cadence.
+
+`gauge_field_init` seeds the private heights from the two native cache bytes
+in each 12-byte descriptor at hunk 6 +09BC. `gauge_field_step` takes seven raw
+instrument targets and advances one virtual slot. `gauge_field_targets`
+encodes the most recently advanced slot as immediate-fill native targets,
+so a later draw can repair its selected physical bitmap completely. Scales
+1..32 cover the native values 18, 22 and 27; every legal height is encodable.
+Invalid phase, scale or height rejects before publishing any output byte.
+The private helper never writes native bitmap caches or draws pixels.
+
+The ignored `test_field_gauges_c.py` compares 2,000 field steps directly with
+native +0ADB6, using both starting slots and actual render intervals of
+1, 3, 10 and 25 fields. It checks 738 skipped-draw catch-ups, all 528 legal
+scale/height pairs, register preservation and 12 atomic rejections. The native
+pixel writer is stubbed in this test: these are state/drawing-cache checks,
+not visual proof. The experimental runtime slave assembles for the 68000.
+
+This primitive is not yet bound into the consumer, lifecycle or painter.
+Integration must retain raw instrument targets: bytes 4 and 6 are owned by
+other native code. Encoded catch-up targets are temporary painter inputs and
+must not leak back into the next field's raw targets. Native +0ADB6 must still
+own its physical bitmap cache bytes. Full live gauge validation remains open.
