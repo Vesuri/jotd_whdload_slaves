@@ -1,3 +1,38 @@
+## Current movement deficit and rejected collision-mode relocation
+
+Fresh `c-pair-clear-motion-{cache,nocache}` traces use the integrated
+20,480-byte normal runtime and field-100 throttle. All three sampled actor
+records agree at 500 shared cursors, and the cached run agrees with
+`c-road-integrated-completed-motion` at all 500 common cursors. At cursor
+590 the player position remains 3,855,684, versus B's 3,888,640: the
+accumulated deficit is still 32,956 (0.979565% of B's distance). Both new
+traces reach this movement boundary at live field 592. This observation is
+at entry to step_end, before event/pose work, not a completed-state hash.
+The production matrix's default distance 3,321,603 corresponds to movement
+cursor 589; its NoCache distance 3,301,969 corresponds to cursor 587.
+These reproduce the remaining scheduling component without changing the
+live-field acceptance window or the B baseline.
+
+A private follow-up moves collision-mode scratch $8b482 to Fast RAM. It
+patches 19 direct absolute operands, including five native response handlers,
+and the 14 corresponding copied-physics operands. The conditional extension
+runs inside the existing enhancement gate after copying physics and before
+cache flushing. This is a direct-reference experiment, not a proof excluding
+all possible indirect aliases. Both 20,736-byte builds retain existing code
+layout; each build directory contains source.patch and collision_mode.s.
+
+`c-collision-mode-vary-state` matches 1,596 shared hashes, sound events and
+all six captured regions against `c-pair-clear-vary-state`. In
+`c-collision-mode-{fast,control}-matrix`, both variants give 12.5 fps on
+Fast 020, 8.3 uncached and 23.0 on 060; 040 gives 21.5 versus 21.8.
+Both 020 distances remain 3,311,794 / 3,301,969. The relocation is not
+integrated: it improves neither the 020 distance gate nor throughput.
+No full-race or response acceptance is claimed. All eight matrix cells
+pass functional checks and all sessions are terminal.
+
+Candidate SHA-256: `c4beeb33071bc866e7be6b30c1908b90c70434aea668db92d97be8d2a23898cb`.
+Control SHA-256: `af10aee6f2ea2fb28c586f15d562afaf687b4fa5087bb322b05f2293295b350a`.
+
 ## Combined collision scratch clear is slower
 
 A private candidate combines the two word clears at native $8c8ae/$8c8b4
