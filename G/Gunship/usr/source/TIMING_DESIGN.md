@@ -4767,6 +4767,25 @@ Native object load/store, angle lookup and sine helpers operate on the private
 A5 record; none publishes it back. The script target index must be below 128.
 Zero split X is treated as native inactivity.
 
+The supplied P+002C is a **body input**, not a certified forecast of the next
+tick's steering mode. Native +09F74..+09FA6 first queries +0B422 using player
+X/Y, then overwrites P+002C with D2.b. The query adds 128 with word wrapping,
+shifts each coordinate right eight bits and scans the native region table
+backwards. It returns one when both coordinate distances from a region are
+at most ten, otherwise zero. Its count and region bytes are read-only; it
+does not sample the bitmap. The absolute operands in the audited image bind
+the count at 009951E8 and the table at 0097FFE8; derive bindings from validated
+native operands rather than guessing hunk-relative offsets.
+
+An inside-region result can also arm P+0053/P+0054 to one when P+0053 is zero
+and h6+155C has either low bit set. The following +08050 interpreter may then
+cross a modal boundary. Runtime prediction must recompute the mode privately
+and reject any unresolved interpreter transition before invoking this body.
+Reusing the last completed world's P+002C is insufficient. Existing body tests
+deliberately supply that byte; their 804 matches do not validate this prefix.
+The authoritative `world_script_step` extraction documents the countdown and
+modal boundary, but must not be called on live state to obtain a render pose.
+
 Both +07FA4 calls bind to a private adapter that reproduces its word-coordinate
 calculation and invokes the read-only terrain sampler. Unknown relevant queries
 invalidate the candidate. Scripted mode (nonzero P+002C) ignores the first

@@ -1,5 +1,7 @@
 ; Private index-5 scripted-object next pose. Native steering and word/byte
 ; arithmetic, with explicit stable committed terrain pixels and no RNG/damage.
+; Body-only: caller must supply the next tick's P+2C mode and rule out a
+; modal transition from 9F74..9FAE; a previous tick's mode is not a forecast.
 ; Not installed. Caller serializes state and waits for bitmap DMA completion.
 SP_H0 equ 0
 SP_H6 equ 4
