@@ -1,3 +1,47 @@
+## Current normal runtime: mapped uncached profile
+
+`c-road-integrated-nocache-profile` and `c-road-integrated-mapped-profile`
+capture fields 100–600 on the cycle-exact 020, NoCache CUSTOM2=1, with UP
+from field 100. Both use the current `3af9c2c…87a662` normal binary. The second
+records the live `step_main` target and assembler symbols, establishing the
+slave base at $9f61d8; both raw profiles are byte-identical. No diagnostic
+per-step hashing or pacing is active.
+
+The sum of flat-PC units is 18,162,194,688; the header reports 18,189,056,512
+with a gap of 26,861,824 and 1,507 unmatched returns. Therefore use disjoint
+flat regions only; these are not inclusive routine costs.
+
+| Region | Share of recorded flat-PC units |
+| --- | ---: |
+| Fast movement/collision copy, 7,040 bytes | 12.1443% |
+| Fast world-object projection, 848 bytes | 4.1133% |
+| Fast simulation-only road geometry, 388 bytes | 3.7426% |
+| Native normal riding-pose span $8a8aa..$8a92b | 1.6184% |
+| Player road-normalization helper | 0.0809% |
+| NPC road-normalization helper | 0.2711% |
+| Required native vsync polling $aecf0..$aecf5 | 5.3482% |
+
+The two road-normalization helpers together consume only 0.3520%, making
+further local arithmetic tuning a small opportunity. The movement copy's
+hottest individual PCs include native $8cb76 (14,049 executions), $8c614
+(21,084), and $8c8be (14,049). $8cb70/$8cb76/$8cb7c are the actor-pair tail's
+three flag clears, including pairs rejected by the longitudinal-distance gate.
+They are authoritative state writes and cannot simply be omitted.
+The large native Chip costs still include blitter-stalled instructions;
+this capture does not prove those stalls removable.
+
+`c-road-collision-scratch-audit` retains a game-memory dump and disassembly
+around absolute references to two collision scratch words. $a59ca also has
+five references in native pose/render code ($89d60, $89e1a, $89f04, $89f92,
+$89fc4 are operand locations), in addition to the collision routine. Moving
+only the collision routine's references would split shared state. $8b480's
+visible native store operand is at $8ce6c; its collision-entry clear is now
+inside the Fast copy because the original entry was redirected. This scan
+covers aligned absolute longword occurrences in $80000..$bffff, not indirect
+or PC-relative aliases, and is not yet a relocation-safety proof. No runtime
+change is made from this audit. Any scratch relocation must cover both native
+and copied users and preserve the existing master-toggle/fallback behavior.
+
 ## Natural damage exhaustion and restart across render cadences
 
 `c-road-natural-crash-recover` now supplies a full race from zero damage to
