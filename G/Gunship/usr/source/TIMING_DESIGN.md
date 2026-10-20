@@ -2544,3 +2544,48 @@ turn paths, and input-history timing remains unresolved. Before/after reports
 are `tmp/dev/tmp/c/stick-motion-before-heading-fix.json` and
 `tmp/dev/tmp/c/stick-motion-measurement.json`. C4e remains unaccepted and
 production timing remains unchanged.
+
+
+### Preserve the native previous-control time horizon
+
+Native +04E42 copies the preceding decoded y byte to +05524 before the
+new control read. The main loop calls that decoder at +05884, once per world
+tick; +05376 then reads the saved byte. This is a one-world-tick history,
+not a one-VBL history. Using the previous consumed field changed the input
+response time and caused the remaining reversal pitch drift.
+
+`timing-control-delay.i` retains a 32-byte stamped direction history. Rate
+3 uses one sample, 50 uses 17 fields, and 60 uses 20. PAL rounds the 1/3-second
+window upward by 1/150 second (less than one field); it does not accumulate
+phase drift. Initialization fills history with the explicit previous-y seed.
+`control_delay_step` takes private working state, a field stamp and current y,
+returns delayed y/status in d0/d1, and requires consecutive stamps including
+32-bit wrap. Duplicate/gap rejection leaves state unchanged. Rebase explicitly
+at lifecycle discontinuities; do not silently consume missing input.
+
+`player_step_delayed` in `timing-player-control-delay.i` takes the ordinary
+player-step pointers plus delay state in a5 and field stamp in d0. It requires
+matching rates, copies player shadow/history, substitutes the delayed y in
+the private attitude state, and commits history only after player motion
+succeeds. The current y still contributes immediately: the first field's
+pitch increment is -3/rate for positive input from neutral history. There is
+no 333 ms wait before movement. Whole-tick behavior remains the original
+one-sample rule. Caller supplies logical tick parity. This is the continuous
+path only; split ground/scheduler publication must still adopt the same
+history transaction before production use. Direct player entries remain
+available for callers explicitly supplying their own previous-y semantics.
+
+`test_player_delay_c.py` passes 1,080 queue-model samples across three rates
+and all initialization directions, 2,160 duplicate/gap rejections including
+stamp wrap, 32 whole-tick comparisons, four transactional failure cases and
+two first-field response cases (3,337 calls). `measure_delayed_player_c.py`
+runs 44 ten-second trajectories through the assembled wrapper; every recorded
+sample matches an independent Python delay-window model (25,654 calls).
+The reversal fixture ends at native pitch 4.0 exactly in NTSC and 3.96 in PAL,
+versus 5.9/5.88 with one-field history. Maximum sampled pitch difference is
+0.04 rather than 1.9 units across these tapes. Other maxima are not uniformly
+better: height/speed differences are 14.22/8.8051 native units. These are
+measurements, not acceptance limits; finer displacement and collision gates
+remain unresolved. Reports: `tmp/dev/tmp/c/stick-motion-delayed-y-measurement.json`
+and `tmp/dev/tmp/c/stick-motion-delayed-y-assembled.json`. No gameplay hook
+or CUSTOM1 behavior changes in this extraction.

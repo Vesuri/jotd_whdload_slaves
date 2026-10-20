@@ -206,7 +206,10 @@ clamps to -20..20. Pitch changes only when current y is nonzero, subtracting
 from the preceding native control sample by +04E42. Reversal therefore
 cancels the first native increment, while sustained deflection doubles it.
 The field-rate equivalent needs an explicit previous-control state and
-transition tests; treating direction alone as a rate would miss this.
+transition tests; treating direction alone as a rate would miss this. The
+copy occurs in the world decoder called at +05884, not in the VBL sampler.
+The continuous-player delay wrapper now retains 17/20 fields of y history
+to preserve that time horizon; split/scheduler adoption remains pending.
 
 The pitch perturbation at +053DC is not conditional on the roll-damage bit:
 it can run when the high altitude byte is zero, speed is at least eight,
