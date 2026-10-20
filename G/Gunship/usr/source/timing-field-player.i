@@ -14,11 +14,13 @@ FP_SIZE equ 40
 
 ; Caller initializes six pointers and zeros the remaining context.
 ; a0=context, a1=scheduler, a2=delivered private record, d0=interval tick.
-; Commands and packet decoding/world impulses must already be resolved.
+; Packet decoding/world impulses must already be resolved. The player command
+; reader must have drained this cutoff; retained commands reject preparation.
 ; Return 0 prepared, -1 fault/player failure, -3 phase/identity/rate mismatch.
 ; No scheduler acknowledgement or original-player mutation here.
 field_player_prepare:
 	movem.l d1-d7/a0-a6,-(sp)
+	suba.w #8,sp
 	movea.l a0,a6
 	move.l d0,d4
 	tst.w FP_BOUND(a6)
@@ -42,6 +44,17 @@ field_player_prepare:
 	bsr scheduler_check
 	tst.l d0
 	bmi .done
+	; Inspect without releasing a retained command or applying its effects.
+	; A field cannot advance past an ordinary command or lifecycle boundary.
+	movea.l d5,a0
+	movea.l TS_COMMANDS(a0),a0
+	movea.l sp,a1
+	move.l d7,d0
+	moveq #0,d1
+	bsr commands_peek
+	tst.l d0
+	bmi .done
+	bne .phase
 	movea.l FP_SHADOW(a6),a0
 	movea.l FP_PLAYER(a6),a1
 	movea.l FP_STAGES(a6),a2
@@ -60,6 +73,7 @@ field_player_prepare:
 .phase:
 	moveq #-3,d0
 .done:
+	adda.w #8,sp
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
 

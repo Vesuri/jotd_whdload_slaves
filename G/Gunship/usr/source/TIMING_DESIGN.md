@@ -1885,3 +1885,29 @@ upstream fault rejection and retained lifecycle boundaries. It checks register
 preservation, reader cursors and completed-step counters. UI callbacks are
 stubbed. This adapter remains standalone; native main-loop installation,
 lifecycle handling and full command/player/world composition remain pending.
+
+### Enforce command completion before preparing field motion
+
+`field_player_prepare` now peeks the player reader at the delivered cutoff
+before constructing a motion candidate. An unread ordinary command or lifecycle
+boundary returns -3 without advancing the queue, changing the player/shadow or
+binding a candidate. Commands beyond that cutoff do not block this field.
+The caller uses `command_phase_player` to drain ordinary commands first;
+retained lifecycle boundaries still need their explicit owner. Packet decoding
+and once-per-world impulse selection remain caller responsibilities.
+
+`tmp/dev/tools/test_field_command_player_c.py` exercises this composition for
+1,920 fields (240 fields at 50/60 Hz with batches 1/3/10/25; 26,199 assembled
+calls). Every field publishes a command alongside changing sampled stick input.
+The test first proves motion preparation rejects the unread command, drains the
+player reader, prepares/completes motion, then drains the world reader at due
+world boundaries. Player states, fractional state, camera output and world
+observations match across batch sizes. The tape includes collective, yaw,
+unknown commands and mixed mode-03 commands; mode shadows reconcile at world
+cutoffs. Native UI callbacks are stubbed, and a world observer still replaces
+full world execution. This proves composition/batch independence, not C4e
+native trajectory acceptance or installed cross-CPU behavior.
+The bridge regression also passes its eight existing invalid-state cases and
+post-publication fault injection, plus retained ordinary/lifecycle commands
+and a future-only command (130 calls). A future-only command is accepted;
+the test's aggregate `rejected_cases` label includes that positive case.
