@@ -29,6 +29,17 @@ C_PHYSICS_AUX = 1
 	ENDC
 	ENDC
 
+; Uncached 68020 lane scans use Fast RAM after the same enhancement gate.
+; Full snapshot diagnostics retain explicit selection for reference builds.
+	IFD VERIFY_C_LANE_SCAN
+C_LANE_SCAN = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_LANE_SCAN
+C_LANE_SCAN = 1
+	ENDC
+	ENDC
+
 ; Relocate movement/collision code only after the enhancement hardware gate.
 ; Snapshot diagnostics opt in explicitly to preserve reference builds.
 	IFD VERIFY_C_PHYSICS_FAST

@@ -1,3 +1,47 @@
+## Runtime integration of the uncached 68020 lane scan
+
+`C_LANE_SCAN` is now selected by normal/lean runtime builds. Full snapshot
+builds still opt in with `VERIFY_C_LANE_SCAN`. The copy remains inside the
+CUSTOM2/CPU/Fast gate and additionally requires a 68020 with instruction cache
+disabled. No extra user option or changed simulation arithmetic is introduced.
+The normal and lean outputs in `c-lane-scan-runtime-build` are byte-identical
+to the tested selective normal and retained lean binaries respectively. Normal
+size is 19,296 bytes, SHA-256
+`6bbfd96a5f790f530af54e3f9ecf44fa0f01860a7e06de83a25589136b266d81`.
+
+Validation completed before integration:
+
+- `c-lane-scan-selective-matrix` and `c-lane-scan-remaining-matrix` cover all
+  eleven normal cells. NoCache 020 improves from 7.6 to 8.3 fps; other measured
+  rates remain unchanged. A500 and Chip-only 020 snapshots match production.
+- `c-lane-scan-excluded` checks native entry bytes on 68000, Chip-only 020,
+  030, 040 and 060, explicitly using NoCache. Cached 020 and CUSTOM2=0 entry
+  checks are retained in the probes described below.
+- `c-lane-scan-mmu` passes 040/060 functional checks with TC=$8000 and
+  CACR=$80008000. These are not hardware data-cache performance measurements.
+- `c-lane-scan-smoke` passes keyboard, CD32, demo-fire and demo-timeout checks,
+  with the Fast stack checks enabled.
+- `c-lane-scan-visible` matches all eight production response phases:
+  180, 160, 140, 200, 180, 160, 140, 200 ms. Phase 303 remains 20 ms worse
+  than B; this does not close the latency gate.
+- `c-lane-scan-finish-fixed` matches production for 12,822 completed hashes,
+  24 sound events and all six terminal memory regions. The varying-render
+  replay matches the fixed replay. Finish is at 12,634, exit at 12,823.
+- Varying-render `c-lane-scan-arrest` matches production for 8,377 hashes,
+  241 events and all six regions; exit is at 8,378. `c-lane-scan-wreck`
+  matches for 11,945 hashes, 120 events and all six regions; exit is at 11,946.
+  Both restart with counters (92, 91, 0, 1). Final images show BUSTED and WRECKED.
+- `c-lane-scan-cached-boundaries` matches all 501 shared completed player
+  states in `c-current-distance-default`, excluding the live observation clock.
+  This rules out a changed captured player update in that trace, but does not
+  replace the live-field distance gate or prove equivalence of all actor state.
+  The cached matrix distance remains 3,308,406 versus production's 3,318,164.
+
+Section C remains open: B handling/distance comparisons, the remaining visible
+latency regression and the broader performance acceptance criteria still need
+resolution. The following diagnostic history records how this implementation
+was selected; its earlier pending checks are superseded by the evidence above.
+
 ## Diagnostic Fast RAM lane scan for uncached 68020
 
 A fresh normal NoCache profile (`c-current-nocache-cost`) covers exactly 500

@@ -1,11 +1,8 @@
-	IFD VERIFY_C_LANE_SCAN
+	IFD C_LANE_SCAN
 	IFD VERIFY_C_PHYSICS_AUX_CONTROL
 	IFND VERIFY_C_LANE_SCAN_CONTROL
 VERIFY_C_LANE_SCAN_CONTROL = 1
 	ENDC
-	ENDC
-	IFND VERIFY
-	FAIL "Lane scan relocation is diagnostic until regression validation completes"
 	ENDC
 	IFND C_STEP_BUILD
 	FAIL "Lane scan relocation requires the gated C simulation"
@@ -140,7 +137,7 @@ step_physics_aux_init:
  lea step_physics_aux_init(pc),a2
  suba.l #step_physics_aux_init-_resload,a2
  move.l (a2),a2
- IFD VERIFY_C_LANE_SCAN
+ IFD C_LANE_SCAN
  jmp aux_lane_scan_init(pc)
  nop
  ELSE
@@ -182,7 +179,7 @@ aux_to_90b7c:
 aux_to_90b8e:
  jmp $90b8e
 
- IFD VERIFY_C_LANE_SCAN
+ IFD C_LANE_SCAN
 ; Preserve existing symbol offsets and add 256 bytes overall. Runtime placement
 ; still depends on the loader; see measured alignment effects in the audit.
  ds.b 58
