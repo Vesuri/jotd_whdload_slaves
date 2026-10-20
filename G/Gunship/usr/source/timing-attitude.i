@@ -1,4 +1,5 @@
-; Continuous stick attitude, excluding world-owned random perturbations.
+; Continuous stick attitude with optional externally supplied world impulses.
+; Never samples gameplay RNG or decides impulse eligibility.
 ; Requires timing-fraction.i. Standalone; not installed in gameplay.
 AT_RATE equ 0             ; word: 50 PAL, 60 NTSC, 3 whole-tick test mode
 AT_PREVIOUS_Y equ 2       ; signed word: preceding consumed field's y
@@ -36,7 +37,32 @@ attitude_init:
 ; Native pitch subtracts current+previous y only when current y is nonzero.
 ; The separate authoritative pitch clamp is NOT a render/attitude side effect.
 attitude_step:
+	movem.l d2-d3,-(sp)
+	moveq #0,d2
+	moveq #0,d3
+	bsr attitude_step_impulses
+	movem.l (sp)+,d2-d3
+	rts
+
+; Same API, plus d2.l=roll impulse (-4/0/+4), d3.l=pitch impulse (-1/0/+1).
+; Caller generates eligible impulses once at the world boundary.
+; Impulses are NOT time-scaled: roll combines before clamp, pitch after
+; continuous control. Ordinary fields pass zero (attitude_step above).
+attitude_step_impulses:
 	movem.l d1-d7/a0-a6,-(sp)
+	cmpi.l #-4,d2
+	beq .roll_impulse_ok
+	tst.l d2
+	beq .roll_impulse_ok
+	cmpi.l #4,d2
+	bne .bad
+.roll_impulse_ok:
+	cmpi.l #-1,d3
+	blt .bad
+	cmpi.l #1,d3
+	bgt .bad
+	move.l d2,d5
+	movea.l d3,a3
 	cmpi.l #-1,d0
 	blt .bad
 	cmpi.l #1,d0
@@ -80,6 +106,7 @@ attitude_step:
 	moveq #3,d1
 	bsr fraction_scale
 	add.b $37(a5),d0
+	add.b d5,d0
 	cmpi.b #-20,d0
 	blt .roll_low
 	cmpi.b #20,d0
@@ -114,6 +141,8 @@ attitude_step:
 	lea AT_PITCH_REMAINDER(a4),a0
 	moveq #3,d1
 	bsr fraction_scale
+	add.b d0,$36(a5)
+	move.l a3,d0
 	add.b d0,$36(a5)
 	move.w d6,AT_PREVIOUS_Y(a4)
 	moveq #0,d0

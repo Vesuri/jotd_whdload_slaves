@@ -212,6 +212,13 @@ and the low altitude byte is below the low speed byte. This is another
 world-owned random impulse, with its predicate evaluated at the intended
 world boundary. Evidence is retained in `player-control-accesses.json`.
 
+The standalone attitude component now accepts these two world impulses
+explicitly: roll -4/0/+4 before the native clamp, pitch -1/0/+1 after stick
+control. It never generates RNG values. Its h=1 path matches the original
+attitude routine in 68,040 cases using captured native random outcomes.
+This closes the application-order question for that component; world-rate
+eligibility, RNG call order and once-only delivery remain integration work.
+
 ## Ground boundary execution check
 
 `tmp/dev/tools/audit_player_ground_c.py` executes +095A0..+09636 in 864

@@ -33,7 +33,8 @@ scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
 `timing-attitude.i` consumes normalized stick directions at field rate,
 retaining pitch/roll fractions and previous-field vertical input. It is
-standalone and excludes world RNG and the separate HUD pitch clamp.
+standalone, accepts externally supplied world impulses, and excludes RNG
+generation and the separate HUD pitch clamp.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -412,12 +413,21 @@ The worst case is reversal. This is a component-level bound for that
 specified input history, not a bound on arbitrary manoeuvres or a claim
 that the full flight-equivalence gate has passed.
 
-The world still owns the damage-roll and low-altitude pitch perturbations.
-Their integration is pending. In particular, the native random roll term
-combines with stick input **before** the roll clamp; appending an impulse
-after an already-clamped field step would not preserve h=1 at the limits.
-The authoritative HUD pitch clamp remains a separate ordered operation.
-Neither it nor world RNG is executed by this helper.
+The world still owns generation/eligibility of the damage-roll and
+low-altitude pitch perturbations. `attitude_step_impulses` has the same
+interface plus d2 = roll impulse (-4/0/+4) and d3 = pitch impulse (-1/0/+1).
+It applies these at full magnitude, without timestep scaling. Roll combines
+with stick input **before** the roll clamp; appending it after an
+already-clamped field step would not preserve h=1 at the limits. Pitch is
+added after continuous pitch control, as in the native routine.
+`attitude_step` is the zero-impulse entry point for ordinary fields.
+Both preserve non-result registers and reject invalid impulses before writes.
+
+The native world adapter still has to generate eligible impulses once in
+the correct RNG order and deliver them to the appropriate field step.
+An impulse record must not be replayed on subsequent fields or lost during
+catch-up/rebase. The authoritative HUD pitch clamp remains a separate
+ordered operation. Neither it nor RNG generation runs in these helpers.
 
 `tmp/dev/tools/test_attitude_c.py` compares 55,296 h=1 cases directly with
 the original deterministic attitude routine: all direction triples, all
@@ -430,6 +440,19 @@ invalid input/state cases preserve both record and state. Held-input
 tests also verify the stated history-window difference using the assembled
 field step and its native-equivalent h=1 mode.
 Evidence: `tmp/dev/tmp/c/attitude-tests.json`.
+
+`tmp/dev/tools/test_attitude_impulses_c.py` captures the actual native
+random outcomes and supplies them to the h=1 impulse entry point.
+Across 68,040 cases spanning both native RNG modes, damage, height/speed
+eligibility, all direction triples, roll-limit crossings and pitch wrapping,
+complete player records match the original routine. All nine roll/pitch
+impulse pairs occur. Fifty-four PAL/NTSC cases verify full impulse magnitude
+at field rates; six invalid impulse cases leave state unchanged.
+Memory-write hooks observe only player/state/stack writes, and the gameplay
+RNG seed remains unchanged during helper calls. The deterministic suite
+also passes after this change. These checks prove impulse application;
+production RNG scheduling and consumption are still pending.
+Evidence: `tmp/dev/tmp/c/attitude-impulse-tests.json`.
 
 This state must join the production lifecycle manifest and reset alongside
 the input history and player pose. It is not wired into gameplay yet.
