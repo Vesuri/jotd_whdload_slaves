@@ -1,3 +1,59 @@
+## Raster-edge candidate: hardware, cadence and image validation
+
+The unchanged normal raster-edge candidate passes all 11 hardware cells in
+`c-raster-edge-built-matrix` and `c-raster-edge-hardware`. Results are:
+
+| Normal configuration | fps |
+| --- | ---: |
+| A500 fallback | 8.5 |
+| 020 without Fast RAM fallback | 12.5 |
+| Fast 020 default / Cache | 12.5 / 12.5 |
+| Fast 020 NoCache | 8.3 |
+| 030 default / Cache | 16.7 / 16.7 |
+| 040 default / Cache | 19.9 / 19.9 |
+| 060 default / Cache | 23.0 / 23.0 |
+
+The 040/060 functional MMU cells in `c-raster-edge-mmu` also pass, both
+recording CACR $80008000. Their emulator configuration disables CPU data-cache
+emulation, so these runs provide no physical MMU/cached throughput claim.
+These checks do not close the existing live-field B distance failures.
+
+The diagnostic source places the edge helper before simulation storage to
+keep the signed patch reference in range; normal builds retain its original
+location and are byte-identical to the tested 19672-byte candidate. The
+assembled-instruction audit checks 105 retained instructions, including all
+27 internal branch destinations. Apart from the absolute $b1950 pointer read
+and those relocated branch operands, retained instruction bytes match native
+code exactly; only the four documented redundant instructions are omitted.
+The audit is retained in `c-raster-edge-build/opcode-audit.json`.
+
+`c-raster-edge-fixed-state`, `-period1-state`, `-period2-state` and
+`-period3-state` each match the accepted `c-fused-lean-state-v2` reference for
+1595 common completed hashes, all sound requests and all six authoritative
+snapshot ranges at cursor 1457 on the seeded attack tape. Their histograms
+record 399 four-field, 1600 one-field, 799 two-field and 533 three-field
+intervals respectively, plus startup intervals. One-field coverage skips
+drawing; two-/three-/four-field runs render normally. The final image in each
+of these four tests is pixel-identical to its corresponding fused-runtime
+reference at the same cadence.
+
+The first intended varying test (`c-raster-edge-vary-state`) omitted
+VERIFY_FRAME_PERIOD, so VERIFY_FRAME_PATTERN was inactive and the actual
+histogram shows two-field rendering. It is retained as an extra uncapped
+functional comparison, not claimed as varying-cadence coverage. The corrected
+`c-raster-edge-pattern-state` enables both defines and records 81/59/70/35/35
+intervals of 2/3/4/12/16 fields, plus startup. It also matches all 1595 hashes,
+sound requests and six authoritative ranges. No cross-cadence pixel identity
+is claimed for that run. `compare_raster_edge_c.py` retains the comparisons.
+
+`c-raster-edge-off` boots the actual normal candidate with CUSTOM2=0 and
+confirms all ten native bytes at $b1994 remain unchanged.
+
+The candidate remains private. Full finish/arrest/wreck and restart coverage,
+normal input-response/controls/transitions, and final integration checks still
+need to pass before promotion. The B handling/distance requirements remain
+open independently of this rendering change.
+
 ## Fast raster-edge candidate: small cached gain and live differential audit
 
 The current fused-runtime profile attributes 4.4511% of recorded flat units
