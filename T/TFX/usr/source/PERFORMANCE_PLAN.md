@@ -259,6 +259,30 @@ sprite scratch differences. Hardware speed/accuracy still needs step 14.
 - Exit: per-routine equivalence checks, frame screenshots equal to the original
   rendering, fps measured.
 
+Completed: `fb0137f`, `94fb17c`, `e006c99`, `6ec951e`; report and reproduction in
+`tmp/dev/docs/rendering-port.md`. The 040-only list ports Gouraud/texture fills onto
+the existing fast planar buffer and scanline C2P pipeline, plus uncapped/one-frame
+options with the new timestep and FPU-stack ABI. The equivalent generic flat-fill
+port measured 72 publications versus 73 with original ScanFillDown, so the faster
+original is retained. Original rendering remains selectable; 060 behavior is unchanged.
+
+Per-routine checks cover 436 initial fill cases (including flat), 180 final selected
+fill cases, 592 original-blitter line cases, 259 box cases and 41 timestep/stack/zoom
+cases. Independent pixel models verify non-empty fill and clipped-box outputs.
+Two pre-existing CPU-line errors (endpoint count and stipple rotation/repetition)
+and omitted one-pixel-wide boxes are fixed only on the new 040 path. Five controlled
+frames now match original rendering exactly, in all bitplanes and PNG screenshots.
+All four ordinary CPU replay pairs repeat every screenshot and captured hunk byte.
+CPU/combined-option audits confirm the off path, bit-6 precedence and unchanged
+030/060 option handling; all 245 inspected 060 FPU sites equal step 9.
+
+Default, uncapped and one-frame modes each repeat 73 publications/250 vblanks with
+zero FPU exceptions: no measured throughput gain over step 9 (emulator A/B only).
+Default also repeats raw state. The uncapped pair has a one-vblank clock shift and
+eight bytes of inactive audio-queue tail residue; one-frame differs only by a
+one-vblank clock shift. These are documented, not a new state-mismatch waiver.
+Normal and CHIP_ONLY builds pass; both FPSP binaries and pristine inputs are unchanged.
+
 ### 11. 68040-specific tuning
 
 - With SMC fixed, drop the per-frame cache flushes that are no longer needed; run fast
