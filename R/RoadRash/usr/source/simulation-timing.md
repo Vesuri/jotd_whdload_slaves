@@ -1,3 +1,36 @@
+## Zero-change heading ticks explain the latest-tick response failures
+
+`c-recent-pose-response-stages-302` traces the unchanged latest-tick normal
+binary with input injected at field 302. Its completed heading sequence is
+0/1/3/3 at cursors 303–306. At the cursor-306 render, the latest difference
+is zero and heading 3 remains predicted heading 3, below the next visible
+sprite threshold. The continuing turn again yields zero difference at cursor
+310 (heading 9). This confirms that a single integer-heading increment is
+an unreliable motion estimate even while steering remains held.
+
+The private `c-raster-recent-fallback-source` variant uses the existing
+four-tick difference only when the latest difference is zero. Nonzero latest
+differences retain the previous experiment's extrapolation. Direction,
+release and horizon guards are unchanged. Its normal binary is 19,700 bytes,
+SHA-256 `1aec3a65bda324d18cf5b6d5e52c0a27850ffad272f5c23a263b2969b7d04ede`;
+the exact patch is in `c-raster-recent-fallback-build/source.patch`.
+
+Fresh field-302 neutral/right captures start from identical snapshots and
+first differ at field 309: 140 ms, versus 240 ms for the latest-only estimate
+and B's 200 ms. This single-phase result is not sufficient for integration;
+the complete sweep `c-raster-recent-fallback-visible` is being collected.
+
+The fallback candidate passes the 65-call release/reversal probe
+`c-raster-recent-fallback-guards` and the explicit varying-cadence replay
+`c-raster-recent-fallback-vary-state`. The latter observes 2/3/4/12/16-field
+intervals and matches all 1,595 common completed hashes, sound events and
+six authoritative snapshot ranges against `c-fused-lean-state-v2`.
+`c-raster-recent-fallback-matrix` retains 12.5 fps with Cache and 8.3 fps
+with NoCache on Fast 020; corresponding 490-field distances are 3318164
+and 3298632. The outstanding B distance/handling gates remain unchanged.
+No full hardware, full-race/restart, long-run visual smoothness or extreme
+heading arithmetic claim is made for this candidate. Production is unchanged.
+
 ## Raster response trace and recent-tick prediction experiment
 
 The normal-binary traces `c-fused-response-stages` and
@@ -21,11 +54,10 @@ Fresh neutral/right field-300 captures have identical initial snapshots and
 first differ at field 306 (120 ms upper estimate). The stage trace
 `c-recent-pose-response-stages` confirms cursor-302 heading 1 now predicts 4.
 This improves the failed raster phase from 200 ms, versus B's 180 ms.
-However, the running eight-phase sweep `c-raster-recent-pose-visible` already
-finds field 302 at 240 ms, worse than B's 200 ms. The completed prefix is
-120/180/240 ms for phases 300/301/302. This is sufficient to reject the
-latest-tick-only candidate; no complete eight-phase result is claimed here.
-The sweep remains running to retain the remaining phase evidence.
+The completed eight-phase sweep `c-raster-recent-pose-visible` measures
+120/180/240/140/120/180/240/140 ms (median 160 ms). Phases 302 and 306
+both take 240 ms, worse than B's 200 and 180 ms respectively. The
+latest-tick-only candidate is rejected despite its improved median.
 
 `c-raster-recent-pose-guards` checks 63 player-pose calls across steering,
 release at field 310 and reversal at 320. Simulation calls and guarded
