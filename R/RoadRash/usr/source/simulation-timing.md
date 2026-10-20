@@ -1,3 +1,53 @@
+## Collision bounds identify an additional NPC attack
+
+The next probe observes the calculated lateral body gap at `$8c9c4` and
+`$8caee`, before penetration and response, restricted to player `$a5d60` versus
+rival `$a6260` during fields 1200–1320. `contact_bounds_c.py` maps the relocated
+movement-code addresses in C, retains both raw actor records and D0, and captures
+the native timestep. `b-contact-bounds` contains 17 observations;
+`c-combined-contact-bounds` contains 79. All observations use the right-side
+branch. For every observation, the signed word in D0 agrees with
+`player[+$30] - player[+$4a] - rival[+$4a] - rival[+$30]`.
+
+B has one negative body gap at cursor 1253: -2, with zero attack reach for both
+riders. C's first negative gap is -3 at cursor 1256, but the rival's `+$50`
+attack reach is already 25. The following six C observations have positive body
+gaps 23,18,18,22,23,24 at cursors 1257..1262. Each remains inside that attack
+reach. These match the seven downstream heading exchanges recorded previously.
+Thus the repeated contacts are not seven consecutive body overlaps: six are
+reach-only lateral overlaps. This comparison does not remove native longitudinal
+and height tests or prove that each overlap necessarily causes damage.
+
+The approach differs before contact. At B's first observed check (cursor 1206),
+player/rival world x is 143/34, road-relative position 326/46, and body gap 247.
+At C's first check (cursor 1200), these are 153/-65, 339/-35, and 343. These
+are different simulation boundaries, not an equal-boundary error measurement;
+they identify the already different rival placement that needs investigation.
+
+`attack_start_c.py` then observes the two native NPC attack-initialization sites
+`$906c6` and `$90728` for this rival. `b-attack-start` records no initialization
+between fields 1200 and 1320. `c-combined-attack-start` reaches `$90728` at
+simulation/live field 1254: D0=41 lateral separation, D1=47 attack threshold,
+D2=39 close-range threshold, D7=$4000 longitudinal threshold. The raw player and
+rival positions differ by 1,360 longitudinal units. Player/rival road-relative
+positions are 20/-21; collision half-widths are 18/13. The native initiation
+path therefore accepts this approach, and selects the farther-range branch
+because 41 is below 47 but not below 39.
+
+Ordinary lap samples independently show the rival's attack flag beginning at
+1256, phase 1 at 1258, phase 2 at 1280, and clearing by 1292; B's sampled attack
+flag remains clear throughout 1100–1320. These are observations at two-field
+sampling points, not exact phase-transition times. Native attack phase countdown
+at `$904c0..$904ca` subtracts the elapsed timestep, so this evidence alone does
+not establish a missing timer scaling correction.
+
+This narrows the next investigation to the pre-contact approach and attack
+selection. A direction-only body-collision guard is insufficiently justified
+for reach-only attack contacts. No runtime change, baseline waiver or C
+completion is claimed. Both trace pairs use the same binaries as the preceding
+combined-model/B comparisons and retain provenance and tested binaries in their
+ignored result directories.
+
 ## NPC motion and directional collision-response experiments
 
 Three private normal-build experiments extend the combined reference-motion and
