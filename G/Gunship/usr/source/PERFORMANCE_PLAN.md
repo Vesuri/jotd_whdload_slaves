@@ -559,8 +559,10 @@ explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
 its native installation remains pending. A separate field-clocked bar-gauge
-primitive now matches 2,000 native updates and 738 skipped-draw catch-ups;
-consumer/lifecycle/painter integration and live gauge validation remain pending.
+primitive now matches 2,000 native updates and 738 skipped-draw catch-ups.
+It is bound to the experimental field consumer, lifecycle and CUSTOM1-gated
+painter, with 800 PAL/NTSC fields invariant across batch sizes. Live gauge
+validation and remaining cockpit render-count timers are still pending.
 A read-only fractional camera adapter now exposes the first field's
 attitude changes in camera angle words; whole-tick camera arithmetic is
 preserved, while enhanced pitch removes the integer half-angle staircase.
@@ -568,8 +570,8 @@ Live input-to-screen latency remains unmeasured.
 The runtime now publishes native single-frame scene/instrument inputs directly
 from the latest player state and fractional camera, with no old render-count
 loop. Native endpoint comparisons and write-range checks pass. Other objects
-remain committed poses in this publisher; prediction, gauge slew and the
-actual frame-render handoff still need integration.
+remain committed poses in this publisher; prediction and the actual
+frame-render handoff still need integration.
 An experimental committed-view raster extraction now collects candidates and
 their native pixel samples before overlays, restoring native target state
 after collection. Its CPU behavior matches the original drawing prefix over
@@ -639,7 +641,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   Countdown and animation advancement therefore need ordered field ownership;
   leaving the animator in the render call is not presentation-only.
 - The gauge routine `+0ADB6` keeps separate drawn heights for the two buffers. Elapsed-time
-  slew and per-buffer repaint must be treated separately.
+  slew and per-buffer repaint are now separated in the experimental runtime:
+  private heights advance per consumed field, and the painter catches up its
+  selected bitmap while restoring temporary targets. Live visuals remain unvalidated.
 - Rendering produces a result the tick consumes: `+05C28` clears `D3958`, the shape-facing
   routine writes it at `+0691C`, and `+0583C` tests it after rendering and can set the
   player's flight-end state (C7).

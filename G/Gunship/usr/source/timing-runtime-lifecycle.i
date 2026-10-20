@@ -66,6 +66,11 @@ timing_runtime_activate:
  cmpi.w #2,d0
  bne .bad
 .target:
+ move.w RT_GAUGE_PHASE(a6),d0
+ beq .gauges
+ cmpi.w #2,d0
+ bne .bad
+.gauges:
  move.w RT_MODAL+TM_PHASE(a6),d0
  beq .modal
  cmpi.w #4,d0
@@ -123,6 +128,8 @@ timing_runtime_activate:
  clr.l RT_BOUNDARY_PHASE(a6)
  clr.l RT_BOUNDARY_RECORD(a6)
  clr.l RT_BOUNDARY_RECORD+4(a6)
+ movea.l a6,a0
+ bsr timing_runtime_gauges_seed
  lea RT_GUIDANCE_PRESENT(a6),a0
  bsr guidance_present_reset
  lea RT_MODE(a6),a0
@@ -152,6 +159,7 @@ timing_runtime_activate:
  dc.w RT_GEOMETRY+SGE_FIELD,SGE_SIZE-SGE_FIELD
  dc.w RT_BODY+WB_PHASE,2
  dc.w RT_TARGET_PHASE,6
+ dc.w RT_GAUGE_PHASE,6
  dc.w RT_CONSUMER+TF_PHASE,TF_EFFECT-TF_PHASE
  dc.w RT_MODAL+TM_PHASE,2
  dc.w RT_FIRE,2

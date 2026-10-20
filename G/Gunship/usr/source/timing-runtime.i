@@ -62,7 +62,11 @@ RT_VISIBILITY equ RT_PRESENT_SCENE+SCENE_STATE_SIZE
 RT_TARGET equ RT_VISIBILITY+VR_SIZE
 RT_TARGET_PHASE equ RT_TARGET+WT_SIZE ; 0 fresh, 1 collecting, 2 published, 3 fault
 RT_TARGET_FIELD equ RT_TARGET_PHASE+2
-RT_ARENA_SIZE equ RT_TARGET_FIELD+4
+RT_GAUGES equ RT_TARGET_FIELD+4
+RT_GAUGE_PHASE equ RT_GAUGES+GA_SIZE ; 0 fresh, 1 applying, 2 complete
+RT_GAUGE_FIELD equ RT_GAUGE_PHASE+2
+RT_GAUGE_SCRATCH equ RT_GAUGE_FIELD+4 ; 16-byte instruments + 12-byte camera
+RT_ARENA_SIZE equ RT_GAUGE_SCRATCH+28
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -260,6 +264,11 @@ timing_runtime_prepare:
  lea timing_runtime_target(pc),a0
  move.l a0,RT_CONSUMER+TF_TARGET_ENTRY(a6)
  move.l a6,RT_CONSUMER+TF_TARGET_CONTEXT(a6)
+ lea timing_runtime_gauges(pc),a0
+ move.l a0,RT_CONSUMER+TF_GAUGE_ENTRY(a6)
+ move.l a6,RT_CONSUMER+TF_GAUGE_CONTEXT(a6)
+ movea.l a6,a0
+ bsr timing_runtime_gauges_seed
  ; Coordinate-only map entry has no OS calls; bind only the known routine.
  movea.l RT_HUNKS(a6),a0
  movea.l RT_HUNKS+24(a6),a1

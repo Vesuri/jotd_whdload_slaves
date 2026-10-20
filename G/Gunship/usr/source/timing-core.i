@@ -74,3 +74,4 @@
  include "timing-runtime-boundary.i"
  include "timing-runtime-present.i"
  include "timing-runtime-target.i"
+ include "timing-runtime-gauges.i"

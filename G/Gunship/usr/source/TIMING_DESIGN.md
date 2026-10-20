@@ -25,7 +25,8 @@ effect classification, and production lifecycle handling are not installed.
 and their common yaw tail; it is not included in a gameplay build yet.
 `timing-presentation.i` likewise provides a standalone read-only camera and
 instrument builder, with the native pitch clamp factored into a separate
-player operation. Native-loop installation and gauge slew remain pending.
+player operation. Native-loop installation, remaining instrument timers and live gauge validation
+remain pending.
 `timing-motion-preview.i` prepares and executes a native arithmetic clone
 on a separate player record, excluding random/contact world effects.
 It is also standalone; it does not yet scale or commit player motion.
@@ -4098,10 +4099,11 @@ All runtime variants assemble. Native flight-loop activation is still absent,
 so the ordinary build and default-off behavior remain unchanged. The target
 display currently reads the last committed selection; adapting its projected
 descriptor/box to the latest presentation camera without changing the world
-selection remains open. Full renderer state isolation, gauge slew, prediction,
+selection remains open. Full renderer state isolation, remaining instrument
+timers, live gauge validation, prediction,
 whole-game timing and trajectory acceptance also remain open.
 
-### Field-clocked bar gauge primitive (C4g, not installed)
+### Field-clocked bar gauges (C4g, experimental runtime)
 
 `timing-field-gauges.i` separates the animation state from the native painter's
 bitmap cache. Its reference cadence is one native +0ADB6 draw per video field,
@@ -4126,8 +4128,48 @@ scale/height pairs, register preservation and 12 atomic rejections. The native
 pixel writer is stubbed in this test: these are state/drawing-cache checks,
 not visual proof. The experimental runtime slave assembles for the 68000.
 
-This primitive is not yet bound into the consumer, lifecycle or painter.
-Integration must retain raw instrument targets: bytes 4 and 6 are owned by
-other native code. Encoded catch-up targets are temporary painter inputs and
-must not leak back into the next field's raw targets. Native +0ADB6 must still
-own its physical bitmap cache bytes. Full live gauge validation remains open.
+The runtime now binds `timing_runtime_gauges` after each consumed field's
+player motion and map-coordinate refresh, before any world visibility/weapons
+work. It rebuilds raw instruments from that field's player state into private
+scratch, then advances the virtual buffer slot once. Field stamps reject a
+replay; an applying stamp cannot cross activation. World-body changes later
+in that field are reflected by the next field's gauge update. No native state
+is written by this callback. It also accepts the explicit retained-UI phase-4
+completion path, where input ownership remains native during the retained
+field. `TF_SIZE` is now 100 bytes and the runtime arena is 28,260 bytes.
+
+Preparation and normal activation seed heights from the actual bitmap caches
+and start with the currently selected native buffer slot. Resuming an epoch
+therefore starts from the existing drawn state; it does not animate time spent
+in menus or paused UI. Map/hidden-cockpit fields still advance the virtual
+heights while the physical caches remain untouched until drawing.
+
+The CUSTOM1-gated `timing_gauges_install` validates the native prefix and
+patches +0ADB6. Before runtime ownership it executes the exact displaced
+prefix and continues at +0ADC0. During enhanced ownership or a retained UI,
+`timing_runtime_gauge_draw` temporarily substitutes encoded targets, executes
+the original painter, and restores all seven raw target bytes. Bytes 4 and 6
+are owned by other native code and must never retain catch-up codes. Native
++0ADB6 still owns both physical bitmap cache bytes; repeated draws neither
+advance private animation nor change raw targets. Calls are serialized with
+foreground consumption, as with other presentation helpers.
+
+Additional ignored harness checks:
+
+- `test_runtime_gauges_c.py`: 800 consumed fields at PAL/NTSC rates with batch
+  sizes 1/3/10/25 and command-budget yields; identical final gauge/player state,
+  296 draws plus 296 repeated draws, raw targets restored on every draw.
+- `test_timing_live_gauges_c.py`: 64 exact native register/CCR/cache comparisons,
+  448 enhanced/retained-UI drawing cases, eight corrupt-prefix rejections,
+  CUSTOM1-off no patch, invalid READY rejection.
+- `test_runtime_activation_c.py`: rejects applying gauge state, resets stamps
+  and reseeds both buffers; existing 240-field/two-location checks pass.
+- `test_runtime_boundary_finish_c.py`: twelve retained completion/exit/modal
+  cases pass, including gauge state in paused/uninterrupted comparisons.
+- `test_runtime_present_c.py`: 256 native publication comparisons, 256
+  fractional camera cases and write-range checks still pass.
+
+Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. Pixel
+writes are stubbed in gauge tests; full live gauge validation remains open.
+The native flight-loop activation is still absent, and remaining cockpit
+render-count timers (including +0AB20) still require ownership auditing.

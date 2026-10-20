@@ -26,7 +26,9 @@ TF_MAP_ENTRY equ 76 ; optional native coordinate-only entry
 TF_MAP_MODE equ 80 ; native panel mode byte (1 = map)
 TF_TARGET_ENTRY equ 84 ; optional once-per-deadline target owner
 TF_TARGET_CONTEXT equ 88
-TF_SIZE equ 92
+TF_GAUGE_ENTRY equ 92 ; optional once-per-field gauge animation
+TF_GAUGE_CONTEXT equ 96
+TF_SIZE equ 100
 
 ; a0=TF, d0=command budget per reader (1..128). Preserve other registers.
 ; Return 0 field complete, 1 world complete, 2 retained command boundary,
@@ -152,6 +154,14 @@ timing_flight_consume:
  jsr (a1)
  movem.l (sp)+,d1-d7/a0-a6
 .map_done:
+ move.l TF_GAUGE_ENTRY(a6),d0
+ beq .gauges_done
+ movea.l d0,a1
+ movea.l TF_GAUGE_CONTEXT(a6),a0
+ jsr (a1)
+ tst.l d0
+ bne .fault
+.gauges_done:
  tst.l d6
  beq .field_complete
  movea.l a5,a0
