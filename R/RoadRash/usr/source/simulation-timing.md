@@ -1,3 +1,49 @@
+## Fixed-phase opponent road update does not restore handling
+
+Four private `c-npc-road-phaseN-source` variants test the alternative to the
+quarter-unit curve accumulator. They clone the retained NPC-lifecycle candidate
+and change only `step_actor_road`: for native-table actors, add the full native
+D1 only when `(simulation_cursor & 3) == N`; otherwise leave road centre alone.
+The main simulation, input capture, movement and collision ticks remain one
+field. This is a diagnostic four-field schedule for the NPC road contribution,
+not a render limiter or delayed presentation. Existing lifecycle hooks and
+fraction tables remain present; the scheduled path does not consume the road
+fraction. Actors outside the native table retain the native fallback.
+
+All four builds are 20,108 bytes and differ from phase zero at exactly one byte,
+file offset 8771, containing the comparison immediate. Retained build directories
+include their exact source patches and binaries. Each unchanged lap replay uses
+the same cached 020 configuration and two-field observations:
+
+| Phase | Sampled crash onset | Final displayed rank | Rival road centre at field 800 |
+|---|---:|---:|---:|
+| 0 | 1568 | 15 | 66 |
+| 1 | 1542 | 15 | 66 |
+| 2 | none through 1600 | 14 | 44 |
+| 3 | none through 1600 | 14 | 46 |
+| B reference | 1376 | 15 | 73 |
+
+All four have rival `$a6260` in lane 4 with its attack flag set at field 1240,
+while B is in lane 3 and follows the intervening rider. None restores B's
+pre-contact approach or required crash outcome. Phase zero's road centre at
+field 1000 (+39 versus B +42) is locally close, but its subsequent handling
+still fails. Choosing that phase on the strength of one coordinate would not
+be a valid correction.
+
+Normal binary SHA-256 values, phases 0 through 3:
+
+- `1bb98bdd0810c777c74191e3df43ed32b6d8ac3595dadb03f9f5f44cd6a2cd97`
+- `34c41516dad7b9dfcfc1e527b22bc1267e1b831d261ae8c0b94fa8a61d9cc26f`
+- `b2296a91fe3a2e42e8e1e5d9d612a92ee0e312743f139f516f52e392e560f577`
+- `dd56b6edd90caf5cc40739dfcb8271cb6111a633db7927741d571de60ca405f6`
+
+Results and provenance remain in `c-npc-road-phaseN-lap/replay.json`; a compact
+summary is `c-npc-road-phase-summary.json`. All four emulator sessions completed
+successfully. These failed functional candidates do not warrant performance or
+release matrices. No fixed-phase road schedule is integrated, and no user-facing
+option is added. The result rules out selecting a global four-field phase as a
+sufficient solution to the observed NPC trajectory difference.
+
 ## Opponent curve carry is correct; sampling phase still changes the path
 
 Comparing retained rival `$a6260` records before contact narrows the remaining
