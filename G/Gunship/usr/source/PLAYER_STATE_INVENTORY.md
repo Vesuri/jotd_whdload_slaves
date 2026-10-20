@@ -1000,3 +1000,41 @@ them on 17 of 18. Launch, actor, periodic and geometry-cleanup results match
 the undamaged fixture's counts. This run has no producer fault while RNG is
 being consumed; retaining generated packets and RNG progress across such a
 fault remains an explicit integration obligation.
+
+#### Retained disturbance generation
+
+`timing-scheduled-impulses.i` binds scheduler, player, native RNG clone,
+decoded packet and its stable delivered record in a 38-byte context. It
+requires a player-pending world deadline, matching field/cutoff, healthy
+producers and both command readers drained through that cutoff before
+examining disturbance eligibility.
+
+The first call generates the three impulse words once, records field/cutoff
+and retains the words before its post-generation health check. A fault
+during RNG cannot erase the completed packet or permit another draw on
+retry. After explicit upstream recovery, a same-field/cutoff call restores
+the cache without invoking RNG; a changed cutoff rejects. Decoded X/Y remain
+unchanged. A different admitted deadline generates a new packet, including
+an all-zero packet when nothing is eligible.
+
+The per-call committed flag means a packet was generated, not that a random
+draw necessarily occurred. The persistent valid flag and cache survive a
+fault. They must not be cleared merely to retry a deadline; full lifecycle
+rebasing remains the caller's responsibility. This is foreground recovery
+from producer faults, not recovery from an interrupted native CPU instruction.
+
+`test_scheduled_impulses_c.py` passes 53 calls: three eligible RNG draws
+occur once, cached restoration preserves decoded controls/player state,
+a changed cached cutoff rejects, and a new ineligible deadline produces zero
+impulses without draws. Seven phase/record/health/command-barrier cases reject
+before generation. A producer fault injected at RNG entry retains the
+completed cache; recovery restores it with the draw count still three.
+The stub uses the native entry's 0–255 output range.
+
+`test_endpoint_world_cached_impulses_c.py` passes the 1,440-field damaged
+PAL/NTSC batch comparison with the final command-gated helper (21,766 calls).
+Every deadline deliberately clears the output impulse words and restores
+them from cache. The full native state window, including RNG state, remains
+byte-identical across that restoration. World/camera batch comparisons,
+19/17 nonzero disturbance deadlines, weapon/actor counts and geometry cleanup
+continue to pass. Production lifecycle installation remains pending.

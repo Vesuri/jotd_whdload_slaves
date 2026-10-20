@@ -434,7 +434,7 @@ player/world composition and lifecycle continuation remain pending.
 A standalone private scene geometry path now rebuilds committed scene inputs
 and evaluates the native flight-end plane flag without renderer writes; its
 world-tick ownership and collision trajectory acceptance remain pending.
-The moving-geometry gate currently fails: 44 ten-second trajectories produce
+The superseded coupled-substep path fails the moving-geometry gate: 44 ten-second trajectories produce
 82 differing hit decisions in 1,320 world-boundary comparisons (54 native hits
 missed by the field path, 28 converse differences). Native reference records
 were independently verified against original instructions. C4e/C5b remain
@@ -443,8 +443,15 @@ The user has now selected preserving native motion at world-tick boundaries
 while retaining responsive field-rate input and motion. An interval-anchored
 prototype matches all 1,320 reference records and collision probes in that
 same fixture. It also responds fractionally to a pulse wholly between ticks.
-This is a Python-coordinated experiment using assembled native previews,
-not the installed replacement integrator; the old field path still fails.
+The replacement now has assembled distribution, a transactional interval
+owner, scheduled ground publication, full-strength disturbance correction
+and fractional camera reconstruction. Held-input ground/disturbance endpoints
+match native previews, and the combined native-world fixture is batch-invariant
+over 1,440 fields. Disturbance generation now has a retained per-deadline cache
+for recovery without duplicate RNG draws. These remain standalone/harness
+components, not the installed replacement integrator. Changing-input contact
+and map-edge behavior, lifecycle integration, other-object prediction,
+instrument slew, CPU cost/cross-CPU tests and live validation still block C.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
