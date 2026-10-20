@@ -888,3 +888,42 @@ notification once and sets timer B4; replay rejects. Both paths pass in
 also passes with the shared bridge. This closes the standalone scheduled
 ground-publication connection, not changing-input collision acceptance,
 native world-body composition or production installation.
+
+#### Endpoint camera and combined world fixture
+
+The old `player_camera_angles` consumes the superseded PS fractional layout,
+so it cannot be used with an endpoint owner. `timing-endpoint-camera.i` now
+reads the endpoint heading/pitch/roll residues directly (denominator 1360).
+It replaces only the three camera angle words after the normal camera
+builder, retaining fractional control response and the enhanced linear
+half-pitch angle. Whole-tick fixture mode preserves the original byte
+negation and arithmetic half-pitch rounding, and requires zero angle
+fractions. Invalid rate/fractions leave the camera unchanged.
+
+`test_endpoint_camera_c.py` passes 1,792 angle cases across all pitch bytes,
+native/PAL/NTSC modes and boundary/random fractions, with register and
+player/owner preservation. Seven invalid-state cases reject without camera
+writes. A roll residue of 272/1360, before its integer byte changes, produces
+a camera-angle change of 51 units. This proves arithmetic responsiveness,
+not live input-to-screen latency or production installation.
+
+`test_endpoint_world_c.py` now composes the endpoint scheduler/ground path
+with native world opening, both command cursors, per-field VBL state and
+guidance, weapon launches, damage, scripts, periodic work and private scene
+geometry. It explicitly checks that generated motion-impulse words are zero;
+the fixture is airborne and undamaged, and does not silently discard an
+unsupported impulse. Nonzero disturbance integration remains pending.
+
+The initial combined run passes 1,440 fields at PAL/NTSC with batches 1 and
+25 (20,938 helper calls). Complete player/owner/history and normalized native
+world state agree across batches. Each PAL run has 21 world deadlines, six
+launches, 90 actor visits and two periodic checks; NTSC has 18 deadlines,
+six launches, 72 visits and one periodic check. Native geometry-positive
+cleanup also matches the original cleanup state and rejects a second run.
+The fixture retains its explicit UI/visibility/target stubs and does not
+establish general native-versus-enhanced trajectory equivalence.
+
+With the endpoint camera adapter called after every rendered-batch boundary,
+the same 1,440-field comparison passes again (21,688 helper calls). Every
+camera build leaves player/owner/history unchanged, final angle words match
+across batches, and world counts plus geometry cleanup results are unchanged.
