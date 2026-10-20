@@ -261,6 +261,37 @@ All accompanying normal builds retain the audited 7,920-byte runtime SHA.
 Do not install this reduction merely because it omits arithmetic: neither
 measured implementation improves throughput.
 
+### Geometry reduction control: layout alone does not explain the slowdown
+
+`c-road-collision-layout-control-build` differs from the first rejected
+geometry candidate in only three binary bytes. Its initializer writes the
+original instruction prefix instead of the skip branch, retaining the same
+9,044-byte diagnostic layout and simulation-only Fast RAM routine copy.
+All native calculations therefore execute in the control.
+
+`c-road-collision-layout-control` produces 192 frames over fields 100–1,000
+(10.667 fps), versus 193 for the current-runtime control and 173 for the
+skip candidate. This rules out the extra copy/layout alone as a sufficient
+explanation for the 20-frame regression.
+
+Same-layout flat profiles over fields 100–600 are retained in
+`c-road-profile-{full,skip}`. Full geometry enters rendering 99 times; the
+skip candidate enters 83 times. The native next-field polling instruction
+at `$aecf0` accounts for 5.839% versus 12.802% of total recorded units,
+respectively, with 941,783 versus 2,056,451 executions. At drawing address
+`$b17ec`, recorded Chip-access units rise from 3,520,768 over 99 executions
+to 108,913,408 over 83; `$b1874` likewise rises from 1,129,728 to 86,915,072.
+These measurements show increased waiting, including Chip-access stalls,
+despite fewer drawing calls. They do not prove which DMA/arbitration or
+frame-phase interaction causes it, nor establish that every removed array
+write is irrelevant to every path.
+
+No runtime change is retained. The control patch and binary remain private,
+and `c-road-collision-layout-control/comparison.json` records the counts.
+Further speed work should examine scheduling and Chip/DMA overlap rather
+than infer a benefit from arithmetic counts alone. In particular, the planned
+D2 priority audit is relevant; its effect must be measured, not assumed.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |
