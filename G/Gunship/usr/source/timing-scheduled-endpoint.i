@@ -1,4 +1,5 @@
-; Airborne scheduler bridge for endpoint-player. Not installed.
+; Scheduler bridge for endpoint-player, with optional deferred ground.
+; Requires endpoint-ground-resolve; not installed in the native game loop.
 SE_OWNER equ 0
 SE_PLAYER equ 4
 SE_STAGES equ 8
@@ -8,6 +9,9 @@ SE_SCHEDULER equ 20
 SE_FIELD equ 24
 SE_COMMITTED equ 28
 SE_SIZE equ 30
+SE_GROUND equ SE_SIZE
+SE_EVENT equ SE_SIZE+4
+SE_GROUND_SIZE equ SE_SIZE+8
 SE_WORK_PLAYER equ EP_SIZE
 SE_WORK_COMMAND equ EP_SIZE+MP_RECORD_SIZE
 SE_WORK_SIZE equ SE_WORK_COMMAND+8
@@ -21,11 +25,41 @@ SE_WORK_SIZE equ SE_WORK_COMMAND+8
 ; producer fault after publication; scheduler counts that applied field once.
 ; World effects, ground handling and lifecycle remain caller-owned.
 scheduled_endpoint_step:
+	move.l d1,-(sp)
+	moveq #0,d1
+	bsr scheduled_endpoint_common
+	move.l (sp)+,d1
+	rts
+
+; Extended context binds a deferred ground clone and its stable event.
+; Resolve contact privately on due fields. Caller commits the event only
+; after COMMITTED=1, including a fault after publication. A pending event
+; blocks further steps; rejection discards only events created by this call.
+scheduled_endpoint_ground_step:
+	move.l d1,-(sp)
+	moveq #1,d1
+	bsr scheduled_endpoint_common
+	move.l (sp)+,d1
+	rts
+
+scheduled_endpoint_common:
 	movem.l d1-d7/a0-a6,-(sp)
-	suba.w #SE_WORK_SIZE,sp
+	suba.w #SE_WORK_SIZE+4,sp
 	movea.l sp,a5
+	move.w d1,SE_WORK_SIZE(a5)
+	clr.w SE_WORK_SIZE+2(a5)	; this call prepared an event
 	movea.l a0,a6
 	clr.w SE_COMMITTED(a6)
+	tst.w d1
+	beq .binding
+	tst.l SE_GROUND(a6)
+	beq .phase
+	tst.l SE_EVENT(a6)
+	beq .phase
+	movea.l SE_EVENT(a6),a2
+	tst.l (a2)
+	bne .phase
+.binding:
 	move.l d0,d7
 	cmpi.l #65535,d7
 	bhi .phase
@@ -126,6 +160,21 @@ scheduled_endpoint_step:
 	bsr endpoint_player_step
 	tst.l d0
 	bne .done
+	tst.w SE_WORK_SIZE(a5)
+	beq .health
+	movea.l d5,a0
+	tst.w TS_DUE(a0)
+	beq .health
+	movea.l a5,a0
+	lea SE_WORK_PLAYER(a5),a1
+	movea.l SE_STAGES(a6),a2
+	movea.l SE_GROUND(a6),a3
+	movea.l SE_EVENT(a6),a4
+	bsr endpoint_ground_resolve
+	tst.l d0
+	bmi .done
+	move.w #1,SE_WORK_SIZE+2(a5)
+.health:
 	movea.l d5,a0
 	bsr scheduler_check
 	tst.l d0
@@ -149,6 +198,13 @@ scheduled_endpoint_step:
 .phase:
 	moveq #-3,d0
 .done:
-	adda.w #SE_WORK_SIZE,sp
+	tst.w SE_WORK_SIZE+2(a5)
+	beq .restore
+	tst.w SE_COMMITTED(a6)
+	bne .restore
+	movea.l SE_EVENT(a6),a0
+	clr.l (a0)
+.restore:
+	adda.w #SE_WORK_SIZE+4,sp
 	movem.l (sp)+,d1-d7/a0-a6
 	rts

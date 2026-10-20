@@ -851,4 +851,40 @@ spans without writes.
 These establish the native whole-tick and held-input ground endpoints.
 Changing-input contact trajectories, coordinate clamping during correction,
 scheduled once-only effects and lifecycle recovery remain gates before
-installation. The field-rate owner is not yet wired to this resolver.
+installation. The scheduled connection is described in the next section.
+
+#### Ground in the scheduled publication transaction
+
+`scheduled_endpoint_ground_step` extends the scheduler context with the
+prepared ground clone and its bound event (38 bytes total). The original
+30-byte airborne entry remains available. The ground entry requires an
+empty event before accepting a field; non-deadline fields do not evaluate
+ground or create an event.
+
+On a world deadline, it runs `endpoint_ground_resolve` on the private
+owner/player after field motion and before the final scheduler health check.
+Rejection discards only an event created by that call, leaving authoritative
+player/history/fractions unchanged. Publication retains the ready event
+alongside the applied field and committed flag, including when a producer
+fault is detected during scheduler acknowledgement. The caller must commit
+the deferred event after publication; that event consumes itself before
+calling the native notification, so a second commit cannot repeat effects.
+Full world sequencing and lifecycle recovery remain caller responsibilities.
+
+`test_scheduled_endpoint_ground_c.py` passes 960 fields with moving controls,
+periodic yaw changes and an initial descending near-ground pose. PAL/NTSC
+batch sizes 1 and 25 produce identical complete records, owner state,
+deadlines, spans and notification/timer state (5,979 helper calls). Every due
+event commits once, and every second commit rejects. This fixture generates
+empty decisions rather than crash notifications.
+
+`test_scheduled_endpoint_ground_faults_c.py` separately drives a native
+crash-producing endpoint and injects a producer fault before or after
+publication. Before publication, the event and motion roll back and retry
+after explicit recovery succeeds. After publication, the completion count
+advances once, the `0007b401` event survives, and committing it calls the
+notification once and sets timer B4; replay rejects. Both paths pass in
+156 helper calls. The existing 124-call airborne rejection/fault regression
+also passes with the shared bridge. This closes the standalone scheduled
+ground-publication connection, not changing-input collision acceptance,
+native world-body composition or production installation.
