@@ -1,3 +1,37 @@
+## Fallback predictor: complete response sweep and finish/restart pass
+
+The unchanged 19,700-byte normal fallback candidate completes all eight
+fresh neutral/right response pairs in `c-raster-recent-fallback-visible`.
+Every pair verifies identical initial snapshots. The estimates for injection
+fields 300–307 are 180/160/140/120/180/160/140/120 ms, median 150 ms.
+All eight meet B's corresponding 180/220/200/180/220/200/180/220 ms limits.
+This closes the raster candidate's tested response regression; it does not
+close section C's outstanding distance, handling or throughput requirements.
+
+`c-raster-recent-fallback-finish` replays the retained finish tape with
+explicit varying render cadence and RR_RESTART=1. The strict
+`compare_full_c.py` comparison against `c-fused-lean-finish` passes all
+12,822 completed hashes, 24 sound requests, six terminal state ranges and
+capture/timing records. Finish is field 12634 and exit is field 12823.
+The new race reaches capture (95,94,0,1), with no stale terminal capture.
+Arrest/wreck and their restart checks are still being collected.
+
+The actual normal candidate also passes:
+
+- `c-raster-recent-fallback-off`: CUSTOM2=0 retains the native ten-byte
+  raster entry `2f08207affb848e75000` at $b1994.
+- `c-raster-recent-fallback-keyboard` and `-cd32`: steering release,
+  pause/resume and Fast stack guards. The active clock remains at 161
+  throughout the paused interval.
+- `c-raster-recent-fallback-demo-fire`: demo advances, exits on fire and
+  reaches a normal race at field 100.
+
+The wider hardware matrix has so far passed A500 fallback at 8.5 fps and
+Chip-only 020 fallback at 12.5 fps. Its remaining cells and demo timeout are
+still running. The earlier two Fast 020 cells remain 12.5/8.3 fps.
+No complete hardware/MMU, arrest/wreck, or long-run visual/arithmetic claim
+is made yet. Production remains unchanged pending integration checks.
+
 ## Zero-change heading ticks explain the latest-tick response failures
 
 `c-recent-pose-response-stages-302` traces the unchanged latest-tick normal
@@ -18,7 +52,7 @@ the exact patch is in `c-raster-recent-fallback-build/source.patch`.
 Fresh field-302 neutral/right captures start from identical snapshots and
 first differ at field 309: 140 ms, versus 240 ms for the latest-only estimate
 and B's 200 ms. This single-phase result is not sufficient for integration;
-the complete sweep `c-raster-recent-fallback-visible` is being collected.
+the completed sweep `c-raster-recent-fallback-visible` is reported above.
 
 The fallback candidate passes the 65-call release/reversal probe
 `c-raster-recent-fallback-guards` and the explicit varying-cadence replay
