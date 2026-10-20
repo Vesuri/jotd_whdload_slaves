@@ -769,3 +769,40 @@ native-retain outcomes. The 48-call owner transaction suite still passes.
 The scheduler batch fixture now injects yaw changes every seventh delivered
 field; all 960 fields remain batch-invariant and no non-deadline field
 consumes yaw. The 124-call scheduler rejection/fault suite also passes.
+
+#### Ground-capable native endpoint preview
+
+Ground handling cannot simply be appended to the completed airborne endpoint.
+Native +095A0..+09636 can reset vertical speed, forward speed, roll and pitch;
+the subsequent +09636..+0979A arithmetic then calculates forward response,
+horizontal displacement and RPM from that changed state. Clearing the fields
+after the tail would omit those native results, and replaying the whole tail
+without restoring its inputs could apply displacement or RPM twice.
+
+`timing-endpoint-ground-preview.i` now composes the existing split native
+player path and deferred ground handler as a transactional h=1 candidate
+builder. Its eight-byte binding supplies the prepared deferred ground clone
+and the event record bound into that clone. It rejects a pending event and
+non-native preview rates, prepares through height, evaluates native ground
+privately, then completes the native tail in order. Successful completion
+publishes the private candidate and leaves a ready deferred event; failure
+preserves the original candidate/state and discards the newly prepared event.
+It does not notify native UI or write the native timer during preview.
+
+`test_endpoint_ground_preview_c.py` compares 512 complete records and
+eventual notification/timer outcomes against original clamp, controls and
+native motion with ground restored. All match, including 31 notifications
+and 309 zero-height endpoints (2,572 helper calls). Native disturbance RNG
+is disabled and notification UI is represented by a call counter. Pending
+events reject without replacement; invalid rate, control, logical tick and
+component state reject without publication. A fresh-CPU injected failure at
+completion, after ground has made its event ready, leaves player/state
+unchanged, clears the event and produces no native effects.
+
+This establishes a ground-capable endpoint candidate, not the distributed
+player's contact policy. The owner must still select contact using committed
+world-deadline state, reconcile endpoint contributions/fractions and publish
+the selected event once. In particular, a speculative ground result from
+an earlier field must not become an authoritative landing or crash. The
+airborne scheduler bridge remains uninstalled and is not a complete ground
+integration.
