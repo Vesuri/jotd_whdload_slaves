@@ -1,3 +1,41 @@
+## Combined collision scratch clear is slower
+
+A private candidate combines the two word clears at native $8c8ae/$8c8b4
+into one longword clear of the adjacent Fast scratch words. Nine copied BSR
+callers (native $8c1b2/$8c1de/$8c2f8/$8c352/$8c610/$8c638/$8c6b4/
+$8c724/$8c7c4) target the second instruction directly. The old copied entry
+jumps there for any remaining external users. The new CLR.L leaves both
+words zero with the same CCR result as the old final CLR.W. Shared native
+pose users retain their existing scratch aliases. Initialization is inside
+the master-toggle/hardware gate and precedes cache flushing.
+
+The extension replaces four initialization NOP bytes and appends 256 bytes;
+normal binaries are 20,736 bytes. `c-scratch-clear-{fast,control}-matrix`
+measures 12.5/8.3/23.0 fps for Fast 020/uncached 020/060 in both builds.
+On 040 the candidate is slower: 21.0 versus 21.8 fps. Both give Fast 020
+distance 3,311,794 and uncached distance 3,301,969, without closing B's
+one-percent gate. `c-scratch-clear-vary-state` matches 1,596 shared hashes,
+sound requests and six captured state regions against
+`c-pair-clear-vary-state`. This is short varying-cadence coverage only.
+
+The original scratch block is word-aligned. A follow-up moves both words
+to an explicitly longword-aligned block in the appended extension, for both
+candidate and control. `c-scratch-clear-aligned-probe` confirms live storage
+at $9fae44, CLR.L, all nine retargeted BSRs, and the native pose/copied physics
+aliases. `c-scratch-clear-aligned-{fast,control}-matrix` reproduces exactly
+the same rates and distances, including 21.0/21.8 on 040. Alignment alone
+therefore does not explain the slowdown. All sixteen matrix cells pass
+functional checks, but neither variant is integrated; there is no full-race
+or response acceptance claim. All runs are terminal.
+
+Each build directory retains `source.patch` and `scratch_clear.s`. Normal
+SHA-256 values:
+
+- c-scratch-clear-fast: `5a7ac4118a288a639de470605b15a0b26c26ad7c7594dab3d4b103252ffbb834`.
+- c-scratch-clear-control: `55441377e8ffe46628ccaa513e8d0cae47dd8ed9aedf3e3c84ef695a9534b48c`.
+- c-scratch-clear-aligned-fast: `61cec77cbef59e8ca36a81ab2024ca11cb9922cca5507bb47ad5335d8934ce3d`.
+- c-scratch-clear-aligned-control: `67ecb85daa23c6b28bb91b6ee13d5ac55a3b3b84d5e5e35ab0cc571cdb344592`.
+
 ## Normal riding-pose relocation does not improve the current runtime
 
 The remaining native riding-pose selector $8a8aa..$8a92f is 134 bytes,
