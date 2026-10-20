@@ -1,3 +1,38 @@
+## NPC heading rate limit already scales with elapsed fields
+
+A read-only watchpoint on rival `$a6260`'s heading word at `$a6268` identifies
+its actual writer during live fields 300–410. `c-npc-heading-writes` observes
+27 changes, all immediately after relocated native `$8cf56` (`move.w
+12(a1),8(a1)`). `b-npc-heading-writes` observes six changes at the same native
+instruction. The runs hold throttle from field 100 and retain raw actor records,
+registers, watchpoint old/new values, instruction windows and binary provenance.
+C uses the retained NPC-lifecycle candidate, not the normal runtime.
+
+The complete native `$8cef0..$8d005` disassembly in B's trace explains the
+calculation. It selects a curve byte seven road segments ahead into actor +$44,
+adds requested steering +$46 when flag bit 2 of +$69 is set, then calls `$8cfd4`.
+That helper moves actor +$0c toward the requested heading by at most twice the
+elapsed simulation delta, and `$8cf56` copies that result into actual heading
++$08. Its limit is already time-scaled; it is not a fixed per-call turn amount.
+
+Every observed write in both traces satisfies
+`new_heading = clamp(target, old_heading - 2*delta, old_heading + 2*delta)`.
+The saved D1 contains the signed rate limit immediately after the writer;
+D0 retains the target. All six B writes reach their targets without limiting.
+Four of C's 27 changes are limited; all others reach their targets. B's observed
+targets span -3 through +1 and C's -3 through +2. These watchpoints report
+changes only, so these counts are not total helper-call counts.
+
+This rules out an omitted timestep multiplier in the measured normal-riding
+heading helper. More frequent evaluation of evolving spatial/AI targets can
+still change the integrated path; dividing this already time-scaled limit by
+four would introduce a new error. The earlier `$8b8f0` companion-motion path
+also multiplies its movement by the elapsed delta, but was not the writer in
+this measured normal-riding interval. No heading-rate patch is integrated.
+The remaining trajectory work must consider target selection and movement
+integration together rather than infer a fourfold turn-rate error from the
+larger number of observed heading changes.
+
 ## Fixed-phase opponent road update does not restore handling
 
 Four private `c-npc-road-phaseN-source` variants test the alternative to the
