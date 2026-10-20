@@ -4995,3 +4995,23 @@ with predicted heading checks; 256 native and 256 fractional camera/scene
 comparisons pass. All build variants assemble. Live visual orientation,
 committed-raster interaction and cost still require acceptance; this does
 not activate the native flight loop or complete C.
+
+
+### Reject presentation-patched sources when copying world geometry
+
+`scene_private_prepare` now validates the opcodes and shared address operands
+at +05D20, +068A2 and +068D2 before any destination write. These heading loads
+were not part of its private relocation table. Without the extra checks, a
+source containing presentation hooks could otherwise be accepted and copied
+into world geometry. Normal preparation still precedes live-hook installation;
+a patched source must now be rejected rather than relying only on that order.
+
+The assembled native-versus-private geometry fixture poisons all three live
+heading sites with calls to an illegal-instruction trap *after* preparing the
+private copy. All 96 scenes and repeated workspace runs still match native
+selection/plane results: 1,210 shape visits, 40 scripted-object shapes, 271
+nonempty shapes and 32 positive final flags. Neither pass enters a live hook
+or writes native state. All 176 source-signature corruptions, now including
+each of the eighteen heading-load bytes, reject without changing the private
+destination. Drawing remains stubbed in this fixture; it establishes world
+geometry isolation, not live visual or whole-game collision acceptance.

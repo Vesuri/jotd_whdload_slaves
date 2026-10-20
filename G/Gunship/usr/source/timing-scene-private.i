@@ -18,6 +18,22 @@ scene_private_prepare:
  movea.l a0,a4
  movea.l a1,a5
  movea.l a2,a6
+ ; World geometry must retain committed heading reads. Refuse a source
+ ; already patched for presentation, even if every private relocation still
+ ; matches. Shared absolute reads are not covered by the relocation table.
+ lea $3ce3(a5),a0
+ cmpi.w #$1239,$5d20(a4)
+ bne .bad
+ cmpa.l $5d22(a4),a0
+ bne .bad
+ cmpi.w #$1439,$68a2(a4)
+ bne .bad
+ cmpa.l $68a4(a4),a0
+ bne .bad
+ cmpi.w #$1439,$68d2(a4)
+ bne .bad
+ cmpa.l $68d4(a4),a0
+ bne .bad
  cmpi.w #$7000,$63f8(a4)
  bne .bad
  cmpi.l #$242d004c,$6372(a4)
