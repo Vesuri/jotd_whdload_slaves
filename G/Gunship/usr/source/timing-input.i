@@ -2,8 +2,8 @@
 ; Raw key $7f requests a fresh diagnostic capture at the next active VBL.
 ; This unused native command is decoded as a no-op. No foreground
 ; game consumer is installed yet. Native input/FIFO/latch behaviour is retained.
-; Not a completed C3 command queue: the sequence records accepted native FIFO
-; publications, but retained command payloads still need their own hand-off.
+; Accepted native commands are retained for independent player/world readers.
+; Their effect classification and foreground hand-off are not installed yet.
 
 timing_input_install:
 	move.l _custom1(pc),d0
@@ -38,6 +38,8 @@ timing_input_install:
 	move.l a3,16(a0)
 	lea timing_input_sample(pc),a3
 	move.l a3,20(a0)
+	lea timing_input_commands(pc),a3
+	move.l a3,44(a0)
 	clr.l 24(a0)
 	clr.l 28(a0)
 	clr.l 32(a0)
@@ -48,6 +50,10 @@ timing_input_install:
 	moveq #0,d0
 	bsr history_init
 	bsr history_pause
+	lea timing_input_commands(pc),a0
+	moveq #0,d0
+	bsr commands_init
+	bsr commands_pause
 	lea timing_input_patches(pc),a0
 	jsr resload_Patch(a2)
 	rts
@@ -108,6 +114,12 @@ timing_input_field:
 	beq .publish
 	move.w #1,TH_FAULT(a0)
 .publish:
+	lea timing_input_commands(pc),a0
+	tst.w CQ_FAULT(a0)
+	beq .commands_ok
+	lea timing_input_history(pc),a0
+	move.w #1,TH_FAULT(a0)
+.commands_ok:
 	move.w 36(a2),TR_EDGES(a1)
 	clr.l 28(a2)
 	clr.l 32(a2)
@@ -141,20 +153,35 @@ timing_input_mouse:
 	swap d1
 	rts
 
-; Count only accepted FIFO insertions, not key-up or native overflow.
-; Preserve the native word (including modifiers) and subsequent MOVEQ flags.
+; Retain accepted FIFO insertions, not key-up or native overflow. Exclude VBL
+; across payload publication/cutoff update and diagnostic rearming. Preserve
+; X portably (including on 68000 in user mode); MOVEQ recreates native NZVC.
 timing_input_command:
 	move.w d6,(a0,d0.l)
-	movem.l a0-a1,-(sp)
-	lea timing_input_marker(pc),a0
-	movea.l 24(a0),a1
-	lea 1(a1),a1
-	move.l a1,24(a0)
+	movem.l d0-d1/a0-a2/a6,-(sp)
+	moveq #0,d0
+	addx.b d0,d0
+	move.w d0,-(sp)
+	movea.l 4.w,a6
+	jsr _LVODisable(a6)
+	lea timing_input_marker(pc),a2
+	move.l 24(a2),d0
+	addq.l #1,d0
+	move.l d0,24(a2)
+	lea timing_input_commands(pc),a0
 	cmpi.w #$7f,d6
-	bne .recorded
-	move.w #1,38(a0)
+	bne .retain
+	bsr commands_init
+	move.w #1,38(a2)
+	bra .recorded
+.retain:
+	move.w d6,d1
+	bsr commands_publish
 .recorded:
-	movem.l (sp)+,a0-a1
+	jsr _LVOEnable(a6)
+	move.w (sp)+,d0
+	lsr.b #1,d0
+	movem.l (sp)+,d0-d1/a0-a2/a6
 	moveq #$56,d0
 	rts
 
@@ -188,9 +215,13 @@ timing_input_marker:
 	dc.l 0,0,0               ; accepted command sequence, raw x/y
 	dc.w 0,0                 ; native fire edges, diagnostic arm request
 	dc.l 0                   ; native joystick sampler
+	dc.l 0                   ; retained command queue (extension at +44)
 timing_input_history:
 	ds.b TH_SIZE
 timing_input_sample:
 	ds.b TH_RECORD_SIZE
+timing_input_commands:
+	ds.b CQ_SIZE
 
 	include "timing-history.i"
+	include "timing-commands.i"

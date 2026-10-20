@@ -15,8 +15,8 @@ The boolean CUSTOM1 option **Enhanced framerate** gates all added framerate
 patches and defaults off. The original slave's cache policy and compatibility
 fixes remain baseline behaviour. Future scheduler/player/prediction and
 render optimizations must share this gate.
-C2 and C3 remain incomplete: the foreground player/world consumer, retained
-command payloads, and lifecycle handling are not installed.
+C2 and C3 remain incomplete: the foreground player/world consumer, command
+effect classification, and production lifecycle handling are not installed.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -78,7 +78,8 @@ No game consumer reads the new history yet.
 
 The diagnostic marker `GSIH0001` publishes the code/input hunk addresses,
 history and scratch-record addresses, accepted-command sequence, raw-delta
-accumulators, fire edges, arm request and native sampler address.
+accumulators, fire edges, arm request and native sampler address. An extension
+at +44 publishes the retained-command queue address.
 Unused raw key 7F hex requests a fresh capture at the next active VBL.
 This diagnostic-only trigger avoids debugger memory writes. The VBL resets
 the ring with its current field minus one as the epoch, then publishes the
@@ -90,9 +91,29 @@ delta. Fire edges intentionally describe the preceding field's held state;
 the record's held buttons describe the newly sampled state. This matches
 the original callback-before-sampler order.
 
-Keyboard sequence stamping alone does not retain command payloads after the
-native FIFO consumes them. A bounded command history and deadline cut-off
-are still required before C3c can use these records for world decisions.
+`timing-commands.i` retains up to 128 accepted native key/modifier words, each
+with its 32-bit sequence. Player and world readers have independent cursors.
+Both inspect each command, but the eventual dispatcher must apply only that
+reader's owned effects. A slot cannot be reused until both readers pass it.
+`commands_pop` takes a field record's sequence cutoff and never returns a
+later command; cutoffs and sequences may wrap. Overflow preserves unread
+payloads and faults the interval instead of silently losing an input.
+
+The native command hook excludes interrupts across queue publication and
+the field-cutoff update. It preserves the displaced instructions' registers
+and flags, including X, without requiring a privileged SR read in the input
+task. The diagnostic arm key initializes the command epoch before requesting
+the next VBL's field-history reset. It is itself an unused native no-op,
+not a command to replay. Subsequent key words survive native FIFO consumption.
+The VBL propagates command loss into the field-history fault. The eventual
+coordinator must also check command faults directly before committing work,
+including losses after a field record was published.
+
+Production pause/rebase must exclude producer and both consumers, discard
+unread fields and command intervals together, and account for losses.
+`commands_rebase` counts retained slots discarded (the larger unread count),
+preserving lifetime loss/discard diagnostics. Native FIFO overflow remains
+the native input acceptance policy; only accepted insertions are retained.
 
 ## Verification
 
@@ -138,6 +159,17 @@ field parity therefore differ in those accumulators and can differ by one
 field at a directional threshold. These captures verify faithful sampling;
 they are not identical-initial-state world or integrator comparisons.
 
-Command retention, actual display-rate detection, bounded catch-up, modal
-boundaries, input replay and CPU cost remain to test.
+A subsequent live 68020 capture with CUSTOM1=1 retained commands 5 and 6 as
+native words 004C and 0050 (up-arrow and F1), while neither diagnostic reader
+had advanced. Its 47 field records retained the same sequence cutoffs and
+the injected mouse/button events. Evidence: `tmp/dev/tmp/c/commands-live-020`.
+The assembled adapter's 457 ABI/header/gate checks also pass with retention.
+`tmp/dev/tools/test_timing_commands.py` passes 30,511 assembled calls with
+independently delayed player/world readers, exact key/modifier payloads,
+field cutoffs, 16-bit cursor and 32-bit sequence wrap, full-ring preservation,
+invalid roles, pause and loss-accounted rebase. Normal and existing VERIFY
+build hashes are unchanged by this diagnostic command-retention change.
+
+Command effect classification, actual display-rate detection, bounded catch-up,
+modal boundaries, input replay and CPU cost remain to test.
 The player inventory is recorded separately in PLAYER_STATE_INVENTORY.md.

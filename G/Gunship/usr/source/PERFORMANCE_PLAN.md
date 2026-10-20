@@ -410,8 +410,9 @@ project's `docs/timing-design.md`, design D, and its phase-9 gate in `docs/inter
 
 Implementation checkpoint: standalone clock/history cores are committed and
 tested, including instruction-boundary producer interruption. Diagnostic native
-input producers now capture real fields on 68000/020/060; the foreground
-scheduler, command retention and player/world hand-off are still pending,
+input producers now capture real fields on 68000/020/060, and a dual-reader
+queue retains accepted keyboard commands through their field cutoffs. The
+foreground scheduler, command effect classification and player/world hand-off are still pending,
 so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. The field-rate integrator is not written.
