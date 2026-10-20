@@ -50,7 +50,12 @@ RT_GUIDANCE_PRESENT equ RT_SCENE+SCENE_SIZE
 RT_BATCH equ RT_GUIDANCE_PRESENT+GP_SIZE ; 0 idle, 1 running, 2 command,
                                         ; 3 modal, 4 end, 5 fault, 6 excess
 RT_BOUNDARY equ RT_BATCH+2
-RT_ARENA_SIZE equ RT_BOUNDARY+BC_SIZE
+RT_BOUNDARY_RECORD equ RT_BOUNDARY+BC_SIZE
+RT_BOUNDARY_PHASE equ RT_BOUNDARY_RECORD+8 ; 0 ready, 1 suspended, 2 executing,
+                                         ; 3 applied/unmarked, 4 marked,
+                                         ; 5 marked/end, 6 failed
+RT_BOUNDARY_RESULT equ RT_BOUNDARY_PHASE+2
+RT_ARENA_SIZE equ RT_BOUNDARY_RESULT+2
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.

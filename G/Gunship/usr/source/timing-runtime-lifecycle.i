@@ -68,6 +68,13 @@ timing_runtime_activate:
  cmpi.w #5,d0
  bne .bad
 .modal:
+ move.w RT_BOUNDARY_PHASE(a6),d0
+ beq .boundary
+ cmpi.w #4,d0
+ beq .boundary
+ cmpi.w #5,d0
+ bne .bad
+.boundary:
  movea.l RT_HUNKS+24(a6),a5
  movea.l RT_HUNKS+20(a6),a0
  cmpa.l $60(a0),a5
@@ -108,6 +115,9 @@ timing_runtime_activate:
  dbf d1,.clear
  dbf d0,.range
  clr.w RT_BATCH(a6)
+ clr.l RT_BOUNDARY_PHASE(a6)
+ clr.l RT_BOUNDARY_RECORD(a6)
+ clr.l RT_BOUNDARY_RECORD+4(a6)
  lea RT_GUIDANCE_PRESENT(a6),a0
  bsr guidance_present_reset
  lea RT_MODE(a6),a0

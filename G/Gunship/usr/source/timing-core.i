@@ -66,3 +66,4 @@
 
  include "timing-runtime-lifecycle.i"
  include "timing-runtime-batch.i"
+ include "timing-runtime-boundary.i"

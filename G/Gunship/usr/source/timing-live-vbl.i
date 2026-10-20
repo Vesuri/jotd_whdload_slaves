@@ -1,6 +1,7 @@
 ; Runtime ownership of native gameplay VBL state, experimental builds only.
 ; Cosmetic RNG/audio/counters/drawing outside these four sites stay native.
 ; Guidance display reconstruction is separate from its extracted state update.
+; A retained UI boundary freezes gameplay even while keyboard ownership is native.
 ; a0=prepared arena, a2=resload. Validate every site before changing any.
 ; Return 0/-1, preserving other registers. CUSTOM1 is the master gate.
 timing_vbl_install:
@@ -73,8 +74,11 @@ timing_vbl_timer_common:
  movea.l timing_runtime_arena(pc),a0
  movea.l RT_HUNKS+24(a0),a1
  adda.w d0,a1
+ tst.w RT_BOUNDARY_PHASE(a0)
+ bne .suppressed
  cmpi.w #1,RT_CAPTURE_OWNER(a0)
  bne .native
+.suppressed:
  move.b (a1),d0
  subq.b #1,d0
  bra .flags
@@ -93,6 +97,8 @@ timing_vbl_guidance:
  move.w sr,-(sp)
  move.l a0,-(sp)
  movea.l timing_runtime_arena(pc),a0
+ tst.w RT_BOUNDARY_PHASE(a0)
+ bne .runtime
  cmpi.w #1,RT_CAPTURE_OWNER(a0)
  beq .runtime
  move.l timing_vbl_native_guidance(pc),6(sp)

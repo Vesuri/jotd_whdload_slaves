@@ -3401,3 +3401,53 @@ retired key; it does not establish full UI pause/rebase behavior. Runtime
 preparation still passes its 1,221 calls and 240 PAL/NTSC fields, and all
 experimental variants assemble. Production lifecycle coordination remains
 pending.
+
+## Retained keyboard boundary suspension and native execution
+
+`timing-runtime-boundary.i` connects boundary-command execution and marking
+to the runtime lifecycle. `timing_runtime_boundary_suspend(a0=arena)` must
+run with producer/consumers excluded. It requires the batch's retained
+player-reader boundary, matching sequence/key and unmarked queue head,
+healthy active owners and a ready native binding. All rejection checks
+precede writes. On success it retains the full record, suspends private
+sampling and returns keyboard ownership to the native code. Unread fields
+are discarded with the existing history accounting. The delivered field,
+any applied field timers/world opening and pending scheduler phase survive.
+
+`timing_runtime_boundary_run` runs after interrupts are restored. It requires
+the suspended boundary and inactive private owners. It sets an executing
+phase before entering native UI, then records completed effects before
+marking the queue. Success returns 0 or 4 for native flight end. A marking
+failure retains an applied/unmarked phase and returns -1: calling again
+cannot replay the native command. Invalid admission returns -3 unchanged.
+Both normal and exit paths leave sampling off.
+
+The arena now retains an eight-byte command record, phase and result beside
+the native binding, for a total of 27,250 bytes. Phase values are ready,
+suspended, executing, applied/unmarked, marked, marked/ended and failed.
+Fresh activation rejects unresolved execution phases even if other metadata
+has been reset; a successful epoch clears completed boundary metadata.
+
+Native keyboard ownership during UI must not unfreeze gameplay. The live
+VBL wrappers therefore suppress their three timer stores and guidance call
+whenever a retained boundary phase is nonzero, as well as during ordinary
+runtime ownership. Native keyboard reads and field counters remain available
+to the UI. This keeps the boundary's gameplay state frozen until completion
+and rebase are resolved.
+
+`test_runtime_boundary_c.py` exercises ten native cases, before a deadline
+and on the first world deadline: retired key 12, pause/resume, Escape during
+pause, and both direct exits. Pause uses the actual native FIFO reader, not
+a keyboard callback stub. It verifies retained pending work, discarded
+unread fields, inactive sampling, single execution, and an injected failure
+after native effects that cannot be replayed or bypassed by activation.
+Thirteen invalid suspension cases and nine invalid execution admissions
+reject without writes.
+The existing lifecycle suite still passes 36 calls. VBL tests pass their
+3,274 ABI cases plus suppression checks through all six retained boundary
+phases, and slave setup passes 15 calls. All experimental variants assemble.
+
+This completes suspension/execution, not pending-field completion. After
+the UI returns, the coordinator must finish or explicitly terminate the
+retained field/world, account for both command readers and only then admit
+a fresh epoch. Native-loop installation and live pause validation remain open.
