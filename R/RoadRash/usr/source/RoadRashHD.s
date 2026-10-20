@@ -149,6 +149,39 @@ C_COLLISION_GEOMETRY = 1
 	ENDC
 	ENDC
 
+; Reuse the last render's geometry on measured 040/060 runtime paths.
+; Diagnostics opt in explicitly, optionally forcing reuse on their test CPU.
+ IFD VERIFY_C_GEOMETRY_REUSE
+C_GEOMETRY_REUSE = 1
+ ENDC
+ IFD VERIFY_C_GEOMETRY_REUSE_FORCE
+ IFND VERIFY
+ FAIL "Forced geometry reuse requires VERIFY"
+ ENDC
+ IFND C_GEOMETRY_REUSE
+C_GEOMETRY_REUSE = 1
+ ENDC
+ ENDC
+ IFD C_RUNTIME_ONLY
+ IFND C_GEOMETRY_REUSE
+C_GEOMETRY_REUSE = 1
+ ENDC
+ ENDC
+ IFD C_GEOMETRY_REUSE
+ IFND C_COLLISION_GEOMETRY
+ FAIL "Geometry reuse requires simulation collision geometry"
+ ENDC
+ IFND C_POSE_PREDICT
+ FAIL "Geometry reuse requires the pose render hook"
+ ENDC
+ IFND POSE_PREDICT_MEASURED
+ FAIL "Geometry reuse requires the measured render hook"
+ ENDC
+ IFD STEP_EXTRAPOLATE
+ FAIL "Geometry reuse excludes whole-view extrapolation"
+ ENDC
+ ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"

@@ -358,22 +358,26 @@ framerate boolean and the CPU/Fast RAM gate. Unsupported machines retain
 original timing. Normalization, state ownership and validation history are in
 the [dependency audit](simulation-timing.md).
 
-The current 20,480-byte runtime includes Fast RAM movement/collision,
+The current 20,532-byte runtime includes Fast RAM movement/collision,
 AI/acceleration and world projection, compact simulation-only road geometry,
 uncached-020 lane scanning, fused lean derivation, Fast raster edges and
 normalized road movement with fractional carry, plus Fast RAM collision/pose
 scratch words shared by native rendering and copied physics. Collision-pair
-flag clears avoid redundant Chip RAM writes.
+flag clears avoid redundant Chip RAM writes. On 040/060, the first simulation
+tick after rendering reuses the existing road geometry; additional catch-up
+ticks rebuild it normally.
 Heading prediction uses the latest increment with a four-tick fallback when
 integer heading repeats; release/reversal guards and the measured four-field
 horizon bound remain. Prediction never changes authoritative gameplay state.
 
 Current normal rates are A500 8.5 fps, Chip-only 020 12.5, Fast 020
-default/Cache 12.5, NoCache 8.3, 030 16.7, 040 21.8 and 060 23.0.
+default/Cache 12.5, NoCache 8.3, 030 16.7, 040 22.9 and 060 23.1.
 All 11 normal hardware cells and both MMU functional cells pass. The MMU
 configuration disables CPU data-cache emulation, so it is not a hardware
 cache-performance claim. All eight measured response phases meet B's limits:
-140/120/180/160/140/120/180/160 ms (median 150 ms).
+140/120/180/160/140/120/180/160 ms (median 150 ms) on 020. Fresh 040
+response is 120/140 ms alternating (median 130), within every same-cell B
+phase (220/200 ms alternating).
 
 The current build has fresh short replay equivalence at 1/2/3/4-field and
 varying 2/3/4/12/16-field render intervals; one-field coverage omits drawing.
@@ -395,7 +399,8 @@ through VERIFY_C_ROAD_TIMING for older references. It preserves fractional
 state across companion copies and clears it on reactivation, player crash
 and race reset. Moving the two shared collision/pose scratch words to Fast
 RAM restored the measured 040/060 rates to 20.2/23.0 fps; conditional
-collision flag clears raise 040 to 21.8 fps while retaining the simulation.
+collision flag clears raised 040 to 21.8 fps. Geometry reuse now raises it to
+22.9 fps (060 23.1) while preserving the tested simulation.
 Remaining performance work is open.
 The original B distance/opponent-order references are retained unchanged.
 

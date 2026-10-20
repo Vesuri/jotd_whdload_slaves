@@ -124,7 +124,21 @@ step_prepare:
 	rts
 
 ; d0 is the initial simulation cursor; the queue follows the live field.
+	IFD C_GEOMETRY_REUSE
+; Ready byte followed by hardware selection; cleared for every new race.
+step_geometry_reuse_flag: dc.w 0
+	ENDC
 step_reset_history:
+	IFD C_GEOMETRY_REUSE
+	lea step_geometry_reuse_flag(pc),a1
+	clr.w (a1)
+	move.l verify_attn(pc),d1
+	andi.w #$88,d1 ; AFF_68040 | AFF_68060; 020/030 rebuild normally
+	sne 1(a1)
+	IFD VERIFY_C_GEOMETRY_REUSE_FORCE
+	st 1(a1)
+	ENDC
+	ENDC
 	IFD C_POSE_PREDICT
 	IFNE STEP_FIELDS-1
 	FAIL "Presentation heading prediction requires one-field simulation"
@@ -732,7 +746,11 @@ step_object_fast_code:
 
 step_collision_objects:
 	IFD C_COLLISION_GEOMETRY
+	IFD C_GEOMETRY_REUSE
+	bsr step_geometry_reuse
+	ELSE
 	bsr step_collision_geometry_code
+	ENDC
 	ELSE
 	jsr $8970e
 	ENDC
@@ -1074,6 +1092,10 @@ step_pose_headings:
 ; These hooks neither delay presentation nor alter its original handshake.
 step_predict_render_begin:
 	move.l a0,-(a7)
+	IFD C_GEOMETRY_REUSE
+	lea step_geometry_reuse_flag(pc),a0
+	move.b 1(a0),(a0)
+	ENDC
 	lea step_pose_render_start(pc),a0
 	move.l $a5d4c,(a0)
 	move.l (a7)+,a0
@@ -1142,4 +1164,18 @@ step_authoritative:
 ; Preserve the measured normal-runtime layout independently of diagnostics.
 	include lean_pose.s
 	ENDC
+	ENDC
+
+	IFD C_GEOMETRY_REUSE
+; Consume render geometry once, before the next movement update.
+; Additional catch-up ticks rebuild it normally; no tick or input is skipped.
+step_geometry_reuse:
+ lea step_geometry_reuse(pc),a0
+ suba.l #step_geometry_reuse-step_geometry_reuse_flag,a0
+ tst.b (a0)
+ beq .build
+ clr.b (a0)
+ rts
+.build:
+ jmp step_collision_geometry_code(pc)
 	ENDC

@@ -1,3 +1,51 @@
+## Integrated 040/060 geometry reuse
+
+The normal runtime now reuses render geometry for the first subsequent
+simulation tick on 040/060. The existing CUSTOM2/CPU/Fast gate still owns
+all enhancements; 020/030 retain rebuilding, and unsupported/off paths stay
+native. Catch-up ticks after the consumed marker rebuild normally. Race reset
+clears readiness and selects the CPU path again. Diagnostic reuse is explicit
+(`VERIFY_C_GEOMETRY_REUSE`); forcing it on a test CPU additionally requires
+VERIFY. Assembly guards require collision geometry and the measured pose
+render hook and reject whole-view extrapolation.
+
+The integrated normal build is byte-identical to the tested 20,532-byte
+candidate: SHA-256
+`85250ab3d331371e2672ef052eaf44e7b87843363a07cc04c882b1ee4de1ee05`.
+The previous five-cell CPU matrix plus `c-geometry-reuse-other-matrix` cover
+all eleven normal cells. Rates are A500 8.5, Chip-only 020 12.5, Fast 020
+12.5, NoCache 020 8.3, 030 16.7, 040 22.9 and 060 23.1 fps; explicit Cache
+agrees with defaults. Both `c-geometry-reuse-mmu` functional cells pass with
+CPU data-cache emulation disabled, not a hardware performance claim.
+
+Normal `c-geometry-reuse-keyboard` and `-cd32` pass steering release,
+pause-clock freeze at field 161 and resume; stack guards remain intact.
+`-demo-fire` and `-demo-timeout` return to a fresh normal race, with timeout
+at active field 3598. `-off` verifies the 21 native hook sites, 14 scratch
+operands and original collision-tail instruction with CUSTOM2=0 on 040.
+
+Response capture now accepts a hardware cell in the private batch driver.
+`c-geometry-reuse-visible-020` retains all eight existing response values:
+140/120/180/160/140/120/180/160 ms, median 150. On 040,
+`c-geometry-reuse-visible-040` gives 120/140/120/140/120/140/120/140 ms,
+median 130, against a fresh same-cell B run (`-visible-b040`) of
+220/200/220/200/220/200/220/200, median 210. Every phase is within B.
+These are the existing capture-based upper estimates, not device-level
+input-latency measurements. The field-318 steering capture was visually
+inspected: road, rider, scenery and dashboard are coherent. A still image
+does not independently prove tear-free motion; native buffer/vsync handoff
+code remains unchanged.
+
+`c-geometry-reuse-final-finish` repeats the successful race with the exact
+final guarded full-diagnostic binary. The strict comparison passes all
+12,095 hashes, 66 sound events, finish/exit timing and six terminal regions,
+then restarts. Combined with the preceding exact-cadence, arrest and natural
+wreck comparisons, this validates the integrated reuse calculation against
+the current simulation. It does not make the existing simulation B-equivalent.
+All sessions are terminal. The default/uncached 020 distances remain
+3,321,603 / 3,301,969, outside the unchanged B tolerance; opponent handling
+and other remaining C acceptance work are still open.
+
 ## Geometry reuse: CPU selection and remaining lifecycle/cadence checks
 
 `c-geometry-reuse-cpu-source` enables reuse only when attention flags report
