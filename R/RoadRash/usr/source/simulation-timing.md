@@ -254,6 +254,57 @@ fixed frame limiter from these five/six-field intervals. The next optimization
 needs enough measured work reduction to improve complete frame throughput,
 with phase and input-response checks alongside instruction/Chip-access counts.
 
+### Broad movement/collision code copy: promising private candidate
+
+The next experiment copies `$8b486..$8d005` (7,040 bytes) into the selected
+slave's Fast RAM hunk after installing the existing C hooks. Actors, lookup
+tables and graphics stay at their native addresses. Decoding the three code
+spans `$8b486..$8c583`, `$8c5a8..$8ce7f`, and `$8cef0..$8d005` covers
+1,922 instructions with no PC-relative data operands. Embedded data between
+those spans is copied but its absolute native references are not rebased.
+Seventeen word-sized branches leaving the copy use nearby absolute-JMP stubs.
+Internal relative branches keep their offsets; absolute and indirect calls
+retain their native destinations. Eight native entries redirect into the copy:
+`$8b486`, `$8baec`, `$8bbe6`, `$8c130`, `$8c48e`, `$8c5a8`, `$8c8ae`, `$8cef0`.
+Existing steering wrappers retain their canonical native return addresses.
+
+The private generator is `tmp/dev/tools/make_physics_fast_source_c.py`.
+`c-physics-fast-probe` checks all 7,040 copied bytes, accounting for the 17
+branch fixups and eight overwritten entry points, and verifies each stub's
+destination. The observed copy begins at `$9fa4f0`. The equal-layout control
+allocates/copies/fixes the same block but skips installing entry redirects.
+
+Cycle-exact 020, UP at field 100, fields 100–1000:
+
+| Cache policy | Control frames | Candidate frames | Control fps | Candidate fps |
+| --- | ---: | ---: | ---: | ---: |
+| Cache | 192 | 198 | 10.667 | 11.000 |
+| NoCache | 108 | 128 | 6.000 | 7.111 |
+
+These subtract each run's own initial count: cached control/candidate 29/28,
+uncached 18/19. They establish gains in these scenarios, not yet a general
+hardware or phase-independent improvement. Results reside in
+`c-physics-fast[-control][-nocache]-cost`. Both cost binaries are 16,200 bytes:
+candidate SHA-256
+`493d15b2826fb79e4a05b8f52d6d2aed78e08e639e78ed8f9c1065d345049503`,
+control `e576dfb9f06f5c68d4b14722ed1caeff6792b151a33a95808973256ecdcffa87`.
+
+`c-physics-fast-varying` uses the seeded attack tape and varying render
+intervals, including 12 and 16 fields. It matches `c-audit-period-4` across
+1,596 completed actor hashes, all three sound requests, and the six
+authoritative field-1,457 regions (actors, clock, camera and ranks). Raw
+snapshot equality is not claimed for presentation-owned bytes.
+The 44,716-byte full diagnostic uses long-distance initialization addressing
+because its snapshot/hash storage exceeds short PC-relative reach; its SHA-256
+is `adb83105950f18443f920fc63e900fe97c0810cfc19338f832aa0a2006d429da`.
+Both tested source deltas are retained in their build directories.
+
+This candidate remains private and normal runtime code is unchanged. Before
+promotion it needs full finish/wreck/arrest and restart coverage, the normal
+hardware/disabled-toggle matrix, visible-response phases, and the existing
+distance/handling checks. The modest cached gain does not by itself close C's
+throughput deficit against B.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
