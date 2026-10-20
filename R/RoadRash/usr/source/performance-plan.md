@@ -389,6 +389,9 @@ It matches completed simulation state across actual 1/2/3/4-field and varying
 presentation schedules (one-field coverage omits drawing), plus full finish
 and arrest/restart replays. It is not enabled in the normal build: complete
 opponent order, distance, performance and remaining transition checks are open.
+The native rank audit found that the old full-order verifier sorts stale
+off-screen positions. Corrected rank observations still show nearby-rider
+passing differences from B; full-order equivalence remains unproven.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 

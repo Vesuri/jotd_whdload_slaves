@@ -1,5 +1,46 @@
 ## Native rank audit: stale off-screen positions invalidate the old order check
 
+### Enhanced comparisons and publication-boundary validation
+
+The same observation on `c-road-rank-audit` and `c-npc-rank-audit` covers all
+15 racers exactly once across active/ahead/behind lists at all 23 sampled
+boundaries in each run. Neither substitutes a sorted off-screen stack for a
+complete race order. The decoded HUD ranks differ from B as follows:
+
+| Field | B | Road correction | NPC lateral prototype |
+|---|---:|---:|---:|
+| 1140 | 14 | 15 | 15 |
+| 1200 | 14 | 15 | 14 |
+| 1300 | 14 | 13 | 13 |
+| 1460 | 15 | 13 | 13 |
+| 1500 | 15 | 14 | 14 |
+
+At 1140 the road candidate still has rider `$a6260` 3409 position units ahead;
+B has that rider 20989 behind. At 1300, `$a61e0` is 1018 behind in the candidate
+and 10 ahead in B. These are nearby-rider differences, not artifacts of sorting
+inactive positions. The NPC prototype does not restore the sampled B rank
+sequence or crash behavior.
+
+The road candidate's field-1200 snapshot reconstructs rank 14 while its stored
+HUD rank is still 15. A field stop can interrupt a simulation step between
+movement and rank publication. `c-road-rank-boundary` therefore stops at
+`$8936c`, immediately after the native rank store, through simulation cursor
+1202. All **55** observations match reconstructed and decoded rank. The rank
+formula is validated at that boundary; an arbitrary field-boundary mismatch
+must not be called a gameplay bug without checking publication timing.
+
+The shared ignored `harness_a.py` now retains legacy raw `rank` and stored-
+position `order` for old-capture compatibility, adds `rank_displayed` and
+`native_ranking` (ahead/behind membership, reconstructed and displayed rank,
+and the mid-simulation observation caveat), and validates the complete rider
+partition. `replay_a.py` prints the decoded rank. Legacy raw-state hashes and
+comparison inputs are unchanged; this does not silently turn failed comparisons
+into passes. `c-road-native-ranking-harness` reruns the enhanced lap and
+preserves every legacy field, including state hashes, in all 24 snapshots
+(initial plus 23 scheduled samples). Full opponent-order equivalence remains
+an open verification task.
+
+
 The A4 harness's `order` field sorts all 15 riders by their stored actor `+4`
 positions. This is not the game's complete race order: inactive riders stop
 updating those positions. Do not use prior `order` mismatches alone as evidence
