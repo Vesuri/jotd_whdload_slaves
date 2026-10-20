@@ -1149,7 +1149,7 @@ once-only scheduling remain integration gates.
 `TR_RNG_MICROS`/`TR_RNG_SECONDS` in a stable private field record. The
 native seed, replay-mode flag, authoritative tick, branches and arithmetic
 remain unchanged. Its entry at +0 supplies bound 256; +10 retains the
-native stack-bound entry. No temporary writes to live input memory are
+native stack-bound entry; +14 accepts the bound in D1.w. No temporary writes to live input memory are
 needed, so a new input event cannot be lost through save/restore.
 
 `world_rng_prepare` takes the validated native RNG address in a0, separate
@@ -1161,7 +1161,7 @@ and flush instruction caches after preparation. The record address stays
 fixed; its contents change only between world updates. Calls retain the
 native RNG ABI and still mutate the authoritative seed.
 
-`test_world_rng_c.py` passes 1,920 comparisons across both native entries,
+`test_world_rng_c.py` passes 2,880 comparisons across all three native entries,
 zero/nonzero replay-mode values, varied seeds/ticks/timestamps and bounds
 1, 3, 256, 32767 and 65535. The reference uses the deadline timestamp in
 live input; the clone uses the same timestamp privately while live input
@@ -1182,6 +1182,49 @@ scheduler's private deadline record held stable. Renderer effects must
 be separated before redirecting shared native RNG entry points. Replay
 setup, lifecycle, cache handling and CUSTOM1-gated installation remain
 integration obligations.
+
+## Native RNG caller inventory (0658)
+
+`audit_rng_callers_c.py` scans the exact relocated original hunk extents for
+absolute JSR/JMP and relative BSR/BRA targets at all three RNG entries.
+The following twelve external direct calls occur in hunk 0; the additional
++07A62 branch is internal to the RNG. No direct caller of the stack-bound
++07A66 entry was found. This opcode scan is not a proof about indirect
+calls or reachability; the sites below were also inspected at their native
+instruction boundaries. Evidence: `tmp/dev/tmp/c/rng-callers.json`.
+
+| Call offset | Entry | Observed operation / timing owner |
+| --- | --- | --- |
+| +05380 | +07A5C | Roll disturbance; world impulse |
+| +053DC | +07A5C | Low-altitude pitch disturbance; world impulse |
+| +0598E | +07A6A, D1=128 | Periodic main-loop housekeeping after reserve consumption; world |
+| +07D98 | +07A5C | Damage eligibility draw before native tick/level checks; world |
+| +07DC6 | +07A5C | Select damage bit to set in player +0E; world |
+| +09480 | +07A5C | Heading disturbance; world impulse |
+| +099FA | +07A5C | Weapon/launch eligibility arithmetic before slot allocation; world |
+| +09C04 | +07A6A, D1=256 | Effect X displacement; world-owned spawn |
+| +09C1A | +07A6A, D1=256 | Effect Y displacement; world-owned spawn |
+| +09C2A | +07A6A, D1=16 | Effect height displacement; world-owned spawn |
+| +09E30 | +07A5C | Damage/event threshold after effect spawn; world |
+| +0A0EA | +07A5C | Scripted-event threshold before coordinate setup; world |
+
+Effect constructor +09B9A has three direct call sites: +05C92 in the render
+path, and +09E2A/+09E56 in the world damage/event path. The constructor
+allocates first and returns without RNG if no slot is available; otherwise
+it consumes three draws in X/Y/height order. In particular, +09E2A can
+consume three draws *before* the +09E30 threshold draw, and +09E56 can
+consume another three afterward. Those world-side calls must retain their
+native order and allocation outcome. Moving or suppressing the whole
+constructor would silently change gameplay RNG. C7a must instead move the
+render-path invocation, including its eligibility and pose inputs, to a
+world boundary. +05C8A tests hunk 6 +42F7 before that invocation.
+
+The +07A6A register-bound entry is used by actual gameplay and rendering;
+redirecting only +07A5C/+07A66 would miss four external calls. The prepared
+clone exposes `WR_REGISTER_ENTRY=$0E`; its tests now cover arbitrary upper
+D1 bits while preserving the native low-word bound. Shared native entry
+redirection remains pending until render-side spawning is removed and all
+world calls have the correct deadline record available.
 
 ## Field-rate deterministic attitude
 

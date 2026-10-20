@@ -2,7 +2,8 @@
 ; Keep native seed, replay-mode byte, authoritative tick and arithmetic.
 ; Only timestamp reads are redirected; live input memory is never replaced.
 WR_CODE_SIZE equ $6c
-WR_BOUNDED_ENTRY equ $0a
+WR_BOUNDED_ENTRY equ $0a        ; bound.l at 4(sp)
+WR_REGISTER_ENTRY equ $0e       ; bound in low word of d1
 
 ; a0 = validated native RNG (+07a5c), a1 = even WR_CODE_SIZE code buffer,
 ; a2 = stable private TH_RECORD_SIZE field record, a3 = native input hunk.
@@ -10,7 +11,7 @@ WR_BOUNDED_ENTRY equ $0a
 ; Preserve other registers. Caller owns non-overlap, lifetime and version
 ; validation, and MUST flush instruction caches before executing the clone.
 ; Prepare once for a fixed private record address; update that record only
-; between world updates. Calls through either entry retain the native ABI.
+; between world updates. Calls through all three entries retain the native ABI.
 ; Native world users must all be routed here in their original order.
 ; Do not use this entry for renderer-only effects or speculative motion.
 world_rng_prepare:
