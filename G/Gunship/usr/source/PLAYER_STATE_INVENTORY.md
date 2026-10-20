@@ -626,3 +626,31 @@ anchors and field ownership. No game code calls the primitive yet.
 cross-interval cases, including signed delta limits, register preservation
 and rejection without writes. C4e/C5b remain open until the replacement is
 composed with the scheduled player/world path and its remaining gates pass.
+
+`timing-endpoint-motion.i` now applies that exact arithmetic to the ten
+continuous fields. Its 40-byte residue vector follows the order listed
+above. X/Y use shortest signed word deltas, heading/track shortest signed
+byte deltas; publication wraps at the native width. Height/RPM differences
+are unsigned, and speed/pitch/roll/vertical differences are signed. The
+caller supplies separate anchor, candidate and current-player records.
+Only the ten motion fields are changed: derived outputs, yaw consumption,
+clock and all world-owned bytes remain caller responsibilities. The helper
+validates the interval length and every residue before its first write.
+
+`test_endpoint_motion_c.py` passes 1,526 assembled cases against an independent
+integer model, covering random records and residues, extreme signed and
+unsigned deltas, wrap crossings, exact complete-interval endpoints, varying
+per-field candidates across PAL/NTSC intervals, and invalid final residues.
+It checks preservation of anchor/candidate records, registers, all other
+player bytes, and rejection without state changes. This tests distribution,
+not native candidate construction or publication ownership.
+
+`test_endpoint_player_c.py` substitutes the assembled distributor into the
+native-preview trajectory experiment. All 24,200 fields match the exact
+fraction model, and all 1,320 complete player records and collision decisions
+match the retained native reference across the 44 paths. The additional
+20-field pulse also matches the fractional roll response, including its
+first-field change. Results are in ignored
+`tmp/dev/tmp/c/endpoint-motion-assembled.json`. The harness still coordinates
+anchors/history and provisionally copies non-motion bytes from each preview;
+this is not yet a scheduled assembly player owner or a ground/command test.

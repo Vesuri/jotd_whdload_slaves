@@ -1257,10 +1257,13 @@ Separately, finer integration has an intentional displacement difference
 even without rounding: N equal semi-implicit steps under constant
 per-tick acceleration A travel `v0 + A*(N+1)/(2*N)`, versus the native
 single-step `v0 + A`. Four steps give the playbook's `v0 + 5*A/8`;
-20 NTSC steps give `v0 + 21*A/40`. The design retains finer integration,
-but that does not justify changing a settled native velocity. The full
-C4e gate remains unpassed until these two effects are separated and the
-remaining trajectory differences have an explicit acceptance bound.
+20 NTSC steps give `v0 + 21*A/40`. The initial implementation retained
+finer integration, but the subsequent moving-collision gate failed.
+The user has since selected native endpoint preservation with responsive
+field-rate controls; section C4c/C4e of PERFORMANCE_PLAN.md supersedes
+that earlier design choice. The replacement distributes interval-anchored
+native motion contributions. The full C4e gate remains unpassed until
+that replacement is composed and validated with the world/lifecycle owners.
 
 ## Native world ground boundary
 
