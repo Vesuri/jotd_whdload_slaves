@@ -353,6 +353,11 @@ a slave option whose default reproduces the original timing until G1 decides the
 ### C. Consistent simulation with uncapped vsynced rendering
 
 In progress: [dependency audit](simulation-timing.md) and diagnostic boundary snapshots.
+The integrated runtime completes the 13-cell functional matrix and the full-race
+replay, but rendering throughput regresses substantially on supported machines.
+Several live-field A4 distance checks also exceed 1%. Controlled-seed completed-
+tick comparison passes on functional-speed and real-speed 020 configurations.
+Performance, remaining A4 review and latency work still prevent completion.
 
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must

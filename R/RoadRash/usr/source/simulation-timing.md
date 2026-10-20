@@ -906,3 +906,68 @@ delta, animation, swap, input and camera instructions. The supported machine
 installs C and advances one-field simulation steps. The normal Readme and build
 dependencies now describe this integration. Broader A2/A4, MMU, CD32 and latency
 validation remains required before declaring C complete.
+
+## Integrated runtime hardware matrix
+
+`c-runtime-matrix-low` and `c-runtime-matrix-high` exercise all 13 A2 cells with
+the lean runtime plus generic field/frame counters and the MMU-register probe.
+Each cell has a 240-second deadline. All complete the route and measurement
+window; both explicit MMU configurations report TC `$8000`. Those two cells are
+functional checks only, and the existing 040/060 emulator timing limitations
+still apply.
+
+| Cell | B reference fps | C measured fps | Distance change vs B |
+|---|---:|---:|---:|
+| A500 1 MB Chip | 8.5 | 8.5 | -1.70% |
+| A1200 Chip only | 12.5 | 12.5 | 0.00% |
+| A1200 Fast | 12.5 | 1.8 | -1.66% |
+| A1200 Fast + Cache | 16.5 | 4.9 | -0.42% |
+| A1200 Fast + NoCache | 12.5 | 1.8 | -1.66% |
+| 030/50 | 13.3 | 4.4 | -1.28% |
+| 030/50 + Cache | 16.6 | 9.0 | -0.99% |
+| 040/25 | 22.5 | 12.5 | -1.28% |
+| 040/25 + Cache | 22.5 | 12.5 | -1.28% |
+| 060/50 | 23.1 | 13.7 | -0.52% |
+| 060/50 + Cache | 23.1 | 13.7 | -0.52% |
+
+The B reference is `b-final-matrix-v2`; the window is 500 active fields after
+field 100, with distance measured after 490 fields. JSON evidence retains the
+frame histograms, CPU/cache settings and screenshots. These are **functional
+passes, not a performance or A4 pass**. The new simulation consumes appreciably
+more CPU time and several live-field distance comparisons exceed 1%. C must
+remain open; the integrated beta is not evidence of an achieved speedup.
+
+The A500 distance discrepancy is an instrumentation effect: the actual normal
+slave in `c-runtime-normal-a500` matches `b-final-normal-off` exactly at 8.5 fps
+and distance 3,425,028, including initial, field-590 and final actor/clock/rank
+hashes. The unsupported path retains native game instructions.
+`c-runtime-cd32` also passes steering/release and CD32 pause/resume on the actual
+normal slave, holding the active field clock at 161 while paused.
+
+The cached-020 field-590 screenshots show the same road scene and player off the
+right edge, but differ in displayed road/scenery and opponent details. A completed
+tick-1457 comparison between functional and real-speed runs likewise matches
+player movement, stopwatch, camera and rank cells but differs in some opponents
+and the random spawn timer at `$a5d5c`. This is not yet a proven CPU-dependent
+simulation defect: the native menu calls all three random generators at
+`$8187a..$81886`, so matching race inputs does not establish matching RNG state.
+The prior six-byte “clock” comparison also includes `$a5d5c`; only
+`$a5d58..$a5d5b` is the stopwatch.
+
+`VERIFY_C_SEED_RNG` provides controlled diagnostic initial conditions by calling
+the native seed routines `$90088` (table generator, seed zero) and `$9011c`
+before native race initialization at `$8657c`. Seeding after actors have spawned
+would be too late. The switch requires VERIFY and does not alter the normal
+binary or normal-game randomness. New cross-speed probes record the initial
+RNG table/cursors as well as the initial actor state.
+
+`c-runtime-seeded-functional` and `c-runtime-seeded-real020` have identical RNG
+tables/cursors at live field 100. Their initial live snapshots are not equivalent
+simulation boundaries (cursors 99 and 97), so those actor snapshots are not used
+as an equality assertion. At the completed tick-1457 breakpoint, however, every
+actor byte, stopwatch, spawn timer, simulation clock, camera, crash-camera offset
+and rank cell matches exactly. For this scenario, the earlier opponent
+differences are resolved by controlled initial randomness; they are not evidence
+of a different result from the same seeded simulation at the two CPU speeds.
+This does not remove the measured throughput regression or close the outstanding
+performance and latency work.

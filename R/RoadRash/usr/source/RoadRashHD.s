@@ -367,6 +367,9 @@ pl_main
 pl_c_simulation
 	PL_START
 	PL_IFC2
+	IFD VERIFY_C_SEED_RNG
+	PL_PS $657C,step_seed_rng
+	ENDC
 	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
