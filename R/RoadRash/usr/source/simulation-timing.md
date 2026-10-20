@@ -1,3 +1,48 @@
+## Missing NPC contacts are preceded by lateral separation
+
+`npc_pair_bounds_c.py` observes riders $a61e0/$a6260 in either orientation
+between live fields 1050 and 1100, retaining native and relocated breakpoint
+addresses. It checks both lateral-bound branches and the contact-marking
+instruction, rather than assuming every caller enters through the relocated
+routine. Original lap inputs through field 820 are retained; no input changes
+inside this observation window.
+
+`b-npc-pair-bounds` records body-bound checks and subsequent contact marking
+at cursors 1077 and 1097. Relative lateral separations are 19/18 units against
+combined half-widths 25, giving overlaps 6/7. Neither actor has attack reach.
+Their longitudinal gaps are -24,528 / -20,706. The first pair's world x values
+are 2/40. This corroborates the earlier natural collision-flag writes.
+
+`c-npc-pair-bounds` records 50 body-bound checks at completed cursors
+1048..1097, including initial catch-up. The body overlap expression stays
+negative, from -74 to -103, and no contact marking occurs. Initial world x
+values are -159/-64; by cursor 1097 they are -187/-64. Longitudinal spacing
+remains comparable (-21,159 initially, -22,456 at 1097), but the lateral
+separation excludes the contact before response. Changing response impulses
+cannot restore these missing collisions. Operand comparisons are retained in
+`c-road-npc-lateral-pair-bounds/comparison.json`.
+
+To isolate the previously measured negative NPC rounding bias, private
+`c-road-npc-lateral-source` adds the retained four-field-reference fractional
+lateral helper to the current road-only candidate. It preserves companion
+carry transfer, clears carry for non-riding/inactive actors and reactivation,
+and resets all 35 slots at race initialization. It does not include reference-
+endpoint longitudinal motion or the rejected brake-release change. The helper
+and its lifecycle code are unchanged from the earlier NPC-lifecycle experiment;
+this tests their composition without those other motion changes.
+
+The 20,316-byte candidate SHA-256 is
+`5bf0ae7abf5a05e601dd17cdc44bf2a4190a74d86566b4c1b2bf362a04cb643c`;
+its build directory retains the exact source delta. The complete original lap
+in `c-road-npc-lateral-lap` now crashes at sampled field 1546, versus B and the
+road-only candidate's 1376. It finishes with displayed/reconstructed rank 15
+and one crash, but does not restore handling. The corresponding pair probe
+observes no lateral-bound or contact-marking entries in the window; this does
+not identify which earlier rejection excluded the pair. No performance or
+release matrix is warranted for this failed handling candidate. It remains
+private; preserving fractional lateral motion alone is insufficient to recover
+B's opponent trajectories and contacts.
+
 ## Completed passing gap and retained NPC brake bit
 
 `b-road-passing-boundaries` and `c-road-passing-boundaries` replay the lap
