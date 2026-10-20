@@ -95,6 +95,29 @@ The shared emulator, slave and game remain unchanged.
 - Exit: fps table and reproduction commands in `tmp/dev/docs/`. Decision recorded:
   confirm `tfx.020` as the base, and the gap it must close to plain `TFX`.
 
+Completed: `tmp/dev/docs/baseline-matrix.md`. Two cold boots per measured row,
+using the recorded flight inputs and the fixed `[2,252)` vblank window:
+
+| Configuration | Executable / rendering | Publications / 250 vblanks | Nominal PAL fps |
+|---|---|---:|---:|
+| 040 timing model, 40 MHz requested | TFX, new | 59 | 11.8 |
+| 040 timing model, 40 MHz requested | TFX, original | 34 | 6.8 |
+| 040 timing model, 40 MHz requested | tfx.020 | 57 | 11.4 |
+| 040 timing model, 40 MHz requested | TFX.FPU | 73 | 14.6 |
+| 040 timing model, 40 MHz requested | Installed TFX.040 beta | 73 | 14.6 |
+| 020, 14.18758 MHz, no FPU | TFX, new | 18 | 3.6 |
+| 020, 14.18758 MHz, no FPU | tfx.020 forced | unavailable | unavailable |
+
+These are emulator A/B figures, not Apollo hardware FPS. The MMU core ignores
+the requested frequency for timing; the matrix uses the playbook's frequency-sensitive
+040 NOMMU configuration, with live CPU/cache metadata and a verified frequency control.
+All measured rows repeat their totals and screenshots; cadence and raw-state differences
+remain explicit in the report, without extending step 2's state-mismatch acceptance.
+The installed 599152-byte TFX.040 beta runs; it is distinct from the damaged candidates
+and is not a native-040 build. Forced tfx.020 without an FPU aborts before flight.
+Keep tfx.020 as the newest intact base: this fixture needs 3.5% more throughput to
+match plain TFX, or 28.1% to match the older FPU builds. No game/slave code changed.
+
 ### 5. Profile `tfx.020` on the 040
 
 - Instruction profile of the fixed window, grouped by routine.
