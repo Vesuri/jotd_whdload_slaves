@@ -191,6 +191,33 @@ position across the returning curve and steering input, including positive
 curve updates. The earlier road-operand audit covered the initial negative
 curve and does not establish equivalence through this later section.
 
+### Returning-curve road-relative trace
+
+`b-reference-road-lap` and `c-aux-road-lap` repeat the unchanged field-scheduled
+lap tape, adding read-only player road-centre and road-relative snapshots.
+The B run reproduces all 752 prior sampled state hashes. C reproduces every
+sampled speed, lateral position, rank, opponent order and crash state; one
+position sample (1326) and two flag samples (1188/1486) differ, so this is not
+an exact whole-state replay claim. The checkpoints below reproduce the earlier
+player position/speed observations.
+
+| Field | B road centre | C road centre | B centre minus lateral | C centre minus lateral |
+| --- | ---: | ---: | ---: | ---: |
+| 600 | -105 | -102 | -265 | -262 |
+| 700 | -33 | -111 | -250 | -325 |
+| 800 | 63 | -111 | -126 | -305 |
+| 900 | 96 | -111 | 15 | -226 |
+| 1000 | 0 | -114 | -85 | -229 |
+
+This directly locates the later slowdown in the returning road-centre motion:
+C does not recover the positive centre movement that brings B inside the
+native +/-224 road-relative bounds. At field 700 the native road update word
+at player +$38 is positive in both runs (B 2, C 6), while C's centre is still
+negative. Positive small-step truncation is the next hypothesis to test at the
+actual integration instruction; these snapshots alone do not establish the
+operand-level cause. No motion correction or new runtime patch is promoted.
+The comparison is retained in `c-aux-road-lap/comparison.json`.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
