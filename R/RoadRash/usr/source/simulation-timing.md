@@ -1,3 +1,39 @@
+## Current-runtime exact road-width lookup retest
+
+`c-current-cost-audit` profiles the current 18,592-byte enhanced normal slave on
+cycle-exact Fast 020 over fields 100..600. The road geometry routine
+`$8970e..$898e1` accounts for 5.821% of flat recorded units, with 619 calls
+(simulation preparation plus rendered frames). Its constant-width division at
+`$89854` executes 19,808 times and accounts for 0.494%. These are flat profiler
+units for this workload, not inclusive hardware timing or a universal cost split.
+
+Retest the existing exact `VERIFY_C_GEOMETRY_LUT` with the current physics/AI
+copies. The private normal source enables the flag for normal/C_SIMULATION
+builds only; the tracked runtime remains unchanged. It reserves 40 KiB optional
+ExpMem rather than 20 KiB and uses the existing gated, exact 8193-word lookup.
+Candidate `c-current-lut-build/RoadRash.slave` is 18,696 bytes,
+SHA-256 `d26613ddea22e611a7257c34af896f38796d0d93f4b82dcad49ef3c9649a9df4`.
+
+| Normal configuration | Current runtime fps | Lookup candidate fps | Candidate distance at 490 fields |
+|---|---:|---:|---:|
+| Fast 020, default caches | 11.9 | 12.4 | 3,318,164 |
+| Fast 020, NoCache | 7.0 | 6.9 | 3,318,164 |
+| 060/50 | 22.8 | 22.8 | 3,318,164 |
+
+All three `c-current-lut-matrix` cells pass their functional checks. The cached
+020 gain is 4.2%; it is not a universal improvement, and the flat division cost
+alone does not explain the whole throughput change. Frame deadlines and code
+layout can affect the result. The distance remains outside the default/NoCache
+B tolerance. No promotion to the normal runtime follows from these measurements.
+
+`c-current-lut-fixed` and `c-current-lut-reference` use fresh matched builds,
+seeded RNG, `c-attacks.json`, a four-field diagnostic presentation floor and
+capture cursor 1457. All **1595 completed actor hashes**, all **three sound
+requests**, and all six authoritative snapshot ranges match. The final in-flight
+hash is excluded. These checks establish short-tape equivalence for the retest;
+full-race/restart, cadence, cache/MMU, fallback and latency validation would still
+be required before any integration. Earlier lookup evidence is retained below.
+
 ## Native rank audit: stale off-screen positions invalidate the old order check
 
 ### Enhanced comparisons and publication-boundary validation
