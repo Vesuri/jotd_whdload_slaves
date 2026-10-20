@@ -40,6 +40,7 @@
  include "timing-world-tail.i"
  include "timing-world-body.i"
  include "timing-field-guidance.i"
+ include "timing-guidance-present.i"
  include "timing-scheduled-guidance.i"
  include "timing-scheduled-world-start.i"
  include "timing-field-vbl-state.i"

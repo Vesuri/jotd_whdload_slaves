@@ -484,8 +484,10 @@ back and forth. Native flight/menu entry points must still call them.
 Experimental runtime builds also switch the three native VBL countdown
 stores and guidance call by that ownership flag. Runtime ownership suppresses
 their native state updates so the field consumer can replay them once.
-Ownership defaults off; guidance drawing reconstruction and cosmetic timer
-snapshots remain pending before gameplay activation.
+Ownership defaults off. Guidance now retains the latest native request for
+each of its two hardware sprites; a tested presentation entry applies those
+requests without advancing guidance state. The render handoff and cosmetic
+timer snapshots remain pending before gameplay activation.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

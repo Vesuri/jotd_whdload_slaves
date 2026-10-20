@@ -1,10 +1,11 @@
-; Native guided-weapon field state without its display callbacks. Not installed.
+; Native guided-weapon field state; optional retained sprite request binding.
 ; Replay in delivered-field order; do not also run the native VBL state owner.
 FG_CODE_SIZE equ $128        ; +0a1c8..+0a2f0, includes native RTS exits
 FG_QUIT equ FG_CODE_SIZE
 FG_ENABLED equ FG_QUIT+4
 FG_PENDING equ FG_ENABLED+4
-FG_SIZE equ FG_PENDING+4
+FG_PRESENT equ FG_PENDING+4 ; optional retained sprite presentation context
+FG_SIZE equ FG_PRESENT+4
 
 ; a0=validated 0658 hunk 0, a1=even clone, a2=validated hunk 4,
 ; a3=private pending-display byte (initialized by lifecycle owner).
@@ -60,6 +61,7 @@ field_guidance_prepare:
 	adda.l #$a44e,a5
 	move.l a5,FG_ENABLED(a1)
 	move.l a6,FG_PENDING(a1)
+	clr.l FG_PRESENT(a1)
 	lea .pending(pc),a4
 	moveq #3,d2
 .pending_patch:

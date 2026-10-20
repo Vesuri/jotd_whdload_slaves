@@ -107,6 +107,8 @@ timing_runtime_activate:
  clr.w (a0)+
  dbf d1,.clear
  dbf d0,.range
+ lea RT_GUIDANCE_PRESENT(a6),a0
+ bsr guidance_present_reset
  lea RT_MODE(a6),a0
  movea.l a5,a1
  bsr control_mode_init

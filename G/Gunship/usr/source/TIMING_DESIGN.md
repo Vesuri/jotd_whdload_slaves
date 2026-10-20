@@ -2210,7 +2210,8 @@ and full scheduler/lifecycle binding are still required.
 
 `field_guidance_prepare` takes hunk 0, an even clone, hunk 4 and the private
 pending-byte address in a0/a1/a2/a3. It validates callback and pending-byte
-access boundaries before writing; `FG_SIZE` is 308 bytes. The caller owns
+access boundaries before writing; `FG_SIZE` is now 312 bytes, including the
+optional retained-presentation pointer. The caller owns
 initialization, nonoverlap and cache flushing. `field_guidance_step` is the
 native-equivalence entry, preserving the caller-supplied pending value.
 `field_guidance_advance` is the hybrid entry. Both take the clone in a0, preserve
@@ -3218,3 +3219,50 @@ ownership remain off after load. Guidance drawing must be reconstructed
 separately, and native audio still reads authoritative timers: cosmetic
 snapshots must be coordinated with delayed field consumption. Live
 interrupt/foreground validation and native flight/menu hooks remain open.
+
+## Retained guidance hardware-sprite presentation
+
+`timing-guidance-present.i` now reconstructs guidance presentation separately
+from state progression. Runtime preparation binds the four removed clone
+callbacks to capture helpers. The clone keeps a0 as its base at those sites;
+the helpers preserve its registers, resolve the original position/image
+tables at the delivered field, and retain the latest request for each of the
+two hardware sprites. Capture makes no graphics calls and does not change
+additional native gameplay state. A negative image selector hides the sprite
+at X=-32 while retaining the base image pointer, matching the native branch.
+The reset callback retains hidden requests for both sprites.
+
+Each retained request contains the native viewport, sprite, signed X/Y and
+image pointer. A dirty mask permits intermediate requests to be replaced
+during catch-up. `guidance_present(a0=context)` applies the dirty requests
+through the original MoveSprite/ChangeSprite wrappers, clears their dirty
+mask, and returns the number presented. It never advances the guidance
+phase, changes eligibility or acknowledges pending state. The caller must
+serialize capture and presentation; this is a foreground render entry, not
+an interrupt reader of a partially written request.
+
+`guidance_present_init` initializes bindings and two hidden requests.
+`guidance_present_bind` validates all four update-only NOP sites before
+patching the clone; an already bound or altered clone rejects without
+partial patching. Existing LoadSeg cache flushing covers this binding.
+Runtime activation resets the retained requests to hidden so a previous
+epoch's sprite positions cannot leak into the next one. The arena is now
+27,232 bytes: four additional guidance metadata bytes and a 58-byte
+presentation context.
+
+`test_guidance_present_c.py` passes 240 native comparisons across phases,
+image modes, hidden/view state and pending handshakes. Captured requests
+match the original library-call arguments; rendering leaves native gameplay
+memory unchanged, repeated clean presentation does nothing, and five fields
+without rendering retain the latest request per sprite, including completion
+hiding. Runtime preparation still passes 1,221 calls and 240 PAL/NTSC fields
+at two allocation addresses; slave setup passes 15 calls. The lifecycle
+fixture also checks that activation replaces stale visual requests with
+hidden requests while preserving clone code. Eight altered callback sites
+reject atomically. All experimental variants build, and all default variants
+remain byte-for-byte unchanged.
+
+These comparisons stub the graphics library calls; they do not establish
+pixel correctness or live sprite timing. The foreground render handoff must
+still invoke this entry. Native VBL guidance stays suppressed only while the
+runtime owns it; production timing remains unchanged.
