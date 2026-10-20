@@ -5212,3 +5212,34 @@ overflow. It nevertheless discards 148 unread fields through bounded excess
 recovery and retains a backlog: this workload cannot sustain real-time rate
 on that 68000 configuration. This is explicitly not a C9 rate acceptance.
 All four slave build variants assemble; the ordinary build is unchanged.
+
+### Catch up newly arrived fields before drawing
+
+The installed owner previously drew after every drained backlog snapshot,
+even when producers had added more fields during that batch's world work.
+It now compares the published/read history cursors before drawing and starts
+another bounded batch when they differ. The existing per-batch field/world
+limits and explicit excess recovery remain; the change does not enlarge or
+silently discard a snapshot. An interrupt after the comparison can still
+queue input for the following frame, as with any foreground render handoff.
+
+The control fixture covers arrivals at this handoff and cursor wrap, alongside
+the existing lifecycle and failure paths (twelve scenarios, two invalid
+callbacks). Actual PAL/NTSC player/world pipeline comparisons still pass for
+batch sizes 1/3/10/80. All four slave variants assemble.
+
+Headless 68000 evidence is in `tmp/dev/tmp/c/live-loop-000-profile` and
+`live-loop-000-catchup`: both use the same route, a 100-field instruction
+profile and five subsequent 100-field observations. The old owner finished
+with 730 applied fields, 42 completed worlds and 148 discarded input fields.
+With pending-input priority it finished with 877 applied fields, 52 completed
+worlds and zero discarded input. Both published through field 946. The new
+consumer still trailed publication by 54 fields, growing from 16 at the first
+observation. Thus this is a C8 scheduling correction and throughput improvement,
+not sustained 3 Hz acceptance. Avoid drawing while catching up does not by
+itself make the remaining 68000 workload fast enough.
+
+The second profile attributes 5.28% of sampled cycles to endpoint-player code,
+4.59% to its scheduled transaction wrapper, 3.60% to endpoint fraction math,
+and 4.75% to the private geometry copy. These are self-cycle groups, not
+inclusive costs or a substitute for matched world-state/latency validation.

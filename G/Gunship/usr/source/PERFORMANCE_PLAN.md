@@ -443,7 +443,11 @@ A separate 68000 address error in the private instrument height word store
 is fixed with byte stores; 65,536 native comparisons cover both buffer
 alignments. Its live loop now advances, but discarded 148 fields through
 bounded excess recovery in the sampled run: C9 real-time rate still fails
-on that configuration. Native world opening and the complete periodic
+on that configuration. C8 catch-up now also skips a render when fields
+arrived while draining the previous snapshot. In the matched 68000 profile
+route this removes 148 discarded fields and raises completed worlds from
+42 to 52, but the backlog still grows (54 fields at the end); sustained
+rate acceptance remains open. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

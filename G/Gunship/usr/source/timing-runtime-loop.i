@@ -45,6 +45,12 @@ timing_runtime_loop:
  beq .excess
  bra .fault
 .draw:
+ ; A drained snapshot need not mean the producer is caught up: fields can
+ ; arrive during world work. Consume those before spending time on a frame.
+ ; The producer only advances WRITE; a later arrival can wait for this draw.
+ move.w RT_HISTORY+TH_READ(a6),d0
+ cmp.w RT_HISTORY+TH_WRITE(a6),d0
+ bne .batch
  movea.l a6,a0
  bsr timing_runtime_draw
  tst.l d0
