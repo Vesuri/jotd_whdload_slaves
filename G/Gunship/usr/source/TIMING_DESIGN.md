@@ -624,6 +624,48 @@ candidate gate, with world RNG/contact effects excluded. It is not proof
 of a complete native tick, field-rate handling bounds, collision equivalence,
 live input latency, CPU cost or production installation.
 
+## Continuous motion coordinator
+
+`timing-kinematics.i` connects the motion components in a single
+`kinematics_step` call. Its 64-byte state concatenates flight-rate,
+heading and movement shadows. `kinematics_init` accepts 50/60, or 3 for
+the whole-tick fixture. The step takes state/player in a0/a1, prepared
+native stages in a2, the validated native sine helper in a3, and a supplied
+world heading impulse in d0. It returns d0=0/-1 and preserves other registers.
+
+The order is native stage 0 then scaled heading/track; stage 1 then scaled
+vertical response; scaled height; stage 3 then scaled forward response;
+scaled horizontal motion/wind; stage 6 then scaled RPM. It saves the old
+heading, track and RPM before their native stages overwrite them. All
+components must have the same rate. The caller supplies the interval's
+logical tick parity and validated, cache-flushed native code.
+
+The routine computes on stack copies of the player record and shadows.
+Only a successful complete step copies both back; an invalid late component
+cannot leave earlier motion partially applied. This is foreground error
+rollback, not an interrupt-atomic publication protocol. Scratch is 172 bytes,
+plus the saved registers and nested callees' stack use; C4f must price the
+copies and nested calls as well as the arithmetic.
+
+The assembled coordinator passes 4,096 complete-record comparisons with
+the native deterministic whole-tick preview. Twenty-four two-second
+PAL/NTSC sequences (2,640 fields total) match the separately invoked
+component chain in every player byte and all shadow state, including
+supplied heading impulses. Nine invalid-rate, fraction, bookkeeping or
+impulse cases leave the original state/player unchanged; invalid
+initialization also leaves state unchanged. Register and stack contracts
+are checked. Evidence: `tmp/dev/tools/test_kinematics_step_c.py`,
+`tmp/dev/tmp/c/kinematics-step-tests.json` (41,445 calls).
+The field sequences verify composition, not the C4e native-versus-finer
+trajectory bound, which remains pending.
+
+This routine covers continuous flight arithmetic only. Input decoding,
+control commands, stick attitude and its world impulses precede it.
+Pitch-clamp placement, world RNG eligibility/contact consequences,
+fraction resets on lifecycle transitions and the native scheduler adapter
+remain integration obligations. It is not included in the slave yet;
+installation must use the CUSTOM1 Enhanced framerate gate.
+
 ## Field-rate deterministic attitude
 
 `timing-attitude.i` implements the continuous portion of native
