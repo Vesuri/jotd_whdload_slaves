@@ -505,6 +505,24 @@ new_AllocMem
     cmp.l   #$000182C8,d0
     bne.b   .no_dataseg
 .chip
+    IFD CHIP_ONLY
+    ELSE
+    ; Keep the original placement on 020/030/060 and with original rendering.
+    btst.b  #AFB_68040,attnflags+3(pc)
+    beq.b   .keepchip
+    btst.b  #AFB_68060,attnflags+3(pc)
+    bne.b   .keepchip
+    CHECK_NO_FAST_ALLOC
+    bne.b   .keepchip
+    and.w   #~MEMF_CHIP,d1
+    or.w    #MEMF_FAST,d1
+    movem.l a0,-(sp)
+    lea     new_fast_data(pc),a0
+    st.b    (a0)
+    movem.l (sp)+,a0
+    bra.b   .no_dataseg
+.keepchip
+    ENDC
     or.w    #MEMF_CHIP,d1   ; wrong hunk, fix it
 .no_dataseg
     move.l  old_AllocMem(pc),-(a7)
@@ -562,6 +580,8 @@ patch_main
         movem.l (sp)+,d0-d3/a2-a3
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        bsr     split_new_chip_data
 
         move.l  d7,a1
         move.l  _resload(pc),a2
@@ -645,6 +665,99 @@ patch_main
 .pal:
 
         rts
+
+; The merged executable lost its chip attributes. Retain only DMA objects in
+; chip RAM. Palette snapshots, sprite pointer tables and screen selectors are
+; CPU-only and stay in fast RAM, as do all PL_GA objects used by the slave.
+NEW_CHIP_SIZE = $22760
+
+split_new_chip_data:
+        tst.b   new_fast_data(pc)
+        beq     .done
+        movem.l d0-d7/a0-a6,-(sp)
+        move.l  $4.w,a6
+        move.l  #NEW_CHIP_SIZE,d0
+        move.l  #MEMF_CHIP!MEMF_CLEAR,d1
+        jsr     _LVOAllocMem(a6)
+        tst.l   d0
+        bne.b   .allocated
+        pea     outofmemory(pc)
+        pea     (TDREASON_FAILMSG).w
+        move.l  _resload(pc),a0
+        jmp     resload_Abort(a0)
+.allocated:
+        move.l  d0,a4
+        lea     new_chip_ranges(pc),a5
+.relocate:
+        move.l  (a5)+,d1
+        bmi.b   .copy_ranges
+        bsr.b   .range
+        move.l  a3,d0
+        sub.l   a2,d0
+        lea     new_chip_ranges(pc),a0
+        add.l   (a5)+,a0
+        bsr     apply_new_chip_relocs
+        bra.b   .relocate
+.copy_ranges:
+        ; Relocate every pointer before copying any initialized objects.
+        lea     new_chip_ranges(pc),a5
+.copy_next:
+        move.l  (a5)+,d1
+        bmi.b   .copied
+        bsr.b   .range
+        addq.l  #4,a5
+        lsr.l   #2,d3
+        subq.w  #1,d3
+.copy:
+        move.l  (a2)+,(a3)+
+        dbf     d3,.copy
+        bra.b   .copy_next
+.copied:
+        movem.l (sp)+,d0-d7/a0-a6
+.done:
+        rts
+.range:
+        lsl.w   #2,d1
+        lea     sections(pc),a2
+        move.l  (a2,d1.w),a2
+        add.l   (a5)+,a2
+        move.l  (a5)+,d3
+        move.l  a4,a3
+        add.l   (a5)+,a3
+        rts
+
+; Section, source offset, length, chip offset, relative relocation-table address.
+; Keep the video buffers 8-byte aligned, as required by their initialization.
+new_chip_ranges:
+        ; Tracker quiet sample and mouse sprite images/buffers.
+        dc.l 1,$00d98,$0173c,$00000,chip_reloc_mouse-new_chip_ranges
+        ; Hardware sprites and copper lists (no palette snapshots).
+        dc.l 1,$027e0,$01b50,$01740,chip_reloc_display-new_chip_ranges
+        ; Paula quiet sample buffer.
+        dc.l 1,$04938,$000c8,$03290,chip_reloc_audio-new_chip_ranges
+        ; Two 320x200x8 bitplane buffers plus alignment space.
+        dc.l 2,$07cec,$1f408,$03358,chip_reloc_video-new_chip_ranges
+        dc.l -1
+
+; d0 = target address delta; a0 = groups terminated by a negative section.
+apply_new_chip_relocs:
+        move.w  (a0)+,d1
+        bmi.b   .done
+        lsl.w   #2,d1
+        lea     sections(pc),a1
+        move.l  (a1,d1.w),a1
+        move.w  (a0)+,d2
+        subq.w  #1,d2
+.next:
+        move.l  (a0)+,d1
+        add.l   d0,(a1,d1.l)
+        dbf     d2,.next
+        bra.b   apply_new_chip_relocs
+.done:
+        rts
+
+new_fast_data: dc.w 0
+        include "chip_reloc_new.i"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
