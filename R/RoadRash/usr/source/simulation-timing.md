@@ -1,3 +1,36 @@
+## Collision geometry: full finish, cadence and disabled-path checks
+
+`c-collision-geometry-finish` replays the retained
+`c-steering-finish-lane/driven-tape.json` with the tracked diagnostic and a
+four-field rendering floor. Against `c-physics-aux-finish`, all **12,822**
+completed actor hashes, **24** sound requests, six authoritative terminal
+ranges, finish at **12634**, and exit at **12823** match. A new race starts with
+capture `(97,96,0,1)`. The inspected final image shows FINISHED and rank 01;
+the next-race image has the expected road, riders, scenery and HUD.
+
+`c-collision-geometry-finish-vary` uses the identical input tape with the
+existing varying rendering pattern. It matches every hash, sound request,
+terminal range and finish/exit boundary above, and starts a new race with
+capture `(95,94,0,1)`. Actual frame intervals include 2, 3, 4, 12 and 16 fields
+(counts 743/385/565/283/283, plus startup entries); the fixed run records 3207
+four-field frames plus startup entries. Both runs cover airborne movement
+and all crash states 0..4 in sampled steering coverage. The fixed run samples
+two skid flags; the varying run samples none (their completed-tick hashes still
+match). These are
+functional-speed runs, not throughput measurements or full-draw 50 fps proof.
+
+`c-collision-geometry-copy` verifies all **388** relocated bytes at `$9f8560`,
+including the adjusted DBF displacement, against the two native spans. The
+native rendering entry retains `LEA $a6f3c,A0`. The diagnostic is in Fast RAM.
+`c-collision-geometry-off` uses the tracked lean diagnostic with `CUSTOM2=0`
+and confirms original instructions at all 33 existing enhancement hook sites.
+Normal production output remains unchanged.
+
+This closes successful-finish/restart and the tested varying-cadence comparison
+for this candidate. Arrest/wreck transitions, broader hardware/MMU coverage,
+visible-response phases and gameplay/presentation review remain required before
+normal integration. The existing B distance/handling differences remain open.
+
 ## Compact collision geometry on the current runtime
 
 The earlier collision-only road experiment is retested after integration of
