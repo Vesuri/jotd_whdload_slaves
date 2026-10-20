@@ -358,17 +358,18 @@ framerate boolean and the CPU/Fast RAM gate. Unsupported machines retain
 original timing. Normalization, state ownership and validation history are in
 the [dependency audit](simulation-timing.md).
 
-The current 20,396-byte runtime includes Fast RAM movement/collision,
+The current 20,480-byte runtime includes Fast RAM movement/collision,
 AI/acceleration and world projection, compact simulation-only road geometry,
 uncached-020 lane scanning, fused lean derivation, Fast raster edges and
 normalized road movement with fractional carry, plus Fast RAM collision/pose
-scratch words shared by native rendering and copied physics.
+scratch words shared by native rendering and copied physics. Collision-pair
+flag clears avoid redundant Chip RAM writes.
 Heading prediction uses the latest increment with a four-tick fallback when
 integer heading repeats; release/reversal guards and the measured four-field
 horizon bound remain. Prediction never changes authoritative gameplay state.
 
 Current normal rates are A500 8.5 fps, Chip-only 020 12.5, Fast 020
-default/Cache 12.5, NoCache 8.3, 030 16.7, 040 20.2 and 060 23.0.
+default/Cache 12.5, NoCache 8.3, 030 16.7, 040 21.8 and 060 23.0.
 All 11 normal hardware cells and both MMU functional cells pass. The MMU
 configuration disables CPU data-cache emulation, so it is not a hardware
 cache-performance claim. All eight measured response phases meet B's limits:
@@ -393,8 +394,9 @@ road where B also has it. The runtime retains explicit diagnostic selection
 through VERIFY_C_ROAD_TIMING for older references. It preserves fractional
 state across companion copies and clears it on reactivation, player crash
 and race reset. Moving the two shared collision/pose scratch words to Fast
-RAM restores the measured 040/060 rates to 20.2/23.0 fps without changing
-simulation trajectories. Remaining performance work is open.
+RAM restored the measured 040/060 rates to 20.2/23.0 fps; conditional
+collision flag clears raise 040 to 21.8 fps while retaining the simulation.
+Remaining performance work is open.
 The original B distance/opponent-order references are retained unchanged.
 
 The native rank audit found that the old full-order verifier sorted stale

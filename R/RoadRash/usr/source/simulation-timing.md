@@ -1,3 +1,64 @@
+## Avoid redundant actor-pair flag writes
+
+The copied collision tail at native $8cb70/$8cb76/$8cb7c clears actor A1 bit 4
+at +$68 and bit 7 at +$69, then A2 bit 7 at +$69. The enhanced path now tests
+each bit and writes only when it was set. BTST and BCLR alter only Z from
+the prior bit value, so the final test/clear retains native CCR semantics,
+including when A1/A2 alias. No data/address registers are used as scratch.
+The copy is patched during gated initialization and flushed with the existing
+code-copy cache flush. Native fallback code remains unchanged.
+
+Two normal binaries of 20,480 bytes differ in only the control flag byte at
+file offset 9,705. Private `c-pair-clear-{fast,control}-matrix` results:
+
+| Runtime | Fast 020 | NoCache 020 | 040/25 | 060/50 |
+| --- | ---: | ---: | ---: | ---: |
+| Identical-layout unconditional-clear control | 12.5 | 8.3 | 19.5 | 23.0 |
+| Conditional clears, selected | 12.5 | 8.3 | 21.8 | 23.0 |
+| Preceding integrated scratch runtime | 12.5 | 8.3 | 20.2 | 23.0 |
+
+The selected default/Cache 020 field-490 distance improves from 3,311,794 to
+3,321,603. Against B's default 3,364,352 this is still 1.270646% low, outside
+the unchanged one-percent gate. NoCache remains 3,301,969. This is performance
+progress, not a physics-speed correction or closure of C's B handling checks.
+All 11 normal hardware cells pass; 040 default/Cache both reach 21.8. Both MMU
+functional cells pass with data-cache emulation disabled, not a hardware
+cache-performance claim.
+
+`c-pair-clear-vary-state` matches 1,596 common hashes, sound requests and all
+six field-1457 state regions. Fresh `c-pair-clear-{1,2,3,4}-state` runs each
+match 1,595 hashes, sounds and six regions against the fixed-four reference;
+main histogram bins are 1600/799/533/399 respectively. One-field coverage
+omits drawing. Normal binaries built alongside all four are identical.
+
+Full `c-pair-clear-{finish,arrest,wreck}` comparisons pass the unchanged
+strict comparator: 12,095/7,084/23,509 hashes and 66/24/105 sound requests,
+respectively. Captures, finish/exit ticks and all six terminal regions agree;
+all three restarts clear the 12 player and 140 actor road-history/carry bytes.
+The wreck uses naturally accumulated damage, without a fixture.
+
+The live probes `c-pair-clear-live-probe` and
+`c-pair-clear-live-collision-probe` each validate 256 calls: all three byte
+results, 15 data/address registers, stack return balance and the low five
+CCR bits match the native tail's expected effects. All sampled target bits
+were already clear; this is direct coverage of the skipped-write branch,
+not exhaustive execution of every set-bit or alias combination.
+
+Normal eight-phase response remains 140/120/180/160/140/120/180/160 ms,
+median 150, passing each B limit. Keyboard/CD32 release, pause/resume and
+stack guards pass. Demo fire/timeout exits reach a fresh normal race.
+The disabled-toggle probe checks the original 21 hooks, 14 scratch operands
+and the native collision-tail instruction. All changes remain behind the
+single Enhanced framerate toggle and existing CPU/Fast checks.
+
+The integrated normal binary is byte-identical to the selected candidate:
+SHA-256 `edc24f08aba85e634156fc920cb5f62dd45b220e3c92951c9523788c17b87a8b`.
+The identical-layout control is
+`d7c9f5b0b856afe8076d5b88d50b678e37583b593596e1714f7546e1f900d033`.
+`VERIFY_C_PAIR_CLEAR_CONTROL` preserves the diagnostic control. Exact private
+source patches remain with the build evidence. B distance/opponent-order and
+remaining performance acceptance stay open.
+
 ## Move shared collision/pose scratch words into Fast RAM
 
 The enhanced runtime moves native scratch words $8b480 and $a59ca into four

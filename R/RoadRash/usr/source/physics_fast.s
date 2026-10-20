@@ -27,6 +27,7 @@ step_physics_fast_init:
  move.w d1,(a0,d0.w)
  bra .fix
 .patched:
+ bsr step_pair_clear_init
  IFD VERIFY_C_PHYSICS_CONTROL
  bra.w .done
  ELSE
@@ -103,6 +104,45 @@ step_scratch_init:
 step_scratch_words: dc.w 0,0
 step_scratch_enabled:
  IFD VERIFY_C_SCRATCH_CONTROL
+ dc.w 0
+ ELSE
+ dc.w 1
+ ENDC
+ cnop 0,4
+; The copied pair tail originally performs three unconditional Chip writes.
+; Test before clearing: BTST and BCLR both alter only Z, using the old bit.
+; The final test/clear therefore preserves the native CCR result, even if
+; A1 and A2 alias. No data/address registers are changed by the tail.
+ IFD VERIFY_C_PAIR_CLEAR_CONTROL
+ IFND VERIFY
+ FAIL "Pair flag-clear control requires VERIFY"
+ ENDC
+ ENDC
+step_pair_clear_init:
+ move.w step_pair_clear_enabled(pc),d0
+ beq .done
+ lea step_physics_fast_code+$8cb70-$8b486(pc),a0
+ lea step_pair_clear(pc),a1
+ move.w #$4ef9,(a0)
+ move.l a1,2(a0)
+.done:
+ rts
+step_pair_clear:
+ btst #4,$68(a1)
+ beq .second
+ bclr #4,$68(a1)
+.second:
+ btst #7,$69(a1)
+ beq .third
+ bclr #7,$69(a1)
+.third:
+ btst #7,$69(a2)
+ beq .done
+ bclr #7,$69(a2)
+.done:
+ rts
+step_pair_clear_enabled:
+ IFD VERIFY_C_PAIR_CLEAR_CONTROL
  dc.w 0
  ELSE
  dc.w 1
