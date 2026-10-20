@@ -1,3 +1,42 @@
+## Reject shorter road-history arithmetic after hardware measurements
+
+Three private candidates shorten `step_road_reference`, keeping the normal
+binary at 20,256 bytes and compensating with unreachable padding after its
+unconditional return jump. The combined candidate replaces LSL.L #2 followed
+by LSR.L #8 with LSR.L #6, and replaces two word history copies with one
+longword copy. Only bits 6..21 enter the subsequent MULS.W, so discarded upper
+bits cannot change that multiplication; all 65,536 operand patterns were
+checked with upper-bit and low-bit boundary cases. The overlapping longword
+copy reads the two old history words before writing their new locations.
+
+Assembler listings confirm unchanged addresses for the player helper, actor
+helper, physics copy, auxiliary initializer and raster helper (respectively
+$21a4, $220c, $2534, $40ea, $4ddc relative to the slave). These are measured
+normal-build comparisons, not a claim that fewer instructions necessarily
+mean higher frame throughput:
+
+| Variant | Cached/default 020 | NoCache 020 | 040/25 | 060/50 |
+| --- | ---: | ---: | ---: | ---: |
+| Current integrated runtime | 12.5 | 8.3 | 19.5 | 22.9 |
+| Both changes | 12.5 | 8.3 | 19.3 | 23.0 |
+| Shift only | not measured | not measured | 19.4 | 22.9 |
+| History copy only | not measured | not measured | 19.4 | 23.0 |
+
+The combined candidate's 020 live-field distances are unchanged at 3,311,794
+and 3,301,969. Its varying-cadence diagnostic matches the current road reference
+on 1,596 common completed hashes, sound requests and six field-1457 state
+regions; both collect 282 frames. That check does not establish full-race or
+response equivalence. No further acceptance runs were justified once the
+normal 040 measurements regressed. No production code changes are selected.
+
+Private evidence: `c-road-compact-{matrix,fast-matrix,vary-state}`, and
+`c-road-{shift,history}-matrix`. Each build directory retains `source.patch`.
+Normal SHA-256 values:
+
+- Combined: `0386db5f80494ad44e4e862e4f6d4cb843a887d4c7b9f6b440f31ca96092b8f3`.
+- Shift: `f303acb1696c11f75d6732047985093aae6c8878ce6cd184f0036845abcc3a74`.
+- History: `b460ab0e144791c97286c5ccb8a42f30972e85eebc282bfff0176bfa14cf3685`.
+
 ## Separate accumulated movement from live-field lag
 
 Fresh normal-runtime probes `c-road-integrated-completed-motion` and
