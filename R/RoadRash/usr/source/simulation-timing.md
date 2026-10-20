@@ -717,3 +717,36 @@ input is held, bypassing the automatic return at `$8b6f4`. The long screenshot
 shows the rider running off-road; both traces retain state 3 accordingly. Further
 routes must release controls during recovery to cover remounting and subsequent
 riding. Do not count mere time spent in state 3 as completed crash recovery.
+
+## Special actor, remounting and armed sound coverage
+
+The recorded `c-road-drive.json` route follows the road and releases controls
+during a crash. Its input was generated once from the reference run, then replayed
+unchanged for the varying-cadence comparison. The special actor at `$a6e60`
+becomes active (flags `$4000`) near fields 3000 and 5000. All 5,996 common
+completed hashes and all 32 sound requests match between `c-long-drive` and
+`c-long-drive-var`. This exercises special-actor activity rather than merely
+waiting for its timer threshold.
+
+`c-road-recovery.json` extends that recorded input to field 7000, retaining
+released controls after field 5780. `c-recovery1-replay` and
+`c-recoveryvar-replay` match all 6,992 common completed hashes, all 32 sound
+requests, and the frozen field-5501 actor, clock, camera and rank state.
+Both reach crash state `$ff` by field 6500 and remain there at 7000.
+Both final screenshots show the player remounted on the motorcycle. This route
+uses ordinary controls without injecting game state. It establishes completed
+recovery across render cadences, not race completion or subsequent racing.
+
+The optional `VERIFY_C_SEED_ATTACK` fixture requires `VERIFY_C_EVENTS` and seeds
+an armed player attack at historical simulation field 501. Native action,
+pose-selection and sound-dispatch code then runs normally. This is a synthetic
+boundary test, not evidence that the player naturally acquired a weapon.
+`c-armed1-replay` and `c-armedvar-replay` match all 1,597 common completed hashes
+and the frozen field-1457 state. Both request secondary effect 6 at fields
+501, 641 and 841, followed by the same three original crash-tape requests.
+Neither trace overflows. With the fixture disabled, `c-seed-disabled-build`
+is byte-identical to `c-events1-build`, including the unchanged normal slave.
+
+Together with the earlier siren route, these tests exercise all five traced
+request kinds. Audible playback, pause/exit sound behavior, race finish and
+restart still need separate validation.

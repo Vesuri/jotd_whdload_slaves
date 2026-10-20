@@ -46,6 +46,11 @@ step_select_path:
 	moveq #0,d0
 	rts
 
+	IFD VERIFY_C_SEED_ATTACK
+	IFND VERIFY_C_EVENTS
+	FAIL "Seeded attack requires the event audit"
+	ENDC
+	ENDC
 	IFND STEP_HASH_SLOTS
 STEP_HASH_SLOTS = 2048
 	ENDC
@@ -126,6 +131,9 @@ step_main:
 	bsr step_save_previous
 	ENDC
 	bsr step_collision_objects
+	IFD VERIFY_C_SEED_ATTACK
+	bsr step_event_seed_attack
+	ENDC
 	bsr .run
 	bra step_main
 .run:

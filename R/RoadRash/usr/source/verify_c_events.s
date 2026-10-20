@@ -1,6 +1,22 @@
 ; Diagnostic trace of discrete requests issued by the simulation sound gate.
 ; This measures dispatches, not the timer-driven audio sequencer or audibility.
 STEP_EVENT_SLOTS = 1024
+	IFD VERIFY_C_SEED_ATTACK
+; Synthetic boundary fixture: an armed player starts the active attack phase.
+; Uses native action, pose selection and sound dispatch; never a normal option.
+step_event_seed_attack:
+	move.l step_stats+8(pc),d0
+	cmpi.l #501,d0
+	bne .done
+	ori.b #$10,$a5dc9
+	andi.b #$bf,$a5dc9
+	ori.b #2,$a5dcb
+	clr.b $a5dcc
+	move.b #1,$a5dcd
+	move.b #1,$a59d6
+.done:
+	rts
+	ENDC
 step_events_reset:
 	lea step_event_stats(pc),a0
 	clr.l 8(a0)
