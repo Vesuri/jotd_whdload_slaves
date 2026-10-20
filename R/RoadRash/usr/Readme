@@ -38,6 +38,7 @@
  - movement, collision, AI and acceleration code runs from Fast RAM on the
    enhanced path
  - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path
+ - raster edge generation runs from Fast RAM on the enhanced path
  - simulation derives rider lean during pose selection, avoiding a second
    traversal of the actor list
  - collision checks skip road-width and edge drawing calculations; rendering
@@ -46,6 +47,8 @@
    original stack if the optional allocation is unavailable or unsuitable
  - predicts the displayed rider heading through the measured render interval
    to reduce visible steering lag without changing simulation or collisions
+ - heading prediction follows recent motion, retaining a short average when
+   integer heading repeats during a continuing turn
  - no added frame limiter or delayed interpolation; slow frames catch up the
    required simulation steps before rendering
  - CUSTOM2=0 (or omitted), 68000 and unsupported memory configurations retain

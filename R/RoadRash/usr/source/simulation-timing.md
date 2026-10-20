@@ -1,3 +1,52 @@
+## Integrate Fast raster edges and responsive heading prediction
+
+The normal runtime now includes the validated raster-edge Fast RAM helper and
+recent-heading predictor with four-tick fallback on zero increments. Both are
+selected only by the existing Enhanced framerate and CPU/Fast RAM gate.
+The helper preserves the native mutable table pointer and removes only four
+redundant operations established by the earlier opcode and live differential
+audits. The predictor changes presentation only; it retains the measured
+four-field horizon bound and release/reversal guards. No frame pacing or
+simulation ownership changes are introduced.
+
+The tracked source rebuilt in `c-raster-integrated-build` is byte-identical
+to `c-raster-recent-fallback-build`: 19,700 bytes, SHA-256
+`1aec3a65bda324d18cf5b6d5e52c0a27850ffad272f5c23a263b2969b7d04ede`.
+The Makefile includes the new helper dependency. Source comments and the
+ReadMe describe the final implementation. This connects the candidate's
+normal-binary checks directly to the integrated runtime.
+
+All 11 normal hardware cells pass in `c-raster-recent-fallback-matrix` and
+`-hardware`: A500 8.5 fps, Chip-only 020 12.5, Fast 020 default/Cache 12.5,
+Fast 020 NoCache 8.3, 030 default/Cache 16.7, 040 default/Cache 20.2 and
+060 default/Cache 23.0. The preceding fused runtime measured 12.1 cached
+020, 16.6 on 030 and 19.6 on 040. The 040/060 functional MMU checks in
+`c-raster-recent-fallback-mmu` also pass with CACR $80008000. Their CPU
+data-cache emulation is disabled; these are not hardware speed claims.
+
+Strict full comparisons against `c-fused-lean-{finish,arrest,wreck}` pass:
+
+| Outcome | Completed hashes | Sound requests | Exit field | Fresh capture |
+| --- | ---: | ---: | ---: | --- |
+| Finish | 12822 | 24 | 12823 | (95,94,0,1) |
+| Arrest | 8377 | 241 | 8378 | (92,91,0,1) |
+| Wreck | 11945 | 120 | 11946 | (92,91,0,1) |
+
+All six terminal ranges, capture/timing fields and event sequences match;
+each run includes RR_RESTART=1. `c-raster-recent-fallback-demo-timeout`
+exits at field 3598 with native timer 3600 and reaches a normal race at 100.
+Together with the earlier fire-exit, keyboard/CD32, stack, master-toggle,
+short varying-cadence and eight-phase response checks, this supports the
+integration. Response estimates are 180/160/140/120/180/160/140/120 ms,
+all within B's corresponding limits, median 150 ms.
+
+C remains incomplete. The original B distance/handling and overall
+throughput requirements still need work; this change does not waive them.
+Long-run visual prediction smoothness and extreme-heading arithmetic have
+not been established by these short pose probes. Historical one-field and
+fixed-cadence checks below retain their original binary scope; the new
+candidate's explicit short replay covers varying 2/3/4/12/16-field cadence.
+
 ## Fallback predictor: complete response sweep and finish/restart pass
 
 The unchanged 19,700-byte normal fallback candidate completes all eight

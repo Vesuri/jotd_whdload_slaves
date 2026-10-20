@@ -997,7 +997,10 @@ step_pose_busy:
 	even
 
 	IFD C_POSE_PREDICT
-; Estimate presentation heading from the last four authoritative increments.
+; Estimate presentation heading from the latest authoritative increment.
+; Integer heading can repeat during a continuing turn: on those ticks use
+; the four-tick average. History stores four times the estimated rate so the
+; prediction multiply below retains its existing quarter-unit scaling.
 ; Runtime uses the measured render interval; diagnostics can fix the horizon.
 ; Never write prediction to an actor or use it in the simulation pose pass.
 step_predict_history:
@@ -1008,7 +1011,19 @@ step_predict_history:
 	lea step_pose_headings(pc),a0
 	move.w $a5d6c,d1
 	move.w d1,d2
+	subq.w #2,d0
+	andi.w #6,d0
 	sub.w (a0,d0.w),d2
+	addq.w #2,d0
+	andi.w #6,d0
+	tst.w d2
+	beq .average
+	lsl.w #2,d2
+	bra .store
+.average:
+	move.w d1,d2
+	sub.w (a0,d0.w),d2
+.store:
 	move.w d1,(a0,d0.w)
 	move.w d2,8(a0)
 	movem.l (a7)+,d0-d2/a0

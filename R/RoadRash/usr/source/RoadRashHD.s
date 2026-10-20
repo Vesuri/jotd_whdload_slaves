@@ -523,6 +523,9 @@ pl_main
 	IFD C_STEP_BUILD
 pl_c_simulation
 	PL_START
+; Applied only after step_select_path accepts CUSTOM2 and CPU/Fast placement.
+	PL_P $31994,raster_edge_fast
+
 	IFD C_FUSED_LEAN
 	PL_PSS $9DE8,step_fused_lean,4
 	ENDC
@@ -1041,6 +1044,9 @@ verify_c_selection:
 	dc.b "RRCSEL01"
 	dc.l 0,0,0,0
 	ENDC
+	IFND C_RUNTIME_ONLY
+	include raster_edge.s
+	ENDC
 	include simulation.s
 	ENDC
 	IFD DEBUG
@@ -1050,3 +1056,7 @@ verify_c_selection:
 	;	dc.l	WHDLTAG_CUST_DISABLE,copjmp2
 	ENDC
 		dc.l	0
+
+	IFD C_RUNTIME_ONLY
+	include raster_edge.s
+	ENDC
