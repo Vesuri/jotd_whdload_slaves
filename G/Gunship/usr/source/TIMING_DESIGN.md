@@ -3760,3 +3760,56 @@ rejections. These results prove selection arithmetic/order given matching
 pixel inputs, not visibility equivalence or correct targeting in live play.
 All runtime variants assemble; ordinary, VERIFY and standalone input
 binaries remain byte-identical.
+
+
+## Private projection and candidate collection
+
+`timing-target-collect.i` extracts +0A450..+0A58C. All 31 HUNK relocations are
+validated before the 316-byte clone is written. Target writes are redirected
+into WT_STATE; object identity, cell, transformed depth and projected X/Y
+reads use private scene scratch. Viewport bounds, targeting limits and native
+model data remain stable shared reads. The special model pointer at +05A24
+remains a native pointer because it is identity/data carried into target state,
+not a private code entry.
+
+`scene_target_prepare` creates a projection-enabled variant of the existing
+private scene workspace. It restores native vertex transformation/projection
+at +06642 and native point-object projection at +06372. Both candidate-call
+sites (+06356/+063D4) use the private collector. Polygon rasterization remains
+stopped at +063F8; point-object color, pixel and glyph drawing calls are
+removed after signature validation. The native point clipping predicate is
+retained and only reads viewport bounds. This variant has an eight-byte
+binding suffix, for SCT_SIZE = 7,872 bytes, plus the separate 546-byte target
+workspace and 316-byte collector clone.
+
+`scene_target_step(a0=SCT,a1=committed camera,a2=committed object coordinates)`
+validates descriptor offsets, clears the previous candidate count, and runs
+the private scene traversal with full native projection. Previous selection
+identity/status and descriptor-offset layout are retained. It returns the
+native flight-end plane flag and only writes private scene/target/stack state.
+It does not sample pixels or decide which projected candidates are visible.
+The caller must keep shared model/viewport/targeting inputs stable and flush
+the prepared code before execution. Failed preparation is not callable.
+
+`test_target_collect_prepare_c.py` verifies all relocation destinations,
+64 corrupted collector signatures and twelve corrupted drawing-call sites.
+`test_target_collect_c.py` passes 1,536 native comparisons covering projection
+bounds, targeting limits, identity matches, player exclusion and counts 0..5:
+274 cases append and 256 exercise a full list. Candidate descriptors, screen
+coordinates and model pointers match, with no native writes.
+
+`test_scene_target_c.py` passes 48 views spanning three positions, two heights
+and eight headings. Six views collect a candidate; counts are zero or one
+in this scene fixture. Candidate state and flight-end plane flags match
+native geometry/collection, and reused workspaces produce the same results.
+Three invalid descriptor layouts reject without changing either workspace.
+The reference and private lanes have the same explicit rasterization
+omissions. This distinction matters: equal candidates do not establish equal
+visibility colors. The write monitor allows only private scene/target/stack
+writes. An initial harness slowdown was traced to regex symbol lookup on
+every memory write; caching that lookup allowed the full test to finish
+without reducing coverage.
+
+All runtime variants assemble; ordinary, VERIFY and standalone input builds
+remain byte-identical. These helpers remain unbound from the runtime pending
+committed-view pixel acquisition and target publication/exclusion work.

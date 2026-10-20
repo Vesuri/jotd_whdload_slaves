@@ -718,9 +718,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C5d. Render-time aiming (gun sight, target box) may show the current view but must not
     commit a lock, target change or launch. A private native-equivalent selector
     now accepts explicit per-candidate pixel colors and changes only its own
-    target snapshot. Committed-view candidate collection/visibility acquisition,
+    target snapshot. A private full-projection/collector path now matches
+    native candidate state in 48 drawing-omitted views; filtering/capacity
+    checks add 1,536 native comparisons. Committed-view pixel acquisition,
     world publication and exclusion of native render target writes remain open;
-    the selector is not yet connected to the runtime.
+    these helpers are not yet connected to the runtime.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at

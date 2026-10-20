@@ -48,6 +48,8 @@
  include "timing-target-select.i"
  include "timing-scene-state.i"
  include "timing-scene-private.i"
+ include "timing-target-collect.i"
+ include "timing-scene-target.i"
  include "timing-world-scene.i"
  include "timing-scheduled-world-scene.i"
  include "timing-world-scene-body.i"
