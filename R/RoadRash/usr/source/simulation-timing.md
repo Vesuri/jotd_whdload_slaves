@@ -418,6 +418,46 @@ finish/arrest/wreck and restart coverage, reverse/slot-reuse transitions,
 normal lap, hardware costs and remaining A4 differences still require checks
 before promotion. The production runtime remains unchanged.
 
+### Reproducible road diagnostic and full-race coverage
+
+The road correction and lifecycle helpers are now retained in `road_timing.s`,
+selected explicitly with `VERIFY_C_ROAD_TIMING` alongside normalized steering.
+They are not selected by normal builds. All associated patch sites remain in
+the Enhanced framerate/CPU/Fast gated simulation patch list. This makes the
+experiment reproducible without promoting its unresolved A4/performance costs.
+The tracked period4 and varying full-diagnostic builds are byte-identical to
+the tested private lifecycle binaries. The normal build remains 18,592 bytes,
+SHA-256 `4a6a5d667acaf0462ead705b5a342e5f6de8449e2fbe3dedb7bef638b82a966f`.
+
+Two newly recorded field-timed tapes now cover full-race exits and restarts on
+the lifecycle candidate, using functional-speed 020 diagnostics:
+
+| Outcome | Reference / varying replay | Completed hashes | Sound requests | Finish field | Exit field |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Arrest | `c-road-lifecycle-driven-v2` / `c-road-lifecycle-replay-vary` | 6,885 | 78 | none | 6886 |
+| Finish | `c-road-lifecycle-lane-drive` / `c-road-lifecycle-finish-vary` | 16,454 | 67 | 16266 | 16455 |
+
+Each pair matches every published completed-tick hash, all sound requests,
+terminal timing and all six authoritative terminal regions. Both tapes exercise
+crash states 0–4, riding/remount, and airborne state; lateral carry remains
+within the configured quarter-unit bound. Restart probes read the twelve player
+road-state bytes and 140 actor-carry bytes and verify they are all zero after
+entering the next race. Final screenshots were inspected and show BUSTED and
+FINISHED respectively. These results establish cadence equivalence for the
+candidate, not equality to the preceding runtime or B's different trajectories.
+
+The initial full-race launch failed in AmigaDOS because CUSTOM2 was supplied
+twice; its screenshot and output are retained as `c-road-lifecycle-driven`.
+The harness now avoids appending a duplicate option. The normal-build original
+lap rerun (`c-road-lifecycle-lap`) retains crash onset 1372, final rank 21 and
+position 13,138,349, with the same final racer order as the preceding candidate.
+Intermediate live-field samples are not all identical; they are not substituted
+for the completed-tick comparison above.
+
+Wreck-exit coverage, shorter exact render periods, remaining reverse/actor-slot
+lifecycle cases, the final candidate's hardware/MMU/control/latency checks and
+B-equivalence/performance gaps remain open. Section C is not complete.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics

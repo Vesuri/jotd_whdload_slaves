@@ -84,6 +84,13 @@ C_STEERING = 1
 	ENDC
 	ENDC
 
+	IFD VERIFY_C_ROAD_TIMING
+	IFND C_STEERING
+	FAIL "Road timing diagnostics require normalized steering"
+	ENDC
+C_ROAD_TIMING = 1
+	ENDC
+
 ; Predict only the displayed rider heading through the measured render
 ; interval. Explicit diagnostic selection retains fixed-horizon controls.
 	IFD VERIFY_C_POSE_PREDICT
@@ -513,6 +520,11 @@ pl_c_simulation
 	PL_PSS $B326,step_object_width,2
 	ENDC
 	IFD C_STEERING
+	IFD C_ROAD_TIMING
+	PL_P $BABE,step_road_reference
+	PL_PS $BCD0,step_actor_road
+	PL_PSS $BDF0,step_actor_road_copy,6
+	ENDC
 	PL_P	$B93A,step_steering_heading
 	PL_P	$B97A,step_steering_motion
 	PL_P	$B9A0,step_steering_store

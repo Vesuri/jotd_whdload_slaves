@@ -148,6 +148,17 @@ POSE_PREDICT_FIELDS = 3
 	IFD C_STEERING
 	lea step_steering_fraction(pc),a1
 	clr.l (a1)
+	IFD C_ROAD_TIMING
+	lea step_actor_road_fraction(pc),a1
+	moveq #34,d1
+.actorroadclear:
+	clr.l (a1)+
+	dbf d1,.actorroadclear
+	lea step_road_fraction(pc),a1
+	clr.l (a1)+
+	clr.l (a1)+
+	clr.l (a1)
+	ENDC
 	ENDC
 	lea step_stats(pc),a0
 	move.l d0,8(a0)

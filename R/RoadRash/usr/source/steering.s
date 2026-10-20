@@ -82,6 +82,12 @@ step_steering_finish:
 	move.l a0,-(a7)
 	lea step_steering_fraction(pc),a0
 	clr.l (a0)
+	IFD C_ROAD_TIMING
+	lea step_road_fraction(pc),a0
+	clr.l (a0)+
+	clr.l (a0)+
+	clr.l (a0)
+	ENDC
 	move.l (a7)+,a0
 .done:
 	rts
@@ -89,3 +95,7 @@ step_steering_finish:
 	cnop 0,4
 step_steering_fraction:
 	dc.l 0
+
+	IFD C_ROAD_TIMING
+	include road_timing.s
+	ENDC
