@@ -233,9 +233,19 @@ _bootdos
         move.l  executable(pc),d1
         bne   .noauto
     ;automatic mode
+        ; The newest build now has the fast renderer and native 040 maths.
+        ; Select it on full 040 only; preserve the 020/030/060 policy below.
+        move.l  attnflags(pc),d0
+        btst    #AFB_68040,d0
+        beq.b   .legacy_auto
+        btst    #AFB_68060,d0
+        bne.b   .legacy_auto
+        btst    #AFB_FPU40,d0
+        bne     .plain_040
+.legacy_auto
         CHECK_NO_FAST_ALLOC
-        ; In "fast" mode, the plain 020 version is preferable. It has more features, and
-        ; even on 060 TFX.040 (the other candidate) is only marginally faster.
+        ; Preserve the existing preference for plain 020 in "fast" mode on other CPUs.
+        ; On 060 TFX.040 (the other candidate) was only marginally faster.
         beq     .nofpu
 
         move.l  attnflags(pc),d0
