@@ -389,6 +389,14 @@ enhancement toggle. Default/Cache 020 reaches 12.0 fps, NoCache 7.6, 030 16.6,
 finish/arrest/wreck and restart comparisons pass. All eight visible-response
 phases remain identical to the previous runtime (170 ms median). Default and
 NoCache 020 distance checks still fail B's tolerance; C remains incomplete.
+The cache-selected Fast RAM lane scan is now integrated for uncached 68020
+machines only. NoCache throughput improves to 8.3 fps; other measured rates
+remain unchanged. All hardware, MMU, full-race, controls/demo, dispatch and
+visible-response comparisons pass against the preceding runtime. C's existing
+B comparison failures remain open. Retesting the private combined road/motion
+correction now passes Cache and NoCache short-distance tolerance, but default
+still fails (-1.1762%) and its crash onset remains 1538 versus B's 1376; that
+correction is not integrated.
 The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
 road integration and preserves its fractional state across copies and crashes.
 It matches completed simulation state across actual 1/2/3/4-field and varying

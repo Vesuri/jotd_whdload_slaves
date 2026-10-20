@@ -1,3 +1,41 @@
+## Combined motion correction retest after lane-scan integration
+
+The private `c-lane-motion-source` rebuild starts from runtime commit `8938181`
+and adds the existing road-timing diagnostic (including its reactivation reset)
+and reference-endpoint displacement correction. It uses the same two hooks and
+formula as `c-combined-motion-source`; no correction coefficient was tuned to
+these measurements. `c-lane-motion-build/RoadRash.slave` is 19,952 bytes,
+SHA-256 `36009d81b31aa90655c90170cc102edea4b5608cec9506ce65e21c80c429d36e`.
+
+Fresh normal cycle-exact 020 measurements in `c-lane-motion-matrix`, compared
+with the matching cells of `b-final-matrix-v2`:
+
+| Policy | fps | Distance at 490 fields | Difference from same-cell B |
+|---|---:|---:|---:|
+| Default | 12.4 | 3,324,779 | -1.1762% (fails) |
+| Cache | 12.3 | 3,334,538 | +0.0672% |
+| NoCache | 8.2 | 3,334,538 | -0.8862% |
+
+The NoCache distance now passes the short-window tolerance, unlike the earlier
+combined candidate. This is not enough to integrate it: default still fails,
+and NoCache throughput is slightly below the current runtime's 8.3 fps.
+Explicit Cache has a different B reference distance (3,332,298) from the
+default/NoCache reference (3,364,352); those references are not interchangeable.
+
+`c-lane-motion-boundaries` records 500 completed player states. All 499 adjacent
+pairs satisfy `displacement = max(0, speed + floor(3*speed/2) -
+floor(3*previous_speed/2))`. This verifies the intended endpoint correction in
+this run; it does not establish whole-game handling equivalence.
+
+`c-lane-motion-lap` replays the unchanged original lap tape at two-field sample
+spacing. Its sampled crash onset is still 1538, exactly the earlier combined
+candidate's onset, versus B's 1376. It ends in crash state 2 and displayed rank
+15. Faster execution and the road reactivation reset have therefore not resolved
+the observed handling difference. The candidate remains private; production
+continues to use only the validated lane-scan optimization. Further handling
+work must address the native contact/attack and opponent-motion differences,
+not accept a matching short distance as sufficient evidence.
+
 ## Runtime integration of the uncached 68020 lane scan
 
 `C_LANE_SCAN` is now selected by normal/lean runtime builds. Full snapshot
