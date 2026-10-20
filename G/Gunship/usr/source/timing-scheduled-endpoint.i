@@ -19,7 +19,7 @@ SE_WORK_SIZE equ SE_WORK_COMMAND+8
 ; commands; deadline world commands must also be drained before this call.
 ; Private state/player copies survive no rejection. COMMITTED distinguishes a
 ; producer fault after publication; scheduler counts that applied field once.
-; World, yaw consumption, ground handling and lifecycle remain caller-owned.
+; World effects, ground handling and lifecycle remain caller-owned.
 scheduled_endpoint_step:
 	movem.l d1-d7/a0-a6,-(sp)
 	suba.w #SE_WORK_SIZE,sp

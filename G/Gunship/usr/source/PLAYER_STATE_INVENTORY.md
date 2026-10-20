@@ -682,11 +682,11 @@ the interval's coarse speed removes that unintended feedback.
 Publication changes the ten continuous fields and derived target speed,
 effective power, lift, RPM target and coarse speed. It preserves all other
 current bytes, including clock and command inputs. In particular, preview
-yaw consumption is not published each field: the world owner must consume
-yaw once at the deadline. Nonzero impulse words in the packet are rejected;
+yaw consumption is published only on the final field at the world deadline,
+using the native preview's result as described below. Nonzero impulse words in the packet are rejected;
 world kicks must be applied once before anchoring rather than diluted into
-one field's contribution. Ground contact, world kick scheduling, yaw
-consumption and scheduler integration remain unfinished. The standalone
+one field's contribution. Ground contact and world kick scheduling remain
+unfinished. The standalone
 owner must not be installed as a complete replacement for those paths.
 
 `test_endpoint_owner_c.py` compares the assembly owner with the earlier
@@ -724,7 +724,7 @@ distribution. A second scheduler health check precedes publication. The
 bridge then records its applied field/committed flag and acknowledges the
 player step. A producer fault at acknowledgement retains the published
 state and counts that field; recovery cannot repeat it. The caller still
-owns decoded controls, world effects, yaw consumption, ground handling and
+owns decoded controls, world effects, ground handling and
 lifecycle rebasing. This airborne bridge does not replace the older split
 ground transaction or install a native main-loop hook.
 
@@ -742,3 +742,30 @@ faults and retained ordinary/world commands. Rejection leaves the owner,
 player and scheduler completion count unchanged. A post-publication fault
 retains committed metadata and exactly one completion, and clearing the
 fault does not permit a replay.
+
+#### Native yaw consumption at the deadline
+
+Native +093F8 skips heading/yaw work when height is zero. Otherwise the
+byte-negated pitch is compared unsigned with 4 at +09406. The hover branch
+adds twice yaw to heading without clearing yaw; the other airborne branch
+clears yaw at +0945A. This decision must use the native tick preview's
+attitude and height, not a newly inferred condition on the distributed pose.
+
+The endpoint player owner now copies the native candidate's yaw byte only
+when its consumed-field count reaches the interval span. Before that field
+it retains current yaw, so a command received during the interval can affect
+subsequent motion. The scheduler bridge already requires that final field to
+coincide with a world deadline. Yaw is published in the same transaction as
+motion/history, so rejected work cannot consume it and a post-publication
+fault cannot trigger another player step. No extra native motion call or RNG
+draw is introduced.
+
+`test_endpoint_yaw_c.py` passes 72 cases / 972 fields across whole-tick,
+PAL 16/17 and NTSC 20-field intervals, zero/nonzero height and nine pitch
+values including native signed-byte extremes. It compares the deadline byte
+with native-preview output, verifies preservation on every earlier field,
+and changes yaw during the interval. There are 24 native-clear and 48
+native-retain outcomes. The 48-call owner transaction suite still passes.
+The scheduler batch fixture now injects yaw changes every seventh delivered
+field; all 960 fields remain batch-invariant and no non-deadline field
+consumes yaw. The 124-call scheduler rejection/fault suite also passes.

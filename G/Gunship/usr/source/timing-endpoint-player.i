@@ -86,8 +86,9 @@ endpoint_player_begin:
 ; Private preview overlays anchored motion onto CURRENT non-motion inputs,
 ; so field-stamped commands can change the contribution immediately.
 ; Publishes ten motion fields plus derived target speed/power/lift/RPM target/
-; coarse speed. Does NOT publish the preview's consumed yaw: the world owner
-; must consume yaw once at its deadline. No RNG, ground effects or world ack.
+; coarse speed. Publishes the preview's consumed yaw only on the interval's
+; final field, which the scheduler bridge binds to the world deadline.
+; No RNG, ground effects or world acknowledgement.
 ; Packet impulses must be zero: discrete kicks must be applied once by their
 ; world owner before anchoring, not diluted into a single field contribution.
 ; No step after the interval ends, and failed preview cannot consume history.
@@ -180,6 +181,13 @@ endpoint_player_step:
 	move.b $40(a2),$40(a3)
 	move.b $50(a2),$50(a3)
 	addq.w #1,EP_DONE(a6)
+	move.w EP_DONE(a6),d0
+	cmp.w EP_SPAN(a6),d0
+	bne .retain_yaw
+	; Use the native preview's branch decision, not a new predicate on
+	; interpolated pitch/height. Commands remain responsive during the tick.
+	move.b $3f(a2),$3f(a3)
+.retain_yaw:
 	movea.l a6,a0
 	movea.l d2,a1
 	moveq #EP_SIZE/2-1,d1
