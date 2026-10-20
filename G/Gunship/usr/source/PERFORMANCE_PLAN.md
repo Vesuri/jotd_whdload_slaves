@@ -772,14 +772,18 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     with separate eligibility/morph barriers. A CUSTOM1-gated allocator hook
     now stamps all three callers, preserves native flags and resets on lifecycle
     activation (1,536 native comparisons). Eligibility/morph handling, other
-    object families, live hook validation and prediction remain open.
+    object families and live hook validation remain open. The experimental
+    renderer now certifies cached projectile poses against generations,
+    exhaustion, eligibility and motion state; lifecycle activation reseeds it.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
     poses into world state or pass them to collision, damage or AI. A standalone
     private six-slot native preview now matches 1,200 steps and rejects release,
     type changes, expiry, decoy hits and uncertain terrain contacts without
-    world writes. It is not yet consumed by rendering: generation/eligibility
-    certification, spawn-order intervals, fractional publication and visual
-    acceptance remain open (see TIMING_DESIGN.md).
+    world writes. The experimental runtime now captures after world completion
+    and publishes certified forward fractions into renderer-only scene inputs
+    (600 PAL/NTSC fields, 288 publications, invariant across batch sizes).
+    Guided first-release intervals, other object families, live cost/visual
+    acceptance and native flight activation remain open (see TIMING_DESIGN.md).
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.

@@ -28,7 +28,9 @@ TF_TARGET_ENTRY equ 84 ; optional once-per-deadline target owner
 TF_TARGET_CONTEXT equ 88
 TF_GAUGE_ENTRY equ 92 ; optional once-per-field gauge animation
 TF_GAUGE_CONTEXT equ 96
-TF_SIZE equ 100
+TF_ACTOR_ENTRY equ 100 ; optional post-world presentation snapshot
+TF_ACTOR_CONTEXT equ 104
+TF_SIZE equ 108
 
 ; a0=TF, d0=command budget per reader (1..128). Preserve other registers.
 ; Return 0 field complete, 1 world complete, 2 retained command boundary,
@@ -213,6 +215,14 @@ timing_flight_consume:
  moveq #4,d0
  bra .done
 .world_complete:
+ move.l TF_ACTOR_ENTRY(a6),d0
+ beq .actors_done
+ movea.l d0,a1
+ movea.l TF_ACTOR_CONTEXT(a6),a0
+ jsr (a1)
+ tst.l d0
+ bne .fault
+.actors_done:
  bsr .ack
  tst.l d0
  bmi .fault

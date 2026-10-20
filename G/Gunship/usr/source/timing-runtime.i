@@ -70,7 +70,10 @@ RT_VIEW equ RT_GAUGE_SCRATCH+28
 RT_VIEW_SAVED equ RT_VIEW+TPV_SIZE
 RT_VIEW_PHASE equ RT_VIEW_SAVED+WT_STATE_SIZE ; 0 closed, 1 collecting, 2 drawing
 RT_ACTOR_GENERATIONS equ RT_VIEW_PHASE+2
-RT_ARENA_SIZE equ RT_ACTOR_GENERATIONS+AG_SIZE
+RT_ACTOR_PREVIEW equ RT_ACTOR_GENERATIONS+AG_SIZE
+RT_ACTOR_PRESENT equ RT_ACTOR_PREVIEW+AP_SIZE
+RT_ACTOR_COORDS equ RT_ACTOR_PRESENT+AC_SIZE
+RT_ARENA_SIZE equ RT_ACTOR_COORDS+36
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -272,6 +275,17 @@ timing_runtime_prepare:
  bsr target_view_prepare
  tst.l d0
  bne .bad
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ lea RT_ACTOR_PREVIEW(a6),a2
+ bsr actor_preview_prepare
+ tst.l d0
+ bne .bad
+ lea RT_ACTOR_PREVIEW(a6),a0
+ move.l a0,RT_ACTOR_PRESENT+AC_PREVIEW(a6)
+ lea timing_runtime_actors(pc),a0
+ move.l a0,RT_CONSUMER+TF_ACTOR_ENTRY(a6)
+ move.l a6,RT_CONSUMER+TF_ACTOR_CONTEXT(a6)
  lea timing_runtime_target(pc),a0
  move.l a0,RT_CONSUMER+TF_TARGET_ENTRY(a6)
  move.l a6,RT_CONSUMER+TF_TARGET_CONTEXT(a6)

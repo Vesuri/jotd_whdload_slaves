@@ -1,4 +1,4 @@
-; Publish latest player/committed-object inputs for one native +05c04 frame.
+; Publish latest player/certified forward-actor inputs for one native +05c04 frame.
 ; No old +04288 interpolation loop, gameplay writes, RNG or graphics calls.
 ; a0=arena. Caller serializes foreground state and presentation readers during
 ; publication. Return 0, -3 invalid admission, -1 invalid camera fractions.
@@ -53,9 +53,19 @@ timing_runtime_present_state:
  bsr endpoint_camera_angles
  tst.l d0
  bne .done
+ lea RT_ACTOR_PRESENT(a6),a0
+ lea RT_ACTOR_GENERATIONS(a6),a1
+ lea RT_ACTOR_COORDS(a6),a2
+ move.l RT_CLOCK+TC_TICKS(a6),d0
+ moveq #0,d1
+ move.w RT_CLOCK+TC_PHASE(a6),d1
+ moveq #0,d2
+ move.w RT_CLOCK+TC_RATE(a6),d2
+ bsr actor_present_build
+ tst.l d0
+ bmi .done
  lea RT_CAMERA(a6),a0
- movea.l RT_HUNKS(a6),a1
- adda.l #$c6a0,a1
+ lea RT_ACTOR_COORDS(a6),a1
  movea.l a5,a2
  lea RT_PRESENT_SCENE(a6),a3
  bsr scene_state_build

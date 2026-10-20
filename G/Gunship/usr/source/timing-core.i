@@ -1,5 +1,6 @@
  include "timing-actor-generation.i"
  include "timing-actor-preview.i"
+ include "timing-actor-present.i"
 ; Shared dependency order for the hybrid timing runtime.
 ; Inclusion alone installs no hooks or patches.
  include "timing-motion-preview.i"
@@ -79,3 +80,5 @@
  include "timing-runtime-target.i"
  include "timing-runtime-gauges.i"
  include "timing-runtime-target-view.i"
+
+ include "timing-runtime-actors.i"

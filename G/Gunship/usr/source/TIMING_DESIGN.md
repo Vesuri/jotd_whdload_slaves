@@ -4367,7 +4367,7 @@ are X/Y/height; `a2+36` is vertical motion state. Byte arrays relative to a1
 include lifetime +0, type +6, animation +12, heading +18, negative/positive
 turn limits +24/+30, target index +36, speed class +42, hit radius +48,
 selected identity/subtype +54/+60, distance bucket +66, state +72, flags +78
-and drawing/model value +84. These names describe the observed consumers;
+and field-driven effect countdown +84. These names describe the observed consumers;
 they do not certify every type's semantics.
 
 Allocation word h0+0BA08 and eligibility word +0BA0C jointly admit an actor
@@ -4389,8 +4389,8 @@ its return immediately; merely restoring D0 followed by TST is insufficient.
 Native release at +0C45E..+0C466 clears the allocation bit. A release followed
 by allocation can return the same slot with the same final mask in one world
 interval. Sampling masks at world endpoints therefore cannot certify identity.
-Impact +0C3E8 sets type bit 0 and resets lifetime/model fields without clearing
-the allocation bit. Terrain conversion +0C444 writes type 1 and lifetime 64.
+Impact +0C3E8 sets type bit 0 and resets lifetime/countdown fields without clearing
+the allocation bit. Terrain conversion +0C444 writes type 1, lifetime 64 and effect countdown 12.
 These in-place representation changes also require prediction reset even
 when the generation of the allocation has not changed. Expiry, guided release,
 mission lifecycle changes and constructor initialization must have explicit
@@ -4401,7 +4401,7 @@ allocator cases (64 masks, two initial secondary masks) match highest-free-slot
 selection, mask writes and return flags. Native release followed by allocation
 returns slot 5 twice with identical occupied-mask snapshots. All 768 impact
 cases (six slots, 128 even type bytes) retain allocation while changing type,
-lifetime and model. This establishes the need for constructor generations and
+lifetime and countdown. This establishes the need for constructor generations and
 morph barriers; it is not implementation of either.
 
 Movement cannot be inferred solely from the last coordinate difference:
@@ -4540,3 +4540,96 @@ Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. A nearby
 VERIFY branch bridge keeps LoadSeg dispatch within the 68000's signed-word
 branch reach as experimental code grows; it tail-branches to the same verifier
 and preserves its register/stack ABI.
+
+### Shared-actor forward publication (C6a/C6b/C6c, experimental runtime)
+
+`timing-actor-present.i` adds a 218-byte cache around the private actor preview.
+Capture records the completed world tick/remainder, six allocator generations
+and exhaustion bits, allocation/eligibility, four coordinate/vertical arrays,
+actor bytes and candidate next coordinates. Publication first copies the
+current committed coordinates, then replaces only certified slots. Tick,
+generation, exhaustion, allocation/eligibility, coordinate/vertical or motion
+byte mismatches leave that slot at its current committed position. Reusing a
+slot with the same final mask and pose cannot borrow the previous generation's
+endpoint. Lifecycle activation invalidates and reseeds the cache together with
+allocation generations, before returning enhanced input ownership.
+
+Two actor byte arrays are deliberately excluded from motion identity:
++12 is the effect animation frame, and +84 is its field countdown. The prior
+inventory called +84 a model value; the field-effect owner and native +0BE5A
+show it is decremented every field and restarted by animation/impact. Comparing
+it would reject all flying-actor predictions after one field. Type, lifetime,
+heading, turn limits, target, speed, hit radius, selected identity/subtype,
+distance bucket, state and flags still must match. Type/lifetime changes catch
+impact/expiry; the private preview additionally bounds decoy and terrain hits.
+The cache assumes the established serialized native writers: eligibility is
+cleared by construction and set by guided release. Arbitrary untracked writes
+that change and restore bytes between observations are not certified.
+
+Coordinates advance from current to the private next pose with the shortest
+signed wrapped-word difference. Fractions use elapsed fields since capture
+divided by fields to the next deadline: PAL 17/17/16 and NTSC 20. The deadline's
+remainder is subtracted before computing elapsed fields, so a freshly completed
+tick starts exactly at its committed pose. Negative fractional displacements
+round down; additions retain native word wrap. There is no prior-tick buffer,
+no accumulated render-step state and no prediction beyond the next tick.
+Repeated or skipped renders do not change the result. Invalid clock inputs
+reject without output writes; stale epochs and inconsistent phases snap to
+committed coordinates.
+
+`timing_runtime_actors` is bound through new optional consumer fields
+TF_ACTOR_ENTRY/CONTEXT (TF_SIZE now 108). On normal world completion it runs
+after all weapon/damage/script/tail effects and before scheduler acknowledgement.
+It validates enhanced ownership (or retained-command completion), matching
+field stamps, completed body phase and a new tick. Duplicate capture is rejected.
+Script-modal completion remains suspended and gets a fresh snapshot on normal
+activation. Flight-end paths do not admit another prediction interval.
+
+The native weapons block calls the existing-actor update at +097B6 before its
+later projectile constructors. Capturing after the whole world body therefore
+starts a newly created eligible projectile's first visual interval at its
+spawn pose and previews its first future native update. An ineligible guided
+spawn is held. If it becomes eligible between ticks, this cache conservatively
+keeps it committed until the next completed world tick; responsive first-release
+prediction still needs its own native-order/visual acceptance. No constructor
+or weapon launch was moved to render time.
+
+The runtime arena is 32,158 bytes: the prior state plus the enlarged consumer,
+2,950-byte preview, 218-byte cache and 36-byte renderer coordinate buffer.
+`timing_runtime_present_state` uses those private coordinates for scene input
+publication. World visibility, target selection and geometry continue to build
+from committed coordinates; native C6A0 actor coordinates are never replaced.
+Preparation remains behind the default-off CUSTOM1 Enhanced framerate gate.
+The main flight-loop consumer is still not installed.
+
+Validation:
+
+- `test_actor_present_c.py` checks real native-preview capture, 70 PAL/NTSC
+  fractional frames and 70 repeated renders, signed/wrapped coordinate cases,
+  133 individual identity/state barriers, same-pose generation reuse, exhausted
+  slots, lifecycle/stale tick fallback, and atomic invalid phase/rate rejection.
+  Its write monitor permits only the renderer output and stack during build.
+- `test_runtime_actors_c.py` runs 600 consumed fields with batch sizes 1/3/10
+  at both rates. It observes exactly one activation seed plus one capture per
+  completed world tick. All 288 render publications match the independent
+  fraction oracle; 218 show a pose ahead of committed coordinates. Final native
+  player/actor state and cached endpoints match across batch sizes. Allocation
+  reuse falls back and activation resets both cache and generations. Native
+  audio/UI and clear-terrain callbacks are fixture stubs; this is not pixel
+  validation. A first far-distance fixture exercised native signed-word
+  collision wrap and was correctly rejected; the free-flight fixture uses
+  ordinary native distances.
+- Existing activation (240 fields at two arena addresses), camera publication
+  (256 native plus 256 fractional cases), retained-boundary (12 cases) and batch
+  (1,200 fields) tests pass. Retained-boundary comparison now includes the
+  complete actor cache. Ordinary, runtime, VERIFY/runtime and input/runtime
+  builds pass.
+
+The verifier's references to earlier seed/patch-table data now use a local
+PC-relative base plus a long displacement, avoiding the growing runtime's
+68000 signed-word reach limit without absolute load-address assumptions.
+
+C6 is not complete: guided first-release handling, other object families,
+per-slot impact refinement, live hook/bitmap checks, visible projectile error
+and CPU cost remain open. This publication is reached by the experimental
+runtime harness, not yet by an activated native flight loop.

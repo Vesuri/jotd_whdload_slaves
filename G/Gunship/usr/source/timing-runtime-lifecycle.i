@@ -143,6 +143,8 @@ timing_runtime_activate:
  move.l d5,d1
  move.l d6,d2
  bsr timing_resume
+ movea.l a6,a0
+ bsr timing_runtime_actors_seed
  move.w #1,RT_CAPTURE_OWNER(a6)
  moveq #0,d0
  bra .done
@@ -164,6 +166,7 @@ timing_runtime_activate:
  dc.w RT_GAUGE_PHASE,6
  dc.w RT_VIEW_PHASE,2
  dc.w RT_ACTOR_GENERATIONS,AG_SIZE
+ dc.w RT_ACTOR_PRESENT+AC_VALID,2
  dc.w RT_CONSUMER+TF_PHASE,TF_EFFECT-TF_PHASE
  dc.w RT_MODAL+TM_PHASE,2
  dc.w RT_FIRE,2
