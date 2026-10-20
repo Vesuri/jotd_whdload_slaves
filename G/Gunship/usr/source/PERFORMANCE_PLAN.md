@@ -526,16 +526,16 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     world tick. Test that fast movement between ticks cannot pass through terrain or
     obstacles that the native 3 Hz check would have caught, or the reverse. Do not assume
     finer motion improves collision detection.
-  - C5c. **Weapon launch latency: user decision.** Wing Commander accepts up to one world
-    tick between trigger and launch, which is 100 ms there and up to 333 ms here.
-    Alternatives:
-    - (a) Launch at the next world tick, from the player pose at that tick.
-    - (b) Timestamp the trigger field, commit the launch at the next world tick, and start
-      the projectile from the trigger-field pose, advanced by the elapsed fraction. Show it
-      from the trigger field as presentation only. Ammunition, lock and damage remain
-      world-tick events.
+  - C5c. **Weapon launch latency: (a) selected by the user for now.** Launches happen at
+    the next world tick, from the player pose at that tick, as in Wing Commander, where
+    that is up to 100 ms; here it is up to 333 ms. Latch trigger edges and held fire per
+    field (C3) so that no press is lost between ticks.
 
-    Option (b) changes the native launch pose and time, so it needs its own validation.
+    Deferred alternative (b): timestamp the trigger field, commit the launch at the next
+    world tick, and start the projectile from the trigger-field pose, advanced by the
+    elapsed fraction. Show it from the trigger field as presentation only; ammunition,
+    lock and damage remain world-tick events. It changes the native launch pose and time,
+    so it needs its own validation. Revisit it only after (a) has been played.
   - C5d. Render-time aiming (gun sight, target box) may show the current view but must not
     commit a lock, target change or launch.
 - **C6. Presentation of world objects.**
