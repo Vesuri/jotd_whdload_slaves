@@ -39,7 +39,16 @@ _base		SLAVE_HEADER			;ws_Security + ws_ID
 		dc.w	0			;ws_DontCache
 _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
-_expmem		dc.l	0			;ws_ExpMem
+_expmem
+	IFD C_STEP_BUILD
+	IFD VERIFY_C_FAST_STACK
+	dc.l -$5000 ; optional WHDLoad-managed stack and guards
+	ELSE
+	dc.l 0
+	ENDC
+	ELSE
+	dc.l 0
+	ENDC				;ws_ExpMem
 		dc.w	_name-_base		;ws_name
 		dc.w	_copy-_base		;ws_copy
 		dc.w	_info-_base		;ws_info
@@ -370,6 +379,9 @@ pl_c_simulation
 	IFD VERIFY_C_LATENCY
 	PL_PS	$75C8,step_latency_render
 	PL_PS	$7736,step_latency_swap
+	ENDC
+	IFD VERIFY_C_FAST_STACK
+	PL_P	$2876C,step_stack_start
 	ENDC
 	PL_ENDIF
 	PL_END

@@ -491,3 +491,68 @@ estimates. Stack/register traffic also appears prominently in the Chip-access
 profile. Moving the CPU-only stack to public memory is a concrete next
 experiment, subject to D3e's stack/interrupt/DMA audit; redundant projection and
 pose work remain further candidates.
+
+## Optional expansion-memory stack experiment
+
+`VERIFY_C_FAST_STACK` is a diagnostic cost experiment inside the selected C path
+and the Enhanced framerate toggle. It requests 20 KiB of optional `ws_ExpMem`
+(`-$5000`); 16 KiB is usable stack, with 16-byte guards on both sides. The stack
+switch replaces the native `$a876c` initialization, which already discards the
+trap frame. Interrupts stay masked during initialization, and the original
+`SR=$2700` is restored before continuing at `$a8776`. No live stack is copied.
+The allocation must be in the same conventional Fast-memory windows used by the
+C selector; otherwise this hook establishes the original Chip stack. Normal
+builds neither allocate this memory nor install this hook.
+
+The first attempt put the stack in the public slave hunk. WHDLoad rejected it
+on level-2 interrupt entry with “Bad stack pointer”; that attempt is discarded.
+A CPU-accessible public address alone is insufficient for a WHDLoad stack: use
+its managed BaseMem/ExpMem allocation. The corrected experiment uses optional
+ExpMem, checks its actual placement, and retains the original stack on failure.
+
+The `RRCSTK01` diagnostic header stores stack size, initialization count, bottom
+and top at offsets +8, +12, +16 and +20. The host checks both guard patterns and
+measures the deepest overwritten pattern. A short replay is not a proof of a
+maximum stack depth. Static inspection found register/argument saves and local
+words on the native stack, including `$83f8c..$83fb8` and `$b0628..$b0654`; the
+latter preserves sprite/screen addresses rather than creating stack-based DMA
+buffers. A complete executed DMA-pointer/lifetime audit remains required by D3e.
+
+Functional checks:
+
+- All 1,598 attack/steering/crash replay hashes match `c-select-replay`.
+  The stack at `$9fa010..$9fe010` uses 224 bytes in that replay, with intact guards.
+- Keyboard and CD32 pause/resume preserve the stopped field counter; steering
+  and release work. Demo entry, fire exit and subsequent human race work.
+- 040/MMU and 060/MMU with only 32-bit Fast memory reach a race, report TC=`$8000`,
+  and return to the AmigaDOS prompt via the actual Help quit key. The respective
+  stack bottoms are `$9fa010` and `$407fa010`; guards remain intact.
+- With the master toggle off, all checked timing hooks and native stack setup
+  remain original. A Chip-only 020 also preserves native timing and stack setup
+  (`c-stack-chip-fallback`). Compiling without this experiment reproduces the prior
+  latency diagnostic binary, and the normal slave remains byte-identical.
+- The optional four-field extrapolation configuration still assembles. Its large
+  data blocks require a full-width relative offset when locating `_expmem`.
+
+A1200 Fast + Cache, accelerating over fields 100–1000 with hashing/capture off:
+
+| Candidate | Frames during the 900-field interval | Average fps |
+|---|---:|---:|
+| Chip stack | 114 | 6.33 |
+| Optional Fast stack | 153 | 8.50 |
+
+This is a 34.2% throughput gain for this workload, not a 50 fps result or a
+cross-machine performance claim. The field-300 RIGHT latency sample gets worse:
+20 ms poll, 60 ms replay, 80 ms simulation completion, 140 ms frame start,
+200 ms swap entry and 220 ms swap return, versus 160 ms swap return with the
+Chip stack. A single input phase cannot characterize the distribution; neither
+result meets the response target. Increased throughput does not establish lower
+input latency. Keep the experiment optional until broader validation and further
+simulation/render cost reductions are complete.
+
+Evidence: `c-stack-final-replay`, `c-stack-final-cost-a1200-fast+cache-q1`,
+`c-stack-baseline-cost-a1200-fast+cache-q1`, `c-stack-final-latency-a1200-fast+cache`,
+`c-stack-input`, `c-stack-pad`, `c-stack-demo`, `c-stack-040-mmu-quit`,
+`c-stack-060-z3-mmu-quit`, `c-stack-final-off`, and `c-stack-disabled-build`.
+The final full-width header-address correction is checked again by
+`c-stack-ready-replay` and `c-stack-ready-latency-a1200-fast+cache`.

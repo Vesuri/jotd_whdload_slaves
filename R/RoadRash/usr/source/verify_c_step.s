@@ -733,3 +733,7 @@ step_authoritative:
 	ENDC
 	include verify_c_latency.s
 	ENDC
+
+	IFD VERIFY_C_FAST_STACK
+	include verify_c_stack.s
+	ENDC
