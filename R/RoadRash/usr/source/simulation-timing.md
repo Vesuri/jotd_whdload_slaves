@@ -1,3 +1,45 @@
+## Road-reset finish, wreck and short-cadence coverage
+
+The changed road diagnostic now has fresh finish and wreck tapes, recorded
+using ordinary field-timed inputs. Two feedback-driven runs used a 10-field
+interval, deadzone 32, one-interval position prediction, unrestricted throttle
+and periodic attacks. Their target lanes were +160 (finish) and -80 (wreck).
+Exact inputs and driver options are retained with each run; no synthetic
+damage or altered finish condition was used.
+
+| Outcome | Four-field reference / varying replay | Completed hashes | Sound requests | Finish field | Exit field |
+|---|---|---:|---:|---:|---:|
+| Finish | `c-road-reset-drive-right` / `c-road-reset-finish-replay` | 13,807 | 124 | 13619 | 13808 |
+| Wreck | `c-road-reset-drive-left` / `c-road-reset-wreck-replay` | 12,179 | 73 | none | 12180 |
+
+Each pair matches every published completed-tick hash, every sound request,
+terminal timing and all six authoritative terminal regions. Varying schedules
+include actual intervals 2/3/4/12/16 fields. All four runs restart with the
+capture field cleared and all 12 player-road and 140 actor-carry bytes zero.
+The fixed references restart at `(97,96,0,1)`; varying finish and wreck restart
+at `(99,98,0,1)` and `(92,91,0,1)` respectively. These are fresh-race capture
+counters, not a claim that arbitrary post-restart live checkpoints coincide.
+Both reference runs exercise riding, airborne state, skid and crash states
+0–4. FINISHED, WRECKED and the next race after finishing were visually checked.
+Together with the preceding arrest pair, these cover all three native exit
+outcomes and restart for this version of the road diagnostic.
+
+The missing short intervals are also checked by `c-road-reset-period1/2/3`.
+All match the four-field attack reference for 1,595 conservatively completed
+hashes, all 10 sound requests and the six captured regions at cursor 1457.
+Observed interval counts, excluding startup zeros, are:
+
+- Period 1: 1,600 one-field intervals; drawing is explicitly skipped.
+- Period 2: 799 two-field intervals plus one startup one-field interval.
+- Period 3: 533 three-field intervals plus one startup one-field interval.
+
+Period 4 and varying/longer intervals were checked in the preceding section.
+The one-field test establishes simulation scheduling, not rendered 50 fps.
+These functional-speed tests restore cadence and transition evidence for the
+road-reactivation correction. They do not resolve its changed B trajectory,
+NPC integration, distance, throughput, control, MMU or latency acceptance.
+Normal runtime selection remains unchanged and section C is still open.
+
 ## Road-reset cadence validation and changed terminal outcome
 
 `c-road-reset-fixed` and `c-road-reset-varying` exercise the attack tape on the

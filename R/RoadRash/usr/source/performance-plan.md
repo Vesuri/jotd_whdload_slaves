@@ -392,9 +392,12 @@ NoCache 020 distance checks still fail B's tolerance; C remains incomplete.
 The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
 road integration and preserves its fractional state across copies and crashes.
 It matches completed simulation state across actual 1/2/3/4-field and varying
-presentation schedules (one-field coverage omits drawing), plus full finish
-and arrest/restart replays. It is not enabled in the normal build: complete
-opponent order, distance, performance and remaining transition checks are open.
+presentation schedules (one-field coverage omits drawing), plus full finish,
+arrest and wreck/restart replays. The reactivation carry reset has fresh cadence
+and all three exit/restart comparisons; its old finish tape now ends in arrest,
+so the earlier trajectory is not silently accepted as equivalent. It is not
+enabled in the normal build: complete opponent order, NPC integration, distance,
+performance and remaining control/hardware checks are open.
 The native rank audit found that the old full-order verifier sorts stale
 off-screen positions. Corrected rank observations still show nearby-rider
 passing differences from B; full-order equivalence remains unproven.
