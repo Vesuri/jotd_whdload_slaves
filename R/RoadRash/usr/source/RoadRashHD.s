@@ -313,9 +313,9 @@ test_for_pause
 	bne.b	.wr
 	
 .nopause
-	movem.l	(a7)+,d0-d2/a0
-
-	CMPI.B	#$40,(a0)		;072b4: 0c3900400002e969
+	; Compare while a0 still addresses the key; MOVEM preserves the flags.
+	cmpi.b	#$40,(a0)		; original cmpi.b #$40,$ae969
+	movem.l	(a7)+,d0-d1/a0
 	rts
 	
 menu_control_loop:

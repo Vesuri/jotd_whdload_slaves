@@ -284,7 +284,7 @@ a slave option whose default reproduces the original timing until G1 decides the
     040/060 instruction-cycle costs; do not interpret these as hardware cycle profiles.
 
 ### B. Correctness fixes and risks (before any timing work)
-- **B1 Slave `test_for_pause` stack bug.** It saves `d0-d1/a0` (12 bytes) but restores
+- **B1 Slave `test_for_pause` stack bug — complete (2026-10-20).** It saves `d0-d1/a0` (12 bytes) but restores
   `d0-d2/a0` (16 bytes). When the stick is idle, `$87298` returns from the slave to its
   caller's caller with `a0` corrupted, and the keyboard pause test and the rest of the
   per-field steering after `$872b4` are skipped.
@@ -293,6 +293,13 @@ a slave option whose default reproduces the original timing until G1 decides the
     keyboard pause works, and the CD32 PLAY pause works.
   - B1c Check that A4 still passes. The fix changes behaviour on idle-stick fields, so
     record the new reference.
+  - Result: balanced register restore and key comparison before restoring `a0`.
+    Keyboard Space and CD32 PLAY pause/resume freeze the race clock; released steering
+    recentres (840 to 0 in 40 fields). The normal A1b replay retains exact screenshots,
+    final rank order and one crash. All ten previously working normal matrix cells
+    pass and stay within 1% of their A distance; the twelve diagnostic/functional
+    cells pass. Uncached 030 remains B2. Accepted B1 evidence: ignored
+    `tmp/dev/tmp/b1-{input-run2,pad6,replay-run,matrix-run,normal}`.
 - **B2 030/50 uncached crash** ("Illegal Instruction ($10) at $68" in the front end).
   - B2a Reproduce it, and find the boot field and the screen it happens on.
   - B2b Break on the exception. Find the code that jumps into the vector table: likely a
