@@ -1858,3 +1858,30 @@ until its world deadline. These tests do not execute the native player or world.
 Command effect classification, actual display-rate detection, bounded catch-up,
 modal boundaries, input replay and CPU cost remain to test.
 The player inventory is recorded separately in PLAYER_STATE_INVENTORY.md.
+
+### Bounded command drains at scheduler phases
+
+`timing-command-phase.i` connects the retained command readers to the
+scheduler's delivered cutoff. `command_phase_player` requires player phase 1;
+`command_phase_world` requires world phase 2. Both take the scheduler in a0,
+the matching CP/CW reader context in a1 and a command budget of 1..128 in d0.
+They validate that the reader uses the scheduler's command queue, check all
+upstream owners before and after each dispatch, and preserve non-result
+registers. They never acknowledge player motion or world execution.
+
+Return 0 proves the reader has drained the delivered cutoff; 2 leaves a
+lifecycle command retained for its owner. Return -2 means the command budget
+was exhausted: resume the same phase, including when the last command happened
+to empty the queue. Negative queue/upstream errors require explicit recovery;
+reader COMMITTED/APPLIED accounting still distinguishes effects that preceded
+an acknowledgement failure. A successful command drain is a prerequisite for
+motion/world work, not evidence that those steps have completed.
+
+`tmp/dev/tools/test_command_phase_c.py` passes 20 assembled integration
+scenarios (417 calls): both readers with budgets 1/3/10/128, ordinary and mixed
+mode commands, sequence wrap, future commands beyond the cutoff, actual
+scheduler player/world acknowledgements, wrong phase/queue/budget rejection,
+upstream fault rejection and retained lifecycle boundaries. It checks register
+preservation, reader cursors and completed-step counters. UI callbacks are
+stubbed. This adapter remains standalone; native main-loop installation,
+lifecycle handling and full command/player/world composition remain pending.
