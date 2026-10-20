@@ -1071,3 +1071,35 @@ verifies the full assembled field path. The 512 original native-tick
 comparisons still pass (310 resets, 31 notifications), as do all 128 disturbed
 PAL/NTSC landing intervals (2,336 fields, 77 resets), including fractional
 reset and rejection checks. Held-input native endpoints remain unchanged.
+
+#### Changed-input airborne disturbance bounds
+
+A separate native-derived search found an airborne coordinate escape in
+trial 15, again confirmed with all 17 actual PAL field steps. Initial XY
+`1800/D800`, signed wind +7 on both axes, heading/track 46, speed -47,
+pitch -4, roll -19, height 1024, vertical rate -28 and collective 41;
+controls `(1,1)` for eight fields then `(0,-1)` for nine, with final
+roll/pitch/heading disturbances `(4,-1,-2)`. The corrected endpoint reached
+Y `D80C` plus residue 240/1360, exceeding native upper bound `D807`.
+
+`endpoint_impulse_apply` now removes the signed wind offset from each
+corrected coordinate, applies native unsigned bounds `1800..D800`, then
+restores wind. Wind is zero for a zero-height endpoint, matching native
+ordering. Actual clamps and outward residue at the upper bound clear that
+coordinate's fractional debt. It does not clamp airborne coordinates to the
+unshifted bounds and thereby erase valid wind displacement.
+
+The original example is retained in ignored
+`tmp/dev/tmp/c/endpoint-impulse-edge-failure.json`. This extends the previous
+ground-only boundary fix to disturbance corrections; general changing-input
+handling/contact acceptance and production installation remain open.
+
+`test_endpoint_impulse_edge_regression_c.py` passes the captured PAL and
+NTSC paths at exact repaired XY `1807/D807`, with no outward fractional
+debt. Fifteen held-input native endpoint comparisons also pass across
+native/PAL/NTSC rates and signed winds -128, -8, 0, +7 and +127.
+The 2,048-interval native-derived airborne disturbance search now finds no
+coordinate/residue escape. All 128 disturbed landing comparisons still pass
+(2,336 fields, 77 ground resets), including fractional-state checks.
+These tests do not cover an ordinary undisturbed interval reaching a bound
+with fractional residue carried from an earlier interval.

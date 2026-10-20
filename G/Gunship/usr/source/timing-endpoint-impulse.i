@@ -38,6 +38,26 @@ endpoint_impulse_apply:
 	clr.w $1c(a5)
 	clr.l 8(a4)
 .height_ok:
+	; A difference between bounded native candidates need not keep a
+	; changed-input endpoint bounded. Native clamps BEFORE signed wind.
+	movea.l a4,a0
+	movea.l a5,a1
+	moveq #0,d1
+	tst.w $1c(a5)
+	beq .x_wind
+	move.b $14(a5),d1
+	ext.w d1
+.x_wind:
+	bsr .coordinate
+	addq.l #4,a0
+	addq.l #2,a1
+	moveq #0,d1
+	tst.w $1c(a5)
+	beq .y_wind
+	move.b $15(a5),d1
+	ext.w d1
+.y_wind:
+	bsr .coordinate
 	; The disturbance is a full difference, never 1/span. With held input
 	; the base endpoint equals the undisturbed candidate exactly.
 	; A changed-input path can already be closer to the roll limit than
@@ -69,4 +89,23 @@ endpoint_impulse_apply:
 	moveq #-1,d0
 .done:
 	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+; a0=nonnegative fraction, a1=coordinate, d1.w=signed wind (zero on ground).
+.coordinate:
+	move.w (a1),d0
+	sub.w d1,d0
+	cmpi.w #$1800,d0
+	blo .low_coordinate
+	cmpi.w #$d800,d0
+	blo .store_coordinate
+	move.w #$d800,d0
+	bra .discard_coordinate
+.low_coordinate:
+	move.w #$1800,d0
+.discard_coordinate:
+	clr.l (a0)
+.store_coordinate:
+	add.w d1,d0
+	move.w d0,(a1)
 	rts
