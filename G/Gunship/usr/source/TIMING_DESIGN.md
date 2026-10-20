@@ -1090,6 +1090,46 @@ signed-height overflow cases exercise the latter. Evidence:
 This confirms the intermediate ordering at h=1; field-rate contact
 history, fractional resets and actual notification UI remain outside it.
 
+## World-owned motion impulse generation
+
+`timing-world-impulses.i` now supplies the native random-motion
+eligibility and generation boundary. `world_motion_impulses` takes the
+authoritative player, 10-byte player-step packet and validated native RNG
+entry in a0/a1/a2. It replaces only the three impulse words, preserves
+control directions and all other registers except result d0=0, and never
+applies the impulses to the player.
+
+It calls the original RNG in roll/pitch/heading order. Roll requires
+damage bit 0 in byte 0F and produces -4/0/+4. Pitch requires a zero high
+height byte, unsigned speed word at least 8, and low height byte below
+the low speed byte, producing -1/0/+1. Heading requires nonzero height
+and either damage bit 0/1, producing -2..+2. These eligibility fields
+are unchanged by intervening native attitude and stage-0 arithmetic,
+so generation can precede applying the supplied impulses. Other native
+RNG users must still retain their original relative order.
+
+The helper is authoritative, not a preview: its native RNG calls change
+the real seed. The world adapter must call it once per world deadline
+after the correct native clock/input setup, and ordinary fields must
+receive zero impulses. The helper does not itself enforce scheduling or
+select replay behavior. Its eventual native installation is CUSTOM1-gated.
+
+Native RNG mode 0 reads VBL-derived longs at hunk 2 +0014/+0018; mode 1
+reads the authoritative player tick. Deferred consumption must use the
+correct deadline's RNG inputs rather than the VBL values at a later render
+batch. The current history records do not yet retain those two longs,
+and the world adapter has not solved that hand-off. Matching RNG under
+frozen inputs is not proof of render-independent live RNG.
+
+`test_world_impulses_c.py` passes 3,840 native comparisons over both RNG
+modes, damage combinations, ground/low/high altitude, signed speed
+boundary values and varied seeds/ticks. Captured impulse triples,
+draw counts (0..3) and final seeds agree with native attitude followed
+by native heading. Memory-write checks permit only impulse words, RNG
+seed and stack; player/control bytes remain unchanged. Evidence:
+`tmp/dev/tmp/c/world-impulses-tests.json`. Live deadline sampling and
+once-only scheduling remain integration gates.
+
 ## Field-rate deterministic attitude
 
 `timing-attitude.i` implements the continuous portion of native
