@@ -14,13 +14,17 @@ runs under KickEmu. This analysis covers the version handled by `pl_gamemule_658
 
 ### 1.1 How it was measured
 
+Part 1 records the initial, uncontrolled measurements. The controlled baseline and
+corrected measurement contract are documented under A below.
+
 - **Route:** the shipped v1.2 slave runs under FS-UAE with a scripted keyboard and mouse route:
   1. Return in the intro.
   2. Vehicle identification: the top entry.
   3. Continue on the pilot, ops order, checklist and arming screens.
   4. In the cockpit, keys 1, 2 and 3.
-- **Window:** 500 traced fields, which is 10 s PAL. It covers the first take-off: F1 pressed ten
-  times, then 400 more fields.
+- **Window:** 500 recorded fields over 524 elapsed fields (10.48 s PAL): each capture
+  adds an unrecorded lead-in field. It covers the first take-off: F1 pressed ten
+  times, then four 100-field captures. A corrects this to 500 elapsed fields.
 - **68000 instrument:** cycle-exact Barto traces (FS-UAE gdb stub). The machine is an A500 with
   512 KB chip RAM and 8 MB fast RAM.
 - **68020 instrument:** the same trace, on an A1200 with 2 MB chip RAM and 8 MB fast RAM.
@@ -33,7 +37,7 @@ runs under KickEmu. This analysis covers the version handled by `pl_gamemule_658
 - **Reproducibility:** two boots of the route gave identical instruction records.
 - **Caveat: the mission differs between machines.** The game picks it with a timing-dependent
   random choice, so each CPU gets a different mission. Cross-machine numbers therefore compare
-  similar take-offs, not identical scenes; plan item A2 fixes this. The 68040 and 68060 runs happen
+  similar take-offs, not identical scenes; the completed A2 baseline fixes this. The 68040 and 68060 runs happen
   to fly the same mission.
 
 ### 1.2 Program structure
@@ -258,6 +262,48 @@ blitter work. Each step is one commit. After each, measure with the instruments 
 compare state as described in A4, before going on.
 
 ### A. Measurement base
+
+**Status: complete (A1–A5).** The source rebuild and VERIFY-only fixed-seed,
+completed-frame log and tick-checkpoint instruments are validated for version 0658.
+CUSTOM2=0 applies no diagnostic patches; a nonzero CUSTOM2 selects the seed.
+CUSTOM3=1 additionally selects an authored combat starting position, with three
+ground targets and an existing enemy helicopter initially in view. Normal builds
+contain none of these instruments and are byte-identical to the initial rebuild.
+The shipped/rebuilt difference is fully accounted for: 160 bytes in the shared
+SDK prefix, 72 bytes of date strings, and twelve validated symbol relocations in
+an otherwise identical 780-byte game-specific tail.
+
+The five-CPU take-off matrix and the 68000/060 hover and combat windows pass,
+each over exactly 500 game VBLs. Two independent boots have byte-identical entire
+8 MiB fast-RAM snapshots at ticks 100–102; neighboring ticks differ, including
+player state with the tick counter excluded. Seed 1 selects the same mission on
+all five CPUs and with extra menu delay; seed 2 changes it. The 8192-row bounded
+swap log passes 128 register/CCR/overflow cases and agrees with continuous aprof
+swap counts on 020+. Barto's omitted fields are explicitly accounted for.
+
+Build and acceptance commands, fixture details, hashes and raw evidence live in
+`tmp/dev/docs/measurement-a.md` and `tmp/dev/tmp/a-final/` (ignored harness).
+`tools/compare_states.py` supplies A4's regression gate; matching simulation state
+across CPUs remains an acceptance requirement for the future C changes. No B–G
+performance or game-time changes are included.
+
+Measurement correction: the original multi-capture route advanced 524 VBLs, not
+500, because each emulator capture includes an unrecorded lead-in field. New
+measurements assert 500 actual game VBLs and use the continuous completed-swap
+log for fps and pacing. Barto percentages describe its recorded sample; aprof
+covers the full window on 68020+. With seed 1, completed fps are 5.1 / 10.5 / 10.9 /
+15.3 / 15.3 on the 68000 / 020 / 030 / 040 / 060 configurations above. The historical
+uncontrolled numbers in Part 1 are motivation, not the controlled baseline.
+
+| Window | 68000 fps / ticks/s | 68060 fps / ticks/s | Frame interval (VBLs), 68000 / 060 |
+|---|---:|---:|---:|
+| Take-off | 5.1 / 2.5 | 15.3 / 7.6 | 9–10 / 3–4 |
+| Hover | 5.5 / 2.8 | 16.7 / 8.4 | 9–10 / 3 |
+| Ground attack | 5.3 / 2.7 | 16.6 / 8.3 | 7–13 / 2–4 |
+
+These are the instrumented emulator baseline, not hardware performance claims.
+The combat window averages 19.3 full shapes/frame on the 060 versus 14.0 in
+take-off. Its AI remains active, so the helicopter can leave the view.
 
 - **A1. Rebuild the slave from source.**
   - A1a. Build `GunshipHD.s` with vasm against the current WHDLoad includes, using kick13.s.

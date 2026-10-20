@@ -115,6 +115,9 @@ _args_end
 PATCH_EXE:MACRO
 .\1
 	lea	pl_\1(pc),a0
+	IFD VERIFY
+	bsr	verify_dispatch
+	ENDC
 	jsr	resload_Patch(a2)
 	bra	.out
 	ENDM
@@ -168,7 +171,11 @@ _cb_dosLoadSeg
 	CMP_EXE	51CFFFCE,2F2A,gamemule_658
 	CMP_EXE	201AD089,2F2A,gamemule_german	; also german
 
+	IFD VERIFY
+	bra.w	wrong_version
+	ELSE
 	bra.b	wrong_version
+	ENDC
 
 	PATCH_EXE	gamemule_1489
 	PATCH_EXE	gamemule_658
@@ -179,7 +186,11 @@ _cb_dosLoadSeg
 	CMP_EXE	4EBA071A,5AB0,scrnmule_658
 	CMP_EXE	486C2A50,5AB2,scrnmule_german	; also german
 
+	IFD VERIFY
+	bra.w	wrong_version
+	ELSE
 	bra.b	wrong_version
+	ENDC
 
 	PATCH_EXE	scrnmule_1489
 	PATCH_EXE	scrnmule_658
@@ -445,8 +456,18 @@ _load_exe:
 
 _tag		dc.l	WHDLTAG_CUSTOM1_GET
 _custom1	dc.l	0
+	IFD VERIFY
+		dc.l	WHDLTAG_CUSTOM2_GET
+_verify_seed	dc.l	0
+		dc.l	WHDLTAG_CUSTOM3_GET
+_verify_scene	dc.l	0
+	ENDC
 		dc.l	0
 
 ;============================================================================
+
+	IFD VERIFY
+	include "verify.i"
+	ENDC
 
 	END
