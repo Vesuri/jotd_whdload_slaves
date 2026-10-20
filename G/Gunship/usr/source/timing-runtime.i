@@ -73,7 +73,9 @@ RT_ACTOR_GENERATIONS equ RT_VIEW_PHASE+2
 RT_ACTOR_PREVIEW equ RT_ACTOR_GENERATIONS+AG_SIZE
 RT_ACTOR_PRESENT equ RT_ACTOR_PREVIEW+AP_SIZE
 RT_ACTOR_COORDS equ RT_ACTOR_PRESENT+AC_SIZE
-RT_ARENA_SIZE equ RT_ACTOR_COORDS+36
+RT_RELEASE_PRESENT equ RT_ACTOR_COORDS+36
+RT_RELEASE_COORDS equ RT_RELEASE_PRESENT+AC_SIZE
+RT_ARENA_SIZE equ RT_RELEASE_COORDS+36
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -283,6 +285,7 @@ timing_runtime_prepare:
  bne .bad
  lea RT_ACTOR_PREVIEW(a6),a0
  move.l a0,RT_ACTOR_PRESENT+AC_PREVIEW(a6)
+ move.l a0,RT_RELEASE_PRESENT+AC_PREVIEW(a6)
  lea timing_runtime_actors(pc),a0
  move.l a0,RT_CONSUMER+TF_ACTOR_ENTRY(a6)
  move.l a6,RT_CONSUMER+TF_ACTOR_CONTEXT(a6)

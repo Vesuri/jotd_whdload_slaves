@@ -28,7 +28,7 @@ TF_TARGET_ENTRY equ 84 ; optional once-per-deadline target owner
 TF_TARGET_CONTEXT equ 88
 TF_GAUGE_ENTRY equ 92 ; optional once-per-field gauge animation
 TF_GAUGE_CONTEXT equ 96
-TF_ACTOR_ENTRY equ 100 ; optional post-world presentation snapshot
+TF_ACTOR_ENTRY equ 100 ; optional post-field/world presentation snapshot
 TF_ACTOR_CONTEXT equ 104
 TF_SIZE equ 108
 
@@ -230,6 +230,14 @@ timing_flight_consume:
  moveq #1,d0
  bra .done
 .field_complete:
+ move.l TF_ACTOR_ENTRY(a6),d0
+ beq .field_actors_done
+ movea.l d0,a1
+ movea.l TF_ACTOR_CONTEXT(a6),a0
+ jsr (a1)
+ tst.l d0
+ bne .fault
+.field_actors_done:
  move.w #4,TF_PHASE(a6)
  moveq #0,d0
  bra .done

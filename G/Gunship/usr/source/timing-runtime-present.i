@@ -64,6 +64,34 @@ timing_runtime_present_state:
  bsr actor_present_build
  tst.l d0
  bmi .done
+ ; The guided release cache owns at most the native guided slot. Its first
+ ; fraction starts at release; unaffected actors retain world anchoring.
+ lea RT_RELEASE_PRESENT(a6),a0
+ lea RT_ACTOR_GENERATIONS(a6),a1
+ lea RT_RELEASE_COORDS(a6),a2
+ move.l RT_CLOCK+TC_TICKS(a6),d0
+ moveq #0,d1
+ move.w RT_CLOCK+TC_PHASE(a6),d1
+ moveq #0,d2
+ move.w RT_CLOCK+TC_RATE(a6),d2
+ bsr actor_present_build
+ tst.l d0
+ bmi .done
+ moveq #5,d1
+.release_slots:
+ btst d1,d0
+ beq .release_next
+ move.w d1,d2
+ add.w d2,d2
+ lea RT_RELEASE_COORDS(a6),a0
+ adda.w d2,a0
+ lea RT_ACTOR_COORDS(a6),a1
+ adda.w d2,a1
+ move.w (a0),(a1)
+ move.w 12(a0),12(a1)
+ move.w 24(a0),24(a1)
+.release_next:
+ dbf d1,.release_slots
  lea RT_CAMERA(a6),a0
  lea RT_ACTOR_COORDS(a6),a1
  movea.l a5,a2

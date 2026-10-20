@@ -1,9 +1,9 @@
 ; Renderer-only six-slot forward prediction. Capture only after a serialized
-; completed world step (or explicit lifecycle seed), before consuming fields.
+; completed world step, lifecycle seed, or certified guided release.
 ; Lifecycle owners clear AC_VALID before reusing generation zero.
 AC_PREVIEW equ 0
 AC_TICK equ 4
-AC_PHASE equ 8 ; world deadline remainder, 0..2
+AC_PHASE equ 8 ; capture phase: world remainder or guided-release field
 AC_VALID equ 10
 AC_GENERATIONS equ 12 ; six longs plus exhaustion word
 AC_MASKS equ AC_GENERATIONS+AG_SIZE ; allocation and eligibility words
@@ -13,12 +13,12 @@ AC_NEXT equ AC_BYTES+90 ; three six-word predicted coordinate arrays
 AC_SAFE equ AC_NEXT+36
 AC_SIZE equ AC_SAFE+2
 
-; a0=AC,a1=prepared AP,a2=AG,a3=committed P,d0=tick,d1=phase0..2.
+; a0=AC,a1=prepared AP,a2=AG,a3=committed P,d0=tick,d1=phase0..59 (caller requires phase < field rate).
 ; Return 0/-3, preserve others. Invalid phase writes nothing. Caller flushes
 ; AP code after preparation and excludes all actor/identity writers.
 actor_present_capture:
  movem.l d1-d7/a0-a6,-(sp)
- cmpi.l #2,d1
+ cmpi.l #59,d1
  bhi .bad
  movea.l a0,a6
  move.l a1,AC_PREVIEW(a6)

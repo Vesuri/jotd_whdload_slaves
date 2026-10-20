@@ -4589,9 +4589,9 @@ The native weapons block calls the existing-actor update at +097B6 before its
 later projectile constructors. Capturing after the whole world body therefore
 starts a newly created eligible projectile's first visual interval at its
 spawn pose and previews its first future native update. An ineligible guided
-spawn is held. If it becomes eligible between ticks, this cache conservatively
-keeps it committed until the next completed world tick; responsive first-release
-prediction still needs its own native-order/visual acceptance. No constructor
+spawn is held. The initial cache held newly eligible guided slots until the next tick; the
+separate release cache described below now covers that first interval. Live
+visual acceptance remains open. No constructor
 or weapon launch was moved to render time.
 
 The runtime arena is 32,158 bytes: the prior state plus the enlarged consumer,
@@ -4633,3 +4633,64 @@ C6 is not complete: guided first-release handling, other object families,
 per-slot impact refinement, live hook/bitmap checks, visible projectile error
 and CPU cost remain open. This publication is reached by the experimental
 runtime harness, not yet by an activated native flight loop.
+
+
+### Guided first-release prediction (C6b, experimental runtime)
+
+The native guided constructor clears its slot's eligibility at +0BBC8..+0BBD0.
+Field guidance state 5 sets that bit at +0A234..+0A242. The existing native
+single guided-slot word BA0E identifies the affected actor; new constructors
+run only on world ticks. This makes release a field-stamped transition within
+an already captured allocation generation, not a new launch from rendering.
+
+The flight consumer now also invokes its actor-presentation callback after
+non-deadline field completion. It requires matching delivered field stamps,
+no pending world deadline, the current world snapshot, an occupied native
+guided slot that was previously ineligible, matching allocation generations
+and neither current nor captured exhaustion. When admitted, it runs the private
+native preview once and captures a separate release cache at that clock phase.
+Only that slot's safe bit is retained. A rejected preview is not retried later
+in the interval. A release on a world-deadline field is naturally handled by
+the world update and normal post-world capture instead.
+
+The release cache starts at the committed release pose (fraction zero), then
+uses elapsed fields since release divided by remaining fields to the next
+world deadline. `actor_present_capture` therefore now admits phases 0..59;
+its caller additionally requires phase below the configured field rate. The
+same signed/wrapped fraction builder handles both world and release anchors.
+This does not advance authoritative projectile motion, hit tests or damage.
+
+Presentation first builds all normal world-anchored actor positions, then
+merges only the certified released slot from a separate 36-byte buffer. It
+never rebases unrelated trajectories at release. Normal world capture and
+lifecycle activation invalidate the release cache. Existing generation,
+exhaustion, motion-state and stale-tick checks still apply when publishing it.
+The arena grows by one 218-byte cache and one 36-byte buffer to 32,412 bytes.
+All entry paths remain within the existing CUSTOM1-gated runtime.
+
+`test_runtime_actor_release_c.py` exercises native construction and the complete
+field guidance sequence for weapon selections 1 and 3. With fire recorded at
+field 3, first launch occurs at field 17 PAL / 20 NTSC and native release follows
+seven fields later, at 24 / 27. Across batch sizes 1/3/10 it checks 960 fields,
+exactly one release capture per interval, the renderer fraction independently,
+unchanged committed actor coordinates, unchanged normal prediction cache and
+a second in-flight actor whose prediction must not restart. At single-field
+render cadence PAL has ten first-interval views (nine moved after release),
+NTSC thirteen (twelve moved). Native final state and capture events match across
+batch sizes. Four additional real-release runs (96 fields) suppress the cache
+when generation, current exhaustion, captured exhaustion or captured allocation
+identity is lost. The fixture stubs the native world's audio/UI and clear-terrain
+callbacks; these are instruction tests, not rendered-pixel or cost measurements.
+
+The fraction test now covers every valid phase at both rates: 1,072 initial
+and 1,072 repeated renders, plus 133 identity/state barriers. Activation still
+passes 240 fields at two arena addresses; all twelve retained-boundary cases
+pass. Allocation-hook regression passes all 1,536 native ABI comparisons and
+44 signature rejections. Ordinary, runtime, VERIFY/runtime and input/runtime
+builds assemble. The near verifier entry now uses a position-independent long
+address calculation, and allocation-hook CUSTOM1 access does likewise, to
+avoid the larger build exceeding 68000 signed-word reach.
+
+Live cross-CPU release/pixel checks and visible first-interval trajectory
+acceptance remain open, alongside the other C6 object families and main-loop
+activation. No full-C or release-readiness claim follows from these tests.

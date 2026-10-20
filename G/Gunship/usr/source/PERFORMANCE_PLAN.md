@@ -782,8 +782,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     world writes. The experimental runtime now captures after world completion
     and publishes certified forward fractions into renderer-only scene inputs
     (600 PAL/NTSC fields, 288 publications, invariant across batch sizes).
-    Guided first-release intervals, other object families, live cost/visual
-    acceptance and native flight activation remain open (see TIMING_DESIGN.md).
+    A separate field-stamped cache now covers guided first-release intervals
+    without shifting unrelated actors (both native guided weapon types, PAL/NTSC,
+    batch sizes 1/3/10). Other object families, live cost/visual acceptance and
+    native flight activation remain open (see TIMING_DESIGN.md).
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.
