@@ -716,7 +716,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     lock and damage remain world-tick events. It changes the native launch pose and time,
     so it needs its own validation. Revisit it only after (a) has been played.
   - C5d. Render-time aiming (gun sight, target box) may show the current view but must not
-    commit a lock, target change or launch.
+    commit a lock, target change or launch. A private native-equivalent selector
+    now accepts explicit per-candidate pixel colors and changes only its own
+    target snapshot. Committed-view candidate collection/visibility acquisition,
+    world publication and exclusion of native render target writes remain open;
+    the selector is not yet connected to the runtime.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at

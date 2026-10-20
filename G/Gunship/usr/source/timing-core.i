@@ -45,6 +45,7 @@
  include "timing-scheduled-guidance.i"
  include "timing-scheduled-world-start.i"
  include "timing-field-vbl-state.i"
+ include "timing-target-select.i"
  include "timing-scene-state.i"
  include "timing-scene-private.i"
  include "timing-world-scene.i"

@@ -3700,3 +3700,63 @@ selection, and +0A6A2 tests a rendered pixel through +0825E. The existing
 private geometry check deliberately disables candidate collection. Moving
 map-coordinate refresh does not isolate target acquisition or make it
 independent of rendering.
+
+
+## Private target selection with explicit visibility samples
+
+Native +0A450 appends up to five projected candidates. Selection at +0A58C
+searches for the previous identity/subtype, tests candidate pixels through
++0A6A2, and scans alternatives in native order. The pixel predicate rejects
+colors equal to either palette byte +18/+19 in hunk 6 +16DC, using the
+alternate palette at +17DC when player byte +16 is nonzero. It is a color
+test, not an identity or depth-buffer test. Substituting a generic line-of-
+sight check would therefore need separate equivalence evidence.
+
+`timing-target-select.i` copies +0A58C..+0A6E4 and relocates every HUNK operand
+into a private workspace. Its 168-byte native-shaped target state mirrors
+hunk 0 +0A99E..+0AA46:
+
+| State offset | Native content |
+| --- | --- |
+| +00 | Selection status byte |
+| +02 | Candidate count word, 0..5 |
+| +04/+06 | Selected identity/subtype words |
+| +08 | Five descriptor offsets |
+| +12 | Five 18-byte descriptors |
+| +6C/+76 | Five identity/subtype words |
+| +80/+8A | Five projected X/Y words |
+| +94 | Five model pointers |
+
+Offsets in this table are hexadecimal. The native selector copies the
+chosen descriptor, projected position and model pointer into the first
+entries and clears candidate count, preserving the original search and
+no-target behavior. Model pointers are carried as data, not dereferenced
+by this selector.
+
+`target_select_prepare(a0=h0,a1=h6,a2=workspace)` checks all 30 relocations
+and routine boundaries before writing. It creates a 546-byte workspace;
+state starts empty. `target_select_step(a0=workspace,a1=five pixel bytes,
+a2=two rejected colors)` validates count and descriptor offsets before any
+writes, snapshots the explicit inputs, and executes the copied selector.
+Its ReadPixel replacement indexes the supplied samples by candidate cursor.
+The private palette uses the two caller-selected colors, so the selector
+never reads a live palette, bitmap, player mode, native target state or RNG.
+Both entries preserve non-result registers. Invalid state returns -3
+atomically; invalid native signatures return -1 before destination writes.
+
+The caller must collect candidates and sample pixels from the same committed
+world view; samples from a prior displayed or predicted frame are not valid.
+This helper does not acquire visibility, collect candidates, publish a lock,
+or install a native target hook. It is included for standalone/runtime
+assembly but is not bound into the runtime arena or world sequence yet.
+
+`test_target_select_c.py` compares 2,048 cases against the original selector,
+with a deliberately explicit pixel-input stub in the native reference. It
+covers all 256 pixel colors in both palette modes, counts 0..5, selection
+states, duplicate/negative identities, descriptor permutations and native
+query order. Private state matches native output, with no native writes.
+It also checks 62 corrupt-signature cases and five atomic invalid-state
+rejections. These results prove selection arithmetic/order given matching
+pixel inputs, not visibility equivalence or correct targeting in live play.
+All runtime variants assemble; ordinary, VERIFY and standalone input
+binaries remain byte-identical.
