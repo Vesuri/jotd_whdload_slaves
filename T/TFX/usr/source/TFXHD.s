@@ -443,6 +443,8 @@ timer_name:
         even
 
 get_version
+        lea render_patchlist(pc),a0
+        clr.l (a0)
         move.l  program_to_run(pc),a0
         jsr (resload_GetFileSize,a2)
         
@@ -498,8 +500,11 @@ get_version
         beq.b .new_render_list
         btst.b #AFB_68060,attnflags+3(pc)
         bne.b .new_render_list
-        lea pl_fpu_new_render_040(pc),a0
+        lea render_patchlist(pc),a0
+        lea pl_fpu_new_render_040(pc),a3
+        move.l a3,(a0)
 .new_render_list:
+        lea pl_fpu_new(pc),a0
         lea native_fpu_patches(pc),a1
         btst.b #AFB_68060,attnflags+3(pc)
         beq.b .new_fpu_list
@@ -597,6 +602,13 @@ patch_main
         move.l  _resload(pc),a2
         jsr	resload_PatchSeg(a2)
 
+        ; Apply the CPU-specific render list after the shared list.
+        move.l  render_patchlist(pc),d0
+        beq.b   .no_render_patches
+        move.l  d0,a0
+        move.l  d7,a1
+        jsr     resload_PatchSeg(a2)
+.no_render_patches:
         move.l  fpu_patchlist(pc),d0
         beq.b   .no_fpu_patches
         move.l  d0,a0
@@ -777,6 +789,7 @@ rowbytes=screenw/8
 bplbytes=rowbytes*200
 
 sections        ds.l 15 ; "040" version has 15 sections
+render_patchlist ds.l 1
 fast_buf        ds.l 1
 shadowdata      ds.l 1
 old_bufs        ds.l 2
@@ -1280,9 +1293,41 @@ draw_line_strip:
         unlk    a6
         rts
 
+draw_line_normal_new:
+        link.w  a6,#0
+        movem.l d0-d7/a0-a3,-(sp)
+        move.w  14(a6),d0       ; x0
+        move.w  18(a6),d1       ; y0
+        move.w  22(a6),d2       ; x1
+        move.w  26(a6),d3       ; y1
+        move.w  10(a6),d4       ; color
+        moveq   #-1,d5          ; pattern
+        bsr     draw_line_new
+        movem.l (sp)+,d0-d7/a0-a3
+        unlk    a6
+        rts
+
+draw_line_strip_new:
+        link.w  a6,#0
+        movem.l d0-d7/a0-a3,-(sp)
+        move.w  14(a6),d0       ; x0
+        move.w  18(a6),d1       ; y0
+        move.w  22(a6),d2       ; x1
+        move.w  26(a6),d3       ; y1
+        move.w  10(a6),d4       ; color
+        move.b  31(a6),d5       ; pattern
+        move.b  d5,d6
+        lsl.w   #8,d5
+        move.b  d6,d5
+        ror.w   #1,d5 ; Blitter starts at bit zero, then rotates left.
+        bsr     draw_line_new
+        movem.l (sp)+,d0-d7/a0-a3
+        unlk    a6
+        rts
+
 ; d0 = x0, d1 = y0, d2 = x1, d3 = y1, d4 = color, d5 = pattern
 ; d0-d7/a0-a3 trashed
-draw_line:
+DRAW_LINE_FUNC macro
         cmp.w   #screenw,d0
         bcc     .out
         cmp.w   #screenw,d2
@@ -1329,10 +1374,18 @@ draw_line:
 
         ; y dominant
         move.w  d3,d5
+        ifne \1
+        subq.w  #1,d5 ; Blitter line length excludes the final endpoint.
+        bmi     .out
+        endc
         move.w  d3,d6
         lsr.w   #1,d6   ; err = dyabs/2
 .yloop:
+        ifne \1
+        rol.w   #1,d1
+        else
         ror.w   #1,d1
+        endc
         bcc.b   .noplot1
         move.w  d0,d7
         lsr.w   #3,d7
@@ -1353,11 +1406,19 @@ draw_line:
 
 .xdominant:
         move.w  d2,d5
+        ifne \1
+        subq.w  #1,d5 ; Blitter line length excludes the final endpoint.
+        bmi     .out
+        endc
         move.w  d2,d6
         lsr.w   #1,d6 ; err = dxabs/2
 
 .xloop:
+        ifne \1
+        rol.w   #1,d1
+        else
         ror.w   #1,d1
+        endc
         bcc.b   .noplot2
         move.w  d0,d7
         lsr.w   #3,d7
@@ -1376,6 +1437,11 @@ draw_line:
         dbf     d5,.xloop
 
         rts
+
+        endm
+
+draw_line:     DRAW_LINE_FUNC 0
+draw_line_new: DRAW_LINE_FUNC 1
 
 make_plot_func macro
         rept 8
@@ -2818,6 +2884,8 @@ pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
         PL_ELSE
+        PL_P    $4de00,draw_line_normal_new
+        PL_P    $500dc,draw_line_strip_new
         PL_P    $4f840,gouraud_fill_new
         PL_P    $4f9f8,texture_fill
         ; Keep original ScanFillDown: the equivalent port measured slower on 040.
@@ -2834,7 +2902,7 @@ pl_fpu_new_render_040:
         PL_W    $1abfe,$7001
         PL_PSS  $1fec4,zoom_fix1,2
         PL_ENDIF
-        PL_NEXT pl_fpu_new
+        PL_END
 
 pl_fpu_new
         PL_START
