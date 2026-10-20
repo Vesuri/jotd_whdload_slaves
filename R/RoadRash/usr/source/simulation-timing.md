@@ -1,3 +1,48 @@
+## Current fixed-cadence checks and road-correction validation
+
+Fresh `c-raster-period{1,2,3,4}-state` replays use the integrated raster
+runtime with the retained attack tape. Normal binaries built alongside all
+four diagnostics are byte-identical to the integrated normal slave. Compared
+against `c-raster-recent-fallback-vary-state`, completed hashes, sound events
+and all six authoritative snapshot regions match:
+
+| Requested interval | Common completed hashes | Observed steady cadence |
+| --- | ---: | --- |
+| 1 | 1598 | 1600 one-field frames; drawing omitted |
+| 2 | 1597 | 799 two-field frames |
+| 3 | 1598 | 533 three-field frames |
+| 4 | 1595 | 399 four-field frames |
+
+Startup bins are excluded from these cadence counts. One-field cadence uses
+VERIFY_SKIP_RENDER; this is simulation equivalence, not full-draw 50 fps.
+The prior varying replay includes 2/3/4/12/16-field intervals. These results
+close the explicit short fixed-cadence evidence gap for the current runtime.
+
+Visual review of the retained field-800 screenshots from the current lap,
+B default reference and road-corrected candidate shows an important distinction:
+current C places the rider off the road; B and the road correction place it
+on the road. Road edges, scenery, rider and dashboard render coherently in
+these still images. The scenes are not pixel-identical and this review does
+not approve a new A4 reference or establish tear-free motion.
+
+The earlier operand audit proves a specific defect: unit-step positive curve
+products truncate to zero instead of returning the road centre toward the
+rider. The road correction addresses that defect, even though it does not
+close every B comparison. Continue validating it as a separate normalization
+fix rather than dismissing the proven correction solely because remaining
+opponent/distance differences persist. Those original acceptance gates remain
+open; no baseline or completion requirement is replaced.
+
+Fresh `c-raster-road-fixed-state` and `c-raster-road-vary-state` explicitly
+compile VERIFY_C_ROAD_TIMING. They match 1,595 common completed hashes,
+sound events and six authoritative regions at capture 1457. Varying cadence
+observes 2/3/4/12/16 fields (76/63/69/35/35 frames, plus startup). Both
+report the same captured position 12692524. This compares the corrected model
+against itself across rendering intervals, not against the previous model's
+expected hashes. Full-race fixed/varying replay with restart has started in
+`c-raster-road-{fixed,vary}-fullrace`; its outcome is not yet claimed.
+Production physics is unchanged while that validation proceeds.
+
 ## Uncached profile and rejected normal-pose omission
 
 `c-raster-current-nocache-profile` profiles the integrated 19,700-byte normal
