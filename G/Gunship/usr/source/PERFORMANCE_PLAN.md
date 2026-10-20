@@ -452,6 +452,10 @@ for recovery without duplicate RNG draws. These remain standalone/harness
 components, not the installed replacement integrator. Changing-input contact
 and map-edge behavior, lifecycle integration, other-object prediction,
 instrument slew, CPU cost/cross-CPU tests and live validation still block C.
+Core lifecycle suspension/rebase now coordinates the clock, both queues,
+scheduler and endpoint history, with pending-work guards and retained
+diagnostics. Native modal completion, helper metadata resets and production
+producer exclusion still require adapter integration.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

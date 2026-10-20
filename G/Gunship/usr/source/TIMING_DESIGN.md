@@ -2814,3 +2814,52 @@ A 1,440-field PAL/NTSC rerun with batches 1/25 passes with identical native
 state (including all three countdown bytes), player history and actor traces
 across batches. Launch/actor/periodic counts remain unchanged (23,815 calls).
 The focused timer/ordering/fault suite uses 1,551 helper calls.
+## Coordinated core timing suspension and resume
+
+`timing-lifecycle.i` adds the core lifecycle operation needed before the
+standalone components can be installed. The adapter must exclude the
+interrupt producer and both foreground consumers for each entire call.
+Bindings must already be initialized, stable and nonoverlapping.
+
+`timing_suspend(a0=TS)` disables the clock and both queues, discards unread
+field records with accounting, and retains commands and scheduler phase.
+Repeated suspension does not count the same discarded records twice.
+It deliberately retains an unfinished player/world phase and its commands:
+suspension is not permission to erase partially committed native effects.
+
+`timing_resume(a0=TS, a1=EP, d0=field epoch, d1=command epoch,
+d2=previous Y)` requires scheduler phase zero, all three upstream owners
+inactive, PAL/NTSC clock rate, and previous Y in -1..1. Invalid requests
+return -3 without writes. Valid requests reset endpoint fractions, anchor
+and delayed-control history, rebase both queues and the clock, then rebase
+the scheduler. Lifetime field/world counts, losses and discarded-work
+diagnostics survive. The native player record is not touched.
+
+The first world deadline is 17 new fields after PAL resume or 20 after NTSC
+resume. The old phase is counted as discarded clock units. Retained command
+slots are counted once using the maximum unread count of the two readers.
+Command and field epochs are independent and support unsigned wraparound.
+
+Before resume, the adapter must finish or explicitly resolve delivered
+player/world work, commit any pending ground event, and reset the helper
+replay caches and presentation metadata. A suspended due world can be
+acknowledged after native completion: `scheduler_world_done` counts that
+completion once and returns the upstream-inactive error; lifecycle resume
+then clears the fault through coordinated rebase. The resume operation
+does not run the native modal interpreter, certify its completion, discard
+partially committed work, or reset those external helper contexts.
+
+This is a standalone coordination layer, not a production lifecycle hook.
+Native map/menu/pause/disk-load entry points and interrupt exclusion remain
+to be installed and verified.
+
+The ignored `test_timing_lifecycle_c.py` executes the assembled layer with
+the real clock, queues, scheduler and endpoint player in Unicorn: 549 calls
+across PAL/NTSC and ordinary/wrapping epochs. Each case starts with seven
+accepted fields, ten unread fields, differently advanced command readers
+and stale motion fractions. It checks inactive publication, repeat suspend,
+atomic rejection of invalid phase/rate/previous-Y/active owners, retained
+fault diagnostics, all fresh player steps through the first deadline, and
+once-only suspended-world acknowledgement. Resume leaves native player
+bytes unchanged. These tests establish core sequencing; they do not
+simulate native modal completion or interrupt races.
