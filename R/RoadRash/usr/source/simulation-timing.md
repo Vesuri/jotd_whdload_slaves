@@ -1,3 +1,37 @@
+## Road correction: finish replay, full hardware matrix and disabled hooks
+
+`c-raster-road-finish-vary` matches the successful joystick-driven fixed
+reference across all 12,095 completed hashes, 66 sound requests, six terminal
+ranges and capture/timing fields. Finish is 11907 and exit is 12096.
+Both restart with all 12 player/history bytes and all 140 actor carry bytes
+zero; the varying capture is (92,91,0,1). This establishes successful-finish
+and restart invariance for the corrected model as well as the arrest
+comparison above.
+
+All 11 normal hardware configurations pass in `c-raster-road-matrix` and
+`-hardware`: A500 8.5 fps, Chip-only 020 12.5, Fast 020 default/Cache 12.5,
+NoCache 8.3, 030 default/Cache 16.7, 040 default/Cache 19.5 and 060
+default/Cache 22.9. The extra normalization work reduces 040/060 throughput
+from the current runtime's 20.2/23.0; this cost is not hidden as a performance
+win. Existing B distance failures remain. Both functional MMU cells in
+`c-raster-road-mmu` pass with CACR $80008000 and CPU data-cache emulation
+disabled; no physical hardware cache-speed claim is made.
+
+`c-raster-road-off` checks the actual normal candidate with CUSTOM2=0.
+All 21 inspected sites retain native instructions, including the four road
+hooks at $8babe, $8bcd0, $8bdf0 and $90c64. The CPU/Fast selection gate is
+unchanged. `c-raster-road-keyboard` passes release, pause/resume and stack
+guards; the active clock remains 161 throughout pause.
+
+The previously retained wreck tape does not supply wreck coverage here:
+`c-raster-road-wreck-fixed` ends at 7963 with finish zero, damage 11 and
+crash state 3, an arrest-state exit rather than damage exhaustion. It restarts
+successfully but no wreck equivalence is claimed. Two additional joystick-only
+drives, lane targets -192 and +192 with attacks enabled, are collecting
+natural high-risk riding outcomes. Neither their outcome nor any future replay
+is assumed. CD32 and demo fire-exit checks are running. Production physics
+remains unchanged while the remaining coverage is gathered.
+
 ## Road correction: successful finish, reset and response safeguard
 
 The joystick-only drive `c-raster-road-driven-race` successfully finishes at
