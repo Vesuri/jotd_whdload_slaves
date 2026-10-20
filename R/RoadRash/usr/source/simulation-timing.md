@@ -1,3 +1,31 @@
+## Exact Fast RAM lean copy does not improve measured throughput
+
+The fresh current-runtime profile attributes 0.841% of cached flat time and
+1.679% of uncached flat time to `$89e76..$89eef`, with 4,008 / 4,000 entries.
+This is the authoritative lean calculation: the render/pose passes already
+reuse simulation-owned lean, so removing these calls would change gameplay.
+
+Private `c-lean-fast-source` copies the 122 bytes after C patches are installed,
+then appends a return jump to `step_lean_end`. The copied span uses absolute data
+references and internal branches, requiring no relocation fixups. Only
+`step_compute_lean` routes to it. The initializer runs inside the existing
+collision-geometry enhancement gate, before its cache flush. A 256-byte padded
+extension retains the low-byte layout convention. The control initializes the
+same copy but retains native dispatch; both normal binaries are 19,552 bytes.
+
+`c-lean-fast-matrix` measures 11.9 fps cached versus 12.0 for the matched
+`c-lean-fast-control-matrix`; both measure 8.3 fps uncached. Cached distances
+are 3,318,164 / 3,308,406; uncached distances are both 3,308,406. Functional
+checks pass, but no throughput improvement is demonstrated. The copy remains
+private and no broad equivalence or release validation is claimed. Build
+folders retain exact source patches and binaries; matrix results retain
+provenance. All four measured cells completed successfully.
+
+Together with the lane-insertion experiment, this cautions against treating
+small flat-profile percentages as guaranteed frame-rate gains. Further work
+should target a larger repeated computation or verify a meaningful reduction
+in simulation cost before undertaking another complete release matrix.
+
 ## Current runtime profile and rejected lane insertion copy
 
 Fresh normal-runtime profiles `c-current-lane-cache-profile` and
