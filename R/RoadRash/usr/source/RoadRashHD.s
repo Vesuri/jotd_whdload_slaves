@@ -513,6 +513,9 @@ pl_main
 	IFD C_STEP_BUILD
 pl_c_simulation
 	PL_START
+	IFD VERIFY_C_FUSED_LEAN
+	PL_PSS $9DE8,step_fused_lean,4
+	ENDC
 	PL_IFC2
 	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main

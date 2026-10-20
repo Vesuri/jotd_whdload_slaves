@@ -1,3 +1,35 @@
+## Diagnostic fusion of lean derivation and actor pose traversal
+
+`VERIFY_C_FUSED_LEAN` removes the separate `step_derive_lean` traversal and
+computes each eligible actor's lean at native pose-loop entry `$89de8`, before
+that actor's crash/pose side effects. The existing native list eligibility
+checks are reused; the helper retains the original 0..30 segment visibility
+condition and calls the unchanged authoritative lean calculation. It saves the
+calculation's scratch registers, then replays the displaced display-record
+clear and cop comparison. Render-only calls bypass the calculation. This
+remains inside the existing Enhanced framerate/hardware patch gate.
+
+The key unresolved ordering issue is that all actors' lean values were formerly
+computed before any pose side effects. The fused pass interleaves those operations
+by actor. Full crash/recovery, slot-copy, special-actor and cadence comparisons
+are therefore required; passing one short tape is insufficient for promotion.
+
+`c-fused-lean-state-v2` matches `c-lane-scan-selective-state` for all 1,595
+common completed hashes, all sound requests and all six authoritative snapshot
+ranges at cursor 1457 on the seeded attack tape. The initial full diagnostic
+failed during WHDLoad patching because the helper lay beyond the signed patch
+reference range; placing it beside `step_compute_lean` fixes that limit. The
+failed run is retained separately as `c-fused-lean-state`. The corrected tracked
+full diagnostic is byte-identical to the tested private v2 full binary.
+
+The private normal candidate in `c-fused-lean-matrix` measures 12.1 fps cached
+and 8.3 uncached on Fast 020, versus current production 12.0 / 8.3. These small
+differences are not yet isolated from layout effects by a matched control.
+The tracked normal binary remains byte-identical to production (19,296 bytes);
+only explicit diagnostics select fusion. Next checks are fixed/varying cadence,
+long finish/arrest/wreck and restart equivalence, then matched performance and
+remaining hardware/latency validation if the state comparisons hold.
+
 ## Exact Fast RAM lean copy does not improve measured throughput
 
 The fresh current-runtime profile attributes 0.841% of cached flat time and
