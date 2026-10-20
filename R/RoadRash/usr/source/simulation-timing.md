@@ -1288,3 +1288,47 @@ randomness: before steering begins at field 600, both B references retain
 player lateral position 160, whereas the candidate reaches 183. The
 unseeded replay showed the same effect. This is why the earlier full-race
 cross-cadence pass and better response time were insufficient for promotion.
+
+## Retain native reference rounding in steering
+
+The neutral-input traces `c-neutral-base-trace` and
+`c-neutral-candidate-trace` isolate the drift. At field 440 both have steering
+`+$42=0`, heading `+$08=0`, road centre `+$36=-9` and road fraction `+$38=-1`.
+The native signed-word multiplication at `$8b97a` consequently multiplies 36
+by 1. The original two rounding stages discard that displacement. The previous
+candidate instead accumulates it, moving from lateral position 161 to 164
+during the 20-image capture while the original C path stays at 160.
+
+A temporary zero-steering guard removed that drift, but the
+`c-steering-neutralfix-lap` still oversteered the first pulse (237 at field 700
+versus the four-field reference's 215). The committed diagnostic model therefore
+supersedes the earlier combined `/4096` carry:
+
+- Both movement factors use the four-field reference for a riding player.
+- The original integer `/256`, tyre-grip path and `$d000` scale run unchanged
+  on that reference displacement.
+- A new hook at `$8b9a0` integrates one quarter of the resulting signed integer
+  per simulation tick, carrying only the quarter-unit remainder (-3 through 3).
+  It does not resurrect road fractions that the native reference discarded.
+- Crashing/airborne players keep their native displacement path, clearing the
+  remainder. The completed-tick crash cleanup remains in place for bypasses.
+
+`c-steering-reference-lap` uses the same seed and tape as
+`b-fourfield-seeded-lap`. It remains at lateral position 160 until steering starts.
+The first-pulse checkpoints are now 214 versus 215 at field 700, and 194 versus
+192 at field 800. Later trajectories still diverge: sampled crash onset is 1442
+versus 1350. Both have one crash and final rank 21, but complete opponent order
+and image equality fail. The retained `a4-comparison.json` explicitly reports
+that failure; this is improved calibration, not A4 acceptance.
+
+The seeded `c-steering-reference-replay/var` pair matches all 1,596 common
+completed hashes, three sound requests, and tick-1457 authoritative ranges.
+These tests cover the revised model; the earlier full-race and eight-phase
+latency results describe its predecessor and must not be claimed for this model.
+
+The RIGHT and LEFT traces each validate 20 writes against an independent
+signed quarter-displacement calculation; final remainders are 2 and -2.
+`c-steering-reference-distance` measures 8.5 fps and distance 3,318,164 over the
+standard window, versus seeded B's 3,374,076. The -1.657% difference fails A4a.
+This live-field comparison includes different simulation/render progress and
+does not by itself identify the cause. The normal 6,804-byte slave is unchanged.

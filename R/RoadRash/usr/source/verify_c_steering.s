@@ -13,8 +13,8 @@ step_steering_heading:
 	move.l d0,d1
 	tst.b $6e(a1)
 	bpl .native
-; Heading/pose uses the existing four-field timing reference. The second
-; movement factor in d1 remains the actual one-field travelled distance.
+; Heading/pose uses the existing four-field timing reference. The ground
+; motion hook applies the same reference before native rounding and grip.
 	moveq #0,d0
 	move.w $12(a1),d0
 	lsl.l #2,d0
@@ -26,31 +26,38 @@ step_steering_heading:
 	jmp $8b94c
 
 step_steering_motion:
-	muls.w d1,d0
 	tst.b $6e(a1)
 	bpl .native
+; Evaluate the complete native displacement at the reference quantum. Do not
+; accumulate road-only fractions that native /256 and *13/16 discard.
+	moveq #0,d0
+	move.w $12(a1),d0
+	lsl.l #2,d0
+	lsr.l #8,d0
+.native:
+	muls.w d1,d0
+	asr.l #8,d0
 	btst #5,$68(a1)
+	jmp $8b984
+
+step_steering_store:
+	tst.b $6e(a1)
+	bpl .native
+	btst #0,$68(a1)
 	bne .native
-; Original ground displacement truncates twice: /256 then *13/16.
-; Preserve the combined fraction. With one-field unsigned 16-bit speed,
-; the movement factor is <=255; multiplying its signed-word product by 13
-; fits a signed long. Truncate toward zero symmetrically on both sides.
+; Native rounding and skid scaling have finished. Integrate one quarter of
+; that signed reference displacement, retaining quarter-unit position.
 	movem.l d1-d2/a0,-(a7)
 	lea step_steering_fraction(pc),a0
-	move.l d0,d2
-	lsl.l #3,d0
-	add.l d2,d0
-	lsl.l #2,d2
-	add.l d2,d0
+	ext.l d0
 	add.l (a0),d0
 	move.l d0,d1
 	bpl .positive
 	neg.l d0
 .positive:
 	move.l d0,d2
-	andi.l #4095,d2
-	lsr.l #8,d0
-	lsr.l #4,d0
+	andi.l #3,d2
+	lsr.l #2,d0
 	tst.l d1
 	bpl .store
 	neg.l d0
@@ -58,15 +65,16 @@ step_steering_motion:
 .store:
 	move.l d2,(a0)
 	movem.l (a7)+,d1-d2/a0
-	jmp $8b9a0
+	bra .write
 .native:
 	move.l a0,-(a7)
 	lea step_steering_fraction(pc),a0
 	clr.l (a0)
 	move.l (a7)+,a0
-	asr.l #8,d0
-	btst #5,$68(a1)
-	jmp $8b984
+.write:
+	move.w d0,$22(a1)
+	add.w d0,(a1)
+	rts
 
 ; Airborne crash states bypass the ground-motion hook altogether. Clear at
 ; the completed simulation boundary too, before any later remount can reuse
