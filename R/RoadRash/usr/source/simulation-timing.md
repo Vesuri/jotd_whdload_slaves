@@ -184,3 +184,45 @@ other action/animation paths, input-ring overflow handling, reset and pause
 semantics, complete event/clock comparisons, and the A2/A4/MMU regression suite.
 The 2048-field input ring only flags overflow in this diagnostic; it is not a
 production policy. Matching this one tape is not completion of C1, C2 or C3.
+
+### Clock, track events and quantum cost
+
+The live `$a5d4c` field count schedules work. The stopwatch at `$a5d58..$a5d5b`
+now advances in simulation, retaining the original 60-field BCD second and
+finish-bit check. Otherwise an IRQ would observe a finish at a different live
+field depending on how far rendering delayed simulation. Track-section events
+formerly dispatched by `$a8c7c..$a8cbc` also run at each step, including catch-up.
+Their high-water position remains `$a5d38`. The input replay/overflow flags are
+reset when installing the race hook.
+
+The two-field-quantum steering/crash replay in `c-clock-render2` and
+`c-clock-render12` matches all **798 common actor hashes**, and its actor,
+stopwatch and displayed-rank snapshot at simulation field 1457 is identical.
+The faster run had completed one additional step at live field 1600; only common
+completed steps were compared. This checks snapshot clock/rank agreement, not
+all event counts or end-of-race behaviour.
+
+`STEP_NO_HASH` disables the per-step actor hash for cost experiments;
+`STEP_CAPTURE=0` disables the snapshot. These runs cannot prove state agreement.
+Initial cycle-configured measurements over active fields 100–1000, with throttle
+held, are recorded in `tmp/dev/tmp/c-cost-{cell}-q{quantum}/cost.json`:
+
+| Simulation quantum (fields) | A500 rendered fps | A1200 + Fast rendered fps | Result |
+|---|---:|---:|---|
+| 1 | 0.00 | 4.89 | A500 backlog grows to 131 fields; no frames completed in the window |
+| 2 | 4.56 | 8.89 | both keep advancing and rendering; sampled backlog 5/3 fields |
+| 4 | 7.00 | 11.28 | both keep advancing and rendering; sampled backlog 7 fields |
+
+These are diagnostic throughput observations over this window, not final
+production performance or every-CPU validation. A point sampled during a step
+can include work still in progress. The one-field quantum is rejected for the
+current implementation on A500: it cannot sustain real-time simulation, even
+before interpolation. The two-/four-field choice still needs baseline and
+broader-scene comparison. A larger quantum requires presentation interpolation;
+it must not become a rendering-rate limit.
+
+The four-field diagnostic also passes keyboard and CD32 steering-release and
+pause/resume smoke tests (`c-clock-input-keyboard`, `c-clock-input-cd32`). The
+active field counter stays at 161 throughout the paused observation, and resumes
+on input. These smoke tests do not measure complete input-to-display latency or
+prove transition/restart behaviour.

@@ -22,6 +22,8 @@ step_reset:
 	clr.l 16(a0)
 	lea step_queued_field(pc),a1
 	move.l $a5d4c,(a1)
+	clr.b step_replaying-step_queued_field(a1)
+	clr.b step_input_overflow-step_queued_field(a1)
 	jsr $8f552
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
@@ -43,6 +45,12 @@ step_main:
 	move.l d0,$a5d50
 	addq.l #1,12(a0)
 	move.w #STEP_FIELDS,$a6f00
+	bsr step_clock
+	move.w $a5d1e,d0
+	cmp.w $a5d38,d0
+	ble .highwater
+	move.w d0,$a5d38
+.highwater:
 	bsr step_collision_objects
 	bsr .run
 	bra step_main
@@ -54,6 +62,7 @@ step_main:
 ; Run stateful presentation helpers exactly once per simulation step.
 step_end:
 	jsr $89138
+	bsr step_track_events
 	bsr step_actor_animations
 	bsr step_derive_lean
 	bsr step_scenery_cursor
@@ -61,6 +70,7 @@ step_end:
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
 	jsr $8eff8
+	IFND STEP_NO_HASH
 	moveq #0,d0
 	lea $a5d60,a0
 	move.w #$1180/4-1,d1
@@ -76,6 +86,7 @@ step_end:
 	lea step_hashes+8(pc),a0
 	move.l d0,(a0,d1.w)
 .nohash:
+	ENDC
 	lea step_stats(pc),a0
 	cmpi.l #STEP_CAPTURE,8(a0)
 	bne .done
@@ -317,4 +328,50 @@ step_collision_objects:
 	jsr $8b02e
 	move.w $a8734,$a59fe
 	jsr $8a492
+	rts
+
+; The live field clock schedules work; the race stopwatch belongs to simulation.
+; Preserve the original game's 60-field BCD second, including its finish flag.
+step_clock:
+	btst #7,$a5dc8
+	bne .done
+	moveq #STEP_FIELDS-1,d3
+.next:
+	addq.w #1,$a5d58
+	cmpi.w #60,$a5d58
+	blt .counted
+	clr.w $a5d58
+	move.b $a5d5b,d1
+	moveq #1,d0
+	abcd d0,d1
+	move.b d1,$a5d5b
+	cmpi.b #$60,d1
+	blt .counted
+	clr.b $a5d5b
+	move.b $a5d5a,d1
+	abcd d0,d1
+	move.b d1,$a5d5a
+	cmpi.b #$60,d1
+	blt .counted
+	clr.b $a5d5a
+.counted:
+	dbf d3,.next
+.done:
+	rts
+
+; The outer render loop used to notice track-section crossings. Catch-up must
+; process each crossing even when no frame is drawn between simulation steps.
+step_track_events:
+	move.w $a5d38,d1
+	move.w $a5d1e,d0
+	cmp.w d1,d0
+	ble .done
+	andi.w #$ff,d1
+	lsr.w #6,d1
+	andi.w #$ff,d0
+	lsr.w #6,d0
+	cmp.w d1,d0
+	beq .done
+	jsr $9080c
+.done:
 	rts
