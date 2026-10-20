@@ -325,6 +325,51 @@ was removed from source. Evidence is under `c-cpu-priority-*`, including
 would turn Chip stalls into a throughput gain is not supported on current C's
 020 path.
 
+### Automatic cache policy candidate
+
+`VERIFY_C_CACHE` now exercises `resload_SetCPU` after C's boolean/CPU/Fast
+selection and before installing its game patches. It requests BaseMem
+write-through plus instruction/data caches, masking only those settings.
+It preserves the existing ExpMem/slave policy and never requests BaseMem
+copyback. This remains diagnostic-only; normal builds are unchanged.
+
+The installed WHDLoad autodoc specifies that SetCPU honors `NoCache` without
+changing the setup, and flushes caches on return. LoadFile, LoadFileDecrunch
+and Patch also document automatic flushing. This avoids adding redundant
+flushes to those APIs; native writes/decrunch boundaries still require their
+own audit. WHDLoad's cache-handling documentation explains the distinction
+between CACR enable bits, MMU page cacheability and hardware Chip/IO cache
+inhibition. A CACR reading alone does not prove DMA coherency.
+
+`c-cache-policy-{plain,cache,nocache}` test the same lean candidate on the
+cycle-exact 020 with `CUSTOM2=1`. Plain and explicit `Cache` runs produce
+identical checkpoints: CACR `$1`, 10.0 fps over fields 100–600 and 10.667
+over fields 100–1,000. `NoCache` retains CACR zero, 5.0 and 6.056 fps.
+The normal runtime without explicit cache control previously needed the
+separate `Cache` option to obtain the faster result.
+
+`c-cache-policy-matrix` tests the candidate without a user cache option:
+
+| Configuration | Race CACR | Standard-window fps |
+|---|---:|---:|
+| 030/50 | `$2111` | 12.5 |
+| 040/25 | `$80008000` | 16.6 |
+| 060/50 | `$80008000` | 18.9 |
+
+Both explicit MMU cells in `c-cache-policy-mmu` complete with TC `$8000`
+and CACR `$80008000`. These remain functional checks; the emulator configuration
+has `cpu_data_cache=false`, so they do not prove physical data-cache coherency
+or real 040/060 timing. `c-cache-policy-off` and `c-cache-policy-chip` retain
+the original simulation entry and CACR zero when the toggle is disabled or
+the hardware selection rejects the accelerated path.
+
+This is a viable candidate for avoiding the default uncached slowdown,
+not a resolution of the cached C-versus-B regression. Before normal integration,
+verify longer gameplay/transitions with the policy, finish the write/decrunch
+coherency audit, and inspect the requested memory policy under MMU translation.
+The accompanying normal slave still has the audited SHA; no additional
+user-facing cache toggle is introduced.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |

@@ -419,8 +419,12 @@ dictate the accelerated path's timestep.
 
 ### D. Caches, bus priority and memory
 - **D1 Enable caches from the slave.**
-  - D1a Call `resload_SetCPU` at start: instruction cache on (and data cache on 030 and
-    later). Respect `NoCache`, and expose it as an option, on by default after G1.
+  - D1a Call `resload_SetCPU` on the selected enhanced path: instruction cache on
+    (and data cache on 030 and later). Respect `NoCache`; use the single
+    "Enhanced framerate" master toggle, with no additional user-facing cache option.
+    Diagnostic `VERIFY_C_CACHE` now tests this policy: automatic 020/030 caching
+    reaches the existing cached rates, and off/Chip fallback and MMU functional
+    checks pass. Coherency and longer gameplay validation remain before integration.
   - D1b Call `resload_FlushCache` after every file load and decrunch (`ReadSomeFile`, the
     loader patches `$496A`/`$4DCA`/`$4800`/`$4844`/`$8E58`) and after `resload_Patch`.
   - D1c Read `CACR` back (A3b) on 020/030/040/060. Find out why `Cache` had no effect on

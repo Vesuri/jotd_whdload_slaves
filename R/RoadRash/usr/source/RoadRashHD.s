@@ -298,6 +298,17 @@ PatchLoader2:
 	bsr	step_select_path
 	tst.l	d0
 	beq.b	.no_c
+	IFD VERIFY_C_CACHE
+	IFND VERIFY
+	FAIL "Cache policy experiment requires VERIFY"
+	ENDC
+; WHDLoad honors NoCache and flushes after SetCPU. BaseMem is write-through,
+; never copyback; preserve the existing ExpMem and slave cacheability.
+	move.l #WCPUF_Base_WT|WCPUF_IC|WCPUF_DC,d0
+	move.l #WCPUF_Base|WCPUF_IC|WCPUF_DC,d1
+	move.l _resload(pc),a2
+	jsr (resload_SetCPU,a2)
+	ENDC
 	move.l	expansion_memory(pc),a1
 	lea	pl_c_simulation(pc),a0
 	move.l	_resload(pc),a2
