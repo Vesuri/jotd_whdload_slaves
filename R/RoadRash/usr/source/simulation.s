@@ -871,6 +871,17 @@ step_pose_clear:
 	bclr #4,$68(a1)
 .done:
 	rts
+; Pose selection above $89f48 owns attack transitions and sound gates.
+; Everything after it emits projection/effect records. The next simulation
+; tick rebuilds collision records independently; only a render needs these.
+step_pose_project:
+	btst #0,step_pose_busy(pc)
+	bne .next
+	move.l 4(a1),d0
+	sub.l $a5d1e,d0
+	jmp $89f52
+.next:
+	jmp $89d5e
 step_pose_busy:
 	dc.b 0
 	even

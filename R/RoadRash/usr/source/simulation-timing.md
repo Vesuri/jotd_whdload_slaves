@@ -1050,3 +1050,48 @@ Validation in the private harness:
   entry and all previously checked timing, input and stack sites remain native.
 
 The normal slave is now 6,768 bytes. This change leaves C open.
+
+## Project forward actors only for presentation
+
+The forward actor path finishes pose selection and its attack/sound side
+effects before `$89f48`. From that point it builds depth and screen records,
+clips them and appends crash, rider and spark visuals. Those helpers write
+presentation records and counts; C already owns spark lifetime separately.
+`step_pose_project` now returns to the next actor during `step_pose_events`.
+During rendering it executes the displaced position subtraction and continues
+the original projection path. The rear-view path is unchanged.
+
+This does not remove the world-object projection used for collisions:
+`step_collision_objects` still rebuilds those inputs before every simulation
+tick. Nor does it bypass the earlier pose eligibility checks or state changes.
+The new patch is inside the existing CUSTOM2/hardware-selected patch list.
+
+`c-pose-project-fullrace` matches all 14,023 completed hashes, all 52 sound
+requests and the original finish/exit boundaries against `c-fullrace1`. Final
+actor, clock, spawn-timer, camera and rank ranges match. Starting the next race
+resets simulation and capture state. `c-pose-project-armedvar` matches all
+1,596 common hashes, sound requests and those authoritative snapshot ranges
+against the earlier varying-cadence armed fixture. Inspected finish, next-race
+and armed-fixture screenshots render correctly; presentation scratch buffers
+are intentionally not compared for byte equality.
+
+The explicit runtime build in `c-pose-project-matrix` measures 8.7 fps on cached
+A1200 Fast, up from 7.1 after lean reuse. Cached 030/50 remains 12.5 fps; 040/25
+is 16.6 and 060/50 is 18.5. These are the existing 500-field measurements, not
+50 fps or B-throughput acceptance. `c-pose-project-pad` passes actual normal
+binary steering/release and CD32 pause/resume with intact stack guards.
+`c-pose-project-off` confirms that CUSTOM2=0 leaves the projection entry and all
+other checked enhanced hook sites native. The normal slave is 6,804 bytes.
+
+`c-pose-project-fullvar` repeats the complete tape with varying presentation
+intervals (2, 3, 4, 12 and 16 fields). All 14,023 hashes, 52 events, terminal
+boundaries and the authoritative snapshot ranges match the original full-race
+reference too.
+
+`c-pose-project-latency-a1200-fast+cache` uses the runtime with only the optional
+latency probe added. For RIGHT injected after field 300, input is captured and
+replayed at 301, its simulation finishes at live field 302, rendering starts
+at 302, swap is entered at 304 and returns at 305. That is 100 ms from injection
+to buffer handoff. This one phase is not a latency distribution or a measurement
+of the first changed scanout pixels; it does not close C3b. Performance, A4 and
+latency acceptance remain open.

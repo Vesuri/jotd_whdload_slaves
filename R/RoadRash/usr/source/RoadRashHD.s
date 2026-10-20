@@ -403,6 +403,7 @@ pl_c_simulation
 	PL_NOP	$9EEC,4
 	PL_P	$9E70,step_pose_lean
 	PL_P	$9EF0,step_lean_end
+	PL_P	$9F48,step_pose_project
 	PL_S	$AECC,$AEE2-$AECC
 	PL_NOP	$6FA0,6
 	PL_R	$6FE6
