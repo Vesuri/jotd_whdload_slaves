@@ -1569,3 +1569,44 @@ candidate build for reproduction. The normal slave remains unchanged. This
 rules out promoting this small relocation as C's next performance fix; the
 current profile shows substantial remaining cost spread across the wider
 physics/AI routines rather than concentrated in this gate.
+
+## Revised steering: arrest, successful finish and current response
+
+The revised quarter-displacement model now has separate ordinary-control tapes
+for arrest and successful finish, using the integrated Fast RAM object projection.
+The host driver only sends joystick inputs; it does not change game state,
+course length, damage, finish flags or timers. Inputs are recorded at ten-field
+boundaries and the replay reads that interval from the tape.
+
+The first driver releases throttle above speed 10,000 and does not attack.
+`c-steering-finish-drive` ends with the native BUSTED screen at field 8378,
+not a finish. Its 8,377 hashes and all 241 sound requests match
+`c-steering-arrest-var`, which replays the same inputs with 2/3/4/12/16-field
+render intervals. The recorded terminal authoritative ranges match and both
+start another race with capture cleared. All 272 sampled crash states have a
+zero steering residual. This establishes arrest/restart coverage; it is not
+counted as successful-finish evidence.
+
+The second driver uses full throttle, no attacks, a road-relative lane target
+of 96, a 32-unit dead zone, and one sample of lateral trend to release steering
+earlier. `c-steering-finish-lane` finishes at simulation field 12634 and exits
+at 12823, publishing 12,822 step hashes and 24 sound requests. The inspected
+finish image shows rank 1, and the next-race image renders correctly. Of 1,273
+samples, 20 are airborne, one has the skid flag, and all five crash states occur.
+All 113 sampled crash states have zero residual; all sampled residuals stay
+strictly between -4 and 4. Sampling does not prove every intermediate state.
+
+Fresh visible-response pairs in `c-steering-integrated-projection-visible` use
+this steering model with the current Fast RAM object projection. All eight
+estimates are identical to the earlier quarter-model measurements:
+260/240/220/200/180/260/240/220 ms, median 230 ms, versus B's 200 ms median.
+The cost reduction therefore does not establish a visible-response improvement
+for these injection phases. These remain capture-end estimates with one-field
+uncertainty. The normal slave is unchanged; steering remains diagnostic.
+
+`c-steering-finish-lane-var` replays the successful tape under varying render
+intervals. All 12,822 hashes, all 24 sound requests, the recorded terminal
+actor/clock/spawn-timer/camera/rank ranges and finish/exit times match. It starts
+a new race with capture `(98,97,0,1)`. This closes successful-finish/restart
+coverage for the revised steering model; remaining baseline handling, latency
+and normal-runtime integration work are not implied to be complete.
