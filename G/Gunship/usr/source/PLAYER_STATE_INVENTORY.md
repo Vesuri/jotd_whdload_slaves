@@ -291,3 +291,36 @@ negative. Guidance itself requires quit exactly zero. The standalone
 runs once per delivered field. Installation must remove the original VBL
 writes and coordinate cosmetic readers, which can need pre-decrement values.
 No native VBL hook is changed yet. See TIMING_DESIGN.md for comparison scope.
+
+### Render-produced flight-end flag: plane reduction checkpoint
+
+The shared byte at hunk 6 +3958 is cleared by render +05C28 and overwritten
+by +0691C. The main loop reads it at +0583C after rendering; a nonzero value
+sets player +18 to 1 and branches to cleanup. This remains an unresolved
+render-to-gameplay dependency and is not yet moved into the world owner.
+
+The producer starts at +06818. Its +068F8..+06922 plane loop consumes four
+signed words per plane (three normal components and a distance), computes
+three MULS.W products with wrapping long additions, then marks visibility
+using CMP.L/SMI. This tests the subtraction's N flag, not signed less-than
+(N xor V). The final SEQ sets the shared flag when no plane was marked.
+A zero plane count returns earlier and leaves the shared flag unchanged.
+Each nonempty shape overwrites the byte; this is not an accumulated OR.
+
+`timing-face-planes.i` extracts only this read-only reduction. It returns
+0 for any facing plane, 1 for none, 2 for zero planes (no decision), and -1
+for invalid scalar arguments. It preserves other registers and writes only
+the stack. Coordinate preparation, shape selection, and shape ordering are
+explicitly outside its contract. The caller at +063F2 is inside shape
+processing +063DC; the outer +0625C..+06370 loop advances the object index
+and shape pointer. Those inputs and transforms must be traced before this
+can become an authoritative world-tick flight-end test. It is not installed.
+
+The ignored `tmp/dev/tools/test_face_planes_c.py` fixture compares the
+assembled helper with actual native +068F8 instructions for 1,100 seeded
+random/extreme cases, including counts 1 and 255. It independently checks
+all native visibility bytes, observes 25 comparisons where overflow makes
+SMI differ from signed less-than, checks four zero-plane prior flag values
+through native +06818, and rejects five malformed scalar arguments. All
+cases pass, including register preservation and write-address checks.
+This proves the reduction only, not collision behavior or timing acceptance.
