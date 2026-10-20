@@ -351,18 +351,39 @@ a slave option whose default reproduces the original timing until G1 decides the
     Keep it on for the 68000 if slower.
   - **Expected:** a large share of the 18.8% stall becomes overlap on 020+ once D1 is in;
     measure.
-- **D3 Fast-RAM working set** (020+ with fast RAM).
-  - D3a Add `ws_ExpMem` (fast preferred, with a fallback) to the slave for code copies and
-    CPU-only tables.
-  - D3b Relocate the hot code that is not blitter data into ExpMem: road rasteriser
-    `$b10d0-$b19ff`, road geometry `$8970e-$89b30`, `$89656`, `$89048`. Copy the code,
-    relocate its internal absolute `jsr`/`jmp` targets with a patch list, and redirect the
-    entry points with `PL_P`. Data references stay absolute in chip at first.
-  - D3c Move CPU-only tables next to them: projection outputs `$a6f3c-$a803e`, the
-    reciprocal table `$89b1e` and track bytes `$a851a` copies. Find every reference with a
-    scan of the disassembly, and keep blitter and copper data in chip.
-  - **Expected:** a 2–4× faster road and geometry on 030/040/060 (estimate), plus less chip
-    traffic. Do this after D1/D2 have been measured.
+- **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
+  - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
+    interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,
+    references and relocation constraints. Account for every region; document why any
+    region must remain in chip RAM rather than limiting the move to measured hotspots.
+  - D3b Add `ws_ExpMem` for the eligible working set, with public-memory allocation
+    semantics (fast preferred, chip fallback). Size it from the audit, preserve the
+    original path when expansion memory is unavailable, and verify the actual placement.
+    Check memory requirements and behaviour on machines without fast RAM, including the
+    1 MB chip A500; do not assume that a fallback allocation leaves enough chip memory.
+  - D3c Relocate all eligible executable code. Start with the road rasteriser
+    `$b10d0-$b19ff` and geometry `$8970e-$89b30`, `$89656`, `$89048`, then cover the rest.
+    Fix absolute and PC-relative references, internal calls/jumps, entry points, vectors
+    and function pointers. Account for interleaved data and later loads/decrunches;
+    preserve slave patches and cache flushing for every relocated module.
+  - D3d Relocate all CPU-only mutable state, tables and assets, including projection
+    outputs `$a6f3c-$a803e`, the reciprocal table `$89b1e`, track data, actor records and
+    draw lists. Audit every reader/writer and stored pointer; maintain one authoritative
+    mutable copy. Mixed CPU/DMA regions must be split where practical, with explicit
+    transfers if a CPU-side copy is useful (including E5's images and masks).
+  - D3e Move the CPU stack and any separate interrupt stacks into the allocated memory.
+    Audit stack bounds, startup/switching, exception/interrupt entry and exit, and quit
+    handling; retain a valid stack throughout loading and relocation.
+  - D3f Keep DMA-accessed storage in chip RAM: screen buffers, copper lists, hardware
+    sprite data, audio samples and blitter sources, masks and destinations. Reclaim old
+    chip storage only after proving that no live reference or later loader uses it.
+  - D3g Verify relocation with A2/A4, cache/MMU checks and menu/race/load transitions.
+    Record chip/public-memory usage, actual fast-RAM placement, residual chip accesses
+    and the audit's remaining exceptions. Cover fast-RAM and fallback configurations;
+    choose CPU-specific defaults from measurements rather than excluding the 68000.
+  - **Expected:** less chip traffic throughout the game; a 2–4× faster road and geometry
+    on 030/040/060 remains an estimate. Measure the broader benefit and memory cost.
+    Do this after D1/D2 have been measured.
 
 ### E. Blitter work and overlap
 - **E1 Overlap the background clear with the road.**
@@ -420,7 +441,7 @@ a slave option whose default reproduces the original timing until G1 decides the
 ### G. Integration and release
 - **G1 Options and defaults.**
   - G1a Map the new behaviour to `CUSTOM` bits: pacing (C), caches (D1), `BLTPRI` (D2),
-    fast-RAM code (D3), queue (E2); CUSTOM1 stays the password.
+    public-RAM relocation (D3), queue (E2); CUSTOM1 stays the password.
   - G1b Pick per-CPU defaults from the A2 matrix: no change on the 68000 unless it is
     faster.
 - **G2 Verification set.** One pass per change: A4 equivalence, an A2 matrix row, the B1
