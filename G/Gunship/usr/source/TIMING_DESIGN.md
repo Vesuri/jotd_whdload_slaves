@@ -2863,3 +2863,51 @@ fault diagnostics, all fresh player steps through the first deadline, and
 once-only suspended-world acknowledgement. Resume leaves native player
 bytes unchanged. These tests establish core sequencing; they do not
 simulate native modal completion or interrupt races.
+
+## Native modal continuation with suspended sampling
+
+`timing-modal.i` connects the core lifecycle to `world_body_resume`.
+Its 14-byte context holds scheduler, world-body and native-interpreter
+pointers plus phase. Preparation validates the native +08050 entry and
+countdown instructions before publishing bindings. Reinitialization is
+only for a newly admitted modal operation, never a partial-work retry.
+
+The adapter calls `timing_modal_suspend` with producers excluded after
+committing any pending ground event. It requires a due world phase, a world
+body stopped at its modal boundary, valid player bindings, positive script
+state and countdown one. It disables sampling while preserving the pending
+world. The adapter must then restore interrupts before `timing_modal_run`:
+the native interpreter waits for a released button and a new field.
+
+Run verifies all sampling owners remain inactive and marks the operation
+running before calling native +08050 with the native player in a5. After
+return, it runs only the script continuation and world tail, then acknowledges
+the world once. Results are 0 completed, 3 flight ended, -1 failure or -3
+invalid phase. Sampling stays disabled. The expected inactive-upstream
+scheduler fault after acknowledgement is cleared later by coordinated
+`timing_resume`, after the adapter has reset helper and presentation state.
+Flight-end callers instead follow their mission-exit lifecycle.
+
+Phases are ready (0), suspended (1), interpreter running (2), interpreter
+returned/continuation failed (3), completed (4) and flight ended (5).
+Duplicate suspension/run rejects. Failure after interpreter entry retains
+progress and cannot cause an automatic interpreter retry or world
+acknowledgement. This wrapper does not repeat weapons, damage or the
+script prefix already applied before the boundary.
+
+The ignored `test_timing_modal_c.py` compares 40 runs against direct native
++08050 followed by the existing script/world continuation: PAL/NTSC,
+script states 1..5, prompt versus early-return paths, and periodic
+flight-end versus ordinary completion. Native memory, world state, callback
+order and field-wait counts match. The interpreter and native continuation
+instructions execute; UI callbacks, an Enter input and VBL arrival are
+fixtures. This does not validate the rendered T-74 screen, interactive
+typing or live interrupt ownership.
+
+The suite also rejects active sampling, stale phases/countdowns, bad player
+bindings and duplicate calls without side effects. An injected binding
+failure after interpreter entry leaves it called once, with no world
+acknowledgement; retry rejects. Four corrupted interpreter signatures reject
+without replacing the prepared context. Production hook installation and
+reset of the other per-epoch helper contexts remain outstanding.
+The assembled 68000 Unicorn suite passes 830 helper calls.
