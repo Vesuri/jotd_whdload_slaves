@@ -1509,6 +1509,55 @@ native input/world ownership are still pending; these tests do not prove
 next-render input latency in the running game. Installation must share
 the CUSTOM1 Enhanced framerate gate.
 
+## Scheduler/player boundary bridge
+
+`timing-field-player.i` binds a delivered scheduler field to the combined
+player candidate. Its 40-byte context contains six caller-initialized
+pointers (shadow, player, stages, sine, packet, candidate), followed by the
+bound scheduler pointer, field stamp, command cutoff and two status words.
+Initialize the latter sixteen bytes to zero. `FP_BOUND` is at 36 and
+`FP_COMMITTED` at 38. Original state and context remain foreground-owned.
+
+`field_player_prepare` takes context a0, scheduler a1, private history record
+a2 and interval tick d0. It requires player-pending scheduler phase, matching
+field/cutoff, matching player/display rates and unfaulted upstream state.
+The caller must already have decoded input and applied the correct commands
+and impulse policy. Success prepares the candidate and binds its identity;
+it neither publishes player motion nor acknowledges the scheduler.
+
+After any private world-boundary evaluation, `field_player_complete` takes
+the context in a0. It rechecks scheduler identity and upstream faults,
+finishes/publishes the combined player candidate, then calls
+`scheduler_player_done`. Success returns 0 for another field or 1 for a due
+world update. No world acknowledgement is performed: the native world owner
+must still complete that update before delivery can continue.
+
+Failures before publication consume the binding and invalidate the candidate
+phase without acknowledging the field. `FP_COMMITTED` stays zero, so any
+candidate ground event must be discarded. A producer can fault after
+publication but before/during acknowledgement; in that case the existing
+scheduler counts the applied step, returns a fault, and `FP_COMMITTED=1`
+records that motion really committed. The recovery owner must account for
+that applied work and any corresponding deferred event. Repeated completion
+is rejected; inspect the return status and commitment flag together. No
+claim of interrupt-atomic multiword publication is made.
+
+`test_field_player_c.py` consumes 240 fields at each of 50/60 Hz in batches
+of 1/3/10/25 (1,920 fields total). Player/shadow, camera output, timestamp
+transport and world-deadline observations agree across batches. Delivery
+remains blocked during a pending player candidate and during each due world
+update. Eight wrong identity/rate/control/interval/upstream/late-state cases
+reject without publication or acknowledgement. A fresh emulator instance
+injects a producer fault at acknowledgement entry: the bridge reports the
+fault with `FP_COMMITTED=1`, and the scheduler counts exactly one applied
+step. The test uses a world observer, not native AI/weapons/contact execution.
+Evidence: `tmp/dev/tmp/c/field-player-tests.json` (17,829 calls).
+
+This bridge is standalone. Native accepted-command dispatch, impulse timing,
+world contact selection, world execution and CUSTOM1-gated installation are
+still pending. It supplies the scheduler connection without inventing those
+policies or acknowledging an unexecuted world tick.
+
 ## Foreground coordinator
 
 `timing-scheduler.i` composes the clock, field history and retained-command

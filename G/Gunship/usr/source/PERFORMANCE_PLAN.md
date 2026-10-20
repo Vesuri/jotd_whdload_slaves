@@ -414,8 +414,11 @@ tested, including instruction-boundary producer interruption. Diagnostic native
 input producers now capture real fields on 68000/020/060, and a dual-reader
 queue retains accepted keyboard commands through their field cutoffs. The
 foreground coordinator now enforces field/player/world ordering and bounded
-batches in assembled-code tests. Its native main-loop installation, command
-effect classification and player/world hand-off are still pending,
+batches in assembled-code tests. A standalone bridge now binds each delivered
+field to a combined player candidate and acknowledges it only after motion
+commits, exposing the native height/contact boundary for deferred ground
+effects. Its native main-loop installation, command effect classification
+and complete player/world hand-off are still pending,
 so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
