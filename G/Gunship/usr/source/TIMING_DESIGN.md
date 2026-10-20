@@ -4802,7 +4802,7 @@ countdowns and four activation-flag values against the original prefix and
 interpreter guard. All 180 admissible poses match the native body; 44 modal
 cases reject without gameplay writes or preview effects. All 35 corrupted
 prefix/guard words reject preparation atomically. The original 804 body
-comparisons still pass. Runtime capture/publication is still unconnected.
+comparisons still pass. Runtime capture/publication is described below.
 
 Both +07FA4 calls bind to a private adapter that reproduces its word-coordinate
 calculation and invokes the read-only terrain sampler. Unknown relevant queries
@@ -4818,8 +4818,8 @@ skips the attack gate, RNG and damage callback. These affect player damage and
 notification state but not the object's movement inputs. The movement suffix
 reloads its inputs from the private player/object record. No RNG preview or
 rollback is involved. The caller must use only the index-5 candidate fields,
-never the complete private player snapshot. This routine has no installer and
-is not yet part of the runtime arena or renderer publication.
+never the complete private player snapshot. The runtime prepares this routine in its private arena; the post-world
+capture described below is its only runtime caller.
 
 `test_script_preview_c.py` runs 1,800 fixtures against the complete native
 object body, including its real RNG and hit arithmetic. Native sound and
@@ -4838,10 +4838,9 @@ hook includes now precede the shared timing core, keeping configuration,
 arena-pointer references and loader calls near each other as the experimental
 core grows. This changes layout only; CUSTOM1 remains the master gate.
 
-Still required: certify the scripted object's creation/removal/teleport writers,
-provide a stable committed bitmap after DMA completion, integrate a bounded
-fractional pose into renderer-only scene inputs, and measure actual acceptance,
-visual continuity and cost. Ground-object motion/writer inventory and native
+The subsequent generation hook and snapshot consumer cover the audited
+scripted stores and renderer-only translation. Complete writer coverage,
+actual acceptance, visual continuity and cost still require validation. Ground-object motion/writer inventory and native
 flight-loop activation remain open. The standalone pose comparison is not
 proof of C6 or C completion.
 
@@ -4909,3 +4908,52 @@ The expanded activation test seeds the new record with nonzero bytes, verifies
 atomic invalid admission and subsequent reset, and passes 240 PAL/NTSC fields
 at two arena addresses. Ordinary, runtime, VERIFY/runtime and input/runtime
 builds assemble successfully.
+
+
+### Scripted translation snapshot and renderer publication (C6)
+
+`timing-script-present.i` adds a 34-byte cache for index 5. Capture takes the
+completed world's generation/exhaustion, tick/remainder, split XYZ, heading
+and both metadata bytes, then runs the private native forecast against an
+explicit stable bitmap and palette. Unknown terrain, inactivity, exhausted
+identity and unresolved modal transitions produce no valid forecast. The
+snapshot contains only the candidate XYZ needed for fractional presentation.
+
+The existing post-world actor callback now captures this snapshot after the
+native world body completes. The target raster owner records its bitmap
+binding; scripted capture requires a published target pass from this same
+field and an unchanged, nonnull bitmap binding, then waits for blitter DMA.
+It uses that pass's palette bytes and evaluates pixels immediately. Rendering
+never reads these pixels or re-runs the forecast, so later back-buffer reuse
+cannot alter the cached trajectory. Foreground serialization still excludes
+rendering/swaps throughout world work; this does not certify arbitrary native
+UI drawing as a committed terrain pass.
+
+Rendering seeds six bytes from the current authoritative split coordinates.
+Only a matching tick, generation, nonexhausted identity, current XYZ/heading/
+metadata and consistent clock fraction can replace them with the bounded
+forward pose. Signed wrapped-word displacement uses floor rounding, over the
+remaining 17/17/16 PAL or 20 NTSC fields. Publication replaces only the final
+six bytes of the private scene before copying native renderer inputs. It
+never writes the authoritative split arrays or a predicted collision/AI pose.
+Heading still comes from the native committed byte: orientation presentation
+and its renderer ownership remain open.
+
+Activation clears the cache validity and raster binding, rather than sampling
+a menu or previous lifecycle's bitmap. The arena is now 33,690 bytes; the
+script cache and preview start at 0x7EB6 and 0x7EDC, still reachable with signed
+68000 displacements. Preview internals use its own base, and activation reset
+ranges remain below that displacement limit.
+
+`test_script_present_c.py` checks 110 PAL/NTSC fractional poses and identical
+repeated builds, 84 identity/clock barriers and atomic invalid-clock rejection.
+It destroys the preview scratch and bitmap binding after capture, proving
+rendering no longer depends on either. Native memory remains unchanged.
+`test_runtime_script_c.py` supplies a committed raster fixture and checks 37
+runtime publications into all three native scene destinations, six raster
+barriers and two lifecycle resets without player-record writes. These are
+assembled-code fixture tests, not full native flight-loop or live raster tests.
+The existing 600-field actor, 1,056-field guided release and 240-field activation
+fixtures pass. Ordinary, runtime, VERIFY/runtime and input/runtime assemble.
+Live scripted raster/visual/cost checks, complete writer/ground-object inventory
+and native flight-loop activation remain open; C is not complete.

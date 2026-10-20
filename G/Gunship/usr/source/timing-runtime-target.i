@@ -86,6 +86,8 @@ timing_runtime_target:
 .publish:
  move.w (a0)+,(a1)+
  dbf d2,.publish
+ movea.l RT_HUNKS+24(a6),a0
+ move.l $47c4(a0),RT_SCRIPT_BITMAP(a6)
  move.w #2,RT_TARGET_PHASE(a6)
  moveq #0,d0
  bra .done

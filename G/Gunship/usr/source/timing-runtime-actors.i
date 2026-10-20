@@ -39,7 +39,12 @@ timing_runtime_actors:
  beq .bad_saved
 .fresh:
  move.l (sp)+,d1
- bra timing_runtime_actors_seed
+ bsr timing_runtime_actors_seed
+ tst.l d0
+ bne .return
+ bra timing_runtime_script_seed
+.return:
+ rts
 .bad_saved:
  move.l (sp)+,d1
 .bad:
@@ -132,6 +137,46 @@ timing_runtime_actor_release:
  bra .exit
 .bad:
  moveq #-3,d0
+.exit:
+ movem.l (sp)+,d1-d7/a0-a6
+ rts
+
+; Internal post-world capture only. A matching target raster must exist; no
+; activation/menu bitmap is eligible. Foreground excludes renderer and swaps.
+timing_runtime_script_seed:
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ clr.w RT_SCRIPT_PRESENT+SPC_VALID(a6)
+ cmpi.w #2,RT_TARGET_PHASE(a6)
+ bne .done
+ move.l RT_TARGET_FIELD(a6),d0
+ cmp.l RT_RECORD+TR_FIELD(a6),d0
+ bne .done
+ movea.l RT_HUNKS+24(a6),a3
+ movea.l RT_SCRIPT_BITMAP(a6),a4
+ move.l a4,d0
+ beq .done
+ cmpa.l $47c4(a3),a4
+ bne .done
+ ; Any late world blit must finish before CPU pixel reads. Do not retain a
+ ; pixel dependency after this call: the next frame may reuse the buffer.
+ tst.w $dff002
+.wait:
+ btst #6,$dff002
+ bne .wait
+ adda.w #$3b88,a3
+ lea RT_TARGET+WT_PALETTE+24(a6),a5
+ lea RT_SCRIPT_PRESENT(a6),a0
+ lea RT_SCRIPT_PREVIEW(a6),a1
+ lea RT_SCRIPT_GENERATION(a6),a2
+ move.l RT_CLOCK+TC_TICKS(a6),d0
+ moveq #0,d1
+ move.w RT_CLOCK+TC_PHASE(a6),d1
+ bsr script_present_capture
+ tst.l d0
+ bmi .exit
+.done:
+ moveq #0,d0
 .exit:
  movem.l (sp)+,d1-d7/a0-a6
  rts

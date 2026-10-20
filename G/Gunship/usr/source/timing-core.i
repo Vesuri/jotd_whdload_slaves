@@ -3,6 +3,7 @@
  include "timing-terrain-sample.i"
  include "timing-script-preview.i"
  include "timing-actor-present.i"
+ include "timing-script-present.i"
 ; Shared dependency order for the hybrid timing runtime.
 ; Inclusion alone installs no hooks or patches.
  include "timing-motion-preview.i"

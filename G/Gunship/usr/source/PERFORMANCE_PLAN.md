@@ -768,8 +768,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     its CPU terrain query has a read-only sampler matching 1,571 native pixel
     classifications. A private scripted steering/motion preview now matches
     804 native next poses without RNG, damage or gameplay writes. Scripted
-    identity/teleport barriers, committed-raster integration and renderer
-    publication remain open. A separate private forecast now recomputes the
+    translation now has a generation-certified runtime snapshot and bounded
+    renderer-only publication (37 PAL/NTSC fixture views). Complete writer
+    coverage, orientation and live raster/visual/cost checks remain open.
+    A separate private forecast now recomputes the
     native steering mode and countdown: 180 prefix-plus-body comparisons
     match, and 44 unresolved modal transitions reject without world writes.
   - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
@@ -785,8 +787,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     exhaustion, eligibility and motion state; lifecycle activation reseeds it.
     The scripted index-5 object's common store now has a CUSTOM1-gated generation
     hook covering its known spawn/removal/motion paths and excluding private
-    previews (1,344 native ABI comparisons). Its presentation consumer and live
-    hook acceptance remain open.
+    previews (1,344 native ABI comparisons). Its translation consumer now
+    rejects changed generations, poses and metadata; complete writer coverage
+    and live hook acceptance remain open.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
     poses into world state or pass them to collision, damage or AI. A standalone
     private six-slot native preview now matches 1,200 steps and rejects release,

@@ -76,7 +76,10 @@ RT_ACTOR_COORDS equ RT_ACTOR_PRESENT+AC_SIZE
 RT_RELEASE_PRESENT equ RT_ACTOR_COORDS+36
 RT_RELEASE_COORDS equ RT_RELEASE_PRESENT+AC_SIZE
 RT_SCRIPT_GENERATION equ RT_RELEASE_COORDS+36
-RT_ARENA_SIZE equ RT_SCRIPT_GENERATION+AG_SIZE
+RT_SCRIPT_PRESENT equ RT_SCRIPT_GENERATION+AG_SIZE
+RT_SCRIPT_BITMAP equ RT_SCRIPT_PRESENT+SPC_SIZE
+RT_SCRIPT_PREVIEW equ RT_SCRIPT_BITMAP+4
+RT_ARENA_SIZE equ RT_SCRIPT_PREVIEW+SP_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -287,6 +290,12 @@ timing_runtime_prepare:
  lea RT_ACTOR_PREVIEW(a6),a0
  move.l a0,RT_ACTOR_PRESENT+AC_PREVIEW(a6)
  move.l a0,RT_RELEASE_PRESENT+AC_PREVIEW(a6)
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ lea RT_SCRIPT_PREVIEW(a6),a2
+ bsr script_preview_prepare
+ tst.l d0
+ bne .bad
  lea timing_runtime_actors(pc),a0
  move.l a0,RT_CONSUMER+TF_ACTOR_ENTRY(a6)
  move.l a6,RT_CONSUMER+TF_ACTOR_CONTEXT(a6)
