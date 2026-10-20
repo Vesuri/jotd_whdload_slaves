@@ -1,6 +1,8 @@
 # Road Rash: race trace analysis and plan for smooth play on faster CPUs
 
-Status: analysis complete, plan not started (2026-10-20). Slave baseline: shipped v2.0
+Status: A1–A5 complete (2026-10-20); B–G remain open. Accepted A evidence and
+limitations are in §9. Sections 1–6 retain the original exploratory measurements;
+they are not the fixed-field A baseline. Slave baseline: shipped v2.0
 (`RoadRash.slave`, SHA-256 `9d2f2302…a563`), identical to this source except for the date
 string and two `PL_STR` lengths, which differ because the shipped slave was built with older
 WHDLoad macros. All addresses are absolute: the game is loaded at `$80000` in chip BaseMem,
@@ -247,7 +249,7 @@ Each item lists its steps, its check, and the expected effect. Run every change 
 item A2 matrix and the item A4 equivalence check before moving on. Every new behaviour is
 a slave option whose default reproduces the original timing until G1 decides the defaults.
 
-### A. Harness and baseline
+### A. Harness and baseline — complete (2026-10-20; evidence in §9)
 - **A1 Fixed race scenario.**
   - A1a Keep `to_race` as the machine-independent route. Add a settle point at race field
     100 and a fixed seed check (DETERMINISTIC boots repeat exactly).
@@ -265,8 +267,9 @@ a slave option whose default reproduces the original timing until G1 decides the
 - **A3 VERIFY slave instruments** (`-DVERIFY` build only).
   - A3a A frame counter and fields-per-frame histogram in slave memory, read by the
     harness. This replaces the mod-3 rotation sampling.
-  - A3b Log `CACR` after the slave's `resload_SetCPU` and at race start, on 020 and later
-    only.
+  - A3b Log inherited `CACR` after `resload_Control` and at race start, on 020 and later
+    only. The baseline has no `resload_SetCPU`; D1 must add a post-SetCPU reading when it
+    introduces that call.
   - A3c Snapshot `DMACON`.
   - A3d A game-state hash (player and actor records, ranks, clock) at fixed race fields,
     for A/B equivalence.
@@ -276,8 +279,9 @@ a slave option whose default reproduces the original timing until G1 decides the
   - A4c Visual: screenshots at fixed race fields show the same scene.
 - **A5 Profiles.**
   - A5a Repeat the 020 Barto trace after each phase.
-  - A5b Use aprof (cycle-exact 020–060 without an MMU) for per-PC costs on 030/040/060,
-    where the Barto trace is empty.
+  - A5b Use aprof without an MMU for flat per-PC execution counts and chip-access time
+    on 030/040/060, where the Barto trace is empty. The emulator does not model real
+    040/060 instruction-cycle costs; do not interpret these as hardware cycle profiles.
 
 ### B. Correctness fixes and risks (before any timing work)
 - **B1 Slave `test_for_pause` stack bug.** It saves `d0-d1/a0` (12 bytes) but restores
@@ -463,11 +467,98 @@ a slave option whose default reproduces the original timing until G1 decides the
 5. G.
 
 ## 8. Open questions
-- Is the remaining 040/060 time CPU work stalled on chip data, or blitter latency? aprof
-  (A5b) will split it.
-- Are the caches on during the race on 040/060 without an MMU? (A3b)
+- How much 040/060 chip wait can D2 overlap? A5b records flat chip-access time, with
+  the largest entries in frame/blitter polling; it cannot establish hardware CPU cost.
+- A3b resolved the register state: 040/060 CACR is `$80008000`, or `$00008000` with
+  `Cache`; fps is unchanged. Actual data-cache emulation is disabled in these baseline
+  configurations, so D1 still needs coherency and hardware validation.
 - Is the 030 crash (B2) a game race condition or emulator-specific?
 - What is the free chip RAM in the race on 1 MB machines? It decides E3 and the queue
   buffers.
 - Could the frame pacing keep NTSC-correct timing as an option? Out of scope here; noted
   because the clock already runs at 5/6 speed on PAL.
+
+
+## 9. A completion and accepted baseline (2026-10-20)
+
+All A items are implemented and exercised. This completes the measurement infrastructure,
+not the correctness fixes in B or the performance changes in C–F. The normal slave is
+byte-identical to the pre-A build (SHA-256
+`5c85f98b820abbf02af5bdf6696b1111321e0942047fc0739a6c60226bb138da`).
+Only `VERIFY` builds contain the new hooks and storage in `verify.s`.
+
+| Completed items | Evidence in ignored `tmp/dev/` |
+|---|---|
+| A1a–c | `fixtures/lap.json`: exact field-100 start, 1,500 PAL fields of throttle/steering, overtaking and a roadside collision/crash; local fixture manifest and expected states/screens |
+| A2a–c | `tools/matrix.sh`, `tools/matrix_a.py`: normal and diagnostic matrices, NoCache, MMU functional cells, per-cell deadline and retained failure logs/screens; intentional one-second timeout rejected |
+| A3a–d | `verify.s`: frame count, completion-interval histogram, inherited/race CACR, initial/frame DMACONR, fixed-field clock/actor/rank hash; independent rotation counts agree in every passing diagnostic cell |
+| A4a–c | `tools/compare_a.py`, `tools/validate_a.py`: ±1% distance, final full racer order/crash count, fixed-field screenshots; normal/VERIFY/hash repeat pairs pass; five corrupted controls rejected |
+| A5a–b | `tools/profile_a.py`, `tools/profile_matrix_a.py`: 020 Barto and 030/040/060 flat aprof, with effective CPU configuration and binary provenance |
+
+Authoritative local report: `tmp/dev/docs/a-baseline.md`; commands and instrumentation ABI:
+`tmp/dev/docs/development.md`. Raw game data, traces, screenshots and reference fixtures
+remain ignored. Accepted run directories are listed in `tmp/dev/fixtures/a-reference.json`.
+
+### Fixed-field matrix
+
+Race fields 100–600, throttle held; distance is field 590 minus field 100. Histogram entries
+are completed frames by field duration, measured by VERIFY; normal fps/distance come from
+the uninstrumented slave. Do not mix the normal and VERIFY references for an A/B comparison.
+The earlier §3 window differed, so its fps values are not directly comparable.
+
+| Cell | Normal fps | VERIFY fps | Normal distance @490 | VERIFY histogram |
+|---|---:|---:|---:|---|
+| `a500-1m` | 8.5 | 8.5 | 3,425,028 | 5: 9, 6: 76 |
+| `a1200` | 12.5 | 12.5 | 3,337,152 | 4: 124, 5: 1 |
+| `a1200-fast` | 12.5 | 12.5 | 3,364,352 | 4: 124, 5: 1 |
+| `a1200-fast+cache` | 16.6 | 16.5 | 3,347,896 | 3: 159, 4: 6 |
+| `a1200-fast+nocache` | 12.5 | 12.5 | 3,364,352 | 4: 124, 5: 1 |
+| `030-50` | failed | failed | — | front-end exception; B2 remains open |
+| `030-50+cache` | 16.6 | 16.6 | 3,341,412 | 3: 166 |
+| `040-25` | 22.6 | 22.7 | 3,345,638 | 2: 179, 3: 48 |
+| `040-25+cache` | 22.6 | 22.7 | 3,345,638 | 2: 179, 3: 48 |
+| `060-50` | 23.2 | 23.3 | 3,335,284 | 2: 200, 3: 33 |
+| `060-50+cache` | 23.2 | 23.3 | 3,335,284 | 2: 200, 3: 33 |
+| `040-mmu` | functional only | functional only | — | TC=$8000; no timing comparison |
+| `060-mmu` | functional only | functional only | — | TC=$8000; no timing comparison |
+
+Diagnostic matrix: 12/13 passed. Normal matrix: 10/11 passed. Both correctly return failure
+for uncached 030; it is not waived or counted as a pass. The validated no-MMU 030 uses the
+`68EC030` CPU selector. Its failure screenshot reports **Line 1111 Emulator ($2C) at $4**
+at the AmigaDOS prompt, distinct from the earlier Illegal Instruction at $68 report.
+B2 must investigate both; A does not establish a shared cause or implement a fix.
+
+### Acceptance boundaries and findings
+
+- Host joystick mappings must be disabled (`JOY0=none`, `JOY1=none`). `DETERMINISTIC=1`
+  alone did not isolate the replay from host input. Monitor input now drives the tape.
+  Repeated boots match the complete initial actor/clock/rank state; this is the seed/state
+  check, without inventing an unidentified RNG address.
+- Normal and diagnostic 30-second replays each repeat with the same final racer order,
+  one crash, and byte-identical scheduled screenshots and checkpoint states. Two normal
+  intermediate samples differ at debugger stop phase; arbitrary per-two-field RAM snapshots
+  are not promised identical. The separate slave hash is captured inside the field tick at
+  field 590 and repeats exactly. Hashing is excluded from performance runs.
+- Distance tolerance remains ±1%. It applies to the same machine/build mode before and
+  after a change. Cross-CPU equality is not established by this baseline: the normal A500
+  differs from the normal 020+fast by about 1.8%. Diagnostic overhead also changes phase
+  and can exceed that tolerance (A500). Neither discrepancy is silently accepted as an
+  A/B pass. The original 0.7% observation in §4 was specific to its exploratory window.
+- Visual comparison fails closed on any different or missing scheduled screenshot. A future
+  intentional rendering/timing change needs an explicit scene review and a new reference;
+  matching final rank alone is insufficient.
+- CACR at startup/race: 020 `$0`, with Cache `$1`; 030 Cache `$2011`; 040/060 `$80008000`,
+  with Cache `$8000`. DMACONR is `$07f7`, including BLTPRI. Unsupported 68000 CACR is `$ffffffff`.
+  Equal 040/060 fps with different CACR is an emulator observation, not proof that hardware
+  caches do not help. These configurations have `cpu_data_cache=false`.
+- Both MMU cells execute the race and report TC `$8000` (translation enabled). They use
+  `uaeboard=full` and disabled CPU data-cache emulation: `full+indirect` deadlocked in the
+  native filesystem trap path. This is functional MMU coverage, not cache-coherency or
+  hardware-timing coverage. D1d remains open.
+- Barto covers 495 complete recorded fields within the 500-field elapsed window (each of
+  five chunks omits its initial partial field): 284,204 cycles/field, no missing PCs;
+  DMA shares CPU 31.8%, blitter 13.6%, free 27.9%. Raw chunks are compressed with verified
+  decompressed SHA-256. Flat aprof captures 500 vsyncs per fast-CPU cell. Its unmatched
+  return counts prevent trustworthy inclusive call costs; 040/060 costs are instruction
+  and chip-access approximations, not real hardware cycles. Use flat PCs for subsequent
+  comparisons and preserve these limitations.

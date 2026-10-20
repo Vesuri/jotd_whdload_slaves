@@ -8,6 +8,6 @@ SOURCE = $(PROGNAME)HD.s
 
 all :  $(WHDLOADER)
 
-$(WHDLOADER) : $(SOURCE)
+$(WHDLOADER) : $(SOURCE) ReadJoypad.s verify.s
 	$(WDATE)
 	$(VASM) -o $(WHDLOADER) $(SOURCE)

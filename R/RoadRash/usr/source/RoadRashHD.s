@@ -88,6 +88,9 @@ Start	;	A0 = resident loader
 		
 		lea	_tags(pc),a0
 		jsr	(resload_Control,a2)
+	IFD VERIFY
+		bsr	verify_start
+	ENDC
 		
 		;get password
 		lea	(_user_password,pc),a0
@@ -258,6 +261,10 @@ pl_messages_main
 	
 pl_main
 	PL_START
+	IFD VERIFY
+	PL_PS	$6FE0,verify_field
+	PL_PS	$71DC,verify_frame
+	ENDC
 
 	
 	; *** pause
@@ -608,12 +615,19 @@ _resload	dc.l	0		;address of resident loader
 _tags
 		dc.l	WHDLTAG_CUSTOM1_GET
 _password		dc.l	0
+	IFD VERIFY
+	dc.l	WHDLTAG_ATTNFLAGS_GET
+verify_attn	dc.l	0
+	ENDC
 	dc.l	0
 	
 previous_button_state
 	dc.l	0
 expansion_memory:
 	dc.l	$80000
+	IFD VERIFY
+	include	verify.s
+	ENDC
 	
 	IFD DEBUG
 		dc.l	WHDLTAG_CUST_DISABLE,vposw
