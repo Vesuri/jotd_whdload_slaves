@@ -1,3 +1,44 @@
+## Geometry reuse: CPU selection and remaining lifecycle/cadence checks
+
+`c-geometry-reuse-cpu-source` enables reuse only when attention flags report
+040 or 060 ($88 mask), inside the existing enhanced simulation path. A
+separate ready byte is cleared on race-history reset and set by rendering
+only when that hardware selection is enabled. The normal 20,532-byte build
+SHA-256 is `85250ab3d331371e2672ef052eaf44e7b87843363a07cc04c882b1ee4de1ee05`.
+`c-geometry-reuse-cpu-matrix` passes Fast 020, NoCache 020, 030/50, 040/25
+and 060/50 with rates 12.5/8.3/16.7/22.9/23.1 fps respectively. The two
+020 distances remain 3,321,603 and 3,301,969. Direct normal-binary reads in
+`c-geometry-reuse-gate-{a1200-fast,030-50,040-25,060-50}` confirm the enable
+byte is false/false/true/true, rather than inferring selection from FPS.
+
+The full diagnostic explicitly forces reuse on its 020 test machine.
+`c-geometry-reuse-cpu-arrest` and `-wreck` pass the unchanged strict full
+comparator against the current pair-clear references: 7,084/23,509 hashes,
+24/105 sound requests, capture fields, terminal timings and all six regions
+match. Exit ticks are 7,085/23,510. Both restart; player road history and all
+35 actor carries are zero. This complements the preceding finish result.
+The full diagnostic SHA-256 is
+`bb6c0654d5a045ab0bdf9f6b91adb5835ae478bf0b25018b41c2ac082859a665`.
+
+The initial `c-geometry-reuse-period{1,2,3,4}-state` runs used cycle-exact
+020 timing and matched state, but could not sustain all requested intervals.
+They are not evidence of exact fixed cadence. Repeated functional runs
+`c-geometry-reuse-exact-period{1,2,3,4}-state` actually reach the requested
+intervals, with main histogram bins 1600/799/533/399. Each matches 1,595
+shared hashes, sound events and six captured regions against
+`c-pair-clear-4-state`. One-field coverage omits drawing. All normal companion
+binaries match the selected CPU-gated normal binary exactly.
+
+`c-geometry-reuse-guarded-source` adds explicit diagnostic opt-in and assembly
+requirements for collision geometry and the measured render hook, rejects
+whole-view extrapolation, and restricts forced selection to VERIFY builds.
+Its normal and full-diagnostic binaries are byte-identical to the tested CPU
+candidate. These private build directories retain source.patch. All sessions
+are terminal. Remaining work before production integration includes the full
+hardware/MMU and disabled-path checks, controls/pause/demo transitions,
+response measurements and visual review. The baseline B distance/handling
+gates remain unchanged and open; production code is not yet modified.
+
 ## Geometry reuse: promising 040 candidate, not yet integrated
 
 A fresh normal `c-pair-clear-current-profile` captures uncached 020 fields
