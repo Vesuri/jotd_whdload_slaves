@@ -102,3 +102,24 @@ step_actor_road_copy:
  lsr.w $2c(a0)
  move.w #1,$8b484
  rts
+
+; Native reactivation at $90c64 repositions the rider and clears +$36/+$38.
+; Its external road remainder belongs to the discarded trajectory as well.
+step_actor_road_reactivate:
+ move.w sr,-(a7)
+ movem.l d0-d1/a0,-(a7)
+ move.l a1,d0
+ subi.l #$a5d60,d0
+ cmpi.l #$1180,d0
+ bcc .done
+ move.l d0,d1
+ andi.l #$7f,d1
+ bne .done
+ lsr.l #5,d0
+ lea step_actor_road_fraction(pc),a0
+ clr.l (a0,d0.w)
+.done:
+ movem.l (a7)+,d0-d1/a0
+ move.w (a7)+,ccr
+ lea $a851a,a4
+ jmp $90c6a

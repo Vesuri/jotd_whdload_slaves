@@ -540,6 +540,7 @@ pl_c_simulation
 	ENDC
 	IFD C_STEERING
 	IFD C_ROAD_TIMING
+	PL_P $10C64,step_actor_road_reactivate
 	PL_P $BABE,step_road_reference
 	PL_PS $BCD0,step_actor_road
 	PL_PSS $BDF0,step_actor_road_copy,6

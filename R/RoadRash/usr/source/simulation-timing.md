@@ -1,3 +1,42 @@
+## Clear road carry when native reactivation repositions a rider
+
+The native reactivation routine `$90c64` resets actor road coordinates
+`+$36/+$38` and related derived state. The optional road-timing diagnostic
+previously retained its external quarter-unit remainder across that reset.
+`step_actor_road_reactivate` now clears the corresponding external road carry,
+replays the overwritten `LEA $a851a,A4`, and resumes at `$90c6a`. It validates
+actor-bank range and record alignment and preserves registers and condition
+codes. The patch remains inside `C_ROAD_TIMING` and the CUSTOM2/hardware gate.
+
+`c-road-reactivation-probe` observes a real reactivation of actor `$a6360` at
+simulation cursor 1140 during a throttle-only run through field 3000. Its road
+remainder changes from 2 to 0. Registers, stack pointer and status agree across
+the wrapper except the expected A4 value and instruction address. The lean
+road diagnostic is 20,208 bytes, SHA-256
+`c9264d2f12cfb553c79c96e42a5a58f2edf7e518564097934993c571fead0ddf`.
+The full snapshot configuration also assembles (48,804 bytes). The normal
+19,040-byte runtime remains byte-identical to the integrated compact-geometry
+build; road normalization is still diagnostic only.
+
+This fix emerged from the private combined NPC lifecycle experiment. That
+candidate additionally clears lateral carry on native inactive movement and
+on non-riding lateral updates, and clears both carries during reactivation.
+`c-npc-lifecycle-probe` observes actor `$a6360` at cursor 1138 with road carry
+3 and lateral carry 0, both zero after the wrapper, with registers/status
+preserved. This exercises a nonzero road carry, not a nonzero lateral carry;
+non-riding and inactive lateral reset coverage remains incomplete.
+
+The private original-lap replay `c-npc-lifecycle-lap` still crashes first at
+1316 and ends at lateral -627/rank 15, like its preceding NPC candidate and
+unlike B's crash at 1376. Those coarse outcomes agree; arbitrary live-field
+snapshots are not byte-identical and do not establish cadence equivalence.
+The private normal binary is 20,084 bytes, SHA-256
+`46eddb8e9be08f869cbb6cacb11a82a87dcf265608f9f6e472c5f7f63e5493fb`.
+Its generator and exact delta remain under `tmp/dev/tools/make_npc_lifecycle_c.py`
+and `tmp/dev/tmp/c-npc-lifecycle-source/lifecycle-delta.patch`. Only the isolated
+road-reactivation correction is retained in tracked code. Full cadence and
+transition revalidation of the changed road diagnostic remains required.
+
 ## Earlier rival drift: measured per-update rounding loss
 
 The relevant rival is actor `$a6260`, native identity byte `+$71 = 10`.
