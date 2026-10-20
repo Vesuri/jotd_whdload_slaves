@@ -1515,3 +1515,31 @@ intact (348 bytes observed high-water usage). `c-object-runtime-a500` retains
 8.5 fps, distance 3,425,028 and the exact final actor/clock/rank state hash of
 `b-final-normal-off`. C still needs further performance improvements and the
 remaining handling, latency and A4 acceptance work.
+
+## Road-geometry relocation: no measured cached-020 gain
+
+`VERIFY_C_ROAD_FAST` tests copying only `$8970e..$898e1` (468 bytes) into the
+selected Fast RAM slave hunk. The adjacent mutable word at `$898e2` is excluded.
+The audit covers 145 instructions and 26 branches, all internal, with absolute
+data references and no PC-relative data. Initialization restores the displaced
+six-byte LEA, copies the remaining words after the C patches, and flushes caches
+before native execution resumes. The experiment rejects the separate late width
+LUT patch combination at assembly time; that patch would otherwise modify only
+the old Chip copy. It remains inside the existing CUSTOM2/hardware gates.
+
+`c-road-fast-copy` verifies all 468 bytes at the actual target `$9fd5e0`.
+`c-road-fast-fullvar` matches all 14,023 hashes, all 52 sound requests and the
+recorded authoritative terminal ranges against `c-fullrace1`, including finish
+13835, exit 14024 and a fresh next race. Thus the tested relocation preserves
+simulation outcomes through the successful-finish tape.
+
+However, the paired cached cycle-exact 020 cost runs show no throughput benefit:
+`c-road-base-cost` renders 192 frames over fields 100–1000, while
+`c-road-fast-cost` renders 191 (10.667 versus 10.611 fps). Both start with 29
+frames and cursor 100; different later live-field states reflect progress within
+the current tick and are not used for equivalence. The standard 500-field
+candidate result is 9.9 fps. This is not evidence for enabling the optimization
+in normal C, and no such promotion is made. The loop contains repeated divides
+and is compact enough to fit the 020 instruction cache; the measured result does
+not prove which cost dominates. Broader CPU/cache testing belongs to any later
+D3 evaluation. The normal slave remains 7,708 bytes with its previous SHA-256.

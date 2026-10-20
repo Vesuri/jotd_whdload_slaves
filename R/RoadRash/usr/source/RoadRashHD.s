@@ -294,6 +294,9 @@ PatchLoader2:
 	IFD C_OBJECT_FAST
 	bsr step_object_fast_init
 	ENDC
+	IFD VERIFY_C_ROAD_FAST
+	bsr step_road_fast_init
+	ENDC
 .no_c:
 	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
@@ -418,6 +421,9 @@ pl_c_simulation
 	PL_P	$9E70,step_pose_lean
 	PL_P	$9EF0,step_lean_end
 	PL_P	$9F48,step_pose_project
+	IFD VERIFY_C_ROAD_FAST
+	PL_P $970E,step_road_fast_code
+	ENDC
 	IFD C_OBJECT_FAST
 	PL_P $B02E,step_object_fast_code
 	ENDC

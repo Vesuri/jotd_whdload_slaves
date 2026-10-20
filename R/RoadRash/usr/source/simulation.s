@@ -631,6 +631,32 @@ step_scenery_cursor:
 
 ; Rebuild the world-object collision inputs for every step. The original
 ; collision code reads these projection records, not just world positions.
+	IFD VERIFY_C_ROAD_FAST
+	IFND VERIFY
+	FAIL "Fast road projection experiment requires VERIFY"
+	ENDC
+	IFD VERIFY_C_GEOMETRY_LUT
+	FAIL "Road copy does not yet mirror the later-installed width LUT patch"
+	ENDC
+; $8970e..$898e1 is a self-contained routine with internal relative branches
+; and absolute data references. Keep the mutable word at $898e2 outside it.
+step_road_fast_init:
+	lea step_road_fast_code(pc),a0
+	move.l #$41f9000a,(a0)+
+	move.w #$6f3c,(a0)+
+	lea $89714,a1
+	move.w #($898e2-$89714)/2-1,d0
+.copy:
+	move.w (a1)+,(a0)+
+	dbf d0,.copy
+	move.l _resload(pc),a2
+	jsr (resload_FlushCache,a2)
+	rts
+	cnop 0,4
+step_road_fast_code:
+	ds.b $898e2-$8970e
+	ENDC
+
 	IFD C_OBJECT_FAST
 ; The selected C slave hunk is already verified to be in Fast RAM. All relative
 ; branches in $8b02e..$8b37d remain inside this block; data addresses are absolute.
