@@ -49,6 +49,41 @@ tolerance: default Fast 020 (-1.373%), Fast 020 NoCache (-1.953%), and both
 hardware, and handling equivalence remains unresolved. Prediction does not
 close those gates; C is still in progress.
 
+### Unit-timestep arithmetic experiment: no measured throughput gain
+
+`c-unit-delta-{build,cost}` specializes five direct timestep multiplies at
+`$8b756`, `$8b764`, `$8b8f0`, `$8d536` and `$8e0d6`, plus the collision
+division at `$8ef64..$8ef6b`. For delta one, signed multiply becomes sign
+extension and unsigned multiply becomes zero extension. The collision
+dividend is explicitly sign-extended from a word, so division cannot overflow;
+zero extension followed by `TST.W` preserves the quotient, zero remainder and
+word-sign flags needed by the following `BPL`.
+
+The expanded `c-unit-delta-v2-*` candidate also specializes acceleration at
+`$8b4b8`/`$8bd1c` and speed-to-displacement at `$8b4d2`. It preserves D2's
+upper word and unit low word as well as the arithmetic result and flags.
+The native disassembly has no direct branch into the replaced sequence
+interiors. Both experiments require one-field simulation and use the existing
+enhanced-path gate.
+
+Each candidate has an equal-size, equal-layout control patch list that writes
+the original native instructions. On the cached 020, the initial candidate
+and control both render 193 frames over fields 100..1,000 (10.722 fps).
+The expanded candidate and its control both render 192 (10.667 fps).
+The different layouts between experiments mean the one-frame difference is
+not evidence that the arithmetic changes made rendering slower; within each
+controlled comparison there is no measured frame-count gain.
+
+Both `c-unit-delta-replay` and `c-unit-delta-v2-replay` match all 1,596 completed
+actor hashes, three sound requests, and the six authoritative field-1,457
+regions against `c-audit-period-4`, with the varying render-interval pattern.
+This establishes the observed replay equivalence, not a throughput benefit.
+The expanded patch is retained privately in
+`tmp/dev/tmp/c-unit-delta-v2-build/source.patch`; no specialization remains in
+the tracked runtime. Normal runtime identity and the remaining C gates are
+unchanged. Further optimization needs to target larger costs than these
+isolated timestep arithmetic operations.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
