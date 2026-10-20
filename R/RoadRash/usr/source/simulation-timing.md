@@ -48,6 +48,47 @@ path. It does not make the cached runtime faster than B, remove the A4
 distance/handling differences, or close the remaining response regression.
 C remains in progress.
 
+### Current normal-build response and rider-pose threshold
+
+`c-cache-runtime-visible` repeats all eight input phases (fields 300..307)
+against paired neutral runs using the actual 7,940-byte normal binary above.
+Upper estimates are 260/240/220/200/180/260/240/220 ms (median 230 ms).
+The B reference `b-visible-phases` is 180/220/200/180/220/200/180/220 ms
+(median 200 ms). Screenshot capture has one-field timing uncertainty; these
+are visible-pixel response measurements, not input sampling latency.
+Automatic cache integration has not removed the response regression.
+
+Native debugger probes `response_timeline_c.py` and `response_pose_c.py`
+in the ignored harness record the actual normal binaries without installing
+instrumentation. Evidence is in `{b,c}-current-response-{timeline,pose}`.
+The pose probe adds `$8a92c`, filters to the player actor, and records the
+selected sprite index in d0. Both binaries read heading thresholds 4/13/32
+from `$a7bfa`. For RIGHT injected at field 300:
+
+| Path | Render start | Player heading | Pose index | Swap return | First changed capture |
+|---|---:|---:|---:|---:|---:|
+| B | 302 | 1 | 3 | 305 | unchanged |
+| B | 305 | 4 | 2 | 308 | 309 |
+| C | 304 | 3 | 3 | 307 | unchanged |
+| C | 309 | 11 | 2 | 312 | 313 |
+
+C first selects pose 2 during catch-up at live field 307, simulation cursor
+305, heading 5. That selection cannot appear in the frame already rendered
+from cursor 304. The first changed B difference image contains only the
+rider; C's includes rider and scenery. Both images were inspected.
+Native `$aec78` exchanges `$404`/`$408` and publishes the new `$404` through
+the copper pointer writer `$aec2c`; the observed delay does not establish an
+extra queued frame or tearing.
+
+This narrows the first-response problem to a discrete sprite threshold and
+the time between rendered frames. It does not justify changing authoritative
+steering to hit the threshold earlier. A next experiment can predict the
+presentation heading through the render interval, with no added wait and
+without changing actor state, collision inputs, or simulation pose events.
+It must still pass phase-swept visible response, release/reversal behavior,
+and authoritative replay checks. No prediction is enabled by this audit;
+the throughput, A4, and response gates remain open.
+
 ## C completion audit against the preceding integrated steering runtime
 
 This audit applies to the normal 7,920-byte runtime with SHA-256
