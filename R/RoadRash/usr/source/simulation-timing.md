@@ -1,3 +1,49 @@
+## Earlier rival drift: measured per-update rounding loss
+
+The relevant rival is actor `$a6260`, native identity byte `+$71 = 10`.
+Use `b-reference-rivals` for its older two-record lap trace; the similarly named
+`b-lateral-leaders` records a different pair and must not be indexed as this
+rival. The correctly selected B samples also confirm no attack flag during
+1100–1320, preserving the preceding conclusion. The ignored lap wrapper now
+records `rival_base` explicitly in every new extended snapshot so that pair
+selection cannot silently depend on an old shell environment.
+
+On the original tape, B's rival x at fields 400/500/600 is 142/100/127, versus
+138/68/73 in the combined candidate. Its road-relative positions at field 500
+are 147 versus 115, while both stored road centres are -47. The lateral
+approach has therefore already diverged hundreds of fields before the extra
+attack; changing only contact response cannot correct that earlier difference.
+
+A direct movement probe now accepts and records `RR_NPC_ACTOR`. Fresh runs
+`b-rival10-motion` and `c-combined-rival10-motion` select `$a6260`, apply throttle
+at field 100, and stop before each native lateral-motion store after field 400.
+They end on the first observed simulation cursor at or beyond 460. No steering
+input from the original lap occurs before this window. All captured motions
+match the native unskidded expression
+`floor(((displacement >> 8) * heading) / 256)` exactly.
+
+| Trace | Cursor range | Updates | Sum of motion words | Sum of motion minus unrounded product |
+|---|---|---:|---:|---:|
+| B | 402..462 | 16 | -26 | -7.06640625 |
+| Combined C | 400..460 | 61 | -44 | -36.19140625 |
+
+These different boundary windows and heading histories are not equal-boundary
+trajectory comparisons. The last column measures the arithmetic rounding loss
+within each actual trace. C has 14 positive-heading updates that produce zero
+movement. For example, heading +2 with displacement 7,491 produces zero; heading
+-1 with displacement 7,475 produces -1. B's captured headings are all negative
+(-4..-1), whereas C's span -3..+2. The measured bias is a concrete reason to
+retain fractional NPC motion when normalizing timestep; it is not proof that
+rounding is the only source of the changed trajectory.
+
+The earlier quarter-reference carry experiment already addresses this class of
+loss but still fails the whole-lap comparison. Its outstanding carry lifecycle,
+AI approach feedback and interaction with longitudinal/road corrections remain
+necessary work. No production change or acceptance waiver follows from these
+local arithmetic checks. Both new traces retain actor address, raw numerical
+inputs, binary provenance and the tested slave; both diagnostic wrappers pass
+Python compilation.
+
 ## Collision bounds identify an additional NPC attack
 
 The next probe observes the calculated lateral body gap at `$8c9c4` and
