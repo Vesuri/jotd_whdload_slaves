@@ -324,3 +324,44 @@ SMI differ from signed less-than, checks four zero-plane prior flag values
 through native +06818, and rejects five malformed scalar arguments. All
 cases pass, including register preservation and write-address checks.
 This proves the reduction only, not collision behavior or timing acceptance.
+
+#### Shape selection and projection separation
+
+The +060A8 scene pass traverses nine cells in each of two table-selected
+orders (+060B6 and +06142). It takes shape counts and list offsets from
+hunk 6 +1D0C and +1CA6 respectively, with shape storage based at hunk 6
++15DC. Each six-byte shape-list entry supplies an offset index, a size/type
+index, and two model offsets. +0625C first consumes a visibility-mask bit;
++0628A..+06312 then reject using transformed depth and lateral extent.
++06316 compares distance with the type threshold, and +06322 advances the
+entry pointer by two when selecting the alternate model. Model -1 is the
+point-drawing path; -2 selects the inline model at hunk 0 +5A24. Other
+models are relative to the shape-storage base. This is a view-dependent
+candidate/LOD selection, not simply enumeration of all nearby world shapes.
+
+After both cell passes, +061AE optionally processes the special object
+selected by context +3E, subject to the native Manhattan-distance check
+against 96. Its shape index is -1, selecting the rotated/height-adjusted
+plane-coordinate path. The separate +06224 pass supplies twelve entries
+with its own visibility mask. These paths must retain their ordering and
+native model choices in an h=1 comparison; a world collision owner cannot
+silently substitute an OR over the rendered shapes or consume predicted poses.
+
+A model begins with a byte containing vertex count minus one. Each vertex
+uses one byte unless it is FF, in which case it consumes three. Native
++06642 changes the model pointer by two for the latter case while restoring
+the logical vertex index before returning. Thus +063EE/+063F0 can locate
+the plane-count byte without projecting any vertices. Removing projection
+must retain that variable-length traversal.
+
+`tmp/dev/tools/audit_scene_planes_c.py` runs native +060A8 from the captured
+flight snapshot, returning before polygon rasterization, omitting draw
+submission, and bypassing the point-only drawing branch. It first retains
+native vertex projection, then repeats on a fresh CPU with only the vertex
+record traversal. Both runs select the same 17 shapes, three with nonzero
+plane counts (5, 4, 5), in the same order. Plane pointers, every facing byte,
+and the final zero flag agree. This demonstrates projection separation for
+that snapshot only. It does not cover the special object, the separate
+twelve-entry pass, all LOD/culling transitions, or rebuild the cached scene
+transforms from committed player/world state. Those remain necessary before
+installation as a world owner; no timing or rendering hook is changed here.
