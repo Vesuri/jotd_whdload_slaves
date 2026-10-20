@@ -715,12 +715,12 @@ step_object_fast_code:
 	ds.b $8b37e-$8b02e
 	ENDC
 
-	IFD VERIFY_C_COLLISION_GEOMETRY
+	IFD C_COLLISION_GEOMETRY
 	INCLUDE "collision_geometry.s"
 	ENDC
 
 step_collision_objects:
-	IFD VERIFY_C_COLLISION_GEOMETRY
+	IFD C_COLLISION_GEOMETRY
 	bsr step_collision_geometry_code
 	ELSE
 	jsr $8970e

@@ -1,11 +1,9 @@
-; Diagnostic simulation-only road geometry. Rendering keeps the complete
+; Simulation-only road geometry. Rendering keeps the complete
 ; native routine. Called only after the master toggle/CPU/Fast selection.
 ; Keep centre, height and occlusion used by world-object collision projection;
 ; omit width and edge arrays rebuilt by native geometry before rendering.
-; Short-tape equivalence is established; full-course validation remains open.
-	IFND VERIFY
-	FAIL "Collision geometry reduction requires VERIFY"
-	ENDC
+; Normal runtime selects this after full finish/arrest/wreck equivalence,
+; hardware, response and restart checks. Snapshot diagnostics opt in explicitly.
 	IFD VERIFY_C_ROAD_FAST
 	FAIL "Collision geometry reduction requires the native road entry"
 	ENDC

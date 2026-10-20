@@ -107,7 +107,17 @@ POSE_PREDICT_MEASURED = 1
 	ENDC
 	ENDC
 
+; Simulation collision projection needs only centre, height and occlusion.
+; Keep the full native geometry path for rendering.
 	IFD VERIFY_C_COLLISION_GEOMETRY
+C_COLLISION_GEOMETRY = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_COLLISION_GEOMETRY
+C_COLLISION_GEOMETRY = 1
+	ENDC
+	ENDC
+	IFD C_COLLISION_GEOMETRY
 	IFND C_STEP_BUILD
 	FAIL "Collision geometry reduction requires the C simulation"
 	ENDC
@@ -377,7 +387,7 @@ PatchLoader2:
 	IFD VERIFY_C_ROAD_FAST
 	bsr step_road_fast_init
 	ENDC
-	IFD VERIFY_C_COLLISION_GEOMETRY
+	IFD C_COLLISION_GEOMETRY
 	bsr step_collision_geometry_init
 	ENDC
 	IFD C_PHYSICS_FAST

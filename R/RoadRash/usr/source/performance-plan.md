@@ -383,6 +383,12 @@ The normal matrix, MMU, full-race/restart, controls, demos and disabled-hook
 checks pass. Response median returns to 170 ms, with phase 303 still one
 capture field behind B. Default Fast 020 and NoCache live-field distances
 remain 1.373% below B; the other accelerated cells are within 1%.
+The simulation-only compact road geometry is now integrated behind the same
+enhancement toggle. Default/Cache 020 reaches 12.0 fps, NoCache 7.6, 030 16.6,
+040 19.3 and 060 23.0. All 11 normal configurations, both MMU checks, full
+finish/arrest/wreck and restart comparisons pass. All eight visible-response
+phases remain identical to the previous runtime (170 ms median). Default and
+NoCache 020 distance checks still fail B's tolerance; C remains incomplete.
 The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
 road integration and preserves its fractional state across copies and crashes.
 It matches completed simulation state across actual 1/2/3/4-field and varying

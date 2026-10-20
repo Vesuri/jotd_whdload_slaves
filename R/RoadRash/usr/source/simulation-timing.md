@@ -1,3 +1,49 @@
+## Integrate simulation-only collision geometry
+
+Normal builds and lean `C_SIMULATION` diagnostics now select
+`C_COLLISION_GEOMETRY`. Full snapshot diagnostics retain explicit
+`VERIFY_C_COLLISION_GEOMETRY` selection for reference reproduction. The compact
+routine is initialized only after the existing Enhanced framerate/CPU/Fast gate;
+rendering keeps native complete geometry. There is no new user option or pacing.
+
+`c-collision-geometry-runtime-build/RoadRash.slave` is 19,040 bytes,
+SHA-256 `e94f1aeb2f6ac8ac8da133d73bcfac299bf0a829e3fa9339bab526690edc8daf`.
+The normal binary is byte-identical to the private normal candidate used in the
+hardware/response/control tests. Its lean diagnostic is byte-identical to the
+tracked diagnostic used for the copy and toggle-off probes. This connects the
+integration to the measured binaries without extrapolating from changed code.
+
+The original three-cell matrix plus `c-collision-geometry-remaining-matrix`
+cover all 11 normal configurations. Default/Cache Fast 020 reach 12.0 fps,
+NoCache 7.6, 030 default/Cache 16.6, 040 default/Cache 19.3, and 060 default/Cache
+23.0. A500 and Chip-only A1200 retain 8.5/12.5 fps and exactly match all legacy
+initial, field-590 and final snapshot fields from the previous runtime. The
+separate 040/060 `c-collision-geometry-mmu` checks pass with TC `$8000` and CACR
+`$80008000`; data-cache emulation is disabled and these provide no speed claim.
+Default/NoCache 020 distance is 3,308,406, still outside B's tolerance. Other
+accelerated samples are 3,318,164; optimization does not close A4.
+
+`c-collision-geometry-visible` measures paired neutral/RIGHT captures at fields
+300..307: **180/160/140/200/180/160/140/200 ms**, identical to the previous normal
+runtime at every phase (median 170 ms). Estimates retain one-field capture
+uncertainty; phase 303 remains 20 ms behind B. This optimization adds no measured
+response regression, but does not resolve the outstanding B phase difference.
+
+In addition to the successful-finish comparison below, the varying-cadence
+`c-collision-geometry-arrest` and `c-collision-geometry-wreck` preserve respectively
+**8377/11945** completed hashes, **241/120** sound requests, all six authoritative
+terminal ranges and exit fields **8378/11946** against the current physics/AI
+references. Both restart with capture `(92,91,0,1)`. These use the original
+recorded input tapes, with no synthetic damage or terminal-state seed.
+The inspected final images confirm BUSTED and WRECKED respectively.
+
+`c-collision-geometry-smoke` passes keyboard and CD32 steering/release,
+pause/resume (active field held at 161), demo fire exit and natural timeout,
+then enters a normal race after each demo. Stack guards remain intact; measured
+high-water use is 256/356 bytes for keyboard/CD32 and 300 for both demo tests.
+These are tests of the byte-identical normal candidate now integrated above.
+
+
 ## Collision geometry: full finish, cadence and disabled-path checks
 
 `c-collision-geometry-finish` replays the retained
