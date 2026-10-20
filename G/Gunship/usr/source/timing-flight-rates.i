@@ -61,7 +61,7 @@ flight_vertical_step:
 	move.l d6,d0
 	sub.l d7,d0
 	moveq #2,d1
-	bsr response_step
+	bsr response_step_native
 	tst.l d1
 	bne .bad
 	add.b d7,d0
@@ -94,7 +94,7 @@ flight_forward_step:
 	lea FR_FORWARD(a4),a0
 	move.l d6,d0
 	moveq #4,d1
-	bsr response_step
+	bsr response_step_native
 	tst.l d1
 	bne .bad
 	move.l d0,d6
@@ -132,7 +132,7 @@ flight_rpm_step:
 	sub.l d7,d0
 	moveq #3,d1
 	lea FR_RPM(a4),a0
-	bsr response_step
+	bsr response_step_native
 	tst.l d1
 	bne .bad
 	add.b d7,d0

@@ -407,6 +407,39 @@ leaves the fraction untouched. Whole-tick fixture rate 3 requires zero
 fraction and performs the original word-width rounding-bias addition and
 arithmetic shift exactly, including overflow behaviour.
 
+The flight-rate components now call `response_step_native`, which has the
+same API but preserves the native zero-increment interval. After validating
+the request, it computes the native word-width biased/shifted increment.
+At field rates, if that increment is zero it returns zero and retains
+the incoming fraction unchanged; otherwise it uses `response_step`.
+Whole-tick mode is unchanged. The target may change each field, but has
+no fractional component in this API.
+
+Retaining the existing fraction is essential: forward response shares its
+fraction with additive slew. Clearing it whenever the response stops
+would erase most of a field's slew and could prevent acceleration.
+The separate slew and coasting paths still run at their scaled rates.
+This wrapper preserves native integer stopping states rather than
+continuing an exponential approach inside them. The generic exponential
+and fractional-target APIs remain available; heading/track still use the
+latter and require their own coupled acceptance bounds.
+
+The new wrapper passes 35,159 assembled calls covering the stopping
+intervals and surrounding values with positive/negative fractions,
+10,000 random word errors, whole-tick overflow boundaries and invalid
+inputs. Fourteen PAL/NTSC trajectories settle at the same integer value
+as native rounding after 30 seconds and remain unchanged for another
+second. Evidence: `tmp/dev/tools/test_response_native_c.py`,
+`tmp/dev/tmp/c/response-native-tests.json`. Generic exponential-response
+accuracy results below continue to describe the ungated API.
+
+The updated connected-motion suite retains all 4,096 native h=1 matches,
+20,000 exact linear conversions, 6,000 field-model cases and 15 invalid
+states. Another 880 consecutive PAL/NTSC forward-speed fields verify that
+positive/negative additive slew remains exactly 3/rate per field while
+the approach response is inside its stopping interval. Evidence:
+`tmp/dev/tmp/c/kinematics-tests.json` (84,250 calls).
+
 For field rate F and native shift k, the gain is
 `alpha = 1 - (1 - 2^-k)^(3/F)`. Constants retain sixteen fractional bits
 beyond the numerator for denominator 32767:
@@ -683,7 +716,8 @@ logical interval's tick parity. Samples at exact whole seconds compare
 integer native state against candidate integer-plus-fraction state.
 All cases remain airborne and away from map limits; world effects, new
 stick input, collisions and presentation are outside this measurement.
-Evidence: `tmp/dev/tmp/c/held-motion-measurement.json` (18,594 calls).
+Pre-correction evidence:
+`tmp/dev/tmp/c/held-motion-before-native-stops.json` (18,594 calls).
 
 Maximum absolute differences across the sampled ten seconds:
 
@@ -711,10 +745,30 @@ quarter response, error -2 gives `(-2 + 2) >> 2 = 0`; for eighth response,
 error +3 gives `(3 + 4) >> 3 = 0`. Applying a pure exponential below a
 whole tick removes these native stopping ranges. This is a handling
 change that can accumulate displacement indefinitely; it must not be
-described as a small residual rounding error. The next response revision
-must preserve these native equilibria while retaining field-rate motion,
-then repeat the coupled gate, including moving targets and fractional
-heading/track coupling.
+described as a small residual rounding error. The revised integer-target
+response now preserves the native zero-increment interval as described
+above. The original measurements are retained in
+`held-motion-before-native-stops.json`; they describe the pre-correction
+implementation. The coupled gate still needs moving targets and
+fractional heading/track acceptance coverage.
+
+Repeating all 32 runs after the stopping-range correction preserves the
+native integer RPM equilibrium: the configuration-2 NTSC level-attitude
+case ends at 153 plus 0.009980 fraction, versus native 153. Its vertical
+rate now stops at -3 plus -0.008149 fraction instead of approaching -4.
+However, native rate is -2 and the altitude difference remains 12.25
+units after ten seconds. Maximum sampled height difference remains
+12.30, while the maximum single-axis coordinate difference is 32.55.
+The correction therefore fixes the isolated response equilibrium rule,
+but **does not pass the coupled handling gate**.
+
+Next investigate the interaction of quantized height, tick-parity height
+rounding and height-dependent lift targets. A valid native stopping
+interval can contain several integer rates; preserving that interval
+does not guarantee that a coupled field trajectory enters it at the same
+integer as the native tick. The measured remaining drift must be resolved
+or explicitly bounded, not hidden by a looser scalar-response tolerance.
+Post-correction evidence: `tmp/dev/tmp/c/held-motion-measurement.json`.
 
 Separately, finer integration has an intentional displacement difference
 even without rounding: N equal semi-implicit steps under constant

@@ -424,8 +424,10 @@ now connects scaled heading, flight rates, displacement and wind in native
 order; its control/world hand-off and production installation remain pending.
 The initial coupled held-control measurement exposes changed response
 equilibria: fractional exponential response continues inside the native
-integer zero-increment range. C4e is not accepted; preserve those native
-stopping ranges and repeat the trajectory checks before installation.
+integer zero-increment range. Those stopping ranges are now retained for
+flight-rate responses, but the repeated coupled test still finds altitude
+drift from different integer equilibria. C4e is not accepted; resolve the
+height/vertical-feedback interaction before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
 its native installation and elapsed-time gauge slew remain pending.

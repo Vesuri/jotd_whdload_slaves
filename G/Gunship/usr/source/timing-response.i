@@ -9,6 +9,34 @@
 ; Speed's separate slew and unpowered RPM do NOT use this response law.
 RS_DEN equ 32767
 
+; Integer-target flight response with native stopping intervals.
+; Same API as response_step. Outside the native zero-increment interval,
+; retain the exponential law. Inside it, preserve BOTH the integer state
+; and existing fraction: the fraction may be shared with additive slew.
+; Do not use for a moving fractional heading/track target.
+response_step_native:
+	movem.l d3-d6,-(sp)
+	move.l d0,d4
+	move.l d1,d5
+	move.l (a0),d6
+	bsr response_step
+	tst.l d1
+	bne .done
+	cmpi.l #3,d2
+	beq .done
+	; Inputs are now validated. Match native WORD rounding, including wrap.
+	moveq #1,d3
+	lsl.w d5,d3
+	lsr.w #1,d3
+	add.w d3,d4
+	asr.w d5,d4
+	bne .done
+	move.l d6,(a0)
+	moveq #0,d0
+.done:
+	movem.l (sp)+,d3-d6
+	rts
+
 response_step:
 	move.l d3,-(sp)
 	moveq #0,d3
