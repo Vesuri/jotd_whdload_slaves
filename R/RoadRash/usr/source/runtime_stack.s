@@ -1,4 +1,4 @@
-; Diagnostic supervisor stack in optional WHDLoad-managed expansion memory.
+; Enhanced supervisor stack in optional WHDLoad-managed expansion memory.
 ; The slave hunk itself is not a valid stack on WHDLoad interrupt entry.
 ; Original $a876c discards the trap frame and establishes a new stack;
 ; do not transplant an active frame. Keep IRQs disabled during the switch.

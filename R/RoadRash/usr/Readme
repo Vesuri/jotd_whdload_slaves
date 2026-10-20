@@ -34,6 +34,8 @@
  - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
  - on 68020+ with Fast RAM, advances simulation in 20 ms PAL steps and renders
    completed frames as fast as possible while retaining vsync
+ - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the
+   original stack if the optional allocation is unavailable or unsuitable
  - no added frame limiter or delayed interpolation; slow frames catch up the
    required simulation steps before rendering
  - CUSTOM2=0 (or omitted), 68000 and unsupported memory configurations retain

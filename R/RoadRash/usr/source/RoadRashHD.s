@@ -19,11 +19,22 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
+; The enhanced runtime uses an optional WHDLoad-managed Fast RAM stack.
+; Keep the legacy diagnostic define as an explicit test-build opt-in.
+	IFD VERIFY_C_FAST_STACK
+C_FAST_STACK = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_FAST_STACK
+C_FAST_STACK = 1
+	ENDC
+	ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
 	ENDC
-	IFND VERIFY_C_FAST_STACK
+	IFND C_FAST_STACK
 	FAIL "Geometry lookup requires the optional expansion allocation"
 	ENDC
 	ENDC
@@ -60,7 +71,7 @@ _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
 	IFD C_STEP_BUILD
-	IFD VERIFY_C_FAST_STACK
+	IFD C_FAST_STACK
 	IFD VERIFY_C_GEOMETRY_LUT
 	dc.l -$a000 ; stack plus exact road-width quotient table
 	ELSE
@@ -414,7 +425,7 @@ pl_c_simulation
 	PL_PS $F0DE,step_event_secondary
 	PL_PS $F120,step_event_siren
 	ENDC
-	IFD VERIFY_C_FAST_STACK
+	IFD C_FAST_STACK
 	PL_P	$2876C,step_stack_start
 	ENDC
 	PL_ENDIF

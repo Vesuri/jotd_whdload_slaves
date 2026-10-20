@@ -458,6 +458,10 @@ dictate the accelerated path's timestep.
   - D3e Move the CPU stack and any separate interrupt stacks into the allocated memory.
     Audit stack bounds, startup/switching, exception/interrupt entry and exit, and quit
     handling; retain a valid stack throughout loading and relocation.
+    The enhanced runtime now uses the tested optional Fast RAM CPU stack as a C
+    cost reduction; guards, CD32 pause, 040/060 MMU and real quit paths pass.
+    This does not close the remaining relocation work or establish a universal
+    worst-case stack bound; see the runtime stack evidence in simulation-timing.md.
   - D3f Keep DMA-accessed storage in chip RAM: screen buffers, copper lists, hardware
     sprite data, audio samples and blitter sources, masks and destinations. Reclaim old
     chip storage only after proving that no live reference or later loader uses it.

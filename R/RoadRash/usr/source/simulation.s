@@ -884,8 +884,8 @@ step_authoritative:
 	include verify_c_latency.s
 	ENDC
 
-	IFD VERIFY_C_FAST_STACK
-	include verify_c_stack.s
+	IFD C_FAST_STACK
+	include runtime_stack.s
 	ENDC
 
 	IFD VERIFY_C_EVENTS

@@ -971,3 +971,48 @@ differences are resolved by controlled initial randomness; they are not evidence
 of a different result from the same seeded simulation at the two CPU speeds.
 This does not remove the measured throughput regression or close the outstanding
 performance and latency work.
+
+## Fast RAM stack enabled in the runtime
+
+The previously tested stack experiment is now enabled in `C_RUNTIME_ONLY`
+builds as `C_FAST_STACK`, sharing `runtime_stack.s` with the diagnostic
+`VERIFY_C_FAST_STACK` opt-in. WHDLoad reserves an optional 20 KiB expansion block;
+16 KiB is used for the CPU stack with guards at both ends. The selected C path
+switches at the original trap-2 stack setup while interrupts are masked. It
+does not copy an active frame, and retains the original Chip stack if the block
+is absent or outside the supported Fast RAM windows. The master toggle and
+hardware selector still control installation of the stack hook. The optional
+reservation is declared in the slave header, before the toggle is read; an
+off-toggle run never switches to it.
+
+The normal slave is 6,744 bytes. `c-stack-matrix-low/high` repeats all 13 A2 cells
+with the same 500-field window and limits as the preceding runtime matrix.
+Every cell completes, including both explicit MMU cases. Measured changes:
+
+| Configuration | Previous C fps | Fast-stack C fps |
+|---|---:|---:|
+| A1200 Fast / explicit NoCache | 1.8 | 3.5 |
+| A1200 Fast + Cache | 4.9 | 6.8 |
+| 030/50 | 4.4 | 6.1 |
+| 030/50 + Cache | 9.0 | 12.5 |
+| 040/25, with or without Cache | 12.5 | 16.6 |
+| 060/50, with or without Cache | 13.7 | 18.3 |
+
+A500 and Chip-only A1200 fallback rates remain 8.5 and 12.5 fps respectively.
+These gains do not yet recover the earlier B rendering throughput. The stack
+removes a measured source of CPU/Chip-bus cost; it does not change simulation
+steps, discard elapsed time, or add pacing.
+
+`c-runtime-stack-seeded-boundary` matches all compared actor, clock, spawn-timer,
+camera and rank state at completed tick 1457 against the previous controlled-
+seed real-speed 020 runtime. `c-runtime-stack-cd32` passes steering and CD32
+pause/resume on the actual normal binary, with 336 bytes of observed stack use
+and both guards intact. `c-runtime-stack-off` confirms the normal binary retains
+native stack setup and all checked original timing/input hooks with CUSTOM2=0.
+
+`c-runtime-stack-040-quit` and `c-runtime-stack-060-z3-quit` verify TC `$8000`,
+intact stack guards and 204 bytes of observed stack use, then press the actual
+Help quit key. Both inspected screenshots show return to AmigaDOS without an
+error. The 060 case uses Z3 RAM, with stack bottom `$407ed010`. These are bounded
+observations, not proof of a universal worst-case stack bound. Remaining
+throughput, A4 and latency validation stays open.
