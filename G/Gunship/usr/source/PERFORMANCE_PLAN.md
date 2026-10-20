@@ -766,7 +766,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     is derivable from native order and arithmetic. Never draw them one tick behind.
   - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
     inherit its previous occupant's trajectory. Derive each projectile's first presentation
-    interval from its spawn and update order.
+    interval from its spawn and update order. The native six-slot audit proves
+    release/reallocation can leave the same mask, and impacts morph a slot in
+    place. Generations must cover allocator +0BEA8's three constructor callers,
+    with separate eligibility/morph barriers; hooks and prediction remain open.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
     poses into world state or pass them to collision, damage or AI.
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon

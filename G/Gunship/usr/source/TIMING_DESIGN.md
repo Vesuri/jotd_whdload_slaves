@@ -4357,3 +4357,72 @@ SHA-256: `d82440dfa969443b086737857cb298570f69caa93aa511e6d58f39afcd6d5c3a`.
 The probe builder places its code after VERIFY code and before its frame-log
 storage, retaining 68000 PC-relative reach without altering the production
 source. All four probe sessions reached terminal results and were closed.
+
+### Prediction inventory: shared actor slots and identity barriers (C6)
+
+The six projectile/effect slots are structure-of-arrays storage, not six
+independent contiguous records. For slot `s=0..5`, native actor +0BED4 selects
+`a1=h0+0C6D0+s` and `a2=h0+0C6A0+2*s`. Coordinate words at `a2+0/+12/+24`
+are X/Y/height; `a2+36` is vertical motion state. Byte arrays relative to a1
+include lifetime +0, type +6, animation +12, heading +18, negative/positive
+turn limits +24/+30, target index +36, speed class +42, hit radius +48,
+selected identity/subtype +54/+60, distance bucket +66, state +72, flags +78
+and drawing/model value +84. These names describe the observed consumers;
+they do not certify every type's semantics.
+
+Allocation word h0+0BA08 and eligibility word +0BA0C jointly admit an actor
+at +0BF22. Guided constructors clear eligibility at +0BBC8..+0BBD2; field-owned
+guidance later releases it. Prediction must not move an allocated but
+ineligible actor. Type bit 0 branches past motion into lifetime handling,
+so an allocated stationary effect is not a moving projectile.
+
+The shared allocator +0BEA8 scans slots 5 down to 0, returning index+1 or 0
+when full. Native callers found in hunk 0 are +09A1E (hit effect), +09B9A
+(recurring/damage effect) and +0BADE (projectile constructor). A successful
+allocation is a candidate generation-stamp boundary for all three; stamping
+only the launch constructor would miss effects reusing the same storage.
+The secondary word +0BA0A is not an identity counter: slot zero bypasses its
+update. The allocator's final ADDQ.W sets CCR=0 on success and X/Z/C on full
+failure. Any wrapper must reproduce those flags because callers branch on
+its return immediately; merely restoring D0 followed by TST is insufficient.
+
+Native release at +0C45E..+0C466 clears the allocation bit. A release followed
+by allocation can return the same slot with the same final mask in one world
+interval. Sampling masks at world endpoints therefore cannot certify identity.
+Impact +0C3E8 sets type bit 0 and resets lifetime/model fields without clearing
+the allocation bit. Terrain conversion +0C444 writes type 1 and lifetime 64.
+These in-place representation changes also require prediction reset even
+when the generation of the allocation has not changed. Expiry, guided release,
+mission lifecycle changes and constructor initialization must have explicit
+handling before prediction can be installed.
+
+The ignored `test_actor_identity_c.py` executes the native fragments. All 128
+allocator cases (64 masks, two initial secondary masks) match highest-free-slot
+selection, mask writes and return flags. Native release followed by allocation
+returns slot 5 twice with identical occupied-mask snapshots. All 768 impact
+cases (six slots, 128 even type bytes) retain allocation while changing type,
+lifetime and model. This establishes the need for constructor generations and
+morph barriers; it is not implementation of either.
+
+Movement cannot be inferred solely from the last coordinate difference:
+
+- +0C078 resolves the target, +0C08E..+0C10A steers heading with byte arithmetic
+  and turn bounds, and +0C10E..+0C210 derives speed-class/quadrant components.
+- +0C220..+0C25E adjusts vertical motion from target height, except type-bit-3
+  motion that retains its own vertical state.
+- Distant motion uses the direct wrapped-word adds at +0C29E..+0C2DE. Near
+  targets, +0C2E6..+0C40A divides motion into at-most-127-unit pieces, resolves
+  targets again, and performs impact checks between those pieces.
+- +0C41A..+0C450 checks terrain after movement; +0C456 decrements lifetime.
+  Free-motion prediction must bound at known transitions and must never run
+  these authoritative impact/release effects on the renderer's state.
+
+The scripted index-5 object is a separate representation: +09FB0..+0A14A
+reads/writes split object coordinates through +07B7E/+07BD0, steers via player
+scratch heading +75, and finally adds native sine components of magnitude 50
+at +0A104..+0A124. Its height follows player height minus 32 (or 24 below zero).
+The preceding decisions include terrain probes and RNG; previewing this full
+routine as though it were a pure velocity function would consume world effects.
+Ground/static object tables and other scripted constructors still need a full
+writer inventory. No family may inherit a previous occupant's endpoint based
+only on a matching slot number or unchanged allocation mask.
