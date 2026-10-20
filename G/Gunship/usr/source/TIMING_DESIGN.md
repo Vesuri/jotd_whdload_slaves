@@ -2354,3 +2354,45 @@ wrong-player checks reject without writes (1,043 helper calls).
 The native blocking interpreter is not exercised by this suite, and no
 scheduler/modal continuation owner or gameplay installation has been added.
 Those remain necessary before this split is usable in the CUSTOM1 path.
+
+
+### Post-motion world coordinator (standalone)
+
+`timing-world-body.i` composes the extracted weapons, damage, script and
+periodic-tail entries in native +05894 order. `WB_SIZE` is 30 bytes: seven
+longword pointers (native player, weapons, damage, scripts, reserves, periodic,
+cleanup) followed by a phase word. Initialize phase 0 only when admitting a
+new world tick, after opening, commands and player motion. All four embedded
+player bindings are checked before effects, including the periodic binding.
+
+`world_body_step` and `world_body_resume` take the context in a0 and preserve
+non-result registers. Results are 0 completed, 2 modal boundary, 3 flight ended,
+-1 binding/child failure and -3 wrong phase. Phase is 0 ready, 1 awaiting modal
+completion, 2 completed, 3 flight ended, or 4 in progress/failed after admission.
+Starts require phase 0; resumes require phase 1. Admission sets phase 4 before
+any child effects, so unexpected child failure cannot authorize a retry of
+already applied effects. A preflight binding failure leaves phase unchanged.
+
+The lifecycle owner must complete native +08050 before calling resume; this
+coordinator cannot prove that external precondition. Resume executes only the
+script body and tail. It never repeats weapons, damage or script activation.
+The caller owns stable prepared clones, context lifetime, lifecycle rebasing
+and scheduler acknowledgement. No production hook or automatic reset is added.
+
+`tmp/dev/tools/test_world_body_c.py` compares 512 assembled coordinator cases
+against native +05894 (or +09FB0 followed by +058A6 for continuation fixtures).
+Results include 432 completed sequences, 72 modal boundaries and eight flight
+ends. All 72 actual stopped sequences then resume from their boundary state;
+the test clears script state to stand in for interpreter completion and
+compares against the native remaining body/tail. It does not execute or validate
+the blocking interpreter. Another 128 cases exercise direct continuation.
+Full native memory, RNG/callback order, private fire consumption and hardware
+writes match, normalizing only deliberately different live timestamp/fire
+inputs. Duplicate starts/completions reject without native writes. Each of the
+four bad bindings rejects before effects in both entry phases (1,625 helper
+calls). Native object/state arithmetic runs; visibility, target selection and
+notification/resource/audio UI use the existing explicit test fixtures.
+
+This closes the standalone post-motion ordering gap, not the complete C4e
+player/world gate. Opening versus field motion, modal lifecycle ownership,
+field-owned countdowns and the CUSTOM1 production installation remain pending.
