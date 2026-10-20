@@ -1,3 +1,48 @@
+## Native gear arithmetic accounts for the pre-terrain speed differences
+
+Fresh disabled-enhancement reads in `native-gear-audit`, `native-gear-tables`
+and `native-gear-parameters` retain native disassembly and the selected bike's
+parameter table. The initial broad audit's `gear.txt` at $8da5c is actually
+lane registration; the actual gear/acceleration routine is $8dd66..$8de6a.
+The selected bike 0 points to $a5924. Its six acceleration rates are
+34, 26, 21, 18, 16 and 14. The nominal upshift thresholds are 4700, 6200,
+7800, 9200, 10400 and 12000; lower thresholds are 0, 5400, 7100, 8400,
+9700 and 10800.
+
+At $8ddcc the routine can upshift, then immediately undo that shift at $8dde0
+when speed is below the new gear's lower threshold. For example, the first
+persistent shift requires pre-update speed at least 5400, despite the nominal
+4700 threshold. It selects acceleration using this resulting gear before the
+movement loop multiplies that acceleration by delta at $8b4be. No additional
+per-call velocity increment was found in this normal riding path.
+
+`tools/check_gear_arithmetic_c.py` reconstructs those instructions using the
+captured table and independently verifies 99 adjacent B steps (cursors 106..498)
+and 402 C steps (99..500) from `b-default-distance-dynamics` and
+`c-aux-distance-dynamics`. Every resulting gear, acceleration, speed,
+displacement and position increment matches exactly. The check asserts normal
+riding flags and stops before terrain drag; it does not claim crash, braking,
+sliding or NPC coverage. Results are retained in
+`native-gear-parameters/arithmetic.json`.
+
+An isolated constant-throttle, flat-road model using the same instructions
+for 400 applied fields produces:
+
+| Step fields | Final speed | Accumulated distance | First persistent shift |
+| --- | ---: | ---: | ---: |
+| 1 | 10,373 | 2,395,125 | field 160, speed 5,432 |
+| 3 | 10,381 | 2,406,253 | field 162, speed 5,484 |
+| 4 | 10,384 | 2,412,512 | field 164, speed 5,544 |
+
+These are arithmetic-model results, not additional game replays. They isolate
+coarse-step threshold overshoot and endpoint integration without input-age,
+road-state or rendering effects. The table-driven acceleration itself is
+already correctly scaled by elapsed fields in the audited C path. Changing
+its rates to fit the live-field distance checkpoint is therefore unsupported;
+no gameplay constant or shift delay is changed. The existing B distance and
+handling failures remain open, including the previously observed NPC road/lane
+trajectory divergence.
+
 ## Motion correction still fails B safeguards after lean fusion
 
 Private `c-fused-motion-source` applies the existing reference-endpoint motion
