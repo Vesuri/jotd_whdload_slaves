@@ -441,6 +441,11 @@ dictate the accelerated path's timestep.
     Keep it on for the 68000 if slower.
   - **Expected:** a large share of the 18.8% stall becomes overlap on 020+ once D1 is in;
     measure.
+  - Current C experiment: clearing priority regresses cached 020 from 193 to
+    183 frames and uncached 020 from 109 to 105 over fields 100–1,000.
+    Equal-layout controls and DMACONR samples confirm the setting. Retain the
+    original priority; no general gain or all-cell D2 completion is established.
+    See the CPU/blitter priority control in [simulation-timing.md](simulation-timing.md).
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
   - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
     interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,

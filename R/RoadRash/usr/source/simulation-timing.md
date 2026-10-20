@@ -292,6 +292,39 @@ Further speed work should examine scheduling and Chip/DMA overlap rather
 than infer a benefit from arithmetic counts alone. In particular, the planned
 D2 priority audit is relevant; its effect must be measured, not assumed.
 
+### CPU/blitter priority control on the current 020 path
+
+The private `VERIFY_C_CPU_PRIORITY` experiment writes DMACON at enhanced race
+preparation/reset, after the existing master-toggle and CPU/Fast selection.
+It clears only `BLTPRI` (`$0400`); the equal-layout control sets that bit
+(`$8400`). No instruction is inserted in the per-tick loop. The two 8,552-byte
+lean diagnostics differ in exactly the set/clear byte at the two writes.
+The normal runtime remains unchanged.
+
+`cost_priority_c.py` records live DMACONR and the last completed frame's
+DMACONR at fields 100, 300, 600 and 1,000. Every recorded priority bit matches
+the requested setting. The lower control bits read `$03f7` with priority
+cleared and `$07f7` with it set; live reads can additionally contain blitter
+status bits. This verifies the setting in the sampled window, without
+claiming to identify the original writer or watch every write.
+
+| Cycle-exact 020 configuration | BLTPRI | Frames, fields 100–1,000 | fps |
+|---|---|---:|---:|
+| Cache, current reference | set | 193 | 10.722 |
+| Cache, equal-layout control | set | 193 | 10.722 |
+| Cache, candidate | clear | 183 | 10.167 |
+| NoCache, equal-layout control | set | 109 | 6.056 |
+| NoCache, candidate | clear | 105 | 5.833 |
+
+The experiment therefore does not improve either tested 020 configuration.
+It is not a justification for changing priority on 030/040/060, and does not
+complete the all-cell D2 audit. The native setting is retained; the candidate
+was removed from source. Evidence is under `c-cpu-priority-*`, including
+`c-cpu-priority-clear/comparison.json` and the private patch in
+`c-cpu-priority-on-build`. The earlier expectation that clearing priority
+would turn Chip stalls into a throughput gain is not supported on current C's
+020 path.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |
