@@ -2589,3 +2589,37 @@ measurements, not acceptance limits; finer displacement and collision gates
 remain unresolved. Reports: `tmp/dev/tmp/c/stick-motion-delayed-y-measurement.json`
 and `tmp/dev/tmp/c/stick-motion-delayed-y-assembled.json`. No gameplay hook
 or CUSTOM1 behavior changes in this extraction.
+
+
+### Delayed control history through the ground boundary
+
+`timing-player-boundary-delay.i` adds a split transaction above the same
+native-duration input history. Its `PD_SIZE` candidate starts with the full
+ordinary PB candidate, so existing deferred ground evaluation uses the same
+player/shadow offsets. The tail holds working/base history copies, bindings
+to delay/shadow/player and a once-only phase word. No authoritative layout
+changes. Caller allocates 428 bytes and keeps all bound state serialized.
+
+`player_boundary_delay_prepare` takes the ordinary prepare arguments plus
+delay state in a6 and field stamp in d1 (d0 remains logical world tick).
+It copies the player shadow and delay history, obtains the delayed y, and
+prepares the split player candidate. It changes no authoritative state.
+Ground classification may then edit the PB prefix as before.
+`player_boundary_delay_complete` uses the ordinary complete arguments plus
+a6 delay state. It checks all three bindings and byte-for-byte unchanged
+base history before completing motion. Only success publishes the new
+history. A failed completion consumes the transaction and invalidates the
+PB candidate, preventing retries even after the caller repairs a binding.
+Deferred notification/timer effects still require explicit commit after
+successful motion; this adapter does not acknowledge the scheduler.
+
+`test_player_boundary_delay_c.py` passes 1,356 rate-3/PAL/NTSC field steps
+against the ordinary delayed player wrapper, including shadow/history
+identity and retained authoritative tick. Another 4,096 whole-tick cases
+match native clamp, attitude, motion and ground effects: 2,531 ground resets
+and 241 notification events. Seven failure paths cover late motion error,
+changed history, all three wrong bindings, invalid interval and invalid
+packet; each preserves authoritative player/shadow/history and rejects
+retry (36,899 calls). Notifications remain stubbed as in the prior native
+ground suite. Full scheduler adoption, deadline collision policy and
+production installation still remain pending.

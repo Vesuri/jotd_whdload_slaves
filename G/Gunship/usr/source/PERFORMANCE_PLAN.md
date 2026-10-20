@@ -454,7 +454,9 @@ a field-clamp change to the native held pitch endpoints (-14/+22), followed
 by fractional-pitch hover/bank branch selection to avoid an unintended
 90-degree track turn. A transactional continuous-player wrapper now retains
 the native previous-control time horizon, removing most measured reversal
-pitch drift. Its split/scheduler integration and trajectory acceptance remain. C4e is still not accepted: field-rate coupled
+pitch drift. The ground-compatible split transaction now commits that
+history with successful player motion and rejects stale history. Scheduler
+adoption and trajectory acceptance remain. C4e is still not accepted: field-rate coupled
 trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
