@@ -615,6 +615,33 @@ contain the logical tick parity for the interval being consumed; choosing
 that epoch in the native scheduler remains a hand-off obligation.
 This helper does not advance the world clock.
 
+After the zero floor, height is normalized to its integer floor plus a
+nonnegative fraction below one. If the retained fraction is negative, the
+helper subtracts one from the integer height and adds one denominator to
+the fraction. The represented altitude is unchanged. For example,
+`1024 - 3/60` becomes `1023 + 57/60`. Native lift calculations then see
+the crossed high-byte boundary immediately, rather than continuing to use
+the old height until another whole unit of descent accumulates.
+Input validation still accepts a signed height fraction; every successful
+height step produces the normalized representation. Whole-tick fixture
+mode has zero fractions and is unaffected.
+
+`test_height_normalization_c.py` checks 18,432 combinations of PAL/NTSC,
+all vertical-rate bytes, both tick parities, signed input fractions and
+heights around zero, integer and high-byte boundaries. The expected
+integer/fraction pair comes from Euclidean division of the exact rational
+height after the ground floor. Register/stack and contact flags are also
+checked. Evidence: `tmp/dev/tmp/c/height-normalization-tests.json`.
+The existing 4,608 native height comparisons, 65,536 native horizontal
+comparisons, 8,000 field models and 4,096 combined native h=1 cases still
+pass after normalization.
+
+This also makes the integer ground predicate see height zero for a
+positive physical altitude below one native unit. The world adapter must
+use the documented integer representation consistently; C5 collision
+acceptance remains required rather than treating this normalization as
+proof of collision equivalence.
+
 The height step records whether its input height was nonzero and latches
 a nonzero-to-zero crossing. `movement_ack_contact` clears only the pending
 crossing after world evaluation. It does not decide landing severity,
@@ -762,13 +789,39 @@ units after ten seconds. Maximum sampled height difference remains
 The correction therefore fixes the isolated response equilibrium rule,
 but **does not pass the coupled handling gate**.
 
-Next investigate the interaction of quantized height, tick-parity height
-rounding and height-dependent lift targets. A valid native stopping
-interval can contain several integer rates; preserving that interval
-does not guarantee that a coupled field trajectory enters it at the same
-integer as the native tick. The measured remaining drift must be resolved
-or explicitly bounded, not hidden by a looser scalar-response tolerance.
-Post-correction evidence: `tmp/dev/tmp/c/held-motion-measurement.json`.
+The field trace isolates a delayed integer-height boundary. In NTSC field
+36 the represented altitude is 1023.95 but the record still contains 1024.
+Lift consequently keeps vertical target -5 until field 76, rather than
+switching to -4 when the boundary is crossed. Vertical rate reaches -3
+in field 64 and stays there. The native second tick has already lowered
+its record to 1023 and settles at rate -2. Evidence:
+`tmp/dev/tmp/c/height-feedback-before-normalize.json`.
+
+Normalizing height to floor-plus-positive-fraction addresses this
+representation error without changing the integrated physical altitude.
+A valid native stopping interval can contain several integer rates;
+preserving that interval alone did not guarantee that the coupled field
+trajectory entered it at the same integer as the native tick. The
+post-stopping-range, pre-normalization measurements above are retained in
+`tmp/dev/tmp/c/held-motion-before-height-normalize.json`.
+
+After normalization, NTSC field 36 publishes integer height 1023 plus
+57/60. Field 37 therefore switches the target to -4, and integer vertical
+rate remains -2, matching the native equilibrium. In the 32 repeated
+ten-second tapes, the previously divergent level/yaw/wind configuration-2
+cases stay within 0.72 PAL / 0.75 NTSC height units of native state and
+within 0.021 vertical-rate units including fractions. Across all tapes,
+the maximum sampled height difference falls from 12.30 to 6.76 units.
+Horizontal differences remain up to 32.55 on one axis, so this fixes the
+identified feedback bug without closing the full C4e gate. Current
+evidence: `height-feedback-trace.json` and
+`held-motion-measurement.json` in `tmp/dev/tmp/c/`.
+
+The affected level-attitude case also passes a full-minute PAL/NTSC
+regression with the same maxima, 0.72/0.75 height units and less than
+0.022 vertical-rate units. The discrepancy does not grow over this
+window. `tmp/dev/tools/test_height_feedback_c.py` asserts the bounds;
+evidence is `tmp/dev/tmp/c/height-feedback-regression.json`.
 
 Separately, finer integration has an intentional displacement difference
 even without rounding: N equal semi-implicit steps under constant

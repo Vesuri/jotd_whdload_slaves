@@ -425,9 +425,11 @@ order; its control/world hand-off and production installation remain pending.
 The initial coupled held-control measurement exposes changed response
 equilibria: fractional exponential response continues inside the native
 integer zero-increment range. Those stopping ranges are now retained for
-flight-rate responses, but the repeated coupled test still finds altitude
-drift from different integer equilibria. C4e is not accepted; resolve the
-height/vertical-feedback interaction before installation.
+flight-rate responses. A subsequent altitude-normalization fix removes
+the delayed integer-height boundary that selected a different vertical
+equilibrium. C4e is still not accepted: remaining coupled trajectory
+differences, moving controls and the complete player/world gate need
+explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
 its native installation and elapsed-time gauge slew remain pending.

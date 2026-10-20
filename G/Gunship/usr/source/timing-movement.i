@@ -2,7 +2,7 @@
 ; Requires timing-fraction.i. World contact consequences remain separate.
 MV_RATE equ 0
 MV_CONTACT equ 2          ; latched nonzero-height -> zero crossing
-MV_HEIGHT equ 4           ; signed remainder, denominator rate
+MV_HEIGHT equ 4           ; normalized nonnegative remainder after height step
 MV_X equ 8
 MV_Y equ 12
 MV_WAS_AIRBORNE equ 16    ; previous height-step input was nonzero (0/1)
@@ -62,6 +62,15 @@ movement_height:
 	clr.w d0
 	clr.l MV_HEIGHT(a4)
 .height:
+	; Altitude is nonnegative: publish its floor as the native integer.
+	; A negative fraction otherwise hides a crossed integer/high-byte
+	; boundary from native lift/ground predicates until a whole unit accrues.
+	; Preserve the exact total; .floor already handles negative total height.
+	tst.l MV_HEIGHT(a4)
+	bpl .store_height
+	subq.w #1,d0
+	add.l d2,MV_HEIGHT(a4)
+.store_height:
 	move.w d0,$1c(a5)
 	move.w d6,MV_WAS_AIRBORNE(a4)
 	tst.w d0
