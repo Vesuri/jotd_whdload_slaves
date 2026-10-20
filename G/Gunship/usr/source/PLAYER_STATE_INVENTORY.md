@@ -806,3 +806,49 @@ the selected event once. In particular, a speculative ground result from
 an earlier field must not become an authoritative landing or crash. The
 airborne scheduler bridge remains uninstalled and is not a complete ground
 integration.
+
+#### Completed-interval ground correction
+
+`timing-endpoint-ground.i` adds a standalone resolver for a completed
+endpoint interval. It evaluates contact only when the committed integer
+height is zero, using committed attitude/vertical rate and the interval
+anchor's pre-tail speed, matching native +095A6 ordering. Native ground
+still decides the landing/crash fields and prepares the notification event.
+An airborne deadline produces a ready empty event without changing motion.
+
+For contact, two private native tails run from the same pre-contact record:
+one without ground resets, one with them. Their displacement difference
+replaces the airborne contribution in the distributed endpoint; this avoids
+adding displacement twice. Grounded speed/coarse speed replace their free
+values, pitch/roll/vertical rate reset, and the height/speed/pitch/roll/vertical
+fractions clear. Horizontal, heading/track and RPM fractions remain.
+
+Coasting RPM also needs the tail difference: native +09778 reads the newly
+computed coarse speed. An original-native comparison exposed a one-unit RPM
+error when only XY and the explicit reset fields were corrected. The
+resolver now applies the grounded-minus-free RPM contribution too.
+Flight-end and landing-state bytes come from the native ground result.
+Notification/timer effects stay in the deferred event until publication.
+
+The resolver validates completion, supported span, all fractions and an empty
+event before writes. It does not itself own a scheduler deadline or prevent
+replay after its event has been consumed; a once-only scheduled transaction
+must supply those guarantees. Its input player/owner must remain private
+until that transaction succeeds.
+
+`test_endpoint_ground_c.py` passes 512 original native clamp/control/motion
+comparisons including full player records and eventual event effects:
+310 ground resets and 31 notifications, 3,588 helper calls. Disturbance RNG
+is disabled and notification UI is a call counter.
+`test_endpoint_ground_fields_c.py` passes 128 held-input PAL/NTSC intervals
+(2,336 fields, 77 ground resets, 2,983 helper calls) against the validated
+native ground preview. Cases vary zero/near-ground/32767 altitude, signed
+pre-contact speed, engine/coast mode and flight configuration. All complete
+records and deferred events match. Fraction reset/preservation and invalid
+phase/residue rejection also pass; a separate test rejects six malformed
+spans without writes.
+
+These establish the native whole-tick and held-input ground endpoints.
+Changing-input contact trajectories, coordinate clamping during correction,
+scheduled once-only effects and lifecycle recovery remain gates before
+installation. The field-rate owner is not yet wired to this resolver.
