@@ -48,7 +48,9 @@ verify_dispatch:
 	lea verify_game_patches(pc),a0
 	jsr resload_Patch(a2)
 	IFD TIMING_INPUT
+	IFND TIMING_RUNTIME
 	bsr timing_input_install
+	ENDC
 	ENDC
 	bra .done
 .menu:

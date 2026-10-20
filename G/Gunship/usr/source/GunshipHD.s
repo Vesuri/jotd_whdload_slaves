@@ -477,6 +477,7 @@ _verify_scene	dc.l	0
 	IFD TIMING_RUNTIME
 	include "timing-slave.i"
 	include "timing-core.i"
+	include "timing-live-input.i"
 	ENDC
 
 	IFD VERIFY

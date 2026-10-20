@@ -12,6 +12,9 @@ The deterministic stick-attitude component now has a standalone field step.
 The clock is still standalone. The history now has native producer hooks in
 `timing-input.i`, installed only in builds with both VERIFY and TIMING_INPUT
 defined, CUSTOM1=1 and CUSTOM2 nonzero, for the 0658 executable.
+Experimental TIMING_RUNTIME builds now also have arena-backed capture hooks
+independent of the diagnostic seed. Those queues remain paused pending native
+foreground/lifecycle activation; see the runtime input section below.
 The boolean CUSTOM1 option **Enhanced framerate** gates all added framerate
 patches and defaults off. The original slave's cache policy and compatibility
 fixes remain baseline behaviour. Future scheduler/player/prediction and
@@ -3046,3 +3049,49 @@ reuse, active/pending rejection, PAL/NTSC setup and duplicate release.
 Native game memory remains unchanged. The standalone arena/consumer suite
 also remains necessary; these checks do not establish live free memory,
 cache correctness on hardware, or native flight-loop ownership.
+
+## Runtime-backed native input capture
+
+`timing-live-input.i` now installs the four validated native capture hooks
+in experimental TIMING_RUNTIME builds after successful arena preparation.
+CUSTOM1 gates installation as well as allocation. Field capture calls the
+original sampler before recording its result; mouse, accepted-command and
+fire hooks retain the displaced instructions' register/flag behavior.
+Command publication and cutoff updates exclude the VBL producer using Exec
+Disable/Enable. Native input/FIFO/fire handling still runs.
+
+The arena grows by 88 bytes to 27,170 bytes: a 48-byte capture context plus
+a private 40-byte producer sample. Publication copies that sample into the
+history ring. `RT_RECORD` remains consumer-owned and cannot be overwritten
+by an interrupt while a world tick uses its timestamp/input. The capture
+context holds native hunk pointers, queue/sample bindings, command sequence,
+raw relative accumulation, fire edges and sampler binding.
+
+Unlike diagnostic capture, runtime capture treats `$7f` as an ordinary
+accepted command. It never rearms or resets either queue from a keypress.
+Paused field capture does not publish, clears raw deltas, and does not latch
+relative-overflow or command faults into inactive history. Mission/modal
+activation must still establish synchronized epochs and clear stale producer
+accumulation/edges under producer exclusion.
+
+When TIMING_INPUT and TIMING_RUNTIME are both defined, the diagnostic
+installer is suppressed so it cannot overwrite the runtime hook sites.
+Ordinary diagnostic builds retain their existing capture and rearm behavior.
+All sampling queues remain paused after load; no foreground flight loop is
+replaced yet. In particular, active-loop installation must also resolve native
+FIFO retirement and lifecycle command handling rather than allowing accepted
+native commands to accumulate behind the new private readers.
+
+The ignored `test_timing_live_input_c.py` passes 452 native ABI cases over
+all CCR combinations, signed mouse extremes, fire edges and sequence wrap.
+It verifies complete field payloads, relative-overflow rejection, paused
+behavior, ordinary retention of `$7f`, and an untouched consumer record.
+Installer checks cover CUSTOM1 off/on, exact four-site patch destinations
+and eight altered boundary/signature cases rejected before patching.
+The runtime arena suite passes all 1,221 calls after the layout expansion,
+and the slave allocation suite still passes its 15 calls.
+
+All normal and experimental build variants assemble for the 68000. Without
+TIMING_RUNTIME, ordinary/VERIFY/TIMING_INPUT binaries remain byte-for-byte
+unchanged. These are Unicorn and build checks; live interrupt capture and
+foreground ownership are not yet validated together.

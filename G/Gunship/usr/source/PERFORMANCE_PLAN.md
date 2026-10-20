@@ -471,6 +471,10 @@ An experimental `TIMING_RUNTIME` slave build now allocates/prepares that arena
 at the supported module's LoadSeg callback, behind CUSTOM1, and releases it
 after the main program returns. Existing LoadSeg cache flushing covers setup.
 It leaves sampling paused; runtime start and native flight hooks remain open.
+Experimental runtime builds now install arena-backed field/mouse/command/fire
+capture hooks with separate producer and consumer records. Sampling remains
+paused until foreground ownership is installed. The diagnostic rearm key is
+absent from this runtime path, and duplicate diagnostic patching is suppressed.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

@@ -27,7 +27,9 @@ RT_FIRE equ RT_EVENT+GD_SIZE
 RT_HEADING equ RT_FIRE+2
 RT_PENDING equ RT_HEADING+2
 RT_CAMERA equ RT_PENDING+2
-RT_STAGES equ RT_CAMERA+12
+RT_CAPTURE equ RT_CAMERA+12
+RT_SAMPLE equ RT_CAPTURE+48
+RT_STAGES equ RT_SAMPLE+TH_RECORD_SIZE
 RT_DECODER equ RT_STAGES+MS_CODE_SIZE
 RT_RNG equ RT_DECODER+WC_CODE_SIZE
 RT_HIT equ RT_RNG+WR_CODE_SIZE
@@ -220,6 +222,11 @@ timing_runtime_prepare:
  lea 0(a6,d2.w),a1
  move.l a1,0(a6,d1.w)
  dbf d0,.bind
+ movea.l RT_HUNKS(a6),a0
+ move.l a0,RT_CAPTURE+8(a6)
+ lea $1068(a0),a1
+ move.l a1,RT_CAPTURE+40(a6)
+ move.l RT_HUNKS+8(a6),RT_CAPTURE+12(a6)
  ; Native bindings are stable addresses in the loaded hunks.
  movea.l RT_HUNKS+24(a6),a0
  move.l a0,RT_FIELD+SF_HUNK6(a6)
@@ -288,6 +295,9 @@ timing_runtime_prepare:
  movem.l (sp)+,d1-d7/a0-a6
  rts
 .bindings:
+ dc.w RT_CAPTURE+16,RT_HISTORY
+ dc.w RT_CAPTURE+20,RT_SAMPLE
+ dc.w RT_CAPTURE+44,RT_COMMANDS
  dc.w RT_PLAYER_READER+CP_QUEUE,RT_COMMANDS
  dc.w RT_PLAYER_READER+CP_MODE,RT_MODE
  dc.w RT_WORLD_READER+CW_QUEUE,RT_COMMANDS

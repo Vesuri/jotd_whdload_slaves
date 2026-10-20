@@ -1,4 +1,4 @@
-; Experimental TIMING_RUNTIME slave integration: setup only, no flight hooks.
+; Experimental TIMING_RUNTIME setup/input capture; no flight consumer hook.
 ; CUSTOM1 gates allocation/preparation. Production activation remains pending.
 ; LoadSeg's existing post-callback cache flush covers the prepared copies.
 timing_runtime_dispatch:
@@ -44,6 +44,10 @@ timing_runtime_dispatch:
  lea timing_runtime_hunk_table(pc),a1
  move.l d7,d0
  bsr timing_runtime_prepare
+ tst.l d0
+ bne .status
+ movea.l timing_runtime_arena(pc),a0
+ bsr timing_live_install
 .status:
  lea timing_runtime_status(pc),a0
  move.l d0,(a0)
@@ -60,7 +64,8 @@ timing_runtime_dispatch:
  moveq #-4,d0
  bra .status
 
-; Called after the main program returns. No active timing hooks yet.
+; Called after the main program returns. Native input callbacks must have
+; stopped before their shared arena can be released.
 timing_runtime_release:
  movem.l d0-d1/a0-a1/a6,-(sp)
  lea timing_runtime_arena(pc),a0
