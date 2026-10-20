@@ -768,10 +768,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     its CPU terrain query has a read-only sampler matching 1,571 native pixel
     classifications. A private scripted steering/motion preview now matches
     804 native next poses without RNG, damage or gameplay writes. Scripted
-    identity/teleport barriers, next-tick steering-mode/modal-prefix handling,
-    committed-raster integration and renderer publication remain open. The
-    804 comparisons cover the movement body with a supplied mode, not the
-    preceding script activation/interpreter boundary.
+    identity/teleport barriers, committed-raster integration and renderer
+    publication remain open. A separate private forecast now recomputes the
+    native steering mode and countdown: 180 prefix-plus-body comparisons
+    match, and 44 unresolved modal transitions reject without world writes.
   - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
     inherit its previous occupant's trajectory. Derive each projectile's first presentation
     interval from its spawn and update order. The native six-slot audit proves

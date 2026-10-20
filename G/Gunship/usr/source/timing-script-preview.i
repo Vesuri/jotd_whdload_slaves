@@ -1,7 +1,7 @@
 ; Private index-5 scripted-object next pose. Native steering and word/byte
 ; arithmetic, with explicit stable committed terrain pixels and no RNG/damage.
-; Body-only: caller must supply the next tick's P+2C mode and rule out a
-; modal transition from 9F74..9FAE; a previous tick's mode is not a forecast.
+; The body entry accepts supplied P+2C. Forecast entry privately executes
+; the native mode/activation prefix and rejects pending modal transitions.
 ; Not installed. Caller serializes state and waits for bitmap DMA completion.
 SP_H0 equ 0
 SP_H6 equ 4
@@ -16,7 +16,9 @@ SP_PLAYER equ 20
 SP_PLAYER_SIZE equ $2d6
 SP_CODE equ SP_PLAYER+SP_PLAYER_SIZE
 SP_CODE_SIZE equ $a14c-$9fb0
-SP_SIZE equ SP_CODE+SP_CODE_SIZE
+SP_PREFIX equ SP_CODE+SP_CODE_SIZE
+SP_PREFIX_SIZE equ $36
+SP_SIZE equ SP_PREFIX+SP_PREFIX_SIZE+2
 
 ; a0=h0,a1=h6,a2=SP destination. Validate before writes. Return 0/-1.
 ; Preserve others; flush instruction cache after successful preparation.
@@ -24,6 +26,45 @@ script_preview_prepare:
  movem.l d1-d7/a0-a6,-(sp)
  suba.w #12,sp
  movem.l a0-a2,(sp)
+ ; Validate every prefix word, including both relocated absolute operands.
+ movea.l a0,a1
+ adda.l #$9f74,a1
+ lea script_preview_prefix_signature(pc),a6
+ moveq #0,d1
+.prefix_check:
+ cmpi.w #$a,d1
+ beq .query_operand
+ cmpi.w #$1c,d1
+ beq .flags_operand
+ move.w 0(a6,d1.w),d2
+ cmp.w 0(a1,d1.w),d2
+ bne .bad
+ addq.w #2,d1
+ bra .prefix_next
+.query_operand:
+ movea.l (sp),a0
+ adda.l #$b422,a0
+ bra .prefix_operand
+.flags_operand:
+ movea.l 4(sp),a0
+ adda.l #$395c,a0
+.prefix_operand:
+ cmpa.l 0(a1,d1.w),a0
+ bne .bad
+ addq.w #4,d1
+.prefix_next:
+ cmpi.w #SP_PREFIX_SIZE,d1
+ blo .prefix_check
+ movea.l (sp),a0
+ adda.l #$8050,a0
+ cmpi.l #$4a2d0053,(a0)
+ bne .bad
+ cmpi.l #$6f00014e,4(a0)
+ bne .bad
+ cmpi.l #$532d0054,8(a0)
+ bne .bad
+ cmpi.l #$66000146,12(a0)
+ bne .bad
  lea script_preview_relocs(pc),a6
  moveq #(script_preview_relocs_end-script_preview_relocs)/8-1,d7
 .check:
@@ -78,6 +119,14 @@ script_preview_prepare:
  ; callback entirely. Neither owns this object's movement inputs; the native
  ; movement suffix reloads its inputs from player/object state.
  move.l #$60000038,SP_CODE+$a0ca-$9fb0(a2)
+ movea.l (sp),a1
+ adda.l #$9f74,a1
+ lea SP_PREFIX(a2),a0
+ moveq #SP_PREFIX_SIZE/2-1,d1
+.prefix_copy:
+ move.w (a1)+,(a0)+
+ dbf d1,.prefix_copy
+ move.w #$4e75,(a0)
  moveq #0,d0
  bra .done
 .bad:
@@ -94,6 +143,16 @@ script_preview_prepare:
 ; consumer's responsibility; never publish this whole private player record.
 script_preview_step:
  movem.l d1-d7/a0-a6,-(sp)
+ moveq #0,d7
+ bra script_preview_common
+
+; Same ABI as body entry. Recompute native mode on private P; refuse any
+; activation/countdown which would enter the modal interpreter. The prefix
+; only reads native region/flag data; all of its writes target private A5.
+script_preview_forecast:
+ movem.l d1-d7/a0-a6,-(sp)
+ moveq #1,d7
+script_preview_common:
  movea.l a0,a6
  clr.b SP_VALID(a6)
  clr.w SP_UNKNOWN(a6)
@@ -117,6 +176,16 @@ script_preview_step:
  or.b SP_PLAYER+$d5(a6),d0
  beq .unknown
  lea SP_PLAYER(a6),a5
+ tst.w d7
+ beq .body
+ lea SP_PREFIX(a6),a0
+ jsr (a0)
+ tst.b $53(a5)
+ ble .body
+ cmpi.b #1,$54(a5)
+ beq .unknown
+ subq.b #1,$54(a5)
+.body:
  lea SP_CODE(a6),a0
  jsr (a0)
  tst.w SP_UNKNOWN(a6)
@@ -175,3 +244,9 @@ script_preview_relocs:
  dc.w $170,0,$7a44,$ffff
  dc.w $196,0,$7bd0,$ffff
 script_preview_relocs_end:
+
+script_preview_prefix_signature:
+ dc.w $302d,$0000,$322d,$0002,$4eb9,0,0,$6700,$0022
+ dc.w $4a2d,$0053,$6600,$001a,$1039,0,0,$0240,$0003
+ dc.w $6700,$000c,$7001,$1b40,$0053,$1b40,$0054
+ dc.w $1b42,$002c

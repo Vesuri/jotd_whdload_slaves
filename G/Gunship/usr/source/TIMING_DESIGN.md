@@ -4760,7 +4760,7 @@ alone does not complete prediction of the scripted helicopter or ground units.
 
 `timing-script-preview.i` copies +09FB0..+0A14A after validating all sixteen
 absolute operands, the entry/return and the changed attack boundary. Its
-1,158-byte context contains a 726-byte private player/split-object snapshot,
+1,214-byte context contains a 726-byte private player/split-object snapshot,
 a bitmap binding and classification bytes supplied by the caller, scripted
 target index, private close-object/terrain scratch and copied native code.
 Native object load/store, angle lookup and sine helpers operate on the private
@@ -4778,13 +4778,31 @@ the count at 009951E8 and the table at 0097FFE8; derive bindings from validated
 native operands rather than guessing hunk-relative offsets.
 
 An inside-region result can also arm P+0053/P+0054 to one when P+0053 is zero
-and h6+155C has either low bit set. The following +08050 interpreter may then
+and h6+395C has either low bit set. The following +08050 interpreter may then
 cross a modal boundary. Runtime prediction must recompute the mode privately
 and reject any unresolved interpreter transition before invoking this body.
 Reusing the last completed world's P+002C is insufficient. Existing body tests
 deliberately supply that byte; their 804 matches do not validate this prefix.
 The authoritative `world_script_step` extraction documents the countdown and
 modal boundary, but must not be called on live state to obtain a render pose.
+
+`script_preview_forecast` now provides this private prefix path. Preparation
+validates every word of +09F74..+09FA8, both absolute operands, and the native
+interpreter's sixteen-byte countdown guard before writing the context. It
+copies the prefix with an appended return. The region query remains a native
+read-only call; prefix writes use the private A5 record. Forecasting then
+rejects a positive signed script state with countdown one; other positive
+states decrement the private byte, including zero-to-FF wrapping. No modal
+interpreter is called. The body-only entry remains available for isolated
+comparisons. Both entries preserve the same register ABI and validity flag.
+
+`test_script_forecast_c.py` additionally compares 224 combinations of inside/
+outside-region results, stale mode bytes, seven signed script states, four
+countdowns and four activation-flag values against the original prefix and
+interpreter guard. All 180 admissible poses match the native body; 44 modal
+cases reject without gameplay writes or preview effects. All 35 corrupted
+prefix/guard words reject preparation atomically. The original 804 body
+comparisons still pass. Runtime capture/publication is still unconnected.
 
 Both +07FA4 calls bind to a private adapter that reproduces its word-coordinate
 calculation and invokes the read-only terrain sampler. Unknown relevant queries
