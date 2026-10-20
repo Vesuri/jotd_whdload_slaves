@@ -703,3 +703,42 @@ an inter-tick stick pulse changes fractional roll immediately. A recoil
 applied before the next interval is captured in its anchor. Whole-tick and
 PAL span entry checks also pass. This establishes the standalone owner, not
 the remaining world-effect ordering or production responsiveness.
+
+#### Scheduled endpoint publication
+
+`timing-scheduled-endpoint.i` connects the airborne owner to delivered
+scheduler records. Its 30-byte context binds owner, player, prepared stages,
+sine helper, decoded packet and scheduler, plus the applied field and
+per-call committed flag. It checks the delivered field/cutoff, display rate,
+upcoming logical tick and ordinary command cursor; a due world deadline
+also requires its world command cursor to be drained.
+
+At an interval boundary it recovers the clock phase before the delivered
+field and computes the number of fields to the next world deadline.
+This selects PAL 17/17/16 and NTSC 20 without depending on render batching.
+It rejects a new interval in the middle of an existing clock interval and
+requires the owner's final field to coincide with `TS_DUE`.
+
+Owner state and the player record remain private through native preview and
+distribution. A second scheduler health check precedes publication. The
+bridge then records its applied field/committed flag and acknowledges the
+player step. A producer fault at acknowledgement retains the published
+state and counts that field; recovery cannot repeat it. The caller still
+owns decoded controls, world effects, yaw consumption, ground handling and
+lifecycle rebasing. This airborne bridge does not replace the older split
+ground transaction or install a native main-loop hook.
+
+`test_scheduled_endpoint_c.py` passes 960 delivered fields at 50/60 Hz with
+batch sizes 1 and 25 (5,874 helper calls). All player records, residues,
+history, interval spans and world-observation deadlines agree across batches;
+the logical tick also crosses its word wrap. PAL delivers 14 deadlines per
+240 fields and NTSC 12. The fixture observes deadlines and advances the
+clock word; it does not execute the native world body.
+
+`test_scheduled_endpoint_faults_c.py` passes 11 rejection cases and faults
+injected before and after publication (124 helper calls). Cases cover
+field/cutoff/rate/tick/phase/due mismatches, invalid controls/residue, upstream
+faults and retained ordinary/world commands. Rejection leaves the owner,
+player and scheduler completion count unchanged. A post-publication fault
+retains committed metadata and exactly one completion, and clearing the
+fault does not permit a replay.
