@@ -5,7 +5,51 @@ on supported hardware when Enhanced framerate is enabled. Runtime integration
 and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
-## Current runtime: automatic enhanced-path caching
+## Current runtime: measured rider-heading prediction
+
+Normal and ordinary lean runtime builds now select `C_POSE_PREDICT` with
+`POSE_PREDICT_MEASURED`. Explicit `VERIFY_C_POSE_PREDICT` selection preserves
+fixed-horizon diagnostic controls. The current normal slave is 8,212 bytes,
+SHA-256 `91ba5e9a2c5828c0cd7031bf68ff0917e6c0f62c928b3475ef266fd0bc79e484`.
+Prediction remains behind the existing Enhanced framerate/CPU/Fast selection.
+It affects the displayed rider heading, never authoritative actors or events.
+
+`c-pose-predict-runtime-visible` measures all eight input phases on this normal
+binary: 160/140/220/200/180/160/140/220 ms, median 170 ms, versus the preceding
+runtime's 230 ms and B's 200 ms. Phases 302 and 303 still trail B by 20 ms;
+the aggregate gain does not establish response equivalence at every phase.
+
+`c-pose-predict-runtime-matrix` passes all 11 normal configurations with the
+same fps as the preceding automatic-cache runtime below. A500 and Chip-only
+A1200 initial, field-590 and final state hashes exactly match B.
+Both integrated MMU checks pass in `c-pose-predict-runtime-mmu`.
+The expanded `c-pose-predict-runtime-off` probe verifies original instructions
+at the three new prediction hook sites as well as all previously checked
+enhanced hooks when CUSTOM2=0.
+
+Normal keyboard and CD32 steering/release/pause checks pass; active time
+holds at field 161 while paused. Stack guards are intact, with 276/368 bytes
+observed respectively. Both demo exits pass: fire at field 566 and timeout
+at 3,598 with the native timer offset, then a normal race at field 100.
+The resulting race screenshots were inspected. Demo stack use is 228/232
+bytes with guards intact.
+
+The rebuilt full diagnostic in `c-pose-predict-integrated-full-build` is
+byte-identical to `c-pose-predict-measured-finish-build`. In addition to the
+successful finish below, `c-pose-predict-measured-arrest` matches all 8,377
+actor hashes and 241 sound requests against `c-steering-finish-drive`, exiting
+at 8,378. `c-pose-predict-measured-wreck` matches all 11,945 hashes and 120
+requests against `c-steering-quarter-fullrace`, exiting at 11,946. Both
+match terminal authoritative ranges and restart with capture `[99,98,0,1]`.
+These diagnostic replay checks complement the actual normal-build tests.
+
+The current live-field A4 matrix still has four distances outside B's 1%
+tolerance: default Fast 020 (-1.373%), Fast 020 NoCache (-1.953%), and both
+060 configurations (-1.105%). Frame rates remain below B on accelerated
+hardware, and handling equivalence remains unresolved. Prediction does not
+close those gates; C is still in progress.
+
+## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
 `VERIFY_C_CACHE` as an explicit alias for reproducible references. SetCPU runs

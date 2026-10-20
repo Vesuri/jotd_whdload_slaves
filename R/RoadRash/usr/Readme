@@ -37,6 +37,8 @@
  - enhanced path enables CPU caches automatically unless NoCache is specified
  - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the
    original stack if the optional allocation is unavailable or unsuitable
+ - predicts the displayed rider heading through the measured render interval
+   to reduce visible steering lag without changing simulation or collisions
  - no added frame limiter or delayed interpolation; slow frames catch up the
    required simulation steps before rendering
  - CUSTOM2=0 (or omitted), 68000 and unsupported memory configurations retain

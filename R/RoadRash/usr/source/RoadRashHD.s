@@ -63,6 +63,22 @@ C_STEERING = 1
 	ENDC
 	ENDC
 
+; Predict only the displayed rider heading through the measured render
+; interval. Explicit diagnostic selection retains fixed-horizon controls.
+	IFD VERIFY_C_POSE_PREDICT
+C_POSE_PREDICT = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_POSE_PREDICT
+C_POSE_PREDICT = 1
+	ENDC
+	IFND VERIFY_C_POSE_PREDICT
+	IFND POSE_PREDICT_MEASURED
+POSE_PREDICT_MEASURED = 1
+	ENDC
+	ENDC
+	ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
@@ -468,7 +484,7 @@ pl_c_simulation
 	PL_P	$B97A,step_steering_motion
 	PL_P	$B9A0,step_steering_store
 	ENDC
-	IFD VERIFY_C_POSE_PREDICT
+	IFD C_POSE_PREDICT
 	PL_PSS $A8E2,step_predict_pose,4
 	IFD POSE_PREDICT_MEASURED
 	IFD STEP_EXTRAPOLATE

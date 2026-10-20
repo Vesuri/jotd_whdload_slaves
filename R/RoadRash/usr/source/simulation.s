@@ -1,8 +1,9 @@
 ; Shared C simulation, selected by CUSTOM2 and the CPU/Fast RAM check below.
 ; Normal builds use C_RUNTIME_ONLY: no snapshot storage or per-step hashes.
 ; VERIFY + VERIFY_C_STEP retains the diagnostic capture/replay instrumentation.
-; STEP_FIELDS=1 (50 Hz PAL) is the runtime timestep. Larger quanta and forward
-; extrapolation are diagnostic experiments, never user-selectable frame modes.
+; STEP_FIELDS=1 (50 Hz PAL) is the runtime timestep. Larger quanta and whole-view
+; extrapolation remain diagnostic experiments, never user-selectable modes.
+; Runtime rider-heading prediction affects only presentation.
 ; Input history exhaustion aborts explicitly. See simulation-timing.md for
 ; validation results and remaining release checks. Game addresses are absolute.
 ;
@@ -124,7 +125,7 @@ step_prepare:
 
 ; d0 is the initial simulation cursor; the queue follows the live field.
 step_reset_history:
-	IFD VERIFY_C_POSE_PREDICT
+	IFD C_POSE_PREDICT
 	IFNE STEP_FIELDS-1
 	FAIL "Presentation heading prediction requires one-field simulation"
 	ENDC
@@ -229,7 +230,7 @@ step_seed_finish:
 	ENDC
 ; Run stateful presentation helpers exactly once per simulation step.
 step_end:
-	IFD VERIFY_C_POSE_PREDICT
+	IFD C_POSE_PREDICT
 	bsr step_predict_history
 	ENDC
 	jsr $89138
@@ -965,10 +966,10 @@ step_pose_busy:
 	dc.b 0
 	even
 
-	IFD VERIFY_C_POSE_PREDICT
-; Diagnostic only: estimate three fields of presentation heading from the
-; last four authoritative increments. Never write the predicted value to an
-; actor or use it in the simulation-owned pose/event pass.
+	IFD C_POSE_PREDICT
+; Estimate presentation heading from the last four authoritative increments.
+; Runtime uses the measured render interval; diagnostics can fix the horizon.
+; Never write prediction to an actor or use it in the simulation pose pass.
 step_predict_history:
 	movem.l d0-d2/a0,-(a7)
 	move.l step_stats+8(pc),d0

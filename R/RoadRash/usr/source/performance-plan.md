@@ -366,6 +366,13 @@ Automatic caching is now integrated behind the same enhancement toggle:
 default Fast-RAM 020/030 improve from 5.0/7.5 to 10.0/12.5 fps without a
 separate `Cache` option; `NoCache` remains respected. All 11 normal hardware
 cells and both MMU functional checks pass on the integrated build.
+Measured rider-heading prediction is now integrated behind that toggle.
+Normal-build median visible response improves from 230 to 170 ms over eight
+input phases (B: 200 ms); two phases still trail B by 20 ms. Finish, arrest
+and wreck replays preserve all authoritative hashes and sound requests.
+The new normal build retains the prior fps in all 11 configurations, passes
+both MMU checks, controls and demo transitions, and retains the original hooks
+when disabled. Four live-field distance cells still exceed B's 1% tolerance.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 
