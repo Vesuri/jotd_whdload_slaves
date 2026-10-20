@@ -61,3 +61,5 @@
  include "timing-lifecycle.i"
  include "timing-modal.i"
  include "timing-runtime.i"
+
+ include "timing-runtime-lifecycle.i"

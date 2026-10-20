@@ -456,8 +456,9 @@ Core lifecycle suspension/rebase now coordinates the clock, both queues,
 scheduler and endpoint history, with pending-work guards and retained
 diagnostics. A standalone modal continuation now runs the native interpreter
 with sampling off, finishes the pending world tail and acknowledges it once.
-Helper metadata resets, production producer exclusion and native hook
-installation still require adapter integration.
+The runtime lifecycle adapter now resets helper metadata and coordinates
+input ownership; production producer exclusion and native hook installation
+remain pending.
 The standalone `timing-flight-consumer.i` now owns the assembled foreground
 ordering for each delivered field, including bounded command resumes,
 player/world hand-off, ground-event publication and modal returns. Its
@@ -477,7 +478,9 @@ paused until foreground ownership is installed. The diagnostic rearm key is
 absent from this runtime path, and duplicate diagnostic patching is suppressed.
 The accepted-key hook can now retire the appended native FIFO slot after
 successful private retention under explicit runtime ownership. Ownership still
-defaults off; flight activation and modal ownership transitions remain pending.
+defaults off. Tested runtime activation/suspension/modal adapters now establish
+fresh epochs, account for discarded native FIFO keys and hand input ownership
+back and forth. Native flight/menu entry points must still call them.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

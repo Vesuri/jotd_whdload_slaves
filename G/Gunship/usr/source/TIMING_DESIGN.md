@@ -3133,3 +3133,49 @@ Both private readers retire records during that stream; the native FIFO
 stays empty, while full key/modifier words and sequence numbers match.
 This verifies the transfer mechanism, not live activation or modal
 transitions. The private command consumers still own exactly-once effects.
+
+## Runtime-wide activation, suspension and script-modal return
+
+`timing-runtime-lifecycle.i` supplies the runtime's complete metadata/ownership
+transition around the existing core lifecycle. The native adapter must exclude
+both producers and consumers for activation/suspension; the functions do not
+change interrupt enablement themselves.
+
+`timing_runtime_activate(a0=arena)` validates readiness, inactive upstream
+owners, native FIFO ownership, a resolved scheduler phase, an empty ground
+event, PAL/NTSC rate, completed/fresh consumer/world/modal phases, a valid
+native FIFO count, and a ready native player. It also checks that the native
+input context pointer still names hunk 6. Pending work, failed consumer state,
+an ended player or invalid input returns -3 without writes.
+
+After validation, activation discards native menu/pause FIFO entries, counting
+them in `RT_NATIVE_DISCARDED` (capture-context longword +0). It resets reader
+metadata, once-only helper keys/caches, consumer/modal phases, producer raw
+deltas/edges, private records and presentation scratch without rewriting code
+or bindings. It reconciles control mode from the native player, samples the
+native field counter/current Y and accepted command sequence, rebases the
+core, then grants runtime FIFO ownership. Clock/scheduler/loss/discard
+diagnostics survive. The arena remains 27,170 bytes.
+
+`timing_runtime_suspend` disables sampling and restores native FIFO ownership,
+retaining unfinished scheduler/world work. Repeated suspension does not erase
+that work. Fresh activation cannot silently abandon a retained player step,
+world tick, command boundary, modal continuation or failed consumer.
+
+For script modals, `timing_runtime_modal_suspend` follows consumer result 3,
+suspends through the existing modal coordinator and restores native FIFO
+ownership. After interrupts are restored, `timing_runtime_modal_run` executes
+the interpreter and continuation. It makes the consumer's final phase agree
+with normal completion, flight end or failure. Sampling stays off until
+activation; no second world acknowledgement is introduced.
+
+`test_runtime_lifecycle_c.py` passes 36 helper calls covering atomic rejection,
+stale metadata/fraction removal, native FIFO accounting, preserved clone code,
+input-mode reconciliation and suspension of pending work. The activation-based
+arena fixture passes 1,221 calls and 240 consumed fields on PAL/NTSC at two
+allocation addresses. A separate 108-call runtime modal fixture consumes a
+world deadline, executes native +08050 with UI/VBL fixtures, completes the
+world once, reactivates and consumes its first fresh field. These tests do not
+replace live interrupt validation. Native flight/menu hooks, retained keyboard
+lifecycle-command handling, and the VBL gameplay-state ownership switch remain
+necessary before activating the consumer in gameplay.
