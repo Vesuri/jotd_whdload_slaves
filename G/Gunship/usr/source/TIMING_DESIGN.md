@@ -1911,3 +1911,38 @@ The bridge regression also passes its eight existing invalid-state cases and
 post-publication fault injection, plus retained ordinary/lifecycle commands
 and a future-only command (130 calls). A future-only command is accepted;
 the test's aggregate `rejected_cases` label includes that positive case.
+
+### Native world-tick opening
+
+`timing-world-start.i` extracts +05640..+056D8, ending before the HUD and
+camera builders. It increments the 16-bit tick, decrements byte 4A if nonzero,
+masks engine flags against damage, disables engines and clears their two
+indicator bytes when both reserves are empty, initializes crash state 52 to 2
+when appropriate, and decrements countermeasure lifetimes 44/45. Expiry calls
+the native +07EEE inventory/indicator routine in original order. All these
+writes belong to one world tick, never a render or speculative player step.
+
+`world_start_prepare` takes hunk 0, an even clone buffer, hunk 6 and the bound
+player in a0/a1/a2/a3. It validates the entry, relocated lamp stores, callback
+calls and player reloads before copying 152 bytes plus RTS. Only the two player
+reload operands are redirected; native indicator state and callbacks remain
+real. The caller must flush caches. `world_start_step` takes that player/clone
+in a0/a1, rejects mismatched binding, preserves non-result registers and returns
+0 on completion. Execution is authoritative and cannot be rolled back.
+
+`tmp/dev/tools/test_world_start_c.py` passes 560 native comparisons covering
+tick values 0/15/16/65535, cooldown values 0/1/2/36/255, seven engine flag
+patterns and four reserve values. Complete player bytes, indicator stores and
+ordered indicator IDs/values match. The native +07EEE dispatcher runs; only
+its final +0AF36 UI operation is stubbed. Thirteen signature corruptions reject
+without destination writes; mismatched runtime player binding also rejects
+without world writes (575 assembled calls total).
+
+This is not the full world tick. Placement relative to commands and field
+motion remains an integration gate: native opening precedes controls/motion,
+while field motion spans a world interval. Reserve depletion is a distinct
+post-motion operation every sixteenth tick (+0590C..+0598A), not part of this
+opening. The periodic +07F80 flight-end check can set player 18 before reserve
+depletion; its scratch-word inputs follow the masked tick test. Preserve that
+ordering when extracting the remaining housekeeping. No native installer calls
+this helper yet; eventual installation must use CUSTOM1 Enhanced framerate.
