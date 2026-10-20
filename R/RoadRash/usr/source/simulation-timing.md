@@ -1,3 +1,46 @@
+## Isolated road correction on the fused runtime
+
+`c-fused-road-source` enables only the retained `VERIFY_C_ROAD_TIMING`
+correction on the current normal runtime, including companion carry transfer,
+crash reset and reactivation reset. It does not add reference-endpoint motion
+or the private NPC lateral correction. The 19,928-byte normal candidate has
+SHA-256 `da47633f48e41ad51d1257c6773e1cf7c0fcbf05420349c78ac08fab13e4a485`;
+`c-fused-road-build/source.patch` retains the exact selection change.
+
+`c-fused-road-matrix` passes the three 020 functional checks but fails the
+same-cell B distance gate: default/Cache measure 12.2 fps and distance
+3,321,603 (-1.271% / -0.321% respectively); NoCache measures 8.3 fps and
+3,311,794 (-1.562%). The B default/NoCache reference is 3,364,352; explicit
+Cache uses 3,332,298. This remains an experimental candidate.
+
+`c-fused-road-lap` samples its first crash at field 1376, now matching B,
+and finishes with displayed/native reconstructed rank 15 and one crash.
+By comparison, the combined endpoint-motion candidate crashes at 1538.
+The fresh `b-fused-road-default-reference-lap` uses the retained B binary and
+its recorded `CUSTOM2=3` default cache policy. All 751 shared state hashes,
+positions, speeds, lateral positions and crash states reproduce
+`b-reference-lateral`. The initial `b-fused-road-reference-lap` mistakenly
+specified Cache and crashes at 1062; it is retained as a different configuration,
+not substituted for the established default-policy handling reference.
+
+Corrected native-rank observations still differ at 128 sampled fields between
+1112 and 1534. At the first difference, B has passed rider $a6260 (gap -1517)
+while C still trails it (gap +19427). Both have the same nine inactive riders
+ahead, so this early rank difference is not caused by the old stale-position
+sort. These are live-field samples, potentially inside a simulation step;
+a boundary trace is needed before attributing the gap to a particular update.
+At field 1600 both show rank 15, but their ahead lists exchange $a6360 and
+$a63e0 around $a62e0. Final displayed rank alone does not establish full order.
+
+All eleven scheduled PNGs differ. Visual inspection at field 1360 shows the
+same pre-crash off-road/skidding situation, but different road and scenery
+positions. At crash onset B/C speeds are 9878/10314. State 1 begins at sampled
+fields 1398/1396; at field 1600 B has entered state 2 while C remains in state 1.
+No crash-duration correction is justified by these observations alone because
+entry velocities and trajectories differ. The comparison is retained in
+`c-fused-road-lap/comparison.json`. Distance, complete handling/order and scene
+acceptance remain open; matching crash onset does not authorize promotion.
+
 ## Native gear arithmetic accounts for the pre-terrain speed differences
 
 Fresh disabled-enhancement reads in `native-gear-audit`, `native-gear-tables`
