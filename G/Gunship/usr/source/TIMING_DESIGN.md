@@ -170,6 +170,51 @@ unread fields and command intervals together, and account for losses.
 preserving lifetime loss/discard diagnostics. Native FIFO overflow remains
 the native input acceptance policy; only accepted insertions are retained.
 
+## Command inspection and acknowledgement
+
+The retained queue now exposes `commands_peek` with the same arguments and
+field-cutoff semantics as `commands_pop`, but without advancing either reader.
+`commands_ack` takes queue a0, that reader's private eight-byte record a1
+and role d1 (0 player, 1 world). It compares both longs with the current head
+before advancing only that cursor. Returns are 1 acknowledged, 0 empty or
+inactive, -1 fault, -2 invalid role and -3 stale/modified record. All non-result
+registers are preserved. Existing `commands_pop` retains its original API.
+
+This permits classification before consumption: an unresolved mixed/modal
+command can remain at the player's head while the world reader progresses.
+A slot still cannot be reused until both readers release it. The dispatcher
+must apply its owned effects before acknowledging, preserve field cutoffs,
+and invalidate all outstanding private records on lifecycle rebase. Acknowledging
+a matching record is not proof that no producer fault arrived immediately
+after the final fault check; scheduler/recovery checks still apply. Conversely,
+a fault before acknowledgement does not undo effects already applied by the
+dispatcher: its recovery accounting must distinguish those from unapplied
+commands rather than blindly replaying the retained head.
+
+The original command queue suite still passes 30,511 calls. The new
+`test_command_ack_c.py` passes 69,498 calls across independently delayed
+readers, repeated peeks, sequence/cursor wrap, field cutoffs, overflow,
+pause/rebase and a retained mixed command. Modified sequence/key/reserved
+bytes and stale acknowledgements reject without advancing a cursor.
+`test_command_flags_c.py` adds 2,816 checks of result NZVC and register
+preservation; wrapper restores use MOVEM to preserve result flags.
+All 457 native input-adapter checks also pass after rebuilding the diagnostic
+slave. Evidence: `tmp/dev/tmp/c/command-tests.json`,
+`command-ack-tests.json`, `command-flags-tests.json` and `input-tests.json`.
+
+`test_command_ack_preemption_c.py` interrupts acknowledgement at every
+instruction boundary for both readers, including full-ring cases before and
+after the other reader releases its slot. All 252 cases preserve the private
+record and unread slots; reuse occurs only after both readers release them.
+Eighteen interleavings acknowledge with a newly latched producer fault,
+confirming the need for the recovery checks above. The harness saves/restores
+the full CPU context, including deferred arithmetic flags. Evidence:
+`tmp/dev/tmp/c/command-ack-preemption.json`.
+
+The operations do not themselves classify commands or solve the mixed 03
+collective reset. That ordered effect and modal exits must be resolved before
+the corresponding command is acknowledged by the player dispatcher.
+
 ## Native command ownership audit
 
 Command words below are hexadecimal, including modifiers. The native decoder
@@ -1609,9 +1654,10 @@ Non-result registers and stack/return behaviour were checked.
 
 `tmp/dev/tools/test_history_preemption.py` additionally interrupts the real
 consumer at every instruction boundary, runs the producer, restores the
-interrupted CPU state and resumes the consumer. All 132 cases pass at
+interrupted CPU state (including deferred arithmetic flags via full emulator
+context save/restore) and resumes the consumer. All 132 cases pass at
 occupancies 0, 1, 127 and 128: no torn record, premature slot release or
-overwrite of unread data. One full-ring interleaving returns a valid copied
+overwrite of unread data. Two full-ring interleavings return a valid copied
 record alongside a newly latched fault, confirming that the coordinator
 must not treat a successful pop as proof of an unfaulted interval.
 

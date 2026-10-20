@@ -78,6 +78,24 @@ commands_publish:
 ; -1 fault, -2 invalid role. Cutoffs must come from consecutive field records;
 ; sequence comparisons assume their distance is less than 2^31 commands.
 commands_pop:
+	move.l d4,-(sp)
+	moveq #1,d4
+	bsr commands_read
+	movem.l (sp)+,d4
+	rts
+
+; Same arguments/results as pop, but retain the selected reader's cursor.
+; Inspect/classify/apply the private command, then commands_ack it. Producers
+; cannot reuse this slot while either reader still retains it.
+commands_peek:
+	move.l d4,-(sp)
+	moveq #0,d4
+	bsr commands_read
+	movem.l (sp)+,d4
+	rts
+
+; Internal d4=1 advances, d4=0 peeks.
+commands_read:
 	cmpi.l #1,d1
 	bhi .role
 	tst.w CQ_ACTIVE(a0)
@@ -104,7 +122,10 @@ commands_pop:
 	move.l 4(a2),4(a1)
 	tst.w CQ_FAULT(a0)
 	bne .fault
+	tst.l d4
+	beq .copied
 	addq.w #1,(a3)
+.copied:
 	movem.l (sp)+,d2-d3/a2-a3
 	moveq #1,d0
 	rts
@@ -115,6 +136,63 @@ commands_pop:
 	rts
 .fault:
 	movem.l (sp)+,d2-d3/a2-a3
+.bad:
+	moveq #-1,d0
+	rts
+.role:
+	moveq #-2,d0
+	rts
+
+; a0=queue, a1=previously peeked private eight-byte record, d1=reader role.
+; Call only after that reader's effects are applied. Return 1 acknowledged,
+; 0 inactive/empty, -1 fault, -2 invalid role, -3 record no longer matches.
+; Both longs must match the retained head; a stale/modified copy cannot skip
+; the next command. Lifecycle changes invalidate all outstanding private copies.
+commands_ack:
+	cmpi.l #1,d1
+	bhi .role
+	tst.w CQ_ACTIVE(a0)
+	beq .empty
+	tst.w CQ_FAULT(a0)
+	bne .bad
+	movem.l d2-d3/a2-a3,-(sp)
+	lea CQ_PLAYER(a0),a3
+	tst.l d1
+	beq .cursor
+	addq.l #2,a3
+.cursor:
+	move.w (a3),d2
+	cmp.w CQ_WRITE(a0),d2
+	beq .none
+	andi.w #CQ_CAPACITY-1,d2
+	lsl.w #3,d2
+	lea CQ_RECORDS(a0),a2
+	adda.w d2,a2
+	move.l (a2),d3
+	cmp.l (a1),d3
+	bne .mismatch
+	move.l 4(a2),d3
+	cmp.l 4(a1),d3
+	bne .mismatch
+	tst.w CQ_FAULT(a0)
+	bne .fault
+	addq.w #1,(a3)
+	moveq #1,d0
+	bra .return
+.none:
+	moveq #0,d0
+	bra .return
+.mismatch:
+	moveq #-3,d0
+	bra .return
+.fault:
+	moveq #-1,d0
+.return:
+	movem.l (sp)+,d2-d3/a2-a3
+	rts
+.empty:
+	moveq #0,d0
+	rts
 .bad:
 	moveq #-1,d0
 	rts
