@@ -77,6 +77,16 @@ not extend to other state differences or waive step 3's counter/trace validation
   records, and the default 24-bit profiler window excludes the harness's Z3 code.
 - Exit: counter agrees with a full trace over the fixed window.
 
+Completed: `tmp/dev/docs/frame-counter.md`. Read-only breakpoints at the actual
+`_SetPage` COP1LC write (`$4c474`) and vblank increment (`$4d2de`) agree with a
+full 040 MMU dispatch trace: eight publications and 16 vblanks in the fixed
+`[2,18)` flight-relative vblank window. All eight bitplanes fetch from the selected
+buffer in the next field after each publication. The swap request can precede
+publication by a vblank; count the write, not `$019fc`, for frame timing.
+A private local emulator build supplies instruction order across Z3 addresses;
+its dispatch records have no instruction costs and cannot supply step 5 percentages.
+The shared emulator, slave and game remain unchanged.
+
 ### 4. Baseline matrix
 
 - On A1200/040, measure the fixed window for: `TFX` new rendering, `TFX` original
