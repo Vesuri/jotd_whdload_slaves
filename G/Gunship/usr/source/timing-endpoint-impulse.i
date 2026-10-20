@@ -31,6 +31,32 @@ endpoint_impulse_apply:
 	bsr endpoint_motion_step
 	tst.l d0
 	bne .done
+	movea.l a4,a0
+	movea.l a5,a1
+	bsr endpoint_motion_bounds
+.derived:
+	move.w $30(a6),$30(a5)
+	move.b $38(a6),$38(a5)
+	move.b $3a(a6),$3a(a5)
+	move.b $3f(a6),$3f(a5)
+	move.b $40(a6),$40(a5)
+	move.b $50(a6),$50(a5)
+	moveq #0,d0
+	bra .done
+.bad:
+	moveq #-1,d0
+.done:
+	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+; Saturate completed motion with native roll/height and wind-relative XY bounds.
+; a0=validated EP fractional state, a1=private player. No phase ownership.
+; Return 0, preserve other registers. Caller already validated all residues.
+; Shared by ordinary deadlines and full disturbance correction.
+endpoint_motion_bounds:
+	movem.l d1-d7/a0-a6,-(sp)
+	movea.l a0,a4
+	movea.l a1,a5
 	; Native height arithmetic floors a negative signed-word result to zero.
 	; A changed-input endpoint may be nearer that floor than either preview.
 	tst.w $1c(a5)
@@ -38,8 +64,8 @@ endpoint_impulse_apply:
 	clr.w $1c(a5)
 	clr.l 8(a4)
 .height_ok:
-	; A difference between bounded native candidates need not keep a
-	; changed-input endpoint bounded. Native clamps BEFORE signed wind.
+	; Contributions and carried fractions can exceed a bounded native
+	; candidate. Native clamps BEFORE signed wind.
 	movea.l a4,a0
 	movea.l a5,a1
 	moveq #0,d1
@@ -58,36 +84,24 @@ endpoint_impulse_apply:
 	ext.w d1
 .y_wind:
 	bsr .coordinate
-	; The disturbance is a full difference, never 1/span. With held input
-	; the base endpoint equals the undisturbed candidate exactly.
-	; A changed-input path can already be closer to the roll limit than
-	; the anchor preview. Retain native saturation on the actual result.
+	; Retain native saturation on the completed result, including an
+	; outward fraction when the integer part already reaches the limit.
 	cmpi.b #-20,$37(a5)
 	blt .low
 	cmpi.b #20,$37(a5)
 	bgt .high
-	bne .derived
+	bne .bounded
 	tst.l 32(a4)
-	beq .derived
+	beq .bounded
 .high:
 	move.b #20,$37(a5)
 	clr.l 32(a4)
-	bra .derived
+	bra .bounded
 .low:
 	move.b #-20,$37(a5)
 	clr.l 32(a4)
-.derived:
-	move.w $30(a6),$30(a5)
-	move.b $38(a6),$38(a5)
-	move.b $3a(a6),$3a(a5)
-	move.b $3f(a6),$3f(a5)
-	move.b $40(a6),$40(a5)
-	move.b $50(a6),$50(a5)
+.bounded:
 	moveq #0,d0
-	bra .done
-.bad:
-	moveq #-1,d0
-.done:
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
 

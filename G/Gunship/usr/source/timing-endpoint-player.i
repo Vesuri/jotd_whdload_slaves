@@ -245,6 +245,17 @@ endpoint_player_step:
 	tst.l d0
 	bne .bad
 .publish:
+	; Fractions carried from the previous interval can cross a native
+	; saturation boundary even without a new disturbance.
+	move.w EP_DONE(a6),d0
+	cmp.w EP_SPAN(a6),d0
+	bne .publish_ready
+	tst.w EP_WORK_IMPULSE(a6)
+	bne .publish_ready
+	movea.l a6,a0
+	lea EP_WORK_OUTPUT(a6),a1
+	bsr endpoint_motion_bounds
+.publish_ready:
 	lea EP_WORK_OUTPUT(a6),a3
 	movea.l a6,a0
 	movea.l d2,a1

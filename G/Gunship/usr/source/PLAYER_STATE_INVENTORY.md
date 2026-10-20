@@ -1103,3 +1103,29 @@ coordinate/residue escape. All 128 disturbed landing comparisons still pass
 (2,336 fields, 77 ground resets), including fractional-state checks.
 These tests do not cover an ordinary undisturbed interval reaching a bound
 with fractional residue carried from an earlier interval.
+
+#### Ordinary deadline bounds with carried fractions
+
+The follow-up `test_endpoint_carry_bounds_c.py` reproduces that missing case.
+Starting at roll 16, eight PAL fields with X=1 followed by nine with X=0
+leave roll `17 + 1200/1360`. A second 17-field interval holding X=1
+previously reached `20 + 1200/1360`. Separate NTSC intervals starting
+half a coordinate unit below the wind-adjusted upper bound retained
+`680/1360` beyond that bound, for winds -8, 0 and +7.
+
+`endpoint_motion_bounds` now shares the existing height, roll and
+wind-relative coordinate saturation between disturbance correction and
+ordinary completed intervals. The owner calls it on private state before
+publication. The regression retains the first interval's legitimate roll
+fraction, clears it at roll 20, and clears both coordinate fractions at
+each wind-adjusted upper bound. Intermediate fields retain their fractional
+motion; this change does not establish between-field saturation or general
+changing-input collision equivalence.
+
+Validation retains all 360 saved native owner endpoints, 48 transaction
+checks, 270 disturbed endpoints, 128 landing cases and the two captured
+wind-boundary regressions plus 15 held-input wind comparisons. The combined
+cached-disturbance/world fixture passes 2,880 fields across PAL/NTSC and
+batch sizes 1, 3, 10 and 25 (41,758 calls), including native geometry cleanup
+and duplicate-cleanup rejection. These are assembled 68000 Unicorn checks,
+not live emulator or cross-CPU acceptance.
