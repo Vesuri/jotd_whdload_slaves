@@ -379,6 +379,45 @@ Thus the improved lap handling does not close the short-window distance or
 performance gates. No MMU, full-race transition, or visible-latency acceptance
 is claimed for this candidate. It remains private and unpromoted.
 
+### Private road-state lifecycle repair
+
+`c-road-lifecycle-source` extends the preceding private candidate in two places.
+At native `$8bdf0`, after companion-record copying has restored A0/A1, a hook
+copies the external per-actor road carry alongside the native record. It checks
+that both pointers name aligned records in the 35-record table; an in-table
+destination with an out-of-table source is cleared. The hook preserves its
+working registers and replays the displaced height shift and `$8b484` store.
+At the completed-step crash boundary, `step_steering_finish` now clears the
+player's road carry and three historical curvature changes as well as its
+existing lateral carry. Both additions remain within the enhanced patch path.
+
+`c-road-lifecycle-period4` and `c-road-lifecycle-varying` match 1,595 completed
+hashes, ten sound requests and all six field-1457 authoritative regions.
+These hashes also match the preceding actor-road candidate on this short tape;
+that fact alone does not exercise nonzero companion carry transfer.
+
+The direct natural copy probe observes player `$a5d60` copied to companion
+`$a6560` at field 1029, with zero carry on both sides and unchanged D0–D2/A0–A2.
+An attempted debugger-injected nonzero test failed because memory readback
+showed that the debugger writes had not taken effect. Those runs are retained
+as failed test setup, not evidence of a faulty copy hook or successful injection.
+A separate diagnostic binary seeds source carry 3 and destination carry 1 in
+its reset routine. `c-road-lifecycle-copy-seeded` then verifies the real copy
+changes destination to 3 and preserves the same registers. Its seeds are not
+present in the candidate binary.
+
+`c-road-lifecycle-crash-natural` starts from naturally nonzero history
+`00000000fffefffffffe0000` and verifies that the real crash boundary clears
+all twelve bytes. No debugger writes are used for this acceptance. This
+supersedes the earlier crash probe's unverified injection label.
+
+The unseeded normal lifecycle candidate is 19,076 bytes, SHA-256
+`976ef0d2adcbcde99c9b310e597117388e87ba0a20070a6b74a009287c3fce90`.
+Its period4 build directory retains the complete source delta. Full-race
+finish/arrest/wreck and restart coverage, reverse/slot-reuse transitions,
+normal lap, hardware costs and remaining A4 differences still require checks
+before promotion. The production runtime remains unchanged.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
