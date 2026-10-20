@@ -1,3 +1,61 @@
+## Geometry reuse: promising 040 candidate, not yet integrated
+
+A fresh normal `c-pair-clear-current-profile` captures uncached 020 fields
+100–600 using the current 20,480-byte binary. Recorded live placement is
+$9f6018. Flat-PC units total 18,162,428,800; the header gap is 26,627,584
+with 1,511 unmatched returns, so inclusive call attribution is not used.
+Mapped spans account for 11.5206% in the 7,040-byte physics copy, 4.1139%
+in world-object projection, 3.7401% in collision geometry and 2.1676% in
+the 292-byte raster copy. `mapped-flat.json` retains individual PC mapping;
+`regions.json` retains the span totals. These are emulator measurements,
+not hardware cycle claims or proof that Chip stalls are removable.
+
+The new private `c-geometry-reuse-source` marks geometry available when
+native render geometry runs. The next simulation geometry call consumes
+that marker and omits rebuilding the road arrays; subsequent catch-up ticks
+build normally. Race-history reset clears the marker. World-object projection,
+collisions, native rendering and vsync still execute. The existing master
+switch/hardware gate still selects the containing simulation. This tests
+reuse of rendering's output before the next movement update; it does not
+skip simulation ticks or defer input.
+
+`c-geometry-reuse-vary-state2` matches 1,596 shared hashes, sound requests
+and six captured regions against `c-pair-clear-vary-state`.
+`c-geometry-reuse-finish` replays the retained successful-race tape under
+varying cadence and passes the strict comparator against
+`c-pair-clear-finish`: all 12,095 hashes, 66 sound events, six terminal
+regions, finish 11,907 and exit 12,096 match. Restart succeeds with fresh
+capture tuple (93,92,0,1). This does not yet establish arrest/wreck coverage,
+all fixed cadences, input-to-display response, visual acceptance or all CPU
+and fallback paths for the candidate.
+
+Normal candidate/control binaries are both 20,516 bytes and differ only
+at file byte 20208 (conditional branch versus unconditional rebuild).
+`c-geometry-reuse-{vary,control}-matrix` measures:
+
+| Cell | Reuse | Same-layout rebuild control |
+| --- | ---: | ---: |
+| Fast 020 | 12.3 | 12.5 |
+| NoCache 020 | 8.3 | 8.3 |
+| 040/25 | 22.9 | 21.5 |
+| 060/50 | 23.1 | 23.0 |
+
+All eight functional cells pass. Both builds give cached/default 020
+distance 3,321,603 and uncached 3,301,969: B's distance gate remains open.
+The current integrated 040 rate is 21.8, so the candidate also exceeds it,
+but its cached-020 regression prevents unconditional integration. Next work
+must select and validate an appropriate hardware path and complete the
+remaining regression checks; neither this result nor the full finish pass
+closes C. Production source is unchanged.
+
+Private candidate/control build directories retain `source.patch`.
+The initial diagnostic build failed before producing a runnable binary;
+`-vary-state2` is the successful replay. The full-race build uses the same
+source with ring hashes and end capture. Normal SHA-256 values:
+
+- Candidate: `6dcf9ac1328b8dab8740f84a290c9659b48b43ad6ac5ecc33bfcc26e2c12bf23`.
+- Control: `fbaf49c53b1f3334362c260f7b204ed27dcd5bdcaa19f84716a8942c9ebacd87`.
+
 ## Current movement deficit and rejected collision-mode relocation
 
 Fresh `c-pair-clear-motion-{cache,nocache}` traces use the integrated
