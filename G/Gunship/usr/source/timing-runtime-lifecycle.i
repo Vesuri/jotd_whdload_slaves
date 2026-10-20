@@ -61,6 +61,11 @@ timing_runtime_activate:
  cmpi.w #3,d0
  bne .bad
 .body:
+ move.w RT_TARGET_PHASE(a6),d0
+ beq .target
+ cmpi.w #2,d0
+ bne .bad
+.target:
  move.w RT_MODAL+TM_PHASE(a6),d0
  beq .modal
  cmpi.w #4,d0
@@ -146,6 +151,7 @@ timing_runtime_activate:
  dc.w RT_PLAYER+SE_FIELD,SE_SIZE-SE_FIELD
  dc.w RT_GEOMETRY+SGE_FIELD,SGE_SIZE-SGE_FIELD
  dc.w RT_BODY+WB_PHASE,2
+ dc.w RT_TARGET_PHASE,6
  dc.w RT_CONSUMER+TF_PHASE,TF_EFFECT-TF_PHASE
  dc.w RT_MODAL+TM_PHASE,2
  dc.w RT_FIRE,2

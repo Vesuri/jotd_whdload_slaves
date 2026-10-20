@@ -24,7 +24,9 @@ TF_EFFECT equ 68 ; optional recurring effect clone (runtime always binds)
 TF_HIT_TIMER equ 72 ; native hit countdown byte, paired with TF_EFFECT
 TF_MAP_ENTRY equ 76 ; optional native coordinate-only entry
 TF_MAP_MODE equ 80 ; native panel mode byte (1 = map)
-TF_SIZE equ 84
+TF_TARGET_ENTRY equ 84 ; optional once-per-deadline target owner
+TF_TARGET_CONTEXT equ 88
+TF_SIZE equ 92
 
 ; a0=TF, d0=command budget per reader (1..128). Preserve other registers.
 ; Return 0 field complete, 1 world complete, 2 retained command boundary,
@@ -176,6 +178,14 @@ timing_flight_consume:
  jsr (a1)
  movem.l (sp)+,a5-a6
 .effect_done:
+ move.l TF_TARGET_ENTRY(a6),d0
+ beq .target_done
+ movea.l d0,a1
+ movea.l TF_TARGET_CONTEXT(a6),a0
+ jsr (a1)
+ tst.l d0
+ bne .fault
+.target_done:
  movea.l TF_BODY(a6),a0
  clr.w WB_PHASE(a0) ; new deadline admitted once, never a retry
  movea.l TF_GEOMETRY(a6),a1

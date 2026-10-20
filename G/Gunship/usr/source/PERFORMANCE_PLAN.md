@@ -574,8 +574,12 @@ after collection. Its CPU behavior matches the original drawing prefix over
 48 views. A compiled guest probe also matches real blitter output, candidates
 and sampled colors in 16 PAL views on each of the 68000, 68020 and 68060.
 The isolated pass averages 71/32/22 ms on the PAL 68000/020/060 fixtures;
-whole-game timing, world ownership and lock publication/exclusion remain open.
-It is not called by the runtime.
+whole-game timing remains open. The experimental field consumer now invokes
+visibility and native-equivalent target selection once per world deadline,
+after committed player motion and before geometry/weapons. Field stamps reject
+replay, and render hooks suppress collection/selection except inside that
+world pass. Normal native ownership remains unchanged. Runtime activation and
+presentation of the locked target in the latest rendered view remain open.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:
@@ -732,8 +736,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     now matches native output in compiled guest tests on 68000/020/060 (16 PAL
     views each, both palette modes). The isolated pass is priced at roughly
     21%/10%/7% of elapsed time at three calls per second on those setups.
-    Whole-game timing, world publication and exclusion of native render target
-    writes remain open; these helpers are not yet connected to the runtime.
+    The experimental runtime now publishes selection once per world deadline
+    and excludes native render collection/selection under enhanced ownership,
+    including retained UI completion. Whole-game timing, current-view target
+    presentation and native flight-loop activation remain open.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at

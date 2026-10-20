@@ -1,4 +1,5 @@
-; Experimental committed-view visibility acquisition. Not runtime-bound.
+; Experimental committed-view visibility acquisition, called by the world
+; target owner. Native flight-loop activation remains separate.
 ; Uses the native back buffer, raster scratch and blitter. Foreground only:
 ; no concurrent drawing, buffer swaps, target readers or native target hooks.
 ; Caller supplies committed poses, never predicted presentation inputs.

@@ -4011,3 +4011,92 @@ The timed slave SHA-256 is
 `c011a954278eff3e9b618aaad52c2246ec1789a2f68a8a990979a4ec43ccacbe`.
 World-owned selection/publication, native-render write exclusion and runtime
 activation are still pending. These measurements do not complete C9.
+
+## World-owned target publication and native render guards
+
+The experimental runtime now prepares the raster and private selector in its
+arena and binds `timing_runtime_target` to the field consumer. `TF_SIZE` is
+92 bytes and `RT_ARENA_SIZE` is 28,202 bytes. After committed field motion,
+the deadline path invokes visibility/selection before committed geometry and
+weapons, matching the native selection-before-post-motion-world ordering.
+Ordinary non-deadline fields do not call it.
+
+The callback requires scheduler state 2 (world pending), an executing field
+consumer, a matching field stamp and healthy active scheduler owners. It
+seeds its private selector from the current native target block, preserving
+changes made by native world commands, and builds the camera from committed
+player state. The raster pass collects candidates and pixel samples; the
+private selector then publishes the complete 168-byte native target block.
+It does not draw the panel/HUD, swap buffers, acknowledge the deadline or
+advance world logic itself. Native drawing scratch is left for the following
+presentation publisher to rebuild.
+
+Target phase 0 is fresh, 1 collecting, 2 published, 3 failed. A field stamp
+rejects a second execution for the same deadline. Failure cannot silently
+retry; the consumer latches its fault. Normal activation rejects unfinished
+or failed target work and clears completed target metadata for the new epoch.
+The activation test caught an initial state-1 admission error: committed
+player motion has already advanced the scheduler to state 2. This was fixed
+before accepting the integration.
+
+`timing_render_install` validates and patches the collector calls at +06356
+and +063D4 and the selector call at +0468C, behind the existing CUSTOM1 gate.
+Native ownership tail-calls the original entries. Enhanced drawing skips
+both mutations; collection is permitted only while the world callback's
+target phase is 1. The following native instructions overwrite the skipped
+flags and reload drawing inputs. The target-panel routine writes render/UI
+scratch beyond the target block; it is not the selector.
+
+Retained UI completion is a deliberate exception to ordinary input ownership:
+`timing_runtime_boundary_finish` resumes the held consumer with boundary phase
+4 and native input ownership, while its producers remain excluded. The world
+callback and collector allow precisely that combination. Other UI phases
+still suppress target writes, as does phase 4 outside an active world pass.
+The first deadline-completion test failed without this exception; after the
+fix all twelve normal/nested/manual-exit cases pass, with paused and
+uninterrupted completion states equal.
+
+Validation in the ignored harness:
+
+- `test_runtime_target_c.py`: 16 native prefix/selector comparisons with
+  explicit pixel values, full target publication equality, register
+  preservation, 16 duplicate-field rejections and atomic invalid-descriptor
+  rejection. This is instruction/ownership evidence, not a DMA test.
+- `test_target_render_guards_c.py`: 448 owner/boundary/target-phase/CCR cases,
+  checking exact native permission and preservation when calls are skipped.
+- `test_timing_live_render_c.py`: original effect behavior still matches in
+  128 cases; 896 suppressed cases have no native writes/RNG; all 16 altered
+  installer signatures reject before patching.
+- `test_target_deadline_order_c.py`: 600 fields over PAL/NTSC and three batch
+  sizes establish committed motion -> visibility -> weapons order, exactly
+  once per deadline.
+- `test_runtime_batch_c.py`: the real callback runs over 1,200 fields across
+  ten PAL/NTSC batching configurations, including 954 command-budget yields,
+  with equal endpoint state and latched limits. Unicorn has no blitter; this
+  checks composition/control flow, not picture correctness.
+- `test_runtime_activation_c.py`: two field rates and two arena locations
+  complete 240 fields with the real callback, reject collecting/failed target
+  epochs, and reset published target stamps on activation.
+
+The compiled `VP_OWNER=1` guest probe compares native selection against the
+actual runtime callback in world-pending state. It then invokes render guards,
+rejects a duplicate callback and compares the native published block, private
+selection, pixel array and all five real bitplanes. Sixteen PAL views pass on
+68000/020/060, with twelve nonempty collection views per CPU. Selected status,
+identity/subtype and sampled colors agree across the three CPUs. Counts in
+the retained rows are zero after selection, as required by the native code;
+they are not a claim that collection was empty. Results are in
+`tmp/dev/tmp/c/visibility-owner-{a500-fast,a1200-fast,a1200-060}-phase2`.
+A final `VP_RETAINED=1` 020 probe runs eight ordinary views and eight views
+with boundary phase 4/native input ownership, using the same active retained
+consumer state. All sixteen native-selection, pixel and bitmap comparisons
+pass; its results are in `visibility-owner-retained-020`. The retained probe
+slave SHA-256 is
+`ee40a2d6503be713c19f4ed856187ce4bb20b49eb15efc15e2daaad43d86eda3`.
+
+All runtime variants assemble. Native flight-loop activation is still absent,
+so the ordinary build and default-off behavior remain unchanged. The target
+display currently reads the last committed selection; adapting its projected
+descriptor/box to the latest presentation camera without changing the world
+selection remains open. Full renderer state isolation, gauge slew, prediction,
+whole-game timing and trajectory acceptance also remain open.

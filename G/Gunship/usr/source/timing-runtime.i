@@ -58,7 +58,11 @@ RT_BOUNDARY_RESULT equ RT_BOUNDARY_PHASE+2
 RT_BOUNDARY_ABORTS equ RT_BOUNDARY_RESULT+2 ; lifetime delivered fields exited
 RT_PRESENT_INSTRUMENTS equ RT_BOUNDARY_ABORTS+4
 RT_PRESENT_SCENE equ RT_PRESENT_INSTRUMENTS+16
-RT_ARENA_SIZE equ RT_PRESENT_SCENE+SCENE_STATE_SIZE
+RT_VISIBILITY equ RT_PRESENT_SCENE+SCENE_STATE_SIZE
+RT_TARGET equ RT_VISIBILITY+VR_SIZE
+RT_TARGET_PHASE equ RT_TARGET+WT_SIZE ; 0 fresh, 1 collecting, 2 published, 3 fault
+RT_TARGET_FIELD equ RT_TARGET_PHASE+2
+RT_ARENA_SIZE equ RT_TARGET_FIELD+4
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -241,6 +245,21 @@ timing_runtime_prepare:
  bsr scene_private_prepare
  tst.l d0
  bne .bad
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ lea RT_VISIBILITY(a6),a2
+ bsr visibility_raster_prepare
+ tst.l d0
+ bne .bad
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ lea RT_TARGET(a6),a2
+ bsr target_select_prepare
+ tst.l d0
+ bne .bad
+ lea timing_runtime_target(pc),a0
+ move.l a0,RT_CONSUMER+TF_TARGET_ENTRY(a6)
+ move.l a6,RT_CONSUMER+TF_TARGET_CONTEXT(a6)
  ; Coordinate-only map entry has no OS calls; bind only the known routine.
  movea.l RT_HUNKS(a6),a0
  movea.l RT_HUNKS+24(a6),a1
