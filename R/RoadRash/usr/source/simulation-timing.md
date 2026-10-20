@@ -1,3 +1,52 @@
+## Completed passing gap and retained NPC brake bit
+
+`b-road-passing-boundaries` and `c-road-passing-boundaries` replay the lap
+through the field-1100 right input, then stop at completed simulation returns. The B run records nine boundaries
+(1101..1141) and C records 41 (1098..1138). The eight common cursors end at
+1136, before the next input transition; B's trailing 1141 row is outside that
+shared comparison and does not include the scheduled 1140 input. At cursor 1101,
+B/C gaps to rider $a6260 are 6398/29602; C's player is 45,869 position units
+behind B and its rival is 22,665 behind. At cursor 1111 B has passed that rider
+(gap -1517), while C has not (19427). C has still not passed by cursor 1138.
+This establishes a real completed-state difference, not just the previously
+observed mid-update rank sample. The comparison is retained in
+`c-road-passing-boundaries/comparison.json`.
+
+Native B's cursor stamps and consumed deltas are not interchangeable: over
+the eight adjacent records its cursor advances 40 fields while summed delta
+is 39; C advances and consumes 40. All C position increments equal the stored
+displacement for player/$a61e0/$a6260. In B, the sole exception in those records
+is $a6260 at cursor 1131: position moves 44,563 despite stored displacement
+50,405. Later contact side effects must not be misclassified as integration
+rounding. The player velocities at common cursors are close (for example
+10476/10435 at 1111), while rival acceleration decisions differ.
+
+Natural flag watchpoints in `b-road-brake-writes` and `c-road-brake-writes`
+cover fields 1050..1100. B marks $a6260 for collision at cursors 1077 and 1097
+from a routine whose A1 is $a61e0. C instead sets the rival's brake flag at
+cursor 1079 through $8d630. Native disassembly in `native-avoidance-audit`
+shows that the coast path at $8d5f2/$8d5f8 clears throttle bit 1 twice; it does
+not clear brake bit 2. The relative-speed/time-to-catch arithmetic in this
+branch has no frame-delta multiplier to normalize.
+
+`c-road-coast-original-probe` observes that naturally braking rival reach the
+second clear at cursor 1080: bytes `08a900010068` leave flags $44 unchanged.
+The private `c-road-coast-source` changes the immediate operand to bit 2 only
+inside the enhanced patch list, before the auxiliary copy is initialized.
+`c-road-coast-fixed-probe` observes bytes `08a900020068` at cursor 1091 and
+verifies flags $44 become $40 after that instruction. These are natural-state
+single-instruction checks; no debugger memory seeding is used. Their different
+first-hit times reflect the candidate's already changed gameplay.
+
+The 19,936-byte candidate is SHA-256
+`788a6644abf380d55015e7a35c3bf1e660a7d9bd666814ecba0fc64a04562de8`.
+`c-road-coast-lap` moves sampled crash onset to 1324, versus 1376 for both B
+and the unmodified road candidate, although final displayed rank remains 15.
+Clearing the retained brake globally therefore does not satisfy compatibility.
+The candidate and source delta remain private; no runtime change or broad
+validation is claimed. The NPC speed difference includes native contact and
+brake-retention behavior, not merely a missing elapsed-time factor.
+
 ## Isolated road correction on the fused runtime
 
 `c-fused-road-source` enables only the retained `VERIFY_C_ROAD_TIMING`
