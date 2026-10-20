@@ -84,6 +84,51 @@ the tracked runtime. Normal runtime identity and the remaining C gates are
 unchanged. Further optimization needs to target larger costs than these
 isolated timestep arithmetic operations.
 
+### Actor-memory audit: race state shares storage with graphics
+
+`c-actor-memory-audit` examines the current 8,212-byte normal runtime without
+changing its memory or instructions. During a 300..320 live-field capture,
+19 complete recorded fields contain 44,893 bus accesses into
+`$a5d60..$a6edf`, all classified as CPU accesses. They touch 417 distinct bus
+addresses and account for 10.779% of the sample's 416,482 CPU bus records.
+This identifies a substantial source of Chip RAM traffic, not a measured
+speedup or proof that the region is CPU-only throughout the game.
+
+The native snapshot has 202 instruction operands referring into this address
+range and 51 populated pointer slots. These are address references, not all
+semantically actor references. Three real operands require decoding from the
+correct entry rather than following the linear disassembly through preceding
+data: `$898e6` (instruction at `$898e4`), `$8af7c` (`$8af7a`), and `$8b48a`
+(`$8b486`). A blind word-aligned scan finds another 40 address-shaped values
+that straddle instructions and must not be relocated.
+
+The live runtime matches 201 of those native operand values. The exception
+is `$8a8e8`, whose original player comparison is covered by the integrated
+prediction hook. The replacement comparison lives in the slave. Its emitted
+listing contains 12 direct references into this range; they also need explicit
+handling. The existing Fast RAM object-projection copy has no direct operand
+in this range. Populated data pointers include `$9017c`, the lists around
+`$90948`/`$909cc`, and the actor tables at `$94192..$94226`; the sampled slots
+are not an exhaustive lifetime inventory of every possible pointer.
+
+Crucially, the same Chip addresses serve graphics routines outside the actor
+lifetime. `$8172c` copies a variable-sized resource to `$a5de0`, then `$afd9c`
+turns its relative image offsets into absolute pointers. `$81fb2` reads the
+first such pointer from `$a5de2` into A1 and can call `$b452a`; that path writes
+A1 to `BLTAPT` at `$b465a`. `$83ba4` and `$b2b4c` also use `$a5de0` as a
+resource-load destination. `$b2b58` copies 6,048 bytes from there to `$f0de`,
+extending beyond the 4,480-byte actor region. Globally rebasing every reference
+would therefore both risk feeding Fast RAM to DMA and exceed a small
+actor-only allocation.
+
+Any actor relocation must split these lifetimes: keep graphics scratch and
+DMA sources in Chip RAM, establish separate Fast actor storage for races,
+and audit initialization, results, exit and restart transfers. It must rebase
+typed actor references and the slave's helpers, not every matching literal.
+The audit JSON and retained bus trace document the observations. No relocation
+is installed yet; this is a concrete D3 dependency for pursuing C's remaining
+simulation cost, not completion of D3's eligibility or transition audit.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain

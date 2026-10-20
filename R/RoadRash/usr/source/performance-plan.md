@@ -482,6 +482,11 @@ dictate the accelerated path's timestep.
     draw lists. Audit every reader/writer and stored pointer; maintain one authoritative
     mutable copy. Mixed CPU/DMA regions must be split where practical, with explicit
     transfers if a CPU-side copy is useful (including E5's images and masks).
+    The actor-memory audit identifies a concrete lifetime conflict: `$a5d60..$a6edf`
+    holds race actors, but graphics loaders reuse `$a5de0` and its image pointers
+    can feed the blitter. Keep that graphics scratch in Chip RAM when separating
+    race actor storage. A race sample attributes 10.779% of CPU bus records to
+    this region; it is a relocation candidate, not a proven throughput gain.
   - D3e Move the CPU stack and any separate interrupt stacks into the allocated memory.
     Audit stack bounds, startup/switching, exception/interrupt entry and exit, and quit
     handling; retain a valid stack throughout loading and relocation.
