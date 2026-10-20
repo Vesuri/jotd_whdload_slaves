@@ -3,7 +3,8 @@
 ; visibility oracle: selection still needs pixels from the same committed view.
 SCT_TARGET equ SCENE_SIZE
 SCT_COLLECTOR equ SCT_TARGET+4
-SCT_SIZE equ SCT_COLLECTOR+4
+SCT_SELECTION equ SCT_COLLECTOR+4 ; target snapshot before projectile overlay
+SCT_SIZE equ SCT_SELECTION+WT_STATE_SIZE
 ; a0=h0,a1=h4,a2=h6,a3=SCT_SIZE workspace,a4=WT,a5=collector. Return 0/-1.
 ; Failed setup is not callable; no native writes. Flush clones before use.
 scene_target_prepare:
@@ -81,16 +82,22 @@ scene_target_prepare:
 
 
 ; a0=prepared SCT, a1=committed camera, a2=committed object coordinates.
-; Validate target descriptor layout, discard the previous candidate count,
-; then project/collect the current view. Return 0/1 plane flag, -3 bad layout
-; or target binding, -1 missing scene binding.
+; Candidate publication matches native +5c78: after +60a8, before +6224.
+; The later overlay still contributes to the flight-end flag, but its target
+; writes cannot change the selection input for this committed view.
+; Return 0/1 plane flag, -3 bad target layout/binding, -1 missing scene binding.
 ; Only private scene/target/stack writes. Previous target identity is retained.
 scene_target_step:
- movem.l d1/a0-a3,-(sp)
- movea.l SCT_TARGET(a0),a3
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ tst.l SCENE_H0(a6)
+ beq .scene_bad
+ tst.l SCENE_H6(a6)
+ beq .scene_bad
+ movea.l SCT_TARGET(a6),a3
  move.l a3,d0
  beq .bad
- tst.l SCT_COLLECTOR(a0)
+ tst.l SCT_COLLECTOR(a6)
  beq .bad
  moveq #4,d1
  lea WT_STATE+8(a3),a3
@@ -101,12 +108,48 @@ scene_target_step:
  btst #0,d0
  bne .bad
  dbf d1,.validate
- movea.l SCT_TARGET(a0),a3
+ movea.l SCT_TARGET(a6),a3
  clr.w WT_STATE+2(a3)
- bsr scene_private_step
+ ; Same camera/context construction as scene_private_step.
+ movea.l a1,a0
+ movea.l a2,a1
+ movea.l SCENE_H6(a6),a2
+ lea SCENE_CONTEXT+14(a6),a3
+ bsr scene_state_build
+ lea SCENE_CONTEXT(a6),a5
+ lea $15dc(a2),a0
+ move.l a0,$5e(a5)
+ clr.b $62(a5)
+ lea $5c2e-SCENE_START(a6),a0
+ jsr (a0)
+ lea $60a8-SCENE_START(a6),a0
+ jsr (a0)
+ ; Native panel selection is at this boundary, before projectile overlays.
+ movea.l SCT_TARGET(a6),a0
+ lea WT_STATE(a0),a0
+ lea SCT_SELECTION(a6),a1
+ moveq #WT_STATE_SIZE/2-1,d1
+.capture:
+ move.w (a0)+,(a1)+
+ dbf d1,.capture
+ lea $6224-SCENE_START(a6),a0
+ jsr (a0)
+ movea.l SCT_TARGET(a6),a0
+ lea WT_STATE(a0),a0
+ lea SCT_SELECTION(a6),a1
+ moveq #WT_STATE_SIZE/2-1,d1
+.publish:
+ move.w (a1)+,(a0)+
+ dbf d1,.publish
+ moveq #0,d0
+ move.b $62(a5),d0
+ andi.w #1,d0
+ bra .done
+.scene_bad:
+ moveq #-1,d0
  bra .done
 .bad:
  moveq #-3,d0
 .done:
- movem.l (sp)+,d1/a0-a3
+ movem.l (sp)+,d1-d7/a0-a6
  rts

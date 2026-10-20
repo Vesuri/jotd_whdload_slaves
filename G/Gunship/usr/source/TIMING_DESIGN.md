@@ -3779,14 +3779,17 @@ sites (+06356/+063D4) use the private collector. Polygon rasterization remains
 stopped at +063F8; point-object color, pixel and glyph drawing calls are
 removed after signature validation. The native point clipping predicate is
 retained and only reads viewport bounds. This variant has an eight-byte
-binding suffix, for SCT_SIZE = 7,872 bytes, plus the separate 546-byte target
-workspace and 316-byte collector clone.
+binding suffix and a 168-byte selection snapshot, for SCT_SIZE = 8,040 bytes,
+plus the separate 546-byte target workspace and 316-byte collector clone.
 
 `scene_target_step(a0=SCT,a1=committed camera,a2=committed object coordinates)`
 validates descriptor offsets, clears the previous candidate count, and runs
-the private scene traversal with full native projection. Previous selection
-identity/status and descriptor-offset layout are retained. It returns the
-native flight-end plane flag and only writes private scene/target/stack state.
+the private scene traversal with full native projection. It snapshots target
+state after +060A8, at the native +05C78 selection boundary, before +06224's
+projectile overlay. The overlay still runs for the final flight-end plane
+flag, but its target writes are discarded in favor of the selection snapshot.
+Previous selection identity/status and descriptor-offset layout are retained.
+The entry only writes private scene/target/stack state.
 It does not sample pixels or decide which projected candidates are visible.
 The caller must keep shared model/viewport/targeting inputs stable and flush
 the prepared code before execution. Failed preparation is not callable.
@@ -3800,8 +3803,9 @@ coordinates and model pointers match, with no native writes.
 
 `test_scene_target_c.py` passes 48 views spanning three positions, two heights
 and eight headings. Six views collect a candidate; counts are zero or one
-in this scene fixture. Candidate state and flight-end plane flags match
-native geometry/collection, and reused workspaces produce the same results.
+in this scene fixture. Candidate state at the pre-overlay selection boundary and final flight-end
+plane flags match native geometry/collection, and reused workspaces produce
+the same results.
 Three invalid descriptor layouts reject without changing either workspace.
 The reference and private lanes have the same explicit rasterization
 omissions. This distinction matters: equal candidates do not establish equal
@@ -3813,3 +3817,28 @@ without reducing coverage.
 All runtime variants assemble; ordinary, VERIFY and standalone input builds
 remain byte-identical. These helpers remain unbound from the runtime pending
 committed-view pixel acquisition and target publication/exclusion work.
+
+
+## Native drawing-pass ordering audit
+
+A native +05C04 frame executes +060A8, then +0468C (whose first call is target
+selection +0A58C), then +06224's projectile overlay, HUD and effects. Candidate
+state for selection must therefore be retained before the overlay, even
+when a full private traversal also needs the later flight-end result. A
+late-overlay injection test changes candidate scratch and the plane flag:
+`scene_target_step` retains the earlier candidates while returning the later
+plane flag. The original full-traversal candidate snapshot was corrected to
+respect this boundary before runtime adoption.
+
+The ignored `audit_frame_writes_c.py` now executes the complete native frame
+in Unicorn to inventory CPU writes. It completes with 2,386 distinct
+PC/address/size write sites in the flight snapshot. Display swapping and the
+already-extracted effect constructor/animator are stubbed; ReadPixel returns
+an explicit fixture value and blitter DMA is not emulated. This is write-path
+evidence only, not a pixel-correctness or hardware result. It identifies the
+native raster prefix +05C04..+05C78 as the point at which a committed-view
+visibility pass can stop before panel/HUD/display work. The bitmap binding
+entry at +084E2 selects the current drawing buffer and writes hunk 6 +47C4.
+A native raster visibility pass, its pixel validation and cost measurements
+remain to be implemented; candidate selection must not fall back to pixels
+from a previous or predicted displayed frame.

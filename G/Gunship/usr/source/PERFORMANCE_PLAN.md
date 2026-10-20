@@ -719,7 +719,7 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     commit a lock, target change or launch. A private native-equivalent selector
     now accepts explicit per-candidate pixel colors and changes only its own
     target snapshot. A private full-projection/collector path now matches
-    native candidate state in 48 drawing-omitted views; filtering/capacity
+    native pre-overlay candidate state in 48 drawing-omitted views; filtering/capacity
     checks add 1,536 native comparisons. Committed-view pixel acquisition,
     world publication and exclusion of native render target writes remain open;
     these helpers are not yet connected to the runtime.
