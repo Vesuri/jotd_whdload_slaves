@@ -25,6 +25,8 @@ player operation. Native-loop installation and gauge slew remain pending.
 `timing-motion-preview.i` prepares and executes a native arithmetic clone
 on a separate player record, excluding random/contact world effects.
 It is also standalone; it does not yet scale or commit player motion.
+`timing-fraction.i` supplies tested signed rational increments for that
+future step. It does not select field-specific equations or coefficients.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -282,6 +284,47 @@ memory-write hooks observe no writes outside the result and stack, and the
 authoritative input remains unchanged. Registers and output guards pass.
 Twenty-one malformed boundary/call fixtures fail before destination writes.
 Evidence: `tmp/dev/tmp/c/motion-preview-tests.json`.
+
+## Fractional arithmetic contract
+
+`timing-fraction.i` provides `fraction_scale`, a standalone 68000 operation.
+Inputs are a0 = a signed long remainder, d0 = a sign-extended native word
+increment, d1 = numerator and d2 = denominator. Valid inputs satisfy
+`0 <= numerator <= denominator <= 32767`, denominator nonzero, and
+`-denominator < remainder < denominator`. It computes
+`total = increment * numerator + remainder`, returns the quotient truncated
+toward zero in d0, and retains the signed division remainder at a0.
+d1 returns 0 for success or -1 for invalid input; invalid input returns
+d0=0 and leaves state untouched. d2-d7/a0-a6 are preserved.
+
+Rates can therefore use exact 3/50 or 3/60 ratios without approximating
+the field duration in binary fixed point. The denominator belongs to the
+remainder's unit and must not change without reset/conversion. Each
+independent integrated quantity needs its own state; one shared remainder
+would couple unrelated movements. With numerator equal to denominator and
+an initially zero remainder, the native integer increment is reproduced
+exactly. Nonzero residuals retain their mathematical effect; the h=1 player
+fixture must initialize shadow state consistently with its native reference.
+
+This primitive does **not** make the motion preview directly integrable:
+derived targets/power/coarse speed must be recomputed, not scaled as rates;
+angular differences need native modular interpretation; response terms
+need their own r^h conversion; native speed's signed slew is separate from
+its one-sixteenth approach. Saturation/ground resets must account for or
+clear the corresponding residual instead of accumulating motion against a
+stop. The eventual lifecycle manifest must enumerate every allocated
+fraction and its initialization/rebase/impulse reset point. No persistent
+player shadow state is allocated by this helper.
+
+`tmp/dev/tools/test_fraction_c.py` passes 36,391 assembled calls against
+independent integer division. Coverage includes signed-word extremes,
+denominator/numerator/remainder boundaries, invalid inputs without writes,
+and register preservation. Constant positive and negative rates accumulate
+exactly three native increments over 50 PAL or 60 NTSC fields. Mixed-sign
+600-field tapes processed in batches of 1/3/10/25 produce identical output
+and residual, with exact total accounting. This proves the arithmetic
+component, not the complete player-step equivalence gate.
+Evidence: `tmp/dev/tmp/c/fraction-tests.json`.
 
 ## Foreground coordinator
 
