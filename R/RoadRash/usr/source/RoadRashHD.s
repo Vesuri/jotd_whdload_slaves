@@ -272,6 +272,7 @@ pl_main
 	IFD C_STEP_BUILD
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
+	PL_P	$915A,step_camera_decay
 	IFD STEP_EXTRAPOLATE
 	PL_PS	$75C8,step_view_begin
 	PL_P	$7748,step_view_end

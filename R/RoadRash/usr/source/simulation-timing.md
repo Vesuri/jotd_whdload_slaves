@@ -28,11 +28,12 @@ The camera writes `$a5d1e` and `$a7c02`. Physics and collisions read `$a5d1e`, i
 During a crash, `$89162` decays camera displacement once per call and `$89182`
 integrates it from actor movement. Calling the camera once per render would therefore
 preserve a gameplay dependency on rendering frequency.
-Moving this call to a 50 Hz simulation does not by itself preserve its decay rate:
+Moving this call to a 50 Hz simulation did not by itself preserve its decay rate:
 four calls leave approximately `(3/4)^4 = 31.6%` of the offset, whereas the
 four-field original reference leaves 75%. The movement integration reads the
 delta-scaled actor displacement, but the decay needs explicit elapsed-time
-normalization. This remains open; cross-render-rate hashes cannot detect it.
+normalization. The correction and its reference are recorded below;
+cross-render-rate hashes alone cannot detect this error.
 
 `$8eff8`, called among rendering preparation at `$876c6`, consumes sound-event flags,
 decrements `$a5d5e` using delta, and clears `$a598a/$a598b`. It must consume each
@@ -376,3 +377,31 @@ Both off builds retain the original instructions at all five sites. The enabled
 normal build installs B's patches; the enabled C build installs C's patches and
 keeps the original swap without B's extra floor. `toggle-step-replay` matches
 all 1,598 actor hashes from the pre-switch human-input replay.
+
+## Crash-camera decay on elapsed time
+
+The C path now replaces only the recovery-decay branch at `$8915a`.
+Its reference is the original A1200's four-field cadence, where each call
+retains 75% of the camera offset. A one-field update subtracts
+`floor(offset * 4548 / 65536)`: the coefficient approximates
+`1 - (3/4)^(1/4)`. Four updates retain 74.9994095% before integer rounding.
+Larger diagnostic quanta repeat the same one-field operation. This deliberately
+replaces the old hardware-dependent recovery rate with one consistent rate;
+it does not slow input or add a presentation delay. The movement branch already
+reads delta-scaled actor displacement and is unchanged.
+
+The signed product is split into signed high-word and unsigned low-word
+products, avoiding overflow at either 32-bit limit with 68000 instructions.
+`VERIFY_C_DECAY_TEST` checks ten signed cases in the actual emulator, including
+both limits, zero and both signs. One- and four-field results match independent
+host integer arithmetic (`c-decay1/12`, `c-decay4`). For offset -28,672, four
+normalized updates give -21,502 versus the original -21,504: two fixed-point
+units of rounding difference.
+
+The attack/crash tape still gives **1,596 identical consecutive actor hashes**
+between rendering intervals 1 and 12. Relative to the previous, overly fast
+decay, actor hashes first change at tick 1,263; this is an intentional timing
+correction, not a claim of byte equivalence to that prototype. The normal slave
+is byte-identical to the master-toggle build; this correction remains diagnostic
+until the rest of C is validated. Large extrapolation snapshot buffers now follow
+the executable helpers so their optional build retains valid PC-relative ranges.

@@ -35,6 +35,9 @@ step_reset:
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
 	clr.b step_input_overflow-step_queued_field(a1)
+	IFD VERIFY_C_DECAY_TEST
+	bsr step_decay_test
+	ENDC
 	IFD STEP_EXTRAPOLATE
 	bsr step_save_previous
 	ENDC
@@ -137,6 +140,53 @@ step_start_sprite:
 	rts
 step_start_frame:
 	dc.w 0
+
+; The original reference loses 1/4 of the crash-camera offset per four fields.
+; One field retains (3/4)^(1/4): decay coefficient round(65536*(1-root))=4548.
+; Actor displacement already includes delta; only the recovery decay needs this.
+step_camera_decay:
+	move.l $a7c02,d0
+	bsr step_decay
+	move.l d0,$a7c02
+	jmp $891ae
+
+; Signed 32-bit offset in/out d0. Split the product to avoid overflow and retain
+; 68000-compatible instructions. Repeat per field for larger diagnostic quanta.
+step_decay:
+	movem.l d1-d3,-(a7)
+	moveq #STEP_FIELDS-1,d3
+.field:
+	move.l d0,d2
+	move.l d0,d1
+	swap d1
+	muls.w #4548,d1
+	mulu.w #4548,d0
+	swap d0
+	andi.l #$ffff,d0
+	add.l d1,d0
+	sub.l d0,d2
+	move.l d2,d0
+	dbf d3,.field
+	movem.l (a7)+,d1-d3
+	rts
+
+	IFD VERIFY_C_DECAY_TEST
+step_decay_test:
+	lea step_decay_cases(pc),a0
+	lea step_decay_results+8(pc),a1
+	moveq #10-1,d4
+.next:
+	move.l (a0)+,d0
+	bsr step_decay
+	move.l d0,(a1)+
+	dbf d4,.next
+	rts
+step_decay_cases:
+	dc.l $80000000,-65536,-32768,-28672,-1,0,1,32767,65536,$7fffffff
+step_decay_results:
+	dc.b "RRCDECAY"
+	ds.l 10
+	ENDC
 
 ; Field producer: use existing control/pause handling, but keep the physics
 ; steering and throttle state owned by the simulation consumer.
@@ -562,12 +612,6 @@ step_view_stats:
 	dc.l 0,0
 	ds.l 4
 	ds.l 12
-step_camera:
-	ds.b $4c
-step_previous:
-	ds.b $1180
-step_authoritative:
-	ds.b $1180
 	ENDC
 
 ; Rider spark lifetime is simulation-owned; drawing consults a cached effect.
@@ -626,3 +670,13 @@ step_pose_clear:
 step_pose_busy:
 	dc.b 0
 	even
+
+	IFD STEP_EXTRAPOLATE
+; Keep large presentation snapshots after code so short PC-relative calls fit.
+step_camera:
+	ds.b $4c
+step_previous:
+	ds.b $1180
+step_authoritative:
+	ds.b $1180
+	ENDC
