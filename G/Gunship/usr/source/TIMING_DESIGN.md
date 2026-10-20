@@ -304,9 +304,9 @@ indicator is stubbed while D0/D1.b and call order are checked; this is not
 validation of its rendering internals. Evidence:
 `tmp/dev/tmp/c/control-mode-tests.json` (22,030 helper calls).
 
-These helpers resolve the isolated ordered reset. The actual queue dispatcher,
-indicator callback internals and all other mixed/modal command policies still
-need integration and live validation before C3 can be closed.
+These helpers resolve the isolated ordered reset. The queue dispatchers below,
+indicator callback internals and boundary policies still need native installation
+and live validation before C3 can be closed.
 
 ### Retained player command dispatcher
 
@@ -356,9 +356,60 @@ entry after a collective increment. The increment remains applied exactly once,
 advances. A retry reports the queue fault without repeating the increment.
 Evidence: `tmp/dev/tmp/c/command-dispatch-fault-tests.json`.
 
-The world dispatcher and boundary handlers remain pending. In particular,
-world processing must not invoke the original common tail or repeat field
+The world dispatcher below handles ordinary primary actions; boundary handlers
+remain pending. World processing must not invoke the original common tail or repeat field
 control primaries after this reader has already applied them.
+
+### Native world command dispatcher
+
+`timing-world-commands.i` copies native +04ED4..+05334 (1,122 bytes) and
+replaces the first four bytes of the yaw tail at +052CC with a branch to
++052FA. Relative positions and native primary actions remain unchanged,
+including reserve/damage checks and the modified 0804..0806 post-tail actions.
+`world_commands_prepare` validates the entry, tail, post-tail comparison and
+return before writing. Caller-provided version validation, non-overlapping
+storage and an instruction-cache flush remain mandatory.
+
+`world_command_step` takes player a0, prepared decoder a1, native indicator
+a2 and full command d0.w. The classifier gates entry to the clone: only the
+13 world-primary words enter it. Mode 03 uses the separate ordered helper;
+field/unknown commands return 0 without effects, and boundaries return 2.
+This guard is essential: native lifecycle exits pop an extra stack return
+and cannot be invoked through this ordinary wrapper. Direct arbitrary-key
+calls into the clone are not supported. Non-result registers are preserved.
+
+`control_world_next` takes a 28-byte context a0 and deadline cutoff d0.
+Initialize queue/player/decoder/indicator pointers at 0/4/8/12 and zero the
+rest. It peeks, dispatches and acknowledges one world-reader command, never
+advancing the player reader. Sequence/key are recorded at 16/20. Boundaries
+remain retained without effects. `CW_COMMITTED` at 22 records completed
+dispatch (including a no-op) before acknowledgement; `CW_APPLIED` at 24 counts
+processed ordinary commands. Fault recovery must account for a completed
+dispatch whose acknowledgement failed, just as for the player reader.
+
+`test_world_commands_c.py` passes 2,240 native comparisons covering all 14
+world/mixed primary words, damage combinations, empty/nonempty reserves and
+resource stocks, and varied flags. Player/global results and callback order
+match native primary effects while preserving the field-owned yaw and
+collective values. Real resource decrement and derived weight code execute;
+notification, indicator, weapon display and resource display callbacks are
+stubbed. Eight boundary/no-op cases do not enter the decoder, and four
+corrupted patch boundaries preserve destination storage. Evidence:
+`tmp/dev/tmp/c/world-commands-tests.json`.
+
+`test_dual_command_dispatch_c.py` connects both readers across 24 queued
+tapes at batch sizes 1/3/10/25 and 32-bit sequence wrap. Mixed field controls,
+engine toggles and weapon selections match native player state when the world
+reader catches up; both readers retain all 12 boundary words. Callback stubs
+remain as above. `test_world_command_fault_c.py` injects a producer fault after
+an engine toggle but before acknowledgement: the changed engine state and
+processed count survive, the world cursor remains retained, and a faulted retry
+performs no duplicate toggle or callback. Evidence:
+`tmp/dev/tmp/c/dual-command-dispatch-tests.json` (4,769 calls) and
+`tmp/dev/tmp/c/world-command-fault-tests.json`.
+
+Native callback internals, modal handlers, field/world loop routing and live
+CPU validation remain pending; these queue readers are not installed yet.
 
 ### Field-owned command helper
 
