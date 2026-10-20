@@ -312,3 +312,19 @@ snapshot copying disabled, reached field 1000 with simulation cursors 999
 50 Hz accelerated candidate, but does not establish correct gameplay speed or
 input latency. Rendering still needs optimization; these are emulator results,
 subject to the CPU-model limitations recorded in the baseline.
+
+The full attack/steering tape now runs at one-field simulation steps with
+presentation intervals of 1 and 12 fields (`c-50-full1`, `c-50-full12`).
+All **1,596 common consecutive actor hashes match**, including the previously
+unrecorded portion beyond tick 1,023. The actor snapshot at field 1,457 also
+matches. Other snapshot bytes include presentation state and are not identical;
+this is an actor-state result, not a whole-state or event-count equivalence claim.
+Both runs use fast functional emulation, not hardware throughput measurements.
+
+The diagnostic hash record is now `RRCHASH2`: an eight-byte marker, a longword
+slot count, then that many longword hashes (slot zero unused). The default is
+2,048 slots, configurable with `STEP_HASH_SLOTS`. The harness reads that capacity
+and rejects runs that exceed it, instead of silently comparing a prefix.
+The builds use `VERIFY_B`, `VERIFY_C_STEP`, `STEP_CAPTURE=1457`, and
+`VERIFY_FRAME_PERIOD=1` or `12`; `STEP_FIELDS` remains its default of one.
+The input fixture is `tmp/dev/fixtures/c-attacks.json`.

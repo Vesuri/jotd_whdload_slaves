@@ -7,9 +7,18 @@
 ; All game addresses below are absolute. Normal builds contain none of this.
 ;
 ; RRCSTEP1: cursor +8, count +12, captured field +16, quantum +20,
-; frozen $a5900..$a873f at +24. RRCHASH1 follows with 1024 longword actor
+; frozen $a5900..$a873f at +24. RRCHASH2 follows with a longword slot count and actor
 ; hashes (slot zero unused). Copies/hashes perturb timing: no FPS claims.
 
+	IFND STEP_HASH_SLOTS
+STEP_HASH_SLOTS = 2048
+	ENDC
+	IFLT STEP_HASH_SLOTS-2
+	FAIL "STEP_HASH_SLOTS needs slot zero and at least one tick"
+	ENDC
+	IFGT STEP_HASH_SLOTS-8192
+	FAIL "STEP_HASH_SLOTS exceeds signed indexed addressing"
+	ENDC
 	IFND STEP_CAPTURE
 STEP_CAPTURE = 601
 	ENDC
@@ -90,10 +99,10 @@ step_end:
 	eor.l d2,d0
 	dbf d1,.hash
 	move.l step_stats+12(pc),d1
-	cmpi.l #1024,d1
+	cmpi.l #STEP_HASH_SLOTS,d1
 	bcc .nohash
 	lsl.w #2,d1
-	lea step_hashes+8(pc),a0
+	lea step_hashes+12(pc),a0
 	move.l d0,(a0,d1.w)
 .nohash:
 	ENDC
@@ -118,8 +127,9 @@ step_snapshot:
 	ds.b $a8740-$a5900
 
 step_hashes:
-	dc.b "RRCHASH1"
-	ds.l 1024
+	dc.b "RRCHASH2"
+	dc.l STEP_HASH_SLOTS
+	ds.l STEP_HASH_SLOTS
 
 step_start_sprite:
 	move.w step_start_frame(pc),d0
