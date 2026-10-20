@@ -306,8 +306,8 @@ larger simulation quantum on accelerated Amigas. Accelerated-machine cost and
 only a diagnostic alternative for larger quanta; delayed interpolation is removed.
 
 The hardware policy is now two paths: original timing on 68000, and fixed 50 Hz
-simulation on 68020+ with Fast RAM. CPU and memory detection and production
-dispatch remain to be implemented; these experiments do not change the normal
+simulation on 68020+ with Fast RAM. Diagnostic hardware dispatch is implemented
+as described below; production integration remains open. These experiments do not change the normal
 slave. The loader's existing `expansion_memory=$80000` is a game address in Chip
 RAM, not evidence of an allocated Fast RAM region.
 
@@ -405,3 +405,44 @@ correction, not a claim of byte equivalence to that prototype. The normal slave
 is byte-identical to the master-toggle build; this correction remains diagnostic
 until the rest of C is validated. Large extrapolation snapshot buffers now follow
 the executable helpers so their optional build retains valid PC-relative ranges.
+
+## Hardware selection inside Enhanced framerate
+
+The C patch list is now separate from the common loader/input fixes. The loader
+applies it only when `CUSTOM2` is enabled, `WHDLTAG_ATTNFLAGS_GET` reports
+`AFF_68020`, and the allocated slave hunk lies in a supported Fast RAM window.
+Otherwise it leaves original timing intact, including on 68000 machines with
+Fast RAM. Diagnostic frame-pacing/skip hooks obey the same selection.
+
+This checks the memory actually holding the slave, without probing unallocated
+addresses or reserving extra memory while enhancements are off. The conservative
+address windows are `$200000..$9fffff` and `$1000000` upwards; Chip RAM and the
+reserved upper-24-bit window (including `$c00000` slow RAM) are rejected.
+This is a conventional Amiga address-map check, not a generic OS memory-type
+query. Unconventional Fast RAM inside the rejected window falls back. WHDLoad's
+local developer autodoc explicitly permits `ws_ExpMem` to come from Chip RAM,
+so a nonzero optional expansion allocation would not be a valid substitute.
+
+`RRCSEL01` records Custom2, AttnFlags, slave address and selection reason
+(0 disabled, 1 CPU, 2 memory placement, 3 selected). Functional boot checks:
+
+| Configuration | Slave location | Result |
+|---|---:|---|
+| 68000, Chip + slow | `$d72ac0` | original, CPU |
+| 68000 + 8 MB Fast | `$9f2ac0` | original, CPU |
+| 68020, 2 MB Chip only | `$1f12c0` | original, memory |
+| 68020, Chip + slow, no Fast | `$d72a98` | original, memory |
+| 68020 + 8 MB Fast | `$9f2ac0` | C selected |
+| same, Custom2 off | `$9f2ac0` | original, disabled |
+| 68040/MMU + Fast | `$9f2000` | C selected, TC=`$8000` |
+| 68060/MMU + Fast | `$9f2000` | C selected, TC=`$8000` |
+| 68040/MMU, 32-bit Fast only | `$407f2000` | C selected, TC=`$8000` |
+
+Evidence is under `c-select-*`. The slow-only check also builds the diagnostic
+12-field pacing hook and confirms it is not installed on the fallback path.
+The initial `c-select-a1200-slow` attempt did not actually enable slow RAM in
+the preset; `c-select-slow-only` checks the effective configuration and allocated
+slow-RAM address. The selected C path matches all 1,598 actor hashes from the
+camera-normalized replay (`c-select-replay`). The normal slave remains
+byte-identical to the master-toggle build. These are functional dispatch checks,
+not a replacement for the full C regression/performance matrix.

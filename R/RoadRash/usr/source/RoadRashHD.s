@@ -3,6 +3,12 @@
 	INCLUDE	whdload.i
 	INCLUDE	whdmacros.i
 
+	IFD VERIFY
+	IFD VERIFY_C_STEP
+C_STEP_BUILD = 1
+	ENDC
+	ENDC
+
 	IFD BARFLY
 	OUTPUT	"RoadRash.Slave"
 	BOPT	O+				;enable optimizing
@@ -223,6 +229,16 @@ PatchLoader2:
 .nopad
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
+	IFD C_STEP_BUILD
+	bsr	step_select_path
+	tst.l	d0
+	beq.b	.no_c
+	move.l	expansion_memory(pc),a1
+	lea	pl_c_simulation(pc),a0
+	move.l	_resload(pc),a2
+	jsr	(resload_Patch,a2)
+.no_c:
+	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
 	jmp	(a1)
 	
@@ -260,43 +276,11 @@ pl_messages_main
 
 	PL_NEXT	pl_main
 	
-	IFD VERIFY
-	IFD VERIFY_C_STEP
-C_STEP_BUILD = 1
-	ENDC
-	ENDC
 
 pl_main
 	PL_START
 	PL_IFC2
-	IFD C_STEP_BUILD
-	PL_P	$747E,step_main
-	PL_P	$75B6,step_end
-	PL_P	$915A,step_camera_decay
-	IFD STEP_EXTRAPOLATE
-	PL_PS	$75C8,step_view_begin
-	PL_P	$7748,step_view_end
-	ENDC
-	PL_NOP	$76C6,6
-	PL_PSS	$A40E,step_start_sprite,2
-	PL_PS	$70DC,step_field_input
-	PL_S	$70E2,$7116-$70E2
-	PL_P	$73F4,step_input_key
-	PL_PSS	$9E0E,step_crash_sprite,2
-	PL_PS	$9E26,step_pose_clear
-	PL_NOP	$9D24,6
-	PL_NOP	$9D32,6
-	PL_PS	$A104,step_spark_test
-	PL_NOP	$A11C,6
-	PL_NOP	$9EEC,4
-	PL_P	$9EF0,step_lean_end
-	PL_S	$AECC,$AEE2-$AECC
-	PL_NOP	$6FA0,6
-	PL_R	$6FE6
-	PL_NOP	$28C7C,$28C94-$28C7C
-	PL_NOP	$28C9A,$28CBC-$28C9A
-	PL_PSS	$28C4C,step_reset,4
-	ELSE
+	IFND C_STEP_BUILD
 	PL_PS	$7736,safe_swap
 	PL_PS	$6FA0,bound_delta
 	PL_PS	$9D32,field_animation
@@ -309,6 +293,7 @@ pl_main
 	PL_PS	$75BC,verify_b_gate
 	PL_PS	$AFF0,verify_b_drain
 	ENDC
+	IFND C_STEP_BUILD
 	PL_IFC2
 	IFD VERIFY_SKIP_RENDER
 	PL_NOP	$7730,6
@@ -317,6 +302,7 @@ pl_main
 	PL_PS	$7736,verify_pace
 	ENDC
 	PL_ENDIF
+	ENDC
 	IFD VERIFY_C_AUDIT
 	PL_PSS	$747E,verify_c_sim_begin,2
 	PL_PS	$75B6,verify_c_render_begin
@@ -344,6 +330,46 @@ pl_main
 	PL_NOP	$2F116,2
 	PL_END
 	
+
+	IFD C_STEP_BUILD
+pl_c_simulation
+	PL_START
+	PL_IFC2
+	PL_P	$747E,step_main
+	PL_P	$75B6,step_end
+	PL_P	$915A,step_camera_decay
+	IFD STEP_EXTRAPOLATE
+	PL_PS	$75C8,step_view_begin
+	PL_P	$7748,step_view_end
+	ENDC
+	PL_NOP	$76C6,6
+	PL_PSS	$A40E,step_start_sprite,2
+	PL_PS	$70DC,step_field_input
+	PL_S	$70E2,$7116-$70E2
+	PL_P	$73F4,step_input_key
+	PL_PSS	$9E0E,step_crash_sprite,2
+	PL_PS	$9E26,step_pose_clear
+	PL_NOP	$9D24,6
+	PL_NOP	$9D32,6
+	PL_PS	$A104,step_spark_test
+	PL_NOP	$A11C,6
+	PL_NOP	$9EEC,4
+	PL_P	$9EF0,step_lean_end
+	PL_S	$AECC,$AEE2-$AECC
+	PL_NOP	$6FA0,6
+	PL_R	$6FE6
+	PL_NOP	$28C7C,$28C94-$28C7C
+	PL_NOP	$28C9A,$28CBC-$28C9A
+	PL_PSS	$28C4C,step_reset,4
+	IFD VERIFY_SKIP_RENDER
+	PL_NOP	$7730,6
+	ENDC
+	IFD VERIFY_FRAME_PERIOD
+	PL_PS	$7736,verify_pace
+	ENDC
+	PL_ENDIF
+	PL_END
+	ENDC
 
 ; A one-field simulation has measurable integration/collision differences.
 ; Wait for one elapsed tick; the original swap waits for the following tick.

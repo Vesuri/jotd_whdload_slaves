@@ -107,6 +107,11 @@ verify_stats:
 	dc.l	0
 	ENDC
 	ds.l	64                 ; +64 frame-duration histogram; bucket 63 = overflow
+	IFD C_STEP_BUILD
+verify_c_selection:
+	dc.b	"RRCSEL01"
+	dc.l	0,0,0,0            ; Custom2, AttnFlags, slave base, reason
+	ENDC
 
 ; Functional timing tests only. The display swap still uses the original path.
 	IFD VERIFY_FRAME_PERIOD

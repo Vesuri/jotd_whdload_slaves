@@ -10,6 +10,40 @@
 ; frozen $a5900..$a873f at +24. RRCHASH2 follows with a longword slot count and actor
 ; hashes (slot zero unused). Copies/hashes perturb timing: no FPS claims.
 
+; Select only if enabled, CPU >= 020, and the allocated public slave hunk is
+; in a conventional Fast RAM window. Do not mistake Chip or $c00000 slow RAM
+; for Fast RAM. Reject the whole reserved upper-24-bit window conservatively.
+; No probing of unallocated addresses or extra allocation is needed.
+; Reason: 0 disabled, 1 CPU, 2 memory placement, 3 selected. Return d0=0/1.
+step_select_path:
+	lea verify_c_selection+8(pc),a0
+	move.l _enhanced_framerate(pc),d0
+	move.l d0,(a0)+
+	move.l verify_attn(pc),d1
+	move.l d1,(a0)+
+	lea _base(pc),a1
+	move.l a1,(a0)+
+	clr.l (a0)
+	tst.l d0
+	beq .no
+	move.l #1,(a0)
+	btst #1,d1
+	beq .no
+	move.l #2,(a0)
+	cmpa.l #$200000,a1
+	bcs .no
+	cmpa.l #$a00000,a1
+	bcs .yes
+	cmpa.l #$1000000,a1
+	bcs .no
+.yes:
+	move.l #3,(a0)
+	moveq #1,d0
+	rts
+.no:
+	moveq #0,d0
+	rts
+
 	IFND STEP_HASH_SLOTS
 STEP_HASH_SLOTS = 2048
 	ENDC
