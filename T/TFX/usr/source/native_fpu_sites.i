@@ -243,6 +243,12 @@ native_fpu_patches:
         PL_L $5182a,$4eb80000+$166 ; fmovecrx #15,fp1
         PL_L $51874,$4eb80000+$160 ; fmovecrx #15,fp0
         PL_L $51880,$4eb80000+$166 ; fmovecrx #15,fp1
+        PL_L $50f82,$4eb80000+$1fc ; native tan
+        PL_L $5169e,$4eb80000+$202 ; native sin
+        PL_L $516b6,$4eb80000+$208 ; native cos
+        PL_L $517a4,$4eb80000+$20e ; native atan2
+        PL_L $517f2,$4eb80000+$214 ; native atan
+        PL_L $5183c,$4eb80000+$21a ; native asin
         PL_ENDIF
         PL_END
 
@@ -278,6 +284,12 @@ install_native_fpu:
         patch $1ea,ni_4_0
         patch $1f0,nc_50_6
         patch $1f6,ni_7_0
+        patch $1fc,native_tan
+        patch $202,native_sin
+        patch $208,native_cos
+        patch $20e,native_atan2
+        patch $214,native_atan
+        patch $21a,native_asin
         rts
 
         mc68040

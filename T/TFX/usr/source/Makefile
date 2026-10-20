@@ -8,7 +8,7 @@ SOURCE = $(PROGNAME)HD.s
 
 all :  $(WHDLOADER) fpsp040 fpsp060
 
-$(WHDLOADER) : $(SOURCE) chip_reloc_new.i native_fpu_sites.i
+$(WHDLOADER) : $(SOURCE) chip_reloc_new.i native_fpu_sites.i native_math.i
 	$(WDATE)
 	vasmm68k_mot -DDATETIME -I$(HDBASE)/amiga39_JFF_OS/include -I$(WHDBASE)\WHDLoad\Include -I$(WHDBASE) -nosym -Fhunkexe -o $(WHDLOADER) $(SOURCE)
 

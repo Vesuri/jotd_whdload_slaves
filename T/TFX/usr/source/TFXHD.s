@@ -2918,7 +2918,9 @@ ni_\1_\2:
         ENDM
 
         include native_fpu_sites.i
+        include native_math.i
 
+; Retain the original emulation list on 060; 040 uses native_fpu_patches.
 pl_fpu_new_040:
         PL_IFC5
         PL_ELSE
