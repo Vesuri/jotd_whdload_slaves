@@ -39,6 +39,7 @@
    enhanced path
  - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path
  - raster edge generation runs from Fast RAM on the enhanced path
+ - shared collision/pose scratch words use Fast RAM on the enhanced path
  - simulation derives rider lean during pose selection, avoiding a second
    traversal of the actor list
  - normalizes road movement for 50 Hz simulation, retaining fractional

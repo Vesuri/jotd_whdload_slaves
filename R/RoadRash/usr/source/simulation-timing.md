@@ -1,3 +1,66 @@
+## Move shared collision/pose scratch words into Fast RAM
+
+The enhanced runtime moves native scratch words $8b480 and $a59ca into four
+bytes in the selected public Fast slave hunk. `step_scratch_init` initializes
+them and patches all 14 native absolute operand sites before the physics copy
+is made, so both copied physics and the five native pose/render users of
+$a59ca share the same storage. Pair/pose entry clears precede their use.
+The existing CUSTOM2/CPU/Fast gate owns initialization; option-off and
+unsupported-machine execution retain the native references. No DMA data moves.
+The retained original disassembly agrees with the operand-site audit; tests
+below cover the shared-state behavior rather than treating a literal scan as
+an exhaustive indirect-alias proof.
+
+The private normal candidate/control have identical 20,396-byte layouts and
+differ in exactly one flag byte at file offset 9,623. `VERIFY_C_SCRATCH_CONTROL`
+retains this control in diagnostics. Results for `c-collision-scratch-{fast,
+control}-matrix`:
+
+| Runtime | Fast 020 | NoCache 020 | 040/25 | 060/50 |
+| --- | ---: | ---: | ---: | ---: |
+| Equal-layout native scratch control | 12.5 | 8.3 | 19.4 | 22.9 |
+| Fast scratch, selected | 12.5 | 8.3 | 20.2 | 23.0 |
+| Preceding integrated runtime | 12.5 | 8.3 | 19.5 | 22.9 |
+
+The two 020 distance results remain 3,311,794 and 3,301,969: the B one-percent
+failures are not solved. Default/Cache 040 and 060 agree. All 11 hardware cells
+and both MMU functional cells pass; MMU tests disable CPU data-cache emulation
+and are not hardware cache-performance claims. Candidate/control cached-020
+field-590 and field-600 images are pixel-identical.
+
+`c-collision-scratch-vary-state` matches 1,596 common hashes, sound requests
+and all six authoritative field-1457 regions against the current varying
+reference. Fresh `c-scratch-period{1,2,3,4}-state` diagnostics each match 1,595
+hashes, sound and six regions against the fixed-four reference. Their main
+histogram bins are 1600/799/533/399 frames respectively; one-field coverage
+omits drawing. Normal companions all match the integrated binary.
+
+Strict full comparisons pass for `c-collision-scratch-finish-exact` (12,095
+hashes, 66 requests, finish 11,907, exit 12,096), `-arrest` (7,084 hashes,
+24 requests, exit 7,085), and `-wreck` (23,509 hashes, 105 requests, exit
+23,510, naturally accumulated damage 32). All six terminal regions and
+captured times agree with their corrected-road references; each restarts with
+all 12 player and 140 actor road-history/carry bytes zero. The first sparse
+finish observation matched hashes but read the live end-time field after the
+post-race screen changed it to 11,907. Repeating with the original observation
+cadence resolves that discrepancy and passes the unchanged strict comparator.
+
+Normal response tests in `c-collision-scratch-visible` give
+140/120/180/160/140/120/180/160 ms, median 150; all eight phases meet B's limits.
+Keyboard/CD32 release, pause/resume and stack guards pass. Demo fire/timeout
+exits both reach a fresh normal race, with timeout at active field 3598/native
+timer 3600. `c-collision-scratch-off` verifies 21 original hook sites plus all
+14 original scratch operands with CUSTOM2=0.
+
+The integrated `c-scratch-integrated-build/RoadRash.slave` is byte-identical
+to the selected normal candidate, SHA-256
+`c3c38783615f3d295fb4eef198734eee0ecb1e702073242938024b143fdc11f0`.
+The equal-layout control SHA-256 is
+`c4b804acc30af34fb8f4c267c9d22da0baac4fbc67a2d673cd9fd6ca22b63a93`.
+Private build directories retain exact patches. This restores the measured
+040/060 rates lost with road normalization while preserving its simulation.
+C remains open for B distance/handling and remaining performance acceptance.
+
 ## Current normal runtime: mapped uncached profile
 
 `c-road-integrated-nocache-profile` and `c-road-integrated-mapped-profile`

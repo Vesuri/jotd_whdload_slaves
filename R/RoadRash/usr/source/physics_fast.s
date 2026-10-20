@@ -1,7 +1,8 @@
 ; Movement/collision code copy for the selected enhanced Fast RAM path.
 ; Initialize after the C patch list and before entering the loaded game.
-; Absolute data references stay native; only external relative branches need
-; stubs. Embedded tables retain their native aliases. Steering wrappers return
+; Most absolute data references stay native; two shared scratch words move
+; with all their native users before copying. External branches need stubs.
+; Embedded tables retain their native aliases. Steering wrappers return
 ; to their original code addresses. See simulation-timing.md for the copy audit.
 ; The diagnostic control retains allocation/layout but skips entry redirects.
 	IFD VERIFY_C_PHYSICS_CONTROL
@@ -10,6 +11,7 @@
 	ENDC
 	ENDC
 step_physics_fast_init:
+ bsr step_scratch_init
  lea $8b486,a0
  lea step_physics_fast_code(pc),a1
  move.w #7040/4-1,d0
@@ -61,6 +63,51 @@ step_physics_fast_init:
  move.l (a2),a2
  jsr (resload_FlushCache,a2)
  rts
+; Called inside the master-toggle/CPU/Fast gate, before copying physics.
+; Patch all native absolute users, including the pose renderer; the copy then
+; inherits those pointers. Each pair/pose traversal clears scratch before use.
+; Data remains in the selected public Fast slave hunk; no DMA consumes it.
+; The diagnostic control changes only one flag byte, preserving code placement.
+ IFD VERIFY_C_SCRATCH_CONTROL
+ IFND VERIFY
+ FAIL "Scratch relocation control requires VERIFY"
+ ENDC
+ ENDC
+step_scratch_init:
+ move.w step_scratch_enabled(pc),d0
+ beq .done
+ lea step_scratch_words(pc),a2
+ move.w $8b480,(a2)
+ move.w $a59ca,2(a2)
+ move.l a2,d1
+ lea .first(pc),a0
+ bsr .patch
+ addq.l #2,d1
+ lea .second(pc),a0
+ bsr .patch
+.done:
+ rts
+.patch:
+ move.l (a0)+,d0
+ beq .return
+ move.l d0,a1
+ move.l d1,(a1)
+ bra .patch
+.return:
+ rts
+.first:
+ dc.l $8c8b0,$8ce6c,0
+.second:
+ dc.l $89d60,$89e1a,$89f04,$89f92,$89fc4
+ dc.l $8c8b6,$8c9de,$8ca0a,$8ca22,$8cb08,$8cb34,$8cb4c,0
+step_scratch_words: dc.w 0,0
+step_scratch_enabled:
+ IFD VERIFY_C_SCRATCH_CONTROL
+ dc.w 0
+ ELSE
+ dc.w 1
+ ENDC
+ cnop 0,4
 step_physics_fast_fixups:
  dc.w $88,step_physics_to_8e166-(step_physics_fast_code+$88)
  dc.w $de,step_physics_to_8e166-(step_physics_fast_code+$de)
