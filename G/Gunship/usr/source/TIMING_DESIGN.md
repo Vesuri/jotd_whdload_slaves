@@ -2136,3 +2136,42 @@ motion/collision, nested RNG callers and actual target selection still need
 separate validation. Twenty-three corrupted patch sites and a wrong player
 binding reject without writes (282 assembled calls). This is not full C5/C9
 acceptance, and no native main-loop installation has been added.
+
+### Successive active-actor comparisons and VBL release ownership
+
+`tmp/dev/tools/test_world_actor_sequence_c.py` extends the weapon comparison
+to 64 consecutive ticks for four weapon selections in both RNG modes (512
+matched ticks, 514 helper calls). It retains allocations between ticks and
+initializes the actor-update eligibility word to native FFFF, rather than the
+zero mask used to isolate launch tests. State, remaining fire requests,
+ordered callbacks and hardware writes match at every tick while recorded and
+live timestamps differ. Native target lookup remains a slot-5 fixture and
+notification/UI/audio endpoints remain stubbed. There is no player integration,
+world damage/script step or VBL effect-timer execution in this test.
+
+Before guided release was exercised, types 1/3 correctly allocated but never
+entered the active actor loop. Native constructor +0BBC8..+0BBD2 clears the
+allocated slot's bit in hunk 0 +0BA0C for those types. The actor loop at +0BF22
+intersects allocation word +0BA08 with that eligibility word; an allocated slot
+is not automatically eligible for movement. Type 2 retains eligibility.
+
+The expanded fixture executes the actual +0A22A..+0A248 release fragment at
+tick 4 for types 1/3, with its control-state byte set to 5. This is an explicit
+fixture transition, not validation of the complete native control-state
+machine. For each RNG mode, type 1 then records 60 active-slot visits, 10 ticks
+with coordinate changes and one +0C3E0 impact; type 3 records 60 visits,
+13 moving ticks and one impact. Type 2 records 45 visits/moving ticks and one
++0C45E expiry. Type 0 records 258 visits to its stationary effect slots. No
++0C444 terrain-impact path was exercised. Full impact-to-world-damage handling,
+terrain collision and effect lifetime validation remain pending.
+
+Crucially, +0A1C8 is called from VBL callback +04C12, guarded by hunk 4 +01C6
+being zero and hunk 0 +0A44E being nonzero. Its state-5 branch +0A234..+0A242
+sets the eligibility bit using guided-slot word +0BA0E. Therefore native VBL
+work can change whether a projectile advances at a world tick. Leaving that
+write live while replaying older field history would allow a later field's
+release to affect an earlier deadline. The eventual integration must preserve
+this transition's field order and slot identity, alongside constructors and
+world updates; copying a later eligibility mask over world state is not a
+validated solution. This is an outstanding C3/C4h/C7 ownership obligation,
+not covered by the standalone weapon clone or its private fire flags.

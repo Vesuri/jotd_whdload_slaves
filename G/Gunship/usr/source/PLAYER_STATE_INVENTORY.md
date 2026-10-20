@@ -252,3 +252,15 @@ no writes outside that result and the stack. This establishes a usable
 continuous-arithmetic preview boundary, without claiming that omitted
 world effects or fractional integration have passed C4e. Detailed test
 scope and installation/cache obligations are in `TIMING_DESIGN.md`.
+
+## Projectile eligibility changed by VBL control state
+
+The native weapon constructor clears an allocated guided slot's eligibility
+bit at +0BBC8..+0BBD2 (except weapon type 2). Actor updates require both its
+allocation bit (hunk 0 +0BA08) and eligibility bit (+0BA0C). The guided slot is
+recorded in +0BA0E. VBL +04C12 calls +0A1C8; control state 5 reaches
++0A234..+0A242 and sets that eligibility bit. These are external world-visible
+writes, in addition to the player-record inventory. Field-history catch-up
+must preserve their ordering and slot identity before consuming a deadline.
+The current sampler does not yet retain this transition. See the successive
+actor tests and their explicit release-fixture limitation in TIMING_DESIGN.md.
