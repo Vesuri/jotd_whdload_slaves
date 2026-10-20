@@ -781,6 +781,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     object families and live hook validation remain open. The experimental
     renderer now certifies cached projectile poses against generations,
     exhaustion, eligibility and motion state; lifecycle activation reseeds it.
+    The scripted index-5 object's common store now has a CUSTOM1-gated generation
+    hook covering its known spawn/removal/motion paths and excluding private
+    previews (1,344 native ABI comparisons). Its presentation consumer and live
+    hook acceptance remain open.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
     poses into world state or pass them to collision, damage or AI. A standalone
     private six-slot native preview now matches 1,200 steps and rejects release,

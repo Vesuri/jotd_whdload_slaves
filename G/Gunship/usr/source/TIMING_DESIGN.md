@@ -4807,3 +4807,68 @@ fractional pose into renderer-only scene inputs, and measure actual acceptance,
 visual continuity and cost. Ground-object motion/writer inventory and native
 flight-loop activation remain open. The standalone pose comparison is not
 proof of C6 or C completion.
+
+### Scripted-object store generations and writer inventory (C6b)
+
+The native split-object store at +07BD0 has eight absolute JSR callers in the
+0658 code hunk. Their observed roles are:
+
+| Caller | Role relevant to identity/prediction |
+|---|---|
+| +058D4 | Flight cleanup writes index 5 with X zero |
+| +059CA | Periodic spawn copies a selected live object's pose/metadata into inactive index 5 |
+| +07CCE | The index-5 destruction branch clears both X and Y |
+| +07D4C | Generic destruction store; its earlier branch handles index 5 separately |
+| +098BC | Targeted weapon marks object metadata bit 4 |
+| +09DD2 | World object-state transition writes updated metadata |
+| +09EDE | World object-loop completion stores its selected object |
+| +0A144 | Scripted index-5 movement/heading store |
+
+The common store writes coordinate high bytes and metadata for all indices;
+indices below six additionally store low coordinate bytes, height and heading.
+Other audited coordinate writers at +0C546..+0C568 update player/decoy indices
+0..2. Direct absolute references to index-5 coordinate bytes identified in the
+code-hunk scan are renderer reads. This inventory covers the common native
+store paths; mission/loading bulk state replacement still requires lifecycle
+reset, and future presentation must also check the current pose/metadata.
+The ground-object stores inspected here primarily change metadata or remove
+objects rather than integrate translation. This is not yet a complete proof
+that every ground-object/script path is stationary.
+
+`timing-live-script-generation.i` validates all 74 bytes of +07BD0..+07C18 and
+installs a CUSTOM1-only entry hook. It stamps only low-byte index 5 when A5 is
+the authoritative h6+3B88 player/object record, under enhanced ownership or the
+admitted retained-command phase. Other indices, native ownership and private
+preview A5 records execute a byte-exact copy of the native store without a
+stamp. Thus a private motion preview calling the actual native helper cannot
+change identity state. No per-caller patches or return-address guesses are used.
+
+The hook records every admitted index-5 store, including ordinary motion and
+metadata changes. A presentation cache must capture its stamp after the entire
+world step. Remove/recreate operations cannot hide behind identical final
+coordinates. The separate 26-byte `RT_SCRIPT_GENERATION` record uses slot zero
+of the existing generation primitive: its long saturates at FFFFFFFF and its
+exhaustion bit remains sticky until lifecycle reset. Preparation/activation
+clear the whole record. The runtime arena is now 32,438 bytes. The scripted
+presentation consumer has not yet been installed.
+
+The native store preserves X while establishing its other condition flags.
+Before stamping, the wrapper captures X with MOVEQ/ROXL.B; after stamping it
+restores X with LSR.B, restores registers, then executes the exact native store.
+This avoids privileged SR access and post-68000 CCR instructions. All native
+register and condition-code results, including user-mode execution, are retained.
+
+`test_script_generation_c.py` passes 1,344 native ABI comparisons across seven
+indices, all 32 incoming CCR combinations, native/enhanced/retained ownership
+and private A5 contexts. It rejects all 74 corrupted signature bytes and
+invalid READY, verifies CUSTOM1-off, tests same-pose remove/recreate and three
+overflow/X combinations, executes all eight actual caller JSR sites through
+the patched entry, and exercises native periodic spawn, cleanup and destruction
+fragments. The scripted preview's 804 native pose matches also pass with this
+hook installed; its write monitor still observes no gameplay or generation
+writes. These are instruction tests, not live cross-CPU hook acceptance.
+
+The expanded activation test seeds the new record with nonzero bytes, verifies
+atomic invalid admission and subsequent reset, and passes 240 PAL/NTSC fields
+at two arena addresses. Ordinary, runtime, VERIFY/runtime and input/runtime
+builds assemble successfully.

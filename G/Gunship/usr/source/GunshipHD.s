@@ -494,6 +494,7 @@ verify_dispatch_near:
 	include "timing-live-gauges.i"
 	include "timing-live-map.i"
 	include "timing-live-actor-generation.i"
+	include "timing-live-script-generation.i"
 	; Keep loader/live hooks close to their shared configuration and pointer.
 	include "timing-core.i"
 	ENDC
