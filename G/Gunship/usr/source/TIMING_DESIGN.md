@@ -27,6 +27,9 @@ on a separate player record, excluding random/contact world effects.
 It is also standalone; it does not yet scale or commit player motion.
 `timing-fraction.i` supplies tested signed rational increments for that
 future step. It does not select field-specific equations or coefficients.
+`timing-motion-stages.i` exposes the native preview in ordered slices so
+scaled rates can feed later displacement rather than scaling only the
+final candidate pose. The slices themselves still use native increments.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -284,6 +287,55 @@ memory-write hooks observe no writes outside the result and stack, and the
 authoritative input remains unchanged. Registers and output guards pass.
 Twenty-one malformed boundary/call fixtures fail before destination writes.
 Evidence: `tmp/dev/tmp/c/motion-preview-tests.json`.
+
+### Ordered motion slices
+
+`timing-motion-stages.i` prepares seven immutable copies of the validated
+preview, each returning at a distinct native boundary. They require 7,378
+bytes of code storage plus a 12-byte d0/d1/d2 term record. Their native
+relative branches and embedded table remain intact; there is no code
+rewriting during a field step. Preparation calls the preview validator
+before writing and requires the same post-preparation cache flush.
+
+| Stage | Native span | Output / dependency |
+|---|---|---|
+| 0 | +0937C..+09492 | Power, heading and track; random impulse excluded |
+| 1 | +09492..+09576 | Lift, target speed and native vertical response; d0.w is the signed vertical target, d1.w the old vertical rate |
+| 2 | +09576..+09636 | Height from the rate currently in the record; contact block excluded; d2 low byte retains the pre-integration airborne test |
+| 3 | +09636..+09664 | Corrected speed error in d0.w and signed one-unit slew in d1.w; no player writes |
+| 4 | +09664..+09672 | Native rounded speed approach plus slew |
+| 5 | +09672..+096FE | Coarse speed, horizontal displacement, coordinate clamp and wind |
+| 6 | +096FE..+09798 | RPM target and powered/coasting response |
+
+`motion_stage` takes stage number in d0, the private player record in a0,
+prepared code in a1, and terms in a2. It updates the private record and
+captures d0/d1/d2 at return. It returns d0=0 on success or -1 for an invalid
+stage without writes; non-result registers are preserved. Initialize terms
+to zero and execute stages in order unless explicitly satisfying the listed
+dependencies. Stage 5 loads speed from the record, so a caller's adjusted
+speed replaces the earlier whole-tick register result.
+
+This provides the necessary update-order boundary for the field integrator:
+replace the stage-1 vertical response before stage 2, and use stage 3's
+raw error/slew to form the field speed before stage 5. It does not yet
+implement those replacements. Angular response, position/height saturation
+and separate wind scaling still require their native operation ordering;
+blindly scaling a slice's final clamped position difference is insufficient.
+The extra copy/storage and call cost must be included in C4f's price.
+
+`tmp/dev/tools/test_motion_stages_c.py` executes all seven slices in 4,096
+airborne/low-altitude cases (28,672 stage calls). Complete player records
+match the whole deterministic preview. It checks the exposed vertical
+target/old-rate and forward error/slew against the native response equations.
+Four invalid stage numbers preserve record, terms and prepared code.
+Forty additional cases deliberately replace speed between slices while
+leaving stale register terms; horizontal outputs match an independently
+entered native coordinate block using the new speed. The reference uses
+its own returning copy because stopping inside an already-translated
+whole-routine block was unreliable in the CPU test harness.
+The separate preview tests remain the evidence for isolation from world
+RNG/contact effects; this is not a full C4e gate.
+Evidence: `tmp/dev/tmp/c/motion-stages-tests.json`.
 
 ## Fractional arithmetic contract
 
