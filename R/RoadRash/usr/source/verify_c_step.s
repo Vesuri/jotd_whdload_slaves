@@ -69,6 +69,9 @@ step_reset:
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
 	clr.b step_input_overflow-step_queued_field(a1)
+	IFD VERIFY_C_EVENTS
+	bsr step_events_reset
+	ENDC
 	IFD VERIFY_C_LATENCY
 	bsr step_latency_reset
 	ENDC
@@ -736,4 +739,11 @@ step_authoritative:
 
 	IFD VERIFY_C_FAST_STACK
 	include verify_c_stack.s
+	ENDC
+
+	IFD VERIFY_C_EVENTS
+	IFD STEP_EXTRAPOLATE
+	FAIL "Event audit currently requires latest-state presentation"
+	ENDC
+	include verify_c_events.s
 	ENDC

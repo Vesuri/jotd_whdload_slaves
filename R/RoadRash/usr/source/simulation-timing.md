@@ -631,3 +631,56 @@ The trace uses breakpoints at `$875c8` (frame construction), `$87736` (swap entr
 recording active field, beam, SOFT counter, both ready flags, pending drain counts
 and buffer/record pointers. Preserve the original blanking-safe swap; simply
 removing its wait would write the live copper list at unsafe beam positions.
+
+## Discrete sound-request audit across rendering intervals
+
+`VERIFY_C_EVENTS` records five discrete dispatch sites in `$8eff8`: engine/crash
+sound start (`$8f06a`), stop (`$8f080`), primary effect (`$8f0be`), secondary effect
+(`$8f0de`) and siren start (`$8f120`). Wrappers preserve the original registers and
+condition flags before tail-calling the original audio entry. They are installed
+only by the selected C patch list under Enhanced framerate. The trace resets at
+race initialization and is excluded from normal builds.
+
+`RRCSEV01` contains count, overflow count, capacity (1024) and record size (8) at
++8, +12, +16 and +20. Records begin at +24: historical simulation field (long),
+kind (word, 1..5 in the order above), parameter (word). The stop parameter is
+normalized to zero because that entry has no sound-number argument. A host must
+reject overflow rather than compare a silently truncated stream.
+
+`VERIFY_FRAME_PATTERN`, together with `VERIFY_FRAME_PERIOD`, cycles diagnostic
+presentation waits through 1,2,3,4,12,2,16,4 fields. It keeps the original vsync
+swap and changes no simulation quantum. This is test instrumentation, not a user
+frame-rate mode. Actual frame histograms must be checked: requesting period 1
+with full drawing produces two-field frames in the functional configuration.
+
+The attack/steering/crash tape produces these identical requests for periods
+1,2,3,4,12 and the varying pattern:
+
+| Simulation field | Kind | Parameter |
+|---|---|---|
+| 1096 | primary effect | 2 |
+| 1122 | engine/crash start | 5 |
+| 1263 | stop | 0 |
+
+All overlapping completed actor hashes match (1,596–1,598 depending on the
+consumer's position when the host stops). At the fixed field-1457 snapshot,
+all 35 actor records, the simulation time, stopwatch, camera position,
+crash-camera offset and rank cells match exactly. The varying run has actual
+2,3,4,12,16-field frames, so this includes repeated multi-step catch-up rather
+than only a steady-rate comparison. Evidence: `c-events{1,2,3,4,12}-replay` and
+`c-events-variable-replay`; their `step.json` files include the event streams and
+actual frame histograms. `c-events-disabled-build` reproduces the earlier
+latency diagnostic byte-for-byte, and the normal slave remains unchanged.
+
+These results cover the sound requests exercised by this tape, not every event:
+secondary attacks and siren start have not occurred in these samples. The trace
+also does not measure sample audibility, sequencer interrupts, volume updates,
+or stop requests from pause/exit paths outside `$8eff8`. Those coverage limits
+remain open; matching actor hashes alone must not be used to close them.
+
+`c-events-onefield-replay` additionally omits the existing expensive draw call
+with `VERIFY_SKIP_RENDER`: its measured histogram has 1,600 one-field frames
+(after startup), and all 1,598 common actor hashes, the same fixed-boundary state
+and all three requests match the full-render cases. This supplies an actual
+one-field scheduling comparison; it is not a full-render throughput or visual
+quality result.

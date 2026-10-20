@@ -393,6 +393,13 @@ pl_c_simulation
 	PL_PS	$75C8,step_latency_render
 	PL_PS	$7736,step_latency_swap
 	ENDC
+	IFD VERIFY_C_EVENTS
+	PL_PS $F06A,step_event_engine
+	PL_PS $F080,step_event_stop
+	PL_PS $F0BE,step_event_primary
+	PL_PS $F0DE,step_event_secondary
+	PL_PS $F120,step_event_siren
+	ENDC
 	IFD VERIFY_C_FAST_STACK
 	PL_P	$2876C,step_stack_start
 	ENDC

@@ -116,8 +116,24 @@ verify_c_selection:
 ; Functional timing tests only. The display swap still uses the original path.
 	IFD VERIFY_FRAME_PERIOD
 verify_pace:
+	IFD VERIFY_FRAME_PATTERN
+	movem.l d0/a0,-(a7)
+	lea verify_period_index(pc),a0
+	moveq #0,d0
+	move.w (a0),d0
+	addq.w #1,(a0)
+	andi.w #7,(a0)
+	lea verify_period_pattern(pc),a0
+	move.b (a0,d0.w),d0
+	subq.b #1,d0
+.wait:
+	cmp.b $aec0c,d0
+	bhi .wait
+	movem.l (a7)+,d0/a0
+	ELSE
 	cmpi.b	#VERIFY_FRAME_PERIOD-1,$aec0c
 	bcs.b	verify_pace
+	ENDC
 	IFND C_STEP_BUILD
 	movem.l	d0,-(a7)
 	move.l	_enhanced_framerate(pc),d0
@@ -127,4 +143,11 @@ verify_pace:
 	ENDC
 .original:
 	jmp	$aecba
+	IFD VERIFY_FRAME_PATTERN
+verify_period_index:
+	dc.w 0
+verify_period_pattern:
+	dc.b 1,2,3,4,12,2,16,4
+	even
+	ENDC
 	ENDC
