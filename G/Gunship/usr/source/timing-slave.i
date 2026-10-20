@@ -1,5 +1,5 @@
-; Experimental TIMING_RUNTIME setup/input capture; no flight consumer hook.
-; CUSTOM1 gates allocation/preparation. Production activation remains pending.
+; Experimental TIMING_RUNTIME setup and flight ownership.
+; CUSTOM1 gates allocation/preparation and every installed timing hook.
 ; LoadSeg's existing post-callback cache flush covers the prepared copies.
 timing_runtime_dispatch:
  movem.l d0-d7/a0-a6,-(sp)
@@ -84,6 +84,7 @@ timing_runtime_dispatch:
  bne .status
  movea.l timing_runtime_arena(pc),a0
  move.w #1,RT_DRAW_READY(a0)
+ bsr timing_loop_install
 .status:
  lea timing_runtime_status(pc),a0
  move.l d0,(a0)

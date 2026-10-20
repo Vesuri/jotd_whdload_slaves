@@ -427,7 +427,11 @@ drawing to the next batch (forty assembled handoff cases). It has no native
 flight-loop caller yet. A foreground loop owner now composes bounded batches,
 draws, retained commands, modal continuation, excess-time rebase and flight
 exit, with PAL/NTSC comparisons against explicit dispatch. Its native entry
-hook and actual interrupt-exclusion adapters remain uninstalled. Native world opening and the complete periodic
+hook and Exec interrupt-exclusion adapters are now installed in experimental
+TIMING_RUNTIME builds only. Live acceptance failed: the first 68020 run ended
+flight at the first committed-geometry deadline (17 fields, one world tick,
+no scheduler fault). This unexpected geometry exit must be resolved before
+activation is accepted. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

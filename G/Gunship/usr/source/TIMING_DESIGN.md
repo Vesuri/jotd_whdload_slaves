@@ -5135,3 +5135,44 @@ All build variants assemble. No native +0561C hook calls this owner yet.
 Exec exclusion adapters, installation/failure reporting, retirement of the
 old frame-accounting tail and full live flight acceptance remain required.
 The existing standalone/live component gates do not establish C completion.
+
+
+### Native entry adapter and first live activation (not accepted)
+
+`timing-live-loop.i` installs last in CUSTOM1-enabled TIMING_RUNTIME builds.
+It validates the initialized +0561C call to +0563A and its return-side call
+at +05622 to +0868C, then redirects only that six-byte call. The entry invokes
+the new owner through long relative addressing. Exec Disable/Enable wrappers
+preserve all registers, including lifecycle results in D0. Normal flight-end
+result four restores the entry registers and returns to native cleanup.
+Negative failures retain `timing_flight_status` and abort through WHDLoad with
+a diagnostic message; they cannot resume the old world loop. Ordinary builds
+without TIMING_RUNTIME and CUSTOM1-off installation remain unchanged.
+
+The old +04470..+04494 accounting tail is not executed per enhanced draw.
+Its +02276 helper maintains a three-sample timing table at h6+4B3C and counter
+h6+0596; the audited hunk's indexed accesses to those fields occur within that
+helper. Its computed D6 result is restored by its epilogue. The final clear
+of h0+BA0A served the old interpolation loop's newly allocated slot handling;
+the enhanced renderer uses generation-certified snapshots instead. Neither
+legacy rendering cadence nor its timing accumulator drives the new world clock.
+
+`test_live_loop_c.py` verifies all twelve entry/return signature bytes,
+CUSTOM1-off bypass, incomplete-draw-install rejection, eight register-clobbering
+Exec callback cases, preserved native return registers and two diagnostic
+abort cases. The loader fixture passes nineteen calls; all build variants
+assemble. These tests use Exec/loop stubs, so they are not live acceptance.
+
+A headless 68020 compiled guest run then reached the installed owner, but
+ended flight at its first world deadline: seventeen completed player fields,
+one world tick, no history loss or scheduler fault, consumer phase six and
+batch phase four. Seven unread records were discarded on exit. The retained
+SGE_RESULT is one and WB_PHASE is three, identifying the committed-geometry
+exit path. The player endpoint anchor is at X=B000, Y=3F80, height zero.
+This is an unexpected flight termination, not an accepted smoke test.
+A second completed run retained `fast.bin`, `arena.bin` and addresses under
+`tmp/dev/tmp/c/live-loop-020-state` for reproduction. Both sessions closed.
+The post-return native plane flag is zero, but that observation alone does not
+prove its value before cleanup; compare the committed raster and private
+geometry at the decision boundary next. Do not treat this as evidence of
+whole-game collision equality or successful C activation.
