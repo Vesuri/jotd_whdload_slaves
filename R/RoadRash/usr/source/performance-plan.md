@@ -29,10 +29,11 @@ so slave patch offsets are the address minus `$80000`.
   rasteriser 21.7%, background clear 8.9%, objects 13.4%), game logic 29.7% (road geometry
   13.3%), frame-end wait 9.6%, HUD 6.2%, copper/sprite rebuild and sprite patches 4.0%,
   interrupts about 3.5% (included in the above).
-- **Plan outline:** a measurement harness (A) and correctness fixes (B) come first. Then a
-  frame-pacing option (C), caches and `BLTPRI` (D), blitter work and overlap (E), then CPU
-  work in fast RAM (F), then release (G). Targets: a locked 25 fps on 030/50, 040 and 060; a
-  locked 16.7 fps on a 68020 with fast RAM; no regression on the A500. 50 fps on the 060 is
+- **Plan outline:** a measurement harness (A) and correctness fixes (B) come first. Then
+  consistent simulation with uncapped vsynced rendering (C), caches and `BLTPRI` (D),
+  blitter work and overlap (E), then CPU work in fast RAM (F), then release (G).
+  Throughput targets: at least 25 fps on 030/50, 040 and 060;
+  at least 16.7 fps on a 68020 with fast RAM; no regression on the A500. 50 fps on the 060 is
   a stretch goal that needs E and F.
 
 ## 2. Method and reproducibility
@@ -119,7 +120,7 @@ Caveats:
   (item B4).
 - **Judder.** Frame N moves by the duration of frame N−1. When frames alternate between 2
   and 3 fields (040/060 today), each motion step is one frame out of phase with the display,
-  which can judder (item C).
+  which can judder (C now addresses the simulation/presentation dependency).
 - **Unexplained path.** The paced path `$8aff0` (hook, fed at `$87722`) and the main-loop
   gate `$875bc` were not exercised in the window (item B5).
 
@@ -349,25 +350,47 @@ a slave option whose default reproduces the original timing until G1 decides the
     following consumption. It is an intentional bounded delay, not an unbounded
     wait. No gate/drain patch is needed for the supported 25 fps target.
 
-### C. Frame pacing (smoothness)
-- **C1 Pacing hook.** Patch the race loop's `jsr $aecba` at `$87736` to a slave routine that
-  waits until `$aec0c` ≥ N−1 fields since the last swap, then performs the original
-  swap, which waits for the next field. Reuse B4's `safe_swap` two-field floor.
-  Menus keep `$aecba`.
-- **C2 Modes** (new mode field assigned in G1; preserve B's existing switches):
-  - C2a 0 = original (uncapped).
-  - C2b 1 = adaptive: choose N as the smallest number of fields that the last 8 frames fit
-    in, step it up immediately and down only after 32 frames that fit (hysteresis).
-  - C2c 2/3/4 = fixed 25 / 16.7 / 12.5 fps.
+### C. Consistent simulation with uncapped vsynced rendering
+
+Render as fast as the machine can, presenting completed frames at vsync. There are
+no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
+not depend on how many frames are rendered. B4's variable-delta results show that
+this requires simulation work, not just removing its optional two-field floor.
+
+- **C1 Separate simulation from presentation.**
+  - C1a Audit the race loop, per-field input/clock hook, all delta consumers, and
+    the producer/consumer record handshake. Identify simulation state updates,
+    rendering preparation and side effects currently executed once per frame.
+  - C1b Choose a fixed simulation step from baseline behaviour and measure its
+    cost on every CPU. Use elapsed active game fields to schedule steps; preserve
+    pause, the existing PAL clock rate and input timing. Do not equate one rendered
+    frame with one simulation step.
+  - C1c Specify ownership of actor state, collision/AI updates, animation, sound
+    events and render buffers so extra renders neither advance gameplay nor
+    duplicate side effects. Capture input at field boundaries for simulation use.
+- **C2 Implement independent timing.**
+  - C2a Advance simulation in consistent steps, consuming accumulated game time.
+    Run the required steps before rendering; preserve remainder time. Handle slow
+    frames without silently discarding elapsed time or using a different step size.
+  - C2b Render the available simulation state as often as possible. If interpolation
+    is needed for smooth motion between steps, keep it separate from authoritative
+    gameplay state and collision tests.
+  - C2c Retain the original safe vsync/copper buffer handoff without extra pacing
+    waits. Replace B's optional presentation floor and delta-clamp mitigation only
+    when the independent simulation passes validation. No new frame-limiter option.
 - **C3 Verify.**
-  - C3a The delta histogram is single-valued in fixed mode, and at most one change per 32
-    frames in adaptive mode.
-  - C3b A4 equivalence passes.
-  - C3c No added input latency: steering is per field in the interrupt anyway; check
-    throttle response with the A1b tape.
-- **Expected:** today 040/060 would lock at 16.7 fps (fixed 3) or hover around 2/3 fields
-  (adaptive). C pays off fully once D/E make 2 fields fit consistently, which gives a locked
-  25 fps.
+  - C3a Replay identical field-timed input at render intervals of 1, 2, 3, 4 and
+    varying/longer intervals. Compare simulation state, distance, clock, opponent
+    order, collisions, crashes and event counts at identical simulation boundaries.
+  - C3b Run A2/A4, review deliberate presentation differences, and verify pause,
+    resume, race transitions, keyboard/CD32 controls and per-field input response.
+    Retain original-behaviour comparisons; explain any intentional baseline change.
+  - C3c Measure rendering throughput and simulation cost on the A500 through 060,
+    plus MMU functional checks. Confirm that no artificial frame cap remains and
+    that missed rendering deadlines do not change simulation speed.
+- **Expected:** faster machines show more frames of the same simulation. Actual
+  throughput gains still depend on D–F; 50 fps needs both sufficient rendering
+  performance and the cross-rate simulation checks above.
 
 ### D. Caches, bus priority and memory
 - **D1 Enable caches from the slave.**
@@ -482,8 +505,8 @@ a slave option whose default reproduces the original timing until G1 decides the
 
 ### G. Integration and release
 - **G1 Options and defaults.**
-  - G1a Map the new behaviour to `CUSTOM` bits: pacing (C), caches (D1), `BLTPRI` (D2),
-    public-RAM relocation (D3), queue (E2); CUSTOM1 stays the password.
+  - G1a Map the new behaviour to `CUSTOM` bits: simulation timing (C), caches (D1),
+    `BLTPRI` (D2), public-RAM relocation (D3), queue (E2); CUSTOM1 stays the password.
   - G1b Pick per-CPU defaults from the A2 matrix: no change on the 68000 unless it is
     faster.
 - **G2 Verification set.** One pass per change: A4 equivalence, an A2 matrix row, the B1
@@ -496,13 +519,12 @@ a slave option whose default reproduces the original timing until G1 decides the
 
 ### Order and milestones
 1. A1–A4, then B1–B3: harness and fixes. Milestone: verified references.
-2. D1 and D2, then C. Milestone: 020+fast at a locked 16.7 fps; 040/060 measured with
-   caches on and `BLTPRI` off.
-3. E1–E4. Milestone: 030/50, 040 and 060 frames fit in 2 fields, and C fixed/adaptive gives
-   a locked 25 fps.
-4. B4/B5 are assessed. The safe mode caps frames at 25 fps; 50 fps remains a stretch
-   goal requiring new small-step equivalence evidence. D3 and F pursue that goal and
-   a 68000 A500 above 10 fps without bypassing the safety floor.
+2. C separates simulation timing from rendering. D1/D2 measure caches and blitter
+   priority; the 020+fast throughput target is at least 16.7 fps.
+3. E1–E4. Milestone: 030/50, 040 and 060 rendering fits in two fields without a
+   frame limiter; simulation timing remains independent of rendering throughput.
+4. D3 and F pursue 50 fps throughput and an A500 above 10 fps. Replace B4's
+   temporary safety floor only with validated independent simulation timing.
 5. G.
 
 ## 8. Open questions
@@ -512,12 +534,12 @@ a slave option whose default reproduces the original timing until G1 decides the
   `Cache`; fps is unchanged. Actual data-cache emulation is disabled in these baseline
   configurations, so D1 still needs coherency and hardware validation.
 - B2 resolved the reproduced 030 crash as DMA overwriting a preloaded image.
-- Is 50 fps worth a further simulation/integration rewrite? B4 deliberately chooses
-  the two-field safety floor; faster collision sampling changes outcomes even at
-  delta 2, and delta 1 also fails the distance tolerance.
+- What fixed simulation step preserves baseline gameplay while fitting the CPU
+  budget? C must resolve B4's cross-rate collision and integration differences
+  before removing the temporary safety floor.
 - What is the free chip RAM in the race on 1 MB machines? It decides E3 and the queue
   buffers.
-- Could the frame pacing keep NTSC-correct timing as an option? Out of scope here; noted
+- Could an optional clock correction provide NTSC-correct timing? Out of scope here; noted
   because the clock already runs at 5/6 speed on PAL.
 
 
