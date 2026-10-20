@@ -475,9 +475,15 @@ _verify_scene	dc.l	0
 
 	include "blitter.i"
 	IFD VERIFY
-; Keep the LoadSeg calls within the 68000 signed-word branch range.
+; Nearby LoadSeg entry, with position-independent long reach to the verifier.
 verify_dispatch_near:
-	bra.w verify_dispatch
+	move.l a3,-(sp)
+.base:
+	lea .base(pc),a3
+	adda.l #verify_dispatch-.base,a3
+	jsr (a3)
+	movea.l (sp)+,a3
+	rts
 	ENDC
 	IFD TIMING_RUNTIME
 	include "timing-slave.i"
