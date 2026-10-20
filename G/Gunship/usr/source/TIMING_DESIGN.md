@@ -4477,3 +4477,66 @@ assemble. These are assembled 68000 instruction checks; live cross-CPU hook
 validation and the prediction consumer are still open. No authoritative
 motion or allocation policy was changed, and native flight activation remains
 absent.
+
+### Private shared-actor next-step preview (C6a/C6c, standalone)
+
+`timing-actor-preview.i` copies native +0BED4..+0C69C, including its four
+internal helpers and embedded distance table. All 120 absolute operands are
+validated before preparation writes anything. Internal calls point into the
+copy; mutable operands point into its private context. The apparent address
+at +0C28A is an immediate followed by a branch opcode, not a relocation.
+Native speed/turn/type tables remain read-only. Preparation requires the
+usual instruction-cache flush before execution.
+
+The 2,950-byte context contains the code and snapshots of allocation/eligibility
+BA08..BA0F, selected identity AA0A..AA15, countermeasures h6+42E8..42E9,
+B92C/9C52 scratch, and C6A0..C761 (six actors plus movement scratch). It also
+copies 726 bytes of player/split-object state: the highest indexed access is
+P+0256+127. The native helper updates player/decoy split coordinates only in
+that copy. A6 holds the private context; the copied code does not change it.
+The resulting poses preserve native steering, speed classes, word wrap,
+vertical adjustment and near-target subdivisions. No private state is copied
+back to the world, including allocation, lifetime, impact counters or damage
+notifications. The impact sound call is replaced with three NOPs.
+
+The terrain callback +0B3B2 is a bitmap/palette classification returning
+only 0 or -1, not an arbitrary terrain-height query. Both values compare below
+a strictly positive actor height at +0C42C. The preview substitutes zero
+without graphics access and marks every queried nonpositive-height slot
+uncertain. Such a slot cannot supply a predicted endpoint. This deliberately
+does not pretend to know what a future displayed bitmap would classify.
+
+`actor_preview_step` returns a candidate mask and retains the private next
+poses. It excludes unallocated/ineligible slots, stationary effect types,
+lifetimes zero/one, native release, type changes and uncertain terrain queries.
+A decoy hit can increment C754 without changing allocation or type; because
+that native counter is aggregate, any such hit conservatively rejects the
+whole candidate set. This can freeze unrelated actors for an interval; it is
+a safe provisional bound, not final visual acceptance or per-slot impact timing.
+
+This primitive is **not installed or called by the runtime**. Its candidate
+mask is not an identity certificate. The consumer still must capture/check
+allocator generations, exhaustion, eligibility and lifecycle epoch, derive
+the first interval from constructor/update order, cap the horizon to one
+world tick, and publish only renderer-owned poses. It must run after serialized
+world work, never between allocator entry and constructor completion. Other
+object families and actual flight-loop activation remain open. Inclusion adds
+code only to experimental timing builds; it enables no behavior with CUSTOM1
+off (or on). The runtime arena remains 28,946 bytes.
+
+The ignored `test_actor_preview_c.py` compares 1,200 complete native actor
+steps (7,200 slot inputs) with private execution, including all snapshotted
+mutable actor/player outputs. A second emulator runs the same 1,200 steps
+with the other terrain return; every accepted position, vertical state and
+heading agrees. The sweep accepts 421 slot endpoints, rejects 1,356 eligible
+slots, encounters 18 uncertain terrain queries, 339 lifetime-one inputs and
+502 type changes. A targeted decoy case proves rejection despite unchanged
+type/allocation. Thirty terrain-stub cases cover all slots and signed-height
+boundaries. All 122 corrupted operand/endpoint signatures reject atomically.
+A write monitor and full native-state comparison observe no world writes.
+These are assembled 68000 instruction tests, not live CPU/visual validation.
+
+Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. A nearby
+VERIFY branch bridge keeps LoadSeg dispatch within the 68000's signed-word
+branch reach as experimental code grows; it tail-branches to the same verifier
+and preserves its register/stack ABI.

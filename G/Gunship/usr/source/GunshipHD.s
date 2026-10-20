@@ -128,7 +128,7 @@ PATCH_EXE:MACRO
 	ENDC
 	bsr	blitter_dispatch
 	IFD VERIFY
-	bsr	verify_dispatch
+	bsr	verify_dispatch_near
 	ENDC
 	jsr	resload_Patch(a2)
 	bra	.out
@@ -474,6 +474,11 @@ _verify_scene	dc.l	0
 ;============================================================================
 
 	include "blitter.i"
+	IFD VERIFY
+; Keep the LoadSeg calls within the 68000 signed-word branch range.
+verify_dispatch_near:
+	bra.w verify_dispatch
+	ENDC
 	IFD TIMING_RUNTIME
 	include "timing-slave.i"
 	include "timing-core.i"

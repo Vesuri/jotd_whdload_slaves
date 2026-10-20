@@ -774,7 +774,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     activation (1,536 native comparisons). Eligibility/morph handling, other
     object families, live hook validation and prediction remain open.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
-    poses into world state or pass them to collision, damage or AI.
+    poses into world state or pass them to collision, damage or AI. A standalone
+    private six-slot native preview now matches 1,200 steps and rejects release,
+    type changes, expiry, decoy hits and uncertain terrain contacts without
+    world writes. It is not yet consumed by rendering: generation/eligibility
+    certification, spawn-order intervals, fractional publication and visual
+    acceptance remain open (see TIMING_DESIGN.md).
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.
