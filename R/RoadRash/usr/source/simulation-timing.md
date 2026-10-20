@@ -1,3 +1,54 @@
+## Natural damage exhaustion and restart across render cadences
+
+`c-road-natural-crash-recover` now supplies a full race from zero damage to
+native WRECKED without a damage fixture. The private joystick driver runs at
+10-field intervals, follows lane zero with deadzone 24 and prediction 1, and
+targets lane -384 after speed reaches 10,000. Each crash clears that target,
+so the rider returns to the road and accelerates again. Attacks are disabled.
+Only UP/LEFT/RIGHT change; the 352 recorded input changes are retained in
+`driven-tape.json`, SHA-256
+`89c841f2873998846cfcd265d276386987ff9c84946f9ae1d683e37f25a555b6`.
+The driver parameters and script digest are retained in `driver.json`.
+
+The existing fixed-four-field road diagnostic starts with zero damage,
+accumulates 32 through native collisions, and exits at simulation field
+23,510. There are 23,509 completed hashes and 105 sound requests. The native
+WRECKED screenshot was inspected. Finish flag/time remain zero. No debugger
+memory writes, seeded damage, forced exit flag or modified countdown is used.
+
+`c-road-natural-wreck-vary` replays exactly that tape using the existing
+2/3/4/12/16-field diagnostic. `compare_full_c.py` passes all 23,509 hashes,
+all 105 requests, capture/exit times and all six terminal state regions.
+Both terminal snapshots contain damage 32. The replay harness preserves each
+input event's exact field, collects every 500 fields, and polls for exit at
+additional 100-field boundaries. Its later final screenshot shows the native
+post-race repair screen; it does not capture the WRECKED banner itself.
+The simulation terminal snapshot and exit tick are captured by the slave,
+independently of that host polling interval.
+
+Both runs restart normally. Fixed/varying fresh capture tuples are
+(97,96,0,1)/(99,98,0,1); the 12 player history/carry bytes and all 140 actor
+carry bytes are zero in both. The fixed run records 5,879 four-field frames;
+the varying run records 1,525/555/1,044/522/522 frames at 2/3/4/12/16 fields,
+plus startup/transition bins. Diagnostic SHA-256 values are
+`6a4264b3fc9a7fb347d440a8f951eee5df9c6a0b892706b97edf74d6f5dfae41`
+and `781aebe8a8b9029af827ec7f52dacdfb0b8cdde87df13e109b92e3fb5a405bc9`.
+Both companion normal binaries match the current `3af9c2c…87a662` runtime.
+This closes the missing naturally accumulated wreck/restart coverage for
+this road model; it does not resolve B handling/distance or throughput gates.
+
+Two other ordinary-input attempts ended in arrest: target -1024 at tick
+8,454 with damage 2; earlier roadside targeting at speed 6,000 at tick 11,551
+with damage 20. Their BUSTED screenshots were inspected, and neither is
+counted as wreck coverage.
+
+A separate current normal-runtime probe, `c-road-integrated-crash-history`,
+checks a naturally occurring player crash at live field 1,028. Entry to
+`step_steering_finish` has history/carry bytes
+`00000000fffefffffffe0000`; return has twelve zero bytes, with no injected
+state. This directly verifies crash-history clearing in the production path,
+in addition to the diagnostic restart reset checks.
+
 ## Reject shorter road-history arithmetic after hardware measurements
 
 Three private candidates shorten `step_road_reference`, keeping the normal

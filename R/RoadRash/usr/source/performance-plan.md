@@ -379,8 +379,10 @@ Full finish and arrest/restart comparisons, keyboard/CD32 controls,
 pause/resume, demo fire/timeout transitions and enhancement-off checks pass.
 A diagnostic starting at damage 31 verifies that a native collision reaches
 damage 33, takes the WRECKED exit and restarts identically across cadences.
-Naturally accumulated full-race wreck coverage remains missing for this road
-model. These results do not establish B-equivalent handling. Default and
+A full race from zero damage to native WRECKED now also matches across fixed
+and varying cadences: 23,509 hashes, 105 sound requests, terminal state and
+exit tick 23,510; both restarts clear all road history/carry. These results do
+not establish B-equivalent handling. Default and
 uncached 020 distance still fail the one-percent gate, and opponent
 trajectories/order still differ. C remains incomplete.
 
