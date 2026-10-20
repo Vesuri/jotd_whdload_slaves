@@ -2,7 +2,9 @@
 ; a0=arena, a2=resload, return 0/-1 and preserve other registers.
 timing_map_install:
  movem.l d1-d3/a0-a4,-(sp)
- move.l _custom1(pc),d0
+ lea timing_map_install(pc),a3
+ adda.l #_custom1-timing_map_install,a3
+ move.l (a3),d0
  beq .disabled
  cmpi.l #1,RT_READY(a0)
  bne .bad

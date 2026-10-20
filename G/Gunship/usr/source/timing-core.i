@@ -1,5 +1,6 @@
  include "timing-actor-generation.i"
  include "timing-actor-preview.i"
+ include "timing-terrain-sample.i"
  include "timing-actor-present.i"
 ; Shared dependency order for the hybrid timing runtime.
 ; Inclusion alone installs no hooks or patches.

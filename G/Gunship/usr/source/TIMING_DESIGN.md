@@ -4694,3 +4694,64 @@ avoid the larger build exceeding 68000 signed-word reach.
 Live cross-CPU release/pixel checks and visible first-interval trajectory
 acceptance remain open, alongside the other C6 object families and main-loop
 activation. No full-C or release-readiness claim follows from these tests.
+
+### Scripted-helicopter dependency audit and read-only terrain query (C6)
+
+The index-5 object's +09FB0..+0A14A body first loads its split coordinates via
++07B7E. Zero X means inactive. It chooses player versus scripted target using
++07FA4 terrain classification and P+002C, computes a native byte heading via
++07AC8, and either assigns that heading directly (scripted mode) or performs
+three further terrain probes before a byte-sized +/-2 steering adjustment.
+The latter path can draw RNG and damage the player before movement. The final
++A104..+A144 block adds sine-table components of magnitude 50 to X/Y, sets
+height to player height minus 32 (or 24 if negative), negates the stored heading
+and writes split object index 5 via +07BD0. A last-position velocity alone
+would omit its next steering choice and discontinuities.
+
+The terrain dependency is narrower than a graphics API: +07FA4 forms native
+coordinates from P+001E/+0020 and P+0026/+0028, then jumps to +0B3B2. That
+function transforms world coordinates, calls the game's own +0825E CPU planar
+pixel reader, compares the result with palette bytes 24/25, and returns 0/-1.
+The reader's +082B6 helper derives row/bit/plane addresses; the slave's
+avoid_af_game hook only masks the computed address offset before a bit read.
+There is no OS call or drawing in this path. B3B2 nevertheless writes the saved
+native bitmap binding back on exit, so using it directly would violate a
+strict read-only preview even when the stored value is unchanged.
+
+`timing-terrain-sample.i` now supplies a standalone read-only counterpart. Its
+inputs are a stable Amiga BitMap, the two classification bytes, and the native
+incoming D0/D1 coordinate registers. It reproduces the native word wrapping,
+long shift and planar classification. In particular, it preserves D0's incoming
+upper word through the native word operations before LSR.L: clearing it would
+silently change some queries. It preserves non-result registers, touches only
+stack, and never borrows the native bitmap-binding variable.
+
+It returns -3 (unknown) for coordinates outside the declared bitmap, empty
+dimensions, depth outside 1..8 or a null active plane; it validates all plane
+pointers before reading any pixel. This is a conservative preview boundary,
+not a change to the game's authoritative access-fault patch. A caller must
+provide stable, DMA-complete committed planes and treat unknown as a prediction
+barrier. The sampler does not wait for DMA, retain bitmap pointers across
+frames, or classify a future predicted display. No runtime caller is installed
+yet. The existing six-slot preview retains its conservative nonpositive-height
+barrier until a committed-raster handoff is supplied.
+
+`test_terrain_sample_c.py` executes native B3B2/825E/82B6 plus the snapshot's
+access-fault hook against randomized planar buffers. Across 6,000 coordinate
+queries, 1,571 in-bounds cases match both native execution and an independent
+plane oracle; 548 classify as blocked. They cover depths 1..8, both palette
+modes, row sizes 16/40/80 and heights 100/200/512. In 362 matched cases the
+nonzero incoming upper D0 word affects the coordinate transform. Another
+4,429 out-of-bounds queries and twelve malformed bitmap cases return unknown.
+A write monitor and native-memory comparison observe no writes outside stack.
+Ordinary, runtime, VERIFY/runtime and input/runtime builds pass. The map
+installer's CUSTOM1 reference now uses local-base long relative addressing
+because added experimental code exceeded its prior 68000 short reach. Its
+regression passes 288 native comparisons, 2,016 enhanced-owner suppression
+cases, fourteen signature rejections and the CUSTOM1-off check.
+
+Next for this object: isolate the native movement/steering on private split
+state, explicitly exclude RNG/damage callbacks, certify lifetime and scripted
+teleports, and bind the terrain sampler to the committed raster after DMA.
+These steps and live visual/cost validation remain open; the terrain helper
+alone does not complete prediction of the scripted helicopter or ground units.

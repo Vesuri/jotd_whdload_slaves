@@ -764,6 +764,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     keep their world-tick motion. Draw them predicted from the latest completed state, at
     most one tick ahead, using `current + (next - current) * frac` where the next native pose
     is derivable from native order and arithmetic. Never draw them one tick behind.
+    The scripted index-5 steering/terrain/RNG dependencies are now inventoried;
+    its CPU terrain query has a read-only sampler matching 1,571 native pixel
+    classifications. Private scripted motion, identity/teleport barriers and
+    committed-raster integration remain open.
   - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
     inherit its previous occupant's trajectory. Derive each projectile's first presentation
     interval from its spawn and update order. The native six-slot audit proves
