@@ -1398,3 +1398,34 @@ same cleared capture state. This establishes render-cadence independence for
 the revised model through the tested wreck and restart; successful finish-line
 coverage for this model, remaining A4 differences and the latency/performance
 regressions are still open.
+
+## Defer width division until after object rejection
+
+`VERIFY_C_OBJECT_WIDTH` is a diagnostic-only C patch under the same CUSTOM2 and
+hardware gates. It replaces the divide/store at `$8b2e8` with NOPs and performs
+those operations at `$8b326`, after the native depth/lateral rejection tests.
+The numerator D3 and divisor D1 remain unchanged through that interval. Accepted
+records receive the same width before D3 is reused for height at `$8b332`;
+rejected records are not published. The hook restores the displaced `add.w d2,d2`
+and `lea $a7068,a2`. It neither removes the collision projection pass nor changes
+its visibility decisions. Normal builds remain byte-identical.
+
+`c-object-width-replay1457` matches all 1,598 common hashes, sound requests and
+the entire captured `$a5900..$a873f` state against
+`c-steering-reference-replay`. The first attempted replay build mistakenly used
+the default capture field 601; the harness correctly rejected it rather than
+comparing it with field 1457. Only the rebuilt 1457 run is acceptance evidence.
+
+On cycle-exact cached 020, the standard 500-field window measures 8.7 fps versus
+8.5 for the unchanged steering candidate. The longer paired cost runs
+`c-object-width-baseline-cost` and `c-object-width-cost` show 177 versus 179
+renders over fields 100–1000 (9.833 versus 9.944 fps, about 1.13%). Their sampled
+simulation cursor/count and position agree at every checkpoint. This is a small
+workload-specific gain, not resolution of C's throughput regression, and the
+experiment is not yet enabled in the normal slave.
+
+`c-object-width-fullvar` also matches all 11,945 completed hashes and 120 sound
+requests against `c-steering-quarter-fullrace` while replaying its tape under
+varying render intervals. The terminal actor, clock/spawn-timer, camera and rank
+ranges match, as do exit field 11946 and restart capture `(99,98,0,1)`. This
+extends the experiment's equivalence evidence through crashes, wreck and restart.

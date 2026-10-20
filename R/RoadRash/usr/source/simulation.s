@@ -640,6 +640,21 @@ step_collision_objects:
 	jsr $8a492
 	rts
 
+	IFD VERIFY_C_OBJECT_WIDTH
+	IFND VERIFY
+	FAIL "Object width experiment requires VERIFY"
+	ENDC
+; $8b2e8's numerator D3 and divisor D1 survive the native rejection tests.
+; Rejected records are not published; accepted records need their width before
+; D3 is reused for projected height at $8b332. Restore displaced instructions.
+step_object_width:
+	divu.w d1,d3
+	move.w d3,4(a0)
+	add.w d2,d2
+	lea $a7068,a2
+	rts
+	ENDC
+
 ; The live field clock schedules work; the race stopwatch belongs to simulation.
 ; Preserve the original game's 60-field BCD second, including its finish flag.
 step_clock:

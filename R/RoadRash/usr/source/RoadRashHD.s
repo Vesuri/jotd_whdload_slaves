@@ -404,6 +404,12 @@ pl_c_simulation
 	PL_P	$9E70,step_pose_lean
 	PL_P	$9EF0,step_lean_end
 	PL_P	$9F48,step_pose_project
+	IFD VERIFY_C_OBJECT_WIDTH
+; Width is not consumed by rejection tests. Defer the divide until the
+; object's depth/lateral checks have accepted it.
+	PL_NOP $B2E8,6
+	PL_PSS $B326,step_object_width,2
+	ENDC
 	IFD VERIFY_C_STEERING
 	PL_P	$B93A,step_steering_heading
 	PL_P	$B97A,step_steering_motion
