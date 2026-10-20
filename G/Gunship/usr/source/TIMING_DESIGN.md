@@ -3961,3 +3961,53 @@ pass: snapshot copying and comparisons dominate parts of the probe, so its
 overall duration is not a renderer benchmark. Cost measurements, NTSC/wider
 scene coverage, world ownership, selection/publication and exclusion of
 native render target writes remain open. Runtime activation is unchanged.
+
+### Isolated visibility cost with a calibrated guest timer
+
+`VP_TIMING=1 bash tmp/dev/tools/build_visibility_probe_c.sh` builds a separate
+`visibility-timing.slave`. Its guest probe cascades CIAB timer B from timer A
+to form a 32-bit E-clock downcounter. This is diagnostic-only: interrupts are
+already disabled and the test never resumes gameplay. Timer mode constants
+follow the NDK `hardware/cia.i`. Ten video-field edges calibrate the counter;
+an empty start/stop measures the instrumentation floor. Calibration gives
+142,080 E-clocks on the 000 and 142,086 on the 020/060, crossing two low-word
+underflows. Empty measurements are six E-clocks on the 000 and one on the
+020/060. Raw readings and field-normalized results remain in the reports.
+
+The timed native span is the exact drawing prefix plus its final blitter
+wait. The extracted span is the complete `visibility_raster_step`, including
+scene construction, target-state borrowing/restoration, the drawing prefix,
+the wait and pixel sampling. Snapshot copies, equality checks and fixture
+setup are outside both spans. All 16 bitmap/candidate/pixel comparisons still
+pass in each timed run.
+
+Times below subtract the empty measurement and convert calibrated fields
+using nominal PAL 50 Hz. They are deliberately rounded; the beam phase and
+chip-bus contention differ between the paired executions.
+
+| Setup | Native prefix mean | Visibility mean | Visibility range | Three visibility calls/s |
+| --- | ---: | ---: | ---: | ---: |
+| 68000 (`a500-fast`) | 69.6 ms | 71.2 ms | 53.5–84.6 ms | 21.4% of elapsed time |
+| 68EC020 (`a1200-fast`) | 32.0 ms | 32.4 ms | 25.5–37.0 ms | 9.7% |
+| 68060-NOMMU, 50 MHz | 22.0 ms | 22.1 ms | 19.9–26.8 ms | 6.6% |
+
+The renderer remains a substantial cost on faster CPUs. This is elapsed
+emulated time including blitter waits, not CPU-only instruction cost. The
+difference between the two columns is not a reliable standalone wrapper
+overhead measurement because of the differing bus phase. These are sixteen
+authored samples per setup, not worst-case bounds or a full-game benchmark.
+VBL/input work, field motion, world logic, overlays and displayed frames are
+not charged to this isolated pass.
+
+The measured pass fits inside one 333 ms world interval in these fixtures,
+so proceeding with once-per-world-tick integration is reasonable; it must
+not be run per consumed field. Whole-game rate/catch-up tests still decide
+whether the combined budget is acceptable, especially on the 68000. Reusing
+pixels from a previous/predicted display is not an acceptable shortcut.
+
+Reports: `tmp/dev/tmp/c/visibility-timing-a500-fast/result.json`,
+`visibility-timing-020/result.json`, and `visibility-timing-a1200-060/result.json`.
+The timed slave SHA-256 is
+`c011a954278eff3e9b618aaad52c2246ec1789a2f68a8a990979a4ec43ccacbe`.
+World-owned selection/publication, native-render write exclusion and runtime
+activation are still pending. These measurements do not complete C9.
