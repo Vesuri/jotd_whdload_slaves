@@ -283,11 +283,34 @@ step_derive_lean:
 	cmpa.l #-1,a1
 	bne .actor
 	tst.w $a6ef6
-	bne .done
+	bne .special
 	move.w #1,$a6ef6
 	lea $941d6,a2
 	bra .next
+.special:
+	cmpi.w #2,$a6ef6
+	beq .done
+	cmpi.l #1800,$a5d50
+	bcs .done
+	move.w #2,$a6ef6
+	lea $941e2,a2
+	bra .next
 .actor:
+; Match the native $89d64..$89de4 list eligibility checks.
+	cmpi.w #1,$a6ef6
+	bne .checkspecial
+	cmpi.w #-1,$56(a1)
+	bne .next
+	bra .position
+.checkspecial:
+	cmpi.w #2,$a6ef6
+	bne .position
+	btst #6,$68(a1)
+	beq .done
+	move.l 4(a1),d0
+	sub.l $a5d1e,d0
+	bmi .done
+.position:
 	move.w 4(a1),d0
 	sub.w $a5d1e,d0
 	bmi .next

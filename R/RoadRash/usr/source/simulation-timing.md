@@ -328,3 +328,13 @@ and rejects runs that exceed it, instead of silently comparing a prefix.
 The builds use `VERIFY_B`, `VERIFY_C_STEP`, `STEP_CAPTURE=1457`, and
 `VERIFY_FRAME_PERIOD=1` or `12`; `STEP_FIELDS` remains its default of one.
 The input fixture is `tmp/dev/fixtures/c-attacks.json`.
+
+The simulation lean pass now follows the original list eligibility rules at
+`$89d64..$89de4`: secondary actors require `$56=-1`; the third list at `$941e2`
+is considered from field 1,800, with its activation and camera-position checks.
+Previously that third list was omitted and secondary eligibility was unchecked.
+Extending throttle to field 1,950 (`c-attacks-late.json`) gives **1,944 matching
+consecutive actor hashes** at presentation intervals 1 and 12, with identical
+actor snapshots at field 1,901 (`c-50-late1/12`). The earlier 1,598-tick prefix
+is unchanged by this correction. The special actor is inactive in the captured
+snapshot, so a scenario with it active and visible is still required.
