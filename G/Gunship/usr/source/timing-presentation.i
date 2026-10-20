@@ -74,6 +74,24 @@ presentation_build:
 	add.w d1,d0
 	lsr.w #8,d0
 	move.b d0,15(a1)
+	bsr native_camera_build
+	movem.l (sp)+,d0-d4/a0-a3
+	rts
+.gauge:
+	move.b d0,d2
+	lsr.b #1,d2
+	add.b d2,d0
+	cmpi.b #32,d0
+	bcs .gauge_done
+	move.b #31,d0
+.gauge_done:
+	rts
+
+; Native +057E2 camera only, for committed-state geometry and presentation.
+; a0=player, a2=12-byte destination. All registers preserved.
+; Preserve byte wrapping and NEG-before-ASR for native half-pitch.
+native_camera_build:
+	move.l d0,-(sp)
 	move.w 0(a0),0(a2)
 	move.w 2(a0),2(a2)
 	move.w $1c(a0),d0
@@ -93,16 +111,7 @@ presentation_build:
 	neg.b d0
 	lsl.w #8,d0
 	move.w d0,10(a2)
-	movem.l (sp)+,d0-d4/a0-a3
-	rts
-.gauge:
-	move.b d0,d2
-	lsr.b #1,d2
-	add.b d2,d0
-	cmpi.b #32,d0
-	bcs .gauge_done
-	move.b #31,d0
-.gauge_done:
+	move.l (sp)+,d0
 	rts
 
 ; Exact native +05756..+05776 clamp, including BMI after byte subtraction.

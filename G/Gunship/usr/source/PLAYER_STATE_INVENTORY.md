@@ -465,3 +465,34 @@ These pass. The prototype relocation script uses the executable's HUNK
 records, not scanning for address-looking values. Production integration,
 world-phase ownership, lifecycle handling and collision trajectory acceptance
 remain pending; the primitive is not installed in the slave.
+
+#### Committed-player and scheduled scene wrappers
+
+The camera-only part of `presentation_build` is now shared as
+`native_camera_build`; native byte wrapping and NEG-before-ASR half-pitch
+remain unchanged. The existing exhaustive presentation comparison passes
+all 65,536 pitch/vertical byte pairs and 256 repeated-render checks after
+this refactor.
+
+`timing-world-scene.i` binds the authoritative player to the prepared scene's
+native hunk 6, builds the camera on the stack, and checks committed world
+coordinates. A positive result sets player +18 to 1, matching native +05846;
+a clear result preserves the previous byte. Cleanup and further world work
+remain the caller's responsibility. `test_world_scene_c.py` compares all 96
+scene cases and checks that the end byte is the only world-state mutation.
+
+`timing-scheduled-world-scene.i` requires scheduler phase 2 with a due world
+tick, after player publication. Its 26-byte context binds scheduler, player,
+private scene and committed coordinate vector, and records field/valid,
+per-call committed status and geometry result. It rejects the same field
+twice, checks upstream health before and after application, and retains the
+applied field/result when a post-check faults. It does not acknowledge the
+world tick or perform cleanup. Positive results must divert to cleanup before
+weapons/scripts/tail; this owner connection remains to be installed.
+
+`test_scheduled_world_scene_c.py` passes the 96 native geometry comparisons
+and duplicate-deadline checks, three wrong-phase/due checks, and a fault
+injected on the second scheduler health check after a positive result. The
+player end byte and applied metadata survive the fault; retry after clearing
+the upstream fault is rejected. These standalone checks do not yet constitute
+full scheduled-player/world composition or moving collision acceptance.
