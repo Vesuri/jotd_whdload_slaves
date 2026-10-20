@@ -85,3 +85,5 @@
  include "timing-runtime-target-view.i"
 
  include "timing-runtime-actors.i"
+
+ include "timing-runtime-loop.i"

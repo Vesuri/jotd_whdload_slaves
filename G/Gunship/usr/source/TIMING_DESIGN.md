@@ -5088,3 +5088,50 @@ results with interrupt-excluded lifecycle transitions, retained command and
 script continuation, excess-time reporting/rebase, and flight exit. It must
 also explicitly retire or preserve the old +04470..+04494 frame-accounting
 tail; this bridge does not silently execute it once per extra render.
+
+
+### Foreground flight-loop owner (C2/C8, not installed)
+
+`timing-runtime-loop.i` composes the runtime's existing batch, draw and
+lifecycle interfaces. `timing_runtime_loop` takes an inactive prepared arena
+with drawing installed and two exclusion callbacks. Those callbacks must
+preserve every register, including D0, and exclude input producers between
+enter and leave. They are supplied by the future native entry adapter; this
+core does not call Exec or manipulate processor status registers itself.
+
+The owner activates once, then processes snapshots bounded to 64 fields,
+four world ticks and 128 commands per reader. Drained snapshots draw once;
+command-budget yields resume the same delivered field. Retained commands
+suspend under exclusion, run native UI with normal interrupts, finish the
+retained field and reactivate only after completion. A second boundary in the
+same field repeats this protocol without replaying earlier commands. A modal
+returned by boundary completion is already suspended and goes directly to
+its continuation. Ordinary script-modal results first suspend under exclusion.
+
+Excess-budget results suspend and rebase explicitly, preserving existing
+clock/history/command loss accounting and invalidating prediction. Faults
+stop producers and retain their error and pending phase; they do not rebase
+or fall back to native ticking. Flight end suspends sampling and returns four.
+All critical sections are balanced, including failures. Field consumption,
+drawing and blocking native UI run outside exclusion. The native entry caller
+must report/abort negative failures rather than continuing the old loop.
+
+`test_runtime_loop_control_c.py` injects child statuses into assembled code
+for ten ownership/continuation/failure scenarios plus two invalid callbacks.
+It checks exact call order, budgets, exclusion scope and original error
+propagation. This isolates control flow; it does not stand in for native UI.
+`test_runtime_loop_c.py` then runs the real field/world/lifecycle pipeline
+against explicit dispatch of the same existing helpers: PAL/NTSC and batches
+of 1/3/10/80. Ordinary cases include native key 12's retired-speed-toggle path,
+reactivation and continued flight before a native exit command. Each native
+exit executes once. Player/actor state, clock/scheduler records, discarded
+history and draw counts agree between both paths. The 80-field case reaches
+the 64-field limit, discards sixteen unread fields on rebase, then exits in
+its next batch; its later boundary suspension discards another thirty-nine
+records. The resulting total is fifty-five, not fifty-five excess-budget
+losses. Rendering and exclusion callbacks are stubs in this integration test.
+
+All build variants assemble. No native +0561C hook calls this owner yet.
+Exec exclusion adapters, installation/failure reporting, retirement of the
+old frame-accounting tail and full live flight acceptance remain required.
+The existing standalone/live component gates do not establish C completion.

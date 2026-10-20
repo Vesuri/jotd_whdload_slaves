@@ -424,7 +424,10 @@ policies and complete player/world hand-off are still pending,
 so C2/C3 are not complete. A guarded single-frame handoff now publishes the
 current pose and calls native drawing once; it defers fields arriving during
 drawing to the next batch (forty assembled handoff cases). It has no native
-flight-loop caller yet. Native world opening and the complete periodic
+flight-loop caller yet. A foreground loop owner now composes bounded batches,
+draws, retained commands, modal continuation, excess-time rebase and flight
+exit, with PAL/NTSC comparisons against explicit dispatch. Its native entry
+hook and actual interrupt-exclusion adapters remain uninstalled. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are
