@@ -580,3 +580,49 @@ pair are retained in ignored `tmp/dev/tmp/c/moving-scene-comparison.json`.
 The measurement executes 28,295 helper calls. These results supersede any
 interpretation of the earlier batch-invariance or isolated geometry tests as
 moving-contact acceptance. Native production timing remains unchanged.
+
+#### Selected endpoint-preserving replacement
+
+The user selected preserving native motion at world-tick boundaries while
+keeping field-rate input and motion responsive. The preceding failed
+measurement remains evidence about the old coupled substep integrator.
+It is not an accepted rounding tolerance.
+
+`prototype_endpoint_motion_c.py` now evaluates an alternative: retain the
+player record at interval start, preview a complete native tick from that
+anchor using each field's current decoded controls and delayed previous-Y,
+and add one interval share of the candidate-minus-anchor motion. The ten
+distributed quantities are X, Y, height, forward speed, RPM, heading, track,
+pitch, roll and vertical speed. Heading/track use circular byte deltas.
+Other candidate bytes are provisional derived outputs in this experiment;
+their publication and world-field ownership still require an assembly
+coordinator. Native previews use the already checked assembled h=1 path.
+
+The share is 1/N, where N is the delivered interval length: PAL 17/17/16,
+NTSC 20. This deliberately replaces fixed 3/rate response substeps so each
+delivered deadline reaches the native endpoint. Python exact fractions
+retain residue between intervals. All 44 ten-second paths now match all
+86 reference bytes at all 1,320 world boundaries. Running the same private
+scene geometry against the retained stationary objects also matches all
+1,320 native hit decisions. As before, these are counterfactual collision
+probes without collision feedback, world commands or ground transitions.
+The prototype has not established coordinate-wrap behavior or live latency.
+
+A separate NTSC pulse on fields 5–9 changes fractional roll on field 5,
+reaching one roll unit before the deadline and retaining it after release.
+This demonstrates that the experimental scheme does not merely postpone
+controls until the world tick. It intentionally differs from a native tick
+that would miss an entire inter-tick pulse. The first fractional change is
+not yet evidence of an installed camera or visible screen response.
+
+`timing-endpoint-fraction.i` is the first standalone assembly primitive for
+this replacement. It distributes a candidate delta over 16, 17 or 20 fields
+with denominator 1360, their least common multiple, retaining exact fractions
+across PAL interval-length changes. A one-field mode preserves the native
+whole-step delta. Integer publication uses floor with nonnegative residue.
+The caller owns shortest circular deltas, native-width wrapping, interval
+anchors and field ownership. No game code calls the primitive yet.
+`test_endpoint_fraction_c.py` passes 4,395 boundary/random/invalid-input and
+cross-interval cases, including signed delta limits, register preservation
+and rejection without writes. C4e/C5b remain open until the replacement is
+composed with the scheduled player/world path and its remaining gates pass.

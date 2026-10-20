@@ -439,6 +439,12 @@ The moving-geometry gate currently fails: 44 ten-second trajectories produce
 missed by the field path, 28 converse differences). Native reference records
 were independently verified against original instructions. C4e/C5b remain
 unaccepted; this is not just a pending test or a renderer-isolation issue.
+The user has now selected preserving native motion at world-tick boundaries
+while retaining responsive field-rate input and motion. An interval-anchored
+prototype matches all 1,320 reference records and collision probes in that
+same fixture. It also responds fractionally to a pulse wholly between ticks.
+This is a Python-coordinated experiment using assembled native previews,
+not the installed replacement integrator; the old field path still fails.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
@@ -494,15 +500,19 @@ See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
   per second and every duration therefore stay as designed.
 - **The player's own motion runs at field rate.** Controls are sampled every field. The
   helicopter's attitude, heading, speed and position are integrated every elapsed field with
-  the native flight equations, scaled to the field's share of a tick. The camera and the
+  native tick's motion distributed across the interval, with its contribution
+  recalculated from fresh controls every field (C4c/C4e). The camera and the
   instruments follow that state on every rendered frame. Input reaches the screen on the
   next rendered frame, not up to 333 ms later.
 - **Other moving objects** keep their world-tick motion and are drawn with bounded
   renderer-only prediction (C6).
 
-"Faithful" means the same game per second of real time, not the same bits per tick. Native
-code still decides everything discrete. The proof for the player path is that it reproduces
-the native tick when given a whole tick at once (C4e).
+Native code still decides everything discrete. The user-selected handling
+criterion also preserves native player endpoints with held input, rather
+than accepting the different trajectories produced by finer physical
+integration. Inputs that change between ticks must still affect motion
+immediately; their additional response cannot also equal a native tick that
+never sampled those inputs. C4e distinguishes those two cases.
 
 Forward extrapolation alone was rejected: it smooths pictures while input and the player's
 motion stay at 3 Hz. Raising the whole simulation rate (G) was rejected as the main route:
@@ -576,20 +586,29 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C4b. **Classify** each as continuous player motion (integrated per field) or world-owned
     (committed per tick: fuel, damage, weapons, flight-end and landing states, scripted
     motion).
-  - C4c. **Scale with the playbook's unit rules:** multiply rate and acceleration increments
-    by h = the field's share of a tick (3/50 PAL, 3/60 NTSC). Use r^h for a multiplicative
-    decay r. Scale slew limits, preserving saturation. Keep signed remainders in
-    slave-owned fractional shadow state. The native variables stay the integer part, so the
-    renderer, AI and HUD read them unchanged.
+  - C4c. **Preserve native endpoints:** the original rate/acceleration and r^h
+    substeps changed coupled motion enough to fail C4e/C5b. Replace that
+    approach with interval-anchored native motion contributions, recomputed
+    with fresh controls each field. Distribute each contribution over the
+    actual delivered interval: 17/17/16 PAL fields or 20 NTSC fields. Keep
+    exact fractional shadow state across intervals; the native variables
+    retain the integer part. Preserve saturation, wrap and native stage
+    ordering. Command changes, impulses and ground transitions require
+    explicit ownership/rebasing tests before this replacement is accepted.
   - C4d. Run the native flight arithmetic where possible, previewing it on saved state
     rather than reimplementing it. Wing Commander previews its native steering routines and
     restores their state afterwards.
   - C4e. **Equivalence gate:** one step with h = 1 must reproduce the native tick's player
-    state bit-exactly. With held input, 50/3 PAL or 20 NTSC field steps over a tick must match
-    the native tick within a stated rounding bound. Check the integrator's displacement
-    difference explicitly: the playbook's `v0 + 5*A/8` versus `v0 + A` example. Decide
-    whether acceptance preserves the original handling or the finer physical integration,
-    and record the decision.
+    state bit-exactly. **User decision: preserve native motion at world-tick
+    boundaries while retaining responsive field-rate input and motion.**
+    With held input, each complete delivered interval must reproduce the
+    native endpoint without accumulated drift, including displacement.
+    Test within-interval changes separately: every field's input contributes
+    to motion, including a press and release between world ticks. Do not
+    force such additional input back to an endpoint that ignores it.
+    The interval-anchored prototype passes the existing held/boundary-change
+    trajectory fixture, but production assembly, commands/impulses, lifecycle
+    and live responsiveness remain unaccepted.
   - C4f. Price the per-field step and the history on the 68000; it renders about 5 fps and
     consumes about 10 fields per render.
   - C4g. Rebuild the camera/state vector (`+057E2`) and the instrument values from the
