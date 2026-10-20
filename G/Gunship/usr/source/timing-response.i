@@ -13,13 +13,22 @@ RS_DEN equ 32767
 ; Same API as response_step. Outside the native zero-increment interval,
 ; retain the exponential law. Inside it, preserve BOTH the integer state
 ; and existing fraction: the fraction may be shared with additive slew.
-; Do not use for a moving fractional heading/track target.
 response_step_native:
+	move.l d3,-(sp)
+	moveq #0,d3
+	bsr response_step_target_native
+	move.l (sp)+,d3
+	rts
+
+; Same stopping rule with a fractional target in d3, as in heading/track.
+; Native integer error decides whether the approach contributes anything.
+; Preserve fractional target feedback outside that zero-increment interval.
+response_step_target_native:
 	movem.l d3-d6,-(sp)
 	move.l d0,d4
 	move.l d1,d5
 	move.l (a0),d6
-	bsr response_step
+	bsr response_step_target
 	tst.l d1
 	bne .done
 	cmpi.l #3,d2

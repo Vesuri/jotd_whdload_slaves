@@ -421,8 +421,12 @@ would erase most of a field's slew and could prevent acceleration.
 The separate slew and coasting paths still run at their scaled rates.
 This wrapper preserves native integer stopping states rather than
 continuing an exponential approach inside them. The generic exponential
-and fractional-target APIs remain available; heading/track still use the
-latter and require their own coupled acceptance bounds.
+and fractional-target APIs remain available. Heading/track now use
+`response_step_target_native`: the same native integer stopping rule,
+with fractional-target feedback retained outside the zero-increment
+interval. Neither the target fraction nor a shared additive fraction can
+create an approach increment inside that interval. Complete coupled
+acceptance bounds remain required.
 
 The new wrapper passes 35,159 assembled calls covering the stopping
 intervals and surrounding values with positive/negative fractions,
@@ -564,6 +568,43 @@ arithmetic-shifted roll supplies an additive rate to both angles. Heading
 uses the sixteenth response toward track; track then uses the quarter
 response toward the **newly updated** heading, including its main fraction.
 The yaw control is cleared on the bank path as in native code.
+
+Both bank responses preserve their native zero-increment intervals.
+This matters even with a moving fractional target: the previous ungated
+response accumulated a small positive heading correction on top of the
+bank's additive rate. In a held roll-16 turn, native heading advances
+four angle units per world tick. The old field path gained an extra
+2.231 PAL / 1.859 NTSC angle units over a minute. Keeping native stopping
+intervals prevents that fractional approach term from changing the turn
+rate while preserving the per-field additive bank motion. Evidence for
+the pre-correction eight one-minute tapes is retained in
+`tmp/dev/tmp/c/horizontal-before-angle-stops.json`.
+
+After applying the stopping rule to both angular responses, all four
+one-minute roll-16 bank tapes (configuration 0/2, PAL/NTSC) match native
+heading at every whole-second sample, including retained fractions.
+Track differs by at most three angle units. Native track sees an entire
+new heading increment before its response; the finer sequential steps
+produce a different relative phase without changing the additive turn
+rate. The maximum sampled horizontal separation across the eight
+forward/bank tapes is 38.331 map units. This is measured scope, not a
+general maneuver or collision acceptance bound.
+
+In the four straight-line tapes, the position offset is constant over the
+last ten seconds: -18.98/-19.30 map units in configuration 0 and
+-16.38/-16.20 in configuration 2 (PAL/NTSC). Thus those differences settle
+after acceleration rather than representing an ongoing speed error.
+Evidence: `tmp/dev/tools/measure_horizontal_motion_c.py`,
+`tmp/dev/tmp/c/horizontal-motion-measurement.json`.
+
+The revised angle component retains 102,400 native h=1 comparisons,
+12,000 independent field-model cases, all five supplied heading impulses
+and four invalid-state checks. The complete coordinator also retains
+4,096 whole-motion matches, 2,640 composed field steps and nine rollback
+cases. Evidence: `heading-tests.json` and `kinematics-step-tests.json`
+in `tmp/dev/tmp/c/`. Input reversals, other bank angles, nonzero initial
+speed/track mismatch, world effects and collision consequences remain
+part of the broader C4e/C5 gate.
 
 Native rounding biases wrap in byte width before the heading/track shifts.
 For the sixteenth response, the effective error is

@@ -139,7 +139,7 @@ heading_step:
 	moveq #4,d1
 	move.l HG_TRACK(a4),d3
 	lea HG_HEADING(a4),a0
-	bsr response_step_target
+	bsr response_step_target_native
 	move.l d0,d4
 	move.l d5,d0
 	lea HG_HEADING_CONV(a4),a1
@@ -158,7 +158,7 @@ heading_step:
 	moveq #2,d1
 	move.l HG_HEADING(a4),d3
 	lea HG_TRACK(a4),a0
-	bsr response_step_target
+	bsr response_step_target_native
 	move.l d0,d4
 	move.l d5,d0
 	lea HG_TRACK_CONV(a4),a1
