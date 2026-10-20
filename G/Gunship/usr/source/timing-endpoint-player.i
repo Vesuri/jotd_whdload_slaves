@@ -1,5 +1,5 @@
 ; Transactional endpoint-preserving airborne player owner. Not installed.
-; Requires player-step, control-delay and endpoint-motion.
+; Requires player-step, control-delay, endpoint-motion and endpoint-impulse.
 EP_FRACTIONS equ 0
 EP_DELAY equ EM_SIZE
 EP_ANCHOR equ EP_DELAY+CD_SIZE
@@ -10,7 +10,12 @@ EP_SIZE equ EP_TICK+2
 EP_WORK_PS equ EP_SIZE
 EP_WORK_CANDIDATE equ EP_WORK_PS+PS_SIZE
 EP_WORK_OUTPUT equ EP_WORK_CANDIDATE+MP_RECORD_SIZE
-EP_WORK_SIZE equ EP_WORK_OUTPUT+MP_RECORD_SIZE
+EP_WORK_BASE equ EP_WORK_OUTPUT+MP_RECORD_SIZE
+EP_WORK_SOURCE equ EP_WORK_BASE+MP_RECORD_SIZE
+EP_WORK_PACKET equ EP_WORK_SOURCE+MP_RECORD_SIZE
+EP_WORK_PREVIOUS equ EP_WORK_PACKET+PS_INPUT_SIZE
+EP_WORK_IMPULSE equ EP_WORK_PREVIOUS+2
+EP_WORK_SIZE equ EP_WORK_IMPULSE+2
 
 ; a0=EP_SIZE state, d0=rate 3/50/60, d1=previous Y -1..1.
 ; Return 0/-1; other registers preserved. Invalid input changes nothing.
@@ -89,8 +94,9 @@ endpoint_player_begin:
 ; coarse speed. Publishes the preview's consumed yaw only on the interval's
 ; final field, which the scheduler bridge binds to the world deadline.
 ; No RNG, ground effects or world acknowledgement.
-; Packet impulses must be zero: discrete kicks must be applied once by their
-; world owner before anchoring, not diluted into a single field contribution.
+; Nonzero packet impulses are accepted only on the final field. Matching
+; native previews apply their full difference after ordinary field motion.
+; The world owner generates/retains the packet once; this code never draws RNG.
 ; No step after the interval ends, and failed preview cannot consume history.
 ; Caller supplies validated code and distinct buffers, serialized foreground.
 endpoint_player_step:
@@ -103,12 +109,20 @@ endpoint_player_step:
 	move.l d0,d7
 	suba.w #EP_WORK_SIZE,sp
 	movea.l sp,a6
-	tst.w 4(a4)
+	move.w 4(a4),d1
+	or.w 6(a4),d1
+	or.w 8(a4),d1
+	move.w d1,EP_WORK_IMPULSE(a6)
+	beq .no_impulse
+	move.w EP_DONE(a0),d1
+	addq.w #1,d1
+	cmp.w EP_SPAN(a0),d1
 	bne .bad
-	tst.w 6(a4)
-	bne .bad
-	tst.w 8(a4)
-	bne .bad
+.no_impulse:
+	lea EP_WORK_PACKET(a6),a2
+	move.l (a4),(a2)
+	clr.l 4(a2)
+	clr.w 8(a2)
 	movea.l a6,a2
 	moveq #EP_SIZE/2-1,d1
 .state:
@@ -143,6 +157,14 @@ endpoint_player_step:
 	; replaces it. It belongs to the flight anchor, despite being derived.
 	; Feeding the last field preview back here changes configuration-2 power.
 	move.b $50(a0),$50(a1)
+	tst.w EP_WORK_IMPULSE(a6)
+	beq .source_saved
+	lea EP_WORK_SOURCE(a6),a2
+	moveq #MP_RECORD_SIZE/2-1,d1
+.source:
+	move.w (a1)+,(a2)+
+	dbf d1,.source
+.source_saved:
 	lea EP_DELAY(a6),a0
 	movea.l d6,a1
 	move.w 2(a1),d1
@@ -151,6 +173,7 @@ endpoint_player_step:
 	bsr control_delay_step
 	tst.l d1
 	bne .bad
+	move.w d0,EP_WORK_PREVIOUS(a6)
 	move.l d0,d1
 	moveq #3,d0
 	lea EP_WORK_PS(a6),a0
@@ -160,7 +183,7 @@ endpoint_player_step:
 	lea EP_WORK_CANDIDATE(a6),a1
 	movea.l d4,a2
 	movea.l d5,a3
-	movea.l d6,a4
+	lea EP_WORK_PACKET(a6),a4
 	moveq #0,d0
 	move.w EP_TICK(a6),d0
 	bsr player_step_interval
@@ -188,6 +211,41 @@ endpoint_player_step:
 	; interpolated pitch/height. Commands remain responsive during the tick.
 	move.b $3f(a2),$3f(a3)
 .retain_yaw:
+	tst.w EP_WORK_IMPULSE(a6)
+	beq .publish
+	lea EP_WORK_CANDIDATE(a6),a0
+	lea EP_WORK_BASE(a6),a1
+	lea EP_WORK_SOURCE(a6),a2
+	moveq #MP_RECORD_SIZE/2-1,d1
+.second_candidate:
+	move.w (a0),(a1)+
+	move.w (a2)+,(a0)+
+	dbf d1,.second_candidate
+	lea EP_WORK_PS(a6),a0
+	moveq #3,d0
+	move.w EP_WORK_PREVIOUS(a6),d1
+	ext.l d1
+	bsr player_step_init
+	tst.l d0
+	bne .bad
+	lea EP_WORK_CANDIDATE(a6),a1
+	movea.l d4,a2
+	movea.l d5,a3
+	movea.l d6,a4
+	moveq #0,d0
+	move.w EP_TICK(a6),d0
+	bsr player_step_interval
+	tst.l d0
+	bne .bad
+	movea.l a6,a0
+	lea EP_WORK_OUTPUT(a6),a1
+	lea EP_WORK_BASE(a6),a2
+	lea EP_WORK_CANDIDATE(a6),a3
+	bsr endpoint_impulse_apply
+	tst.l d0
+	bne .bad
+.publish:
+	lea EP_WORK_OUTPUT(a6),a3
 	movea.l a6,a0
 	movea.l d2,a1
 	moveq #EP_SIZE/2-1,d1

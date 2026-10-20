@@ -683,10 +683,10 @@ Publication changes the ten continuous fields and derived target speed,
 effective power, lift, RPM target and coarse speed. It preserves all other
 current bytes, including clock and command inputs. In particular, preview
 yaw consumption is published only on the final field at the world deadline,
-using the native preview's result as described below. Nonzero impulse words in the packet are rejected;
-world kicks must be applied once before anchoring rather than diluted into
-one field's contribution. Ground contact and world kick scheduling remain
-unfinished. The standalone
+using the native preview's result as described below. Nonzero impulse words
+are accepted only on the final field, through the paired-preview transaction
+described below; they are never diluted into one field's contribution.
+Native world/lifecycle installation remains unfinished. The standalone
 owner must not be installed as a complete replacement for those paths.
 
 `test_endpoint_owner_c.py` compares the assembly owner with the earlier
@@ -912,7 +912,7 @@ with native world opening, both command cursors, per-field VBL state and
 guidance, weapon launches, damage, scripts, periodic work and private scene
 geometry. It explicitly checks that generated motion-impulse words are zero;
 the fixture is airborne and undamaged, and does not silently discard an
-unsupported impulse. Nonzero disturbance integration remains pending.
+unsupported impulse. A subsequent disturbed-world fixture is described below.
 
 The initial combined run passes 1,440 fields at PAL/NTSC with batches 1 and
 25 (20,938 helper calls). Complete player/owner/history and normalized native
@@ -956,8 +956,47 @@ examples and three invalid phase/span/residue rejections pass. Separate
 height-floor tests cover underflow and the native signed-height boundary,
 with register and input-candidate preservation.
 
-This helper is not yet connected to candidate construction or scheduled
-RNG ownership; the current endpoint player entry still rejects nonzero
-impulse packets. Changing-input coupled trajectories, map-edge correction
-and combined ground/disturbance acceptance remain open. Passing held-input
-comparisons does not establish those broader gates.
+The owner connection is described below. Scheduled RNG recovery,
+changing-input coupled trajectories and map-edge correction remain open.
+Passing held-input comparisons does not establish those broader gates.
+
+#### Disturbances inside the endpoint-owner transaction
+
+`endpoint_player_step` now accepts nonzero packet impulses on its interval's
+final field, rejecting them on earlier fields. It saves the common preview
+source and delayed previous-Y, computes/distributes the undisturbed candidate,
+then computes a fresh native candidate with the supplied impulses and applies
+their full difference. Both previews see the same anchor, commands, world
+inputs and logical tick. Only the complete corrected result publishes owner,
+motion and history. The original packet is read-only; no RNG is sampled here.
+Zero-impulse fields retain the single-preview path.
+
+The private work area is now 598 bytes, including both candidate records and
+a separate zero-impulse packet; the persistent owner remains 164 bytes.
+The scheduler's existing transaction consequently includes the disturbance
+before ground resolution and its final health check. The world RNG owner
+must still generate and retain each packet exactly once across faults.
+
+`test_endpoint_owner_impulse_c.py` passes all 270 disturbed native endpoint
+comparisons through the owner itself (3,420 fields). Three malformed final
+impulse packets fail during the second preview, preserving player/history;
+retry with a valid packet at the same field succeeds. The 48-call transaction
+regression still passes, including rejection of off-deadline impulses.
+
+`test_endpoint_ground_impulses_c.py` passes 128 PAL/NTSC held-input intervals
+with supplied disturbances (2,336 fields, 77 ground resets, 2,983 helper
+calls). Complete records and deferred events match native ground previews.
+Initially grounded cases use zero heading impulse, as required by native
+eligibility. Fraction resets and rejection checks also pass. This proves
+held-input disturbance/ground composition, not general changing-input
+contact acceptance.
+
+`test_endpoint_world_impulses_c.py` enables native damage disturbances in
+the combined scheduler/world/camera fixture. All 1,440 fields pass across
+PAL/NTSC batches 1 and 25 (21,688 calls), with complete player/owner/history,
+normalized native world state and final camera angles equal across batches.
+Each PAL run applies nonzero impulses on 19 of 21 deadlines; NTSC applies
+them on 17 of 18. Launch, actor, periodic and geometry-cleanup results match
+the undamaged fixture's counts. This run has no producer fault while RNG is
+being consumed; retaining generated packets and RNG progress across such a
+fault remains an explicit integration obligation.
