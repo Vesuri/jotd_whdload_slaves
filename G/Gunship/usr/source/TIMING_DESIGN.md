@@ -3544,3 +3544,31 @@ assemble.
 This establishes native frame inputs, not the frame call or displayed latency.
 World-object prediction, elapsed-time instrument slew, render side-effect
 isolation and the installed native-loop/frame handoff remain open.
+
+## Render effect construction ownership
+
+`timing-live-render.i` patches the native frame's +05C92 constructor call
+only in the experimental runtime behind CUSTOM1. With runtime ownership or
+a retained UI boundary it returns without allocation, state changes or RNG
+draws: world deadlines already own effect construction. Native ownership
+tail-calls the original +09B9A constructor. The hook preserves registers and
+X without privileged SR reads, including foreground user-mode execution.
+The following +0BE5A animation begins with MOVEQ and replaces NZVC; installer
+validation checks both calls and that instruction before patching.
+
+`test_timing_live_render_c.py` passes 128 comparisons with the real native
+constructor, allocator and RNG across all six-slot occupancy masks and both
+replay modes, plus 896 suppression cases and seven signature rejections.
+Suppression performs no non-stack state writes or RNG draws. Slave setup
+still passes 15 calls. All runtime variants assemble; ordinary, VERIFY and
+standalone TIMING_INPUT binaries remain byte-identical after rebuilding.
+
+The combined TIMING_INPUT/TIMING_RUNTIME build omits the unused diagnostic
+input recorder and buffer, which otherwise exceed a 68000 branch range.
+It uses runtime arena capture and VERIFY frame diagnostics and is identical
+to the VERIFY runtime binary; it does not supply the standalone GSIH0002
+diagnostic copy. Standalone input diagnostics are unchanged.
+
+This isolates construction only. The effect animator at +0BE5A still mutates
+effect slot/frame state and must be audited with the other render writes
+before native flight-loop activation. This is not a claim of renderer purity.

@@ -505,6 +505,13 @@ Ownership defaults off. Guidance now retains the latest native request for
 each of its two hardware sprites; a tested presentation entry applies those
 requests without advancing guidance state. The render handoff and cosmetic
 timer snapshots remain pending before gameplay activation.
+The experimental runtime also suppresses the renderer's effect constructor
+under runtime ownership or a retained UI boundary: world deadlines already
+own that work. Native ownership retains the original constructor behavior
+(128 native comparisons, 896 suppressed cases). Effect animation and the
+rest of the renderer's state writes still require isolation. Combined
+`TIMING_INPUT`/`TIMING_RUNTIME` builds use the runtime input arena and VERIFY
+output, omitting the unused standalone diagnostic recorder and its buffer.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

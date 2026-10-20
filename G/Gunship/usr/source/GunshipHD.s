@@ -479,11 +479,16 @@ _verify_scene	dc.l	0
 	include "timing-core.i"
 	include "timing-live-input.i"
 	include "timing-live-vbl.i"
+	include "timing-live-render.i"
 	ENDC
 
 	IFD VERIFY
 	IFD TIMING_INPUT
+	IFND TIMING_RUNTIME
+	; Runtime capture owns its arena; the inactive diagnostic copy only adds
+	; dead buffers and pushes VERIFY calls beyond the 68000 BSR range.
 	include "timing-input.i"
+	ENDC
 	ENDC
 	include "verify.i"
 	ENDC
