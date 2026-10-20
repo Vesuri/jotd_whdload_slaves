@@ -370,6 +370,52 @@ coherency audit, and inspect the requested memory policy under MMU translation.
 The accompanying normal slave still has the audited SHA; no additional
 user-facing cache toggle is introduced.
 
+### Cache candidate: full finish, page descriptors and loader boundaries
+
+`c-cache-finish` replays the existing successful-finish field tape without a
+user `Cache` option. Against `c-steering-finish-lane`, it matches all 12,822
+published actor hashes, 24 sound requests and terminal actor/clock/camera/rank
+ranges. Finish remains field 12,634 and exit field 12,823; the next race
+resets the capture to `[99,98,0,1]`. This verifies the cache candidate through
+that complete gameplay and restart path, not every championship transition.
+
+The new optional `VERIFY_MMU_POLICY` sidecar captures SRP, URP and both
+instruction/data transparent-translation registers on the first race field.
+It requires `VERIFY_MMU` and reads these registers only after the existing
+040/060 CPU check. It leaves the 320-byte `RRA1STAT` ABI intact; the separate
+`RRCMMU01` record follows it. Normal builds contain neither record.
+
+`c-cache-pages-040` and `c-cache-pages-060` walk the captured root/pointer/page
+tables for every 4 KiB page of the 1 MB BaseMem area. All 256 supervisor and
+256 user descriptors in each run are resident and have cache mode 0
+(write-through); none requests copyback. Transparent translations are disabled,
+so they do not override those descriptors. The sampled Fast simulation-code
+and stack pages have cache mode 1 (copyback), preserving their existing policy.
+TC is `$8000`; stack guards remain intact. Descriptor decoding follows the
+emulator's 040/060 table-walk implementation, including indirect page descriptors.
+Raw registers and every descriptor address/value are retained in `policy.json`.
+This proves the requested mappings in these emulator runs, while retaining
+the previously stated limit that physical data-cache/DMA coherency is not
+emulated by their configuration.
+
+The source/API review accounts for the cache-changing and code-loading paths:
+
+| Boundary | Flush coverage |
+|---|---|
+| Initial `lomain.ami` loading | `resload_LoadFileDecrunch` flushes on return; automatic enhanced caching has not yet been requested. |
+| Boot patch list | `resload_Patch` flushes after installing loader hooks. |
+| Intro hooks `$4800` / `$4844` | `PatchIntro1/2` call `resload_Patch`, including the intro reader hook at `$8e58`. |
+| Main loader hook `$496a` | `PatchLoader2` applies the main patch list, selects C, calls SetCPU, then applies C patches; each API flushes on return. |
+| Disk-reader hooks `$4dca`, `$adf82` and `$8e58` | `ReadSomeFile` delegates to `resload_LoadFile`, which flushes before returning to the loader. |
+| Runtime Fast code copies | The object-copy initializer explicitly calls `resload_FlushCache` after writing executable bytes. Diagnostic road-copy initializers do likewise. |
+
+The earlier race trace found mutable data, but no self-modifying instructions,
+in the sampled code region. This does not establish an exhaustive write audit
+of every unexecuted game path. No redundant flush is added after APIs that
+already provide one. These results support proceeding to normal-build
+integration and its controls/matrix validation; they do not close C's distance,
+handling, cached-throughput or latency regressions.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |

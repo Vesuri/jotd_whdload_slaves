@@ -5,6 +5,11 @@
 	IFND VERIFY_HASH_FIELD
 VERIFY_HASH_FIELD = 0
 	ENDC
+	IFD VERIFY_MMU_POLICY
+	IFND VERIFY_MMU
+	FAIL "MMU policy capture requires VERIFY_MMU"
+	ENDC
+	ENDC
 
 verify_start:
 	movem.l	d0/a0,-(a7)
@@ -37,6 +42,21 @@ verify_field:
 	beq.b	.no_tc
 	dc.w	$4e7a,$0003         ; movec TC,d0 (040/060 only)
 	move.l	d0,40(a0)
+	IFD VERIFY_MMU_POLICY
+	lea verify_mmu_policy+8(pc),a1
+	dc.w $4e7a,$0807        ; SRP
+	move.l d0,(a1)+
+	dc.w $4e7a,$0806        ; URP
+	move.l d0,(a1)+
+	dc.w $4e7a,$0004        ; ITT0
+	move.l d0,(a1)+
+	dc.w $4e7a,$0005        ; ITT1
+	move.l d0,(a1)+
+	dc.w $4e7a,$0006        ; DTT0
+	move.l d0,(a1)+
+	dc.w $4e7a,$0007        ; DTT1
+	move.l d0,(a1)+
+	ENDC
 .no_tc:
 	move.l	verify_attn(pc),44(a0)
 	ENDC
@@ -107,6 +127,12 @@ verify_stats:
 	dc.l	0
 	ENDC
 	ds.l	64                 ; +64 frame-duration histogram; bucket 63 = overflow
+	IFD VERIFY_MMU_POLICY
+; Optional sidecar preserves the existing 320-byte RRA1STAT ABI.
+verify_mmu_policy:
+	dc.b "RRCMMU01"
+	dc.l 0,0,0,0,0,0       ; SRP, URP, ITT0/1, DTT0/1
+	ENDC
 	IFD C_STEP_BUILD
 verify_c_selection:
 	dc.b	"RRCSEL01"
