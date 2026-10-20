@@ -5,12 +5,16 @@ VERIFY_FRAMES = 8192
 
 verify_dispatch:
 	movem.l d0-d7/a0-a6,-(sp)
-	move.l _verify_seed(pc),d0
+	lea verify_dispatch(pc),a3
+	adda.l #_verify_seed-verify_dispatch,a3
+	move.l (a3),d0
 	beq .done
-	lea pl_scrnmule_658(pc),a3
+	lea verify_dispatch(pc),a3
+	adda.l #pl_scrnmule_658-verify_dispatch,a3
 	cmpa.l a3,a0
 	beq .menu
-	lea pl_gamemule_658(pc),a3
+	lea verify_dispatch(pc),a3
+	adda.l #pl_gamemule_658-verify_dispatch,a3
 	cmpa.l a3,a0
 	bne .done
 	lea verify_marker(pc),a3
@@ -26,7 +30,9 @@ verify_dispatch:
 	movea.l d1,a0
 	dbf d0,.hunks
 	movea.l 24(a3),a0 ; hunk 4
-	move.l _verify_seed(pc),$3cc(a0)
+	lea verify_dispatch(pc),a4
+	adda.l #_verify_seed-verify_dispatch,a4
+	move.l (a4),$3cc(a0)
 	clr.l 44(a3)
 	clr.l 48(a3)
 	clr.l 52(a3)
@@ -56,7 +62,9 @@ verify_dispatch:
 .menu:
 	lea verify_menu_base(pc),a3
 	move.l a1,(a3)
-	move.l _verify_seed(pc),$24c(a1)
+	lea verify_dispatch(pc),a0
+	adda.l #_verify_seed-verify_dispatch,a0
+	move.l (a0),$24c(a1)
 	lea verify_audio_seed(pc),a3
 	move.l #$6bdf931a,(a3)
 	lea verify_menu_patches(pc),a0
@@ -118,7 +126,9 @@ verify_tick:
 	lea $3b88(a5),a5 ; replay displaced LEA
 	cmpi.w #100,12(a5)
 	bne .ready
-	move.l _verify_scene(pc),d0
+	adda.l #_verify_scene-verify_marker,a0
+	move.l (a0),d0
+	lea verify_marker(pc),a0
 	cmpi.l #1,d0
 	bne .ready
 	tst.w 30(a5)
