@@ -4313,3 +4313,47 @@ native flight-loop activation remains absent. Real bitmap/TADS visual checks
 across CPUs, prediction, complete renderer isolation, timing/latency and full
 trajectory acceptance remain open. No claim of complete C5d or C is made from
 these geometry/state fixtures alone.
+
+### Compiled target-panel bitmap validation on 68000/020/060
+
+The ignored `VP_PANEL=1` extension of `visibility_probe_c.i` now exercises the
+actual target display hooks with real Amiga DMA. It runs after each native
+visibility comparison, using the same original bitplanes for both lanes:
+
+1. The reference lane draws native +0A6E4 from the first independently
+   collected candidate's current descriptor, X/Y and model pointer. In views
+   with no candidate it draws no selected object.
+2. The enhanced lane starts with a synthetic committed selection of the same
+   identity but deliberately stale X/Y (+16/+8). It resets private capture,
+   runs the native scene prefix through the actual collector hooks, checks
+   the captured descriptor/X/Y/model pointer against the independent reference,
+   and invokes `timing_view_panel` with the real native painter. Empty views
+   use an absent selected identity, exercising suppression of stale drawing.
+3. The guest verifies all 168 committed target bytes are restored, the capture
+   epoch is closed, and every byte of all five 8,000-byte bitplanes equals the
+   reference output. The debugger only reads the result; all stimuli and
+   comparisons execute in the compiled guest.
+
+All sixteen PAL views pass on each of the 68000, 68020 and 68060 fixtures:
+eight headings in each of two palette modes, ten nonempty and six absent
+views per CPU. Candidate/pixel records agree across CPUs. Each session has
+`panel_passes=16`, status 100 and completed 16. Reports and final reference
+planes are retained under `tmp/dev/tmp/c/target-panel-{000,020,060}`. The normal
+probe slave SHA-256 is
+`e85b87bc2db1a2b360951a3bd8e6898a44205d11acc08f88e26392db986c785c`.
+
+These are headless, host-mouse-disabled guest tests with VBL interrupts disabled
+while DMA remains enabled. They validate real bitmap output and target-state
+restoration in authored views, not live gameplay latency, every buffer/panel
+transition, NTSC timing or full-flight authoritative equality. Native flight-loop
+activation, object prediction and the remaining C acceptance gates are still
+required. The diagnostic probe is not part of distributed slave builds.
+
+The 68020 `VP_PANEL_SABOTAGE=1` negative control flips one byte in the saved
+panel reference. It reaches the dedicated panel-bitmap failure (-9) before
+any completed view, as required; the driver treats only that exact failure
+as success for this control. Report: `target-panel-sabotage-020`. Corrupt-probe
+SHA-256: `d82440dfa969443b086737857cb298570f69caa93aa511e6d58f39afcd6d5c3a`.
+The probe builder places its code after VERIFY code and before its frame-log
+storage, retaining 68000 PC-relative reach without altering the production
+source. All four probe sessions reached terminal results and were closed.

@@ -755,8 +755,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     candidate-list saturation. The experimental renderer now captures that
     projection, borrows it for panel drawing and restores committed targeting.
     Actual native projection matches in 64 views; draw-stub tests verify stale
-    suppression and restoration. Live display validation, whole-game timing
-    and native flight-loop activation remain open.
+    suppression and restoration. Compiled guest panel comparisons now match
+    all five real bitplanes in 16 PAL views each on 68000/020/060, including
+    deliberately stale committed coordinates and missing targets. Whole-game
+    visual checks, timing and native flight-loop activation remain open.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at
