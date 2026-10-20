@@ -367,6 +367,59 @@ hardware/disabled-toggle matrix, visible-response phases, and the existing
 distance/handling checks. The modest cached gain does not by itself close C's
 throughput deficit against B.
 
+### Combined AI/acceleration helper copy: next private candidate
+
+`c-physics-integrated-profile` profiles the integrated lean runtime over fields
+300–800 on the cached cycle-exact 020, after UP at 100. It renders 108 frames.
+The relocated movement/collision code and its stubs consume 1,943,214,848
+profile units; the remaining native `$8b486..$8eff7` range consumes
+2,378,648,832. These must be added when comparing simulation cost after
+relocation; looking only at the native address range would omit executed work.
+The leading remaining native ranges include AI dispatch `$8d2c0..$8d409`
+(375,215,872 units), acceleration `$8dd66..$8de6b` (299,334,528), and
+`$8e166..$8e251` (252,138,496). Range totals are flat-PC observations,
+not inclusive function costs.
+
+The next private copy groups four spans: `$8d2c0..$8d8cf`,
+`$8dd66..$8de6b`, `$8e166..$8e2d5`, and `$8da5c..$8db09`.
+Together they occupy 2,356 bytes with no PC-relative data operands.
+Thirty relative branches need adjustment: transfers between copied spans
+go directly to the matching copied target, while remaining external targets
+use nine native JMP stubs. Eight entry redirects cover the four AI entries
+and the four helper entries. Two stubs in the existing movement/collision
+copy now jump directly to the copied helpers, avoiding a native trampoline.
+Native data and mutable PC-relative tables outside these spans stay in place.
+
+`c-physics-aux-probe` verifies every copied byte after accounting for fixups,
+all entry redirects, cross-copy targets, native stubs and fallthrough jumps.
+The equal-layout control performs the same copies/fixups but skips installing
+entry redirects and retains the two existing native helper destinations.
+This combined experiment differs from the previously rejected isolated AI
+copy: several hot callees now execute in Fast RAM too.
+
+Cached cycle-exact 020 cost runs `c-physics-aux-cost` and
+`c-physics-aux-control-cost` produce 219 versus 195 frames over fields
+100–1000 (12.167 versus 10.833 fps), subtracting initial counts 30 and 28.
+The paired `-nocache-cost` runs produce 138 versus 128 frames
+(7.667 versus 7.111 fps), both starting at 19. This is a measured benefit
+in two scenarios, not yet a hardware-wide performance result.
+
+Both lean diagnostics are 19,208 bytes. Candidate SHA-256:
+`b3eaf5b07ce6fd23c3fab3bfdcb24d81d118dc5d2fe2aed98a5de3c5bb5cb742`;
+control:
+`604aeaa0f3c2c04dbfcdc848fef26eac5e8df2b346bea45e96a5b2fb75ed384d`.
+`c-physics-aux-varying` matches `c-audit-period-4` across 1,596 completed
+actor hashes, all three sound requests and all six authoritative field-1,457
+regions. Its full diagnostic is 47,708 bytes, SHA-256
+`57109b5768be7369b16c3e0d96dda9444088fe4746a58d1ced801bc1014641e0`.
+
+The generator `tmp/dev/tools/make_physics_aux_source_c.py`, manifest and exact
+`c-physics-aux-build/source.patch` preserve the experiment. It is not enabled
+in the normal runtime. Full finish/arrest/wreck and restart replay, normal
+hardware/MMU/disabled checks, controls/transitions and response phases remain
+required before integration. The normal binary remains the integrated
+15,600-byte movement/collision version documented above.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
