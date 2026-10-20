@@ -336,6 +336,20 @@ take-off. Its AI remains active, so the helicopter can leave the view.
 
 ### B. Correctness on fast CPUs
 
+**B1/B2 implemented.** `blitter.i` validates all 14 `BTST/BNE` loops (12 using
+a0, one a1, one a6) and the unique pixel-write helper call before modifying the
+loaded game. It replaces each loop with `JSR/NOP` and wraps the pixel helper
+with the same double-read wait. Registers and the original wait's CCR effects
+are preserved. This is unconditional on all three recognised gamemule paths.
+Instruction signatures avoid assuming a common offset delta between releases.
+Any missing, additional or malformed match aborts before patching.
+
+PAL 0658 and NTSC 1489 binaries pass assembled dispatcher tests; malformed
+layouts are rejected without partial writes. Delayed-BBUSY and all 32 CCR
+combinations pass. PAL flight smoke checks pass on 68000 and 68060. The German
+dispatch path is exercised with relocated fixtures, but an original German
+binary has not yet been tested; its runtime signature checks remain mandatory.
+
 - **B1. Safe blitter waits.**
   - B1a. Replace the 14 BBUSY loops of §1.6 with a slave routine that does a dummy DMACONR read,
     then the BBUSY loop. Patch each with `PL_PS`/`PL_P`, keeping the loop's register use.

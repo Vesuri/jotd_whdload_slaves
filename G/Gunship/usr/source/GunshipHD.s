@@ -115,6 +115,7 @@ _args_end
 PATCH_EXE:MACRO
 .\1
 	lea	pl_\1(pc),a0
+	bsr	blitter_dispatch
 	IFD VERIFY
 	bsr	verify_dispatch
 	ENDC
@@ -149,7 +150,7 @@ _cb_dosLoadSeg
 	cmp.b	#'T',9(a0)
 	beq.b	.titlmule
 	cmp.b	#'G',9(a0)
-	beq.b	.gamemule
+	beq.w	.gamemule
 	cmp.b	#'S',9(a0)
 	beq	.scrnmule
 	bra	.out
@@ -171,11 +172,7 @@ _cb_dosLoadSeg
 	CMP_EXE	51CFFFCE,2F2A,gamemule_658
 	CMP_EXE	201AD089,2F2A,gamemule_german	; also german
 
-	IFD VERIFY
 	bra.w	wrong_version
-	ELSE
-	bra.b	wrong_version
-	ENDC
 
 	PATCH_EXE	gamemule_1489
 	PATCH_EXE	gamemule_658
@@ -186,11 +183,7 @@ _cb_dosLoadSeg
 	CMP_EXE	4EBA071A,5AB0,scrnmule_658
 	CMP_EXE	486C2A50,5AB2,scrnmule_german	; also german
 
-	IFD VERIFY
 	bra.w	wrong_version
-	ELSE
-	bra.b	wrong_version
-	ENDC
 
 	PATCH_EXE	scrnmule_1489
 	PATCH_EXE	scrnmule_658
@@ -465,6 +458,8 @@ _verify_scene	dc.l	0
 		dc.l	0
 
 ;============================================================================
+
+	include "blitter.i"
 
 	IFD VERIFY
 	include "verify.i"
