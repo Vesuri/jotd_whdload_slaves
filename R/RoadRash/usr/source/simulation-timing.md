@@ -1,3 +1,38 @@
+## Current normal runtime: completed ticks versus live distance sampling
+
+Fresh cycle-exact 020 traces `c-current-distance-default` and
+`c-current-distance-nocache` use the current normal compact-geometry runtime.
+All 499 shared completed simulation cursors match every captured player field
+except the live clock: position, speed, acceleration, gear, lateral/height,
+flags, crash state, road state and displacement. Every cursor advances by one;
+every position increment equals its stored displacement. This is player-movement
+evidence, not a comparison of the entire actor bank or all gameplay outcomes.
+
+`b-retained-distance-boundary` repeats the measurement using the exact retained
+B replay binary (`ae511e817d5f1544cade20c1d2e30dd8631ec05c3396e7625f2fbe53686fb57a`).
+Its 126 rows exactly reproduce the earlier `b-default-distance-dynamics` trace,
+which used a different B build. That build difference is therefore not being
+silently assumed irrelevant.
+
+The input is pressed at live field 100 while stationary at position 524,288.
+B first moves at cursor 102 with delta 4, speed 136 and displacement 544: it
+applies the newly sampled throttle across the entire preceding four-field step.
+C first moves at cursor 101 with delta 1, speed 34 and displacement 34. At the
+same completed cursor 590, B is at 3,888,640 and C at 3,852,194, a **-1.0833%**
+distance difference. B has then applied 492 fields of throttle, C only 490.
+At 492 applied throttle fields (C cursor 592), C is at 3,871,631 with speed
+9,711, versus B's speed 9,712. The distance difference becomes **-0.5056%**.
+
+Rendering adds a separate live-clock delay: C's completed cursor 590 is observed
+at live field 591 with caches and 593 with NoCache. Its completed state is
+identical in both. This explains why altering a global speed constant to fix
+one live sample would conflate input sampling, integration and rendering work.
+The existing live-field acceptance gate is unchanged and remains failed;
+the equal-exposure comparison is explanatory evidence, not a replacement gate.
+The comparison and increment assertions are reproducible with the ignored
+`compare_distance_clock_c.py`; its result is retained as
+`c-current-distance-default/clock-comparison.json`.
+
 ## Road-reset finish, wreck and short-cadence coverage
 
 The changed road diagnostic now has fresh finish and wreck tapes, recorded
