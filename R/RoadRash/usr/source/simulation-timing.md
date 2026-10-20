@@ -188,8 +188,9 @@ compares equal simulation boundaries, not wall-clock snapshots during catch-up.
 Remaining limitations include choosing and costing the quantum, interpolation,
 other action/animation paths, input-ring overflow handling, reset and pause
 semantics, complete event/clock comparisons, and the A2/A4/MMU regression suite.
-The 2048-field input ring only flags overflow in this diagnostic; it is not a
-production policy. Matching this one tape is not completion of C1, C2 or C3.
+At this stage the 2048-field input ring only flagged overflow; the explicit
+failure policy below supersedes that behavior. Matching this one tape is not
+completion of C1, C2 or C3.
 
 ### Clock, track events and quantum cost
 
@@ -750,3 +751,29 @@ is byte-identical to `c-events1-build`, including the unchanged normal slave.
 Together with the earlier siren route, these tests exercise all five traced
 request kinds. Audible playback, pause/exit sound behavior, race finish and
 restart still need separate validation.
+
+## Input history exhaustion
+
+The input producer now latches exhaustion and stops writing the ring when the
+live-field distance reaches its capacity. The main task checks the latch before
+simulation work and again before replaying controls. It aborts through WHDLoad
+with an explanatory message instead of consuming stale controls. An interrupt
+during replay cannot overwrite queued history: the producer never writes after
+exhaustion. The abort runs outside the interrupt handler.
+
+The default capacity remains 2,048 fields, with a conservative maximum backlog
+of 2,047 fields (40.94 seconds at 50 Hz). Below that boundary, all elapsed ticks
+are still consumed without resetting time or changing the timestep. Exhaustion
+terminates the run; this is an explicit resource-limit failure, not seamless
+recovery or a promise of real-time operation on an overloaded CPU.
+
+`STEP_INPUT_SLOTS` permits smaller diagnostic capacities and rejects non-power-
+of-two values, capacities below two, or capacities beyond signed word indexing.
+`c-input-full-build` uses eight slots and a 16-field presentation interval.
+`c-input-full-replay/overflow.png` confirms a clean AmigaDOS return with the
+expected message. `c-input-guard-replay` uses the default capacity and matches
+all 1,598 completed hashes, the field-1457 actor/clock/camera/rank state and the
+three sound requests from `c-events1-replay`. The normal slave is byte-identical.
+With the same forced-overflow build but `CUSTOM2=0`, `c-input-full-off` reaches
+the race with selection reason 0 and all checked original timing, input, stack
+and geometry instructions intact.

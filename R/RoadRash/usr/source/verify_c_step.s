@@ -2,8 +2,8 @@
 ; Diagnostic experiments require CUSTOM2=1 (Enhanced framerate).
 ; STEP_FIELDS=1 (50 Hz PAL) is the primary candidate. STEP_EXTRAPOLATE is
 ; an optional experiment for larger diagnostic quanta, never a frame-rate mode.
-; No overflow recovery or complete
-; pause/transition/action audit yet. See simulation-timing.md before extending.
+; Input history exhaustion aborts explicitly; no complete pause/transition/action
+; audit yet. See simulation-timing.md before extending.
 ; All game addresses below are absolute. Normal builds contain none of this.
 ;
 ; RRCSTEP1: cursor +8, count +12, captured field +16, quantum +20,
@@ -74,6 +74,18 @@ STEP_CAPTURE = 601
 	IFND STEP_FIELDS
 STEP_FIELDS = 1
 	ENDC
+	IFND STEP_INPUT_SLOTS
+STEP_INPUT_SLOTS = 2048
+	ENDC
+	IFLT STEP_INPUT_SLOTS-2
+	FAIL "Input history needs at least two slots"
+	ENDC
+	IFGT STEP_INPUT_SLOTS-32768
+	FAIL "Input history exceeds signed word indexing"
+	ENDC
+	IFNE STEP_INPUT_SLOTS&(STEP_INPUT_SLOTS-1)
+	FAIL "Input history capacity must be a power of two"
+	ENDC
 step_reset:
 	movem.l d0-d7/a0-a6,-(a7)
 	lea step_stats(pc),a0
@@ -108,6 +120,8 @@ step_reset:
 	rts
 ; Consume every due step without discarding elapsed-time remainder.
 step_main:
+	btst #0,step_input_overflow(pc)
+	bne step_input_failed
 	lea step_stats(pc),a0
 	move.l 8(a0),d0
 	add.l #STEP_FIELDS,d0
@@ -298,14 +312,16 @@ step_queue_input:
 	move.b d5,(a0)
 	move.w d3,$a7262
 	move.b d4,$a5dc8
+	btst #0,step_input_overflow(pc)
+	bne .done
 	move.l $a5d4c,d3
 	cmp.l step_queued_field(pc),d3
 	beq .done
 	move.l d3,d4
 	sub.l step_stats+8(pc),d4
-	cmpi.l #2048,d4
+	cmpi.l #STEP_INPUT_SLOTS,d4
 	bcc .overflow
-	andi.w #2047,d3
+	andi.w #STEP_INPUT_SLOTS-1,d3
 	lea step_inputs(pc),a0
 	move.b $a598c,(a0,d3.w)
 	IFD VERIFY_C_LATENCY
@@ -324,6 +340,11 @@ step_queue_input:
 	rts
 
 step_replay_inputs:
+; Check again here: the field interrupt can latch failure after step_main's
+; check. An overrun never overwrites buffered history, so an interrupt during
+; this replay cannot corrupt a sample already being consumed.
+	btst #0,step_input_overflow(pc)
+	bne step_input_failed
 ; The demo drives its player through AI. Do not replay an unproduced human queue.
 	tst.w $a7204
 	bne .done
@@ -334,7 +355,7 @@ step_replay_inputs:
 .next:
 	addq.l #1,d3
 	move.w d3,d0
-	andi.w #2047,d0
+	andi.w #STEP_INPUT_SLOTS-1,d0
 	lea step_inputs(pc),a0
 	move.b (a0,d0.w),d0
 	move.b d0,$a598c
@@ -354,6 +375,20 @@ step_replay_inputs:
 .done:
 	rts
 
+; Abort from the main task, never from the input interrupt. Continuing after
+; missing input would silently change gameplay; do not reset the simulation
+; clock or replay stale ring contents to conceal the missing history.
+step_input_failed:
+	pea step_input_error(pc)
+	pea TDREASON_FAILMSG
+	move.l _resload(pc),a0
+	jmp resload_Abort(a0)
+step_input_error:
+	dc.b "Enhanced framerate: input history exhausted.",10
+	dc.b "The simulation could not keep up. Restart with",10
+	dc.b "Enhanced framerate disabled.",0
+	even
+
 step_input_key:
 	btst #0,step_replaying(pc)
 	bne .replayed
@@ -370,7 +405,7 @@ step_replaying:
 step_input_overflow:
 	dc.b 0
 step_inputs:
-	ds.b 2048
+	ds.b STEP_INPUT_SLOTS
 
 ; Cached crash poses let drawing reuse animation without advancing recovery.
 step_actor_animations:
