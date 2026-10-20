@@ -3,7 +3,8 @@
 The governing design is PERFORMANCE_PLAN.md section C, as revised in
 f56356a and 522ad23. The world runs at three native ticks per second; the
 player must respond and move at field rate. Weapons launch at a world tick.
-No field-rate integrator has been written.
+The complete field-rate motion integrator and native hand-off are not written.
+The deterministic stick-attitude component now has a standalone field step.
 
 ## Implementation status
 
@@ -30,6 +31,9 @@ future step. It does not select field-specific equations or coefficients.
 `timing-motion-stages.i` exposes the native preview in ordered slices so
 scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
+`timing-attitude.i` consumes normalized stick directions at field rate,
+retaining pitch/roll fractions and previous-field vertical input. It is
+standalone and excludes world RNG and the separate HUD pitch clamp.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -377,6 +381,62 @@ exactly three native increments over 50 PAL or 60 NTSC fields. Mixed-sign
 and residual, with exact total accounting. This proves the arithmetic
 component, not the complete player-step equivalence gate.
 Evidence: `tmp/dev/tmp/c/fraction-tests.json`.
+
+## Field-rate deterministic attitude
+
+`timing-attitude.i` implements the continuous portion of native
++05376..+053C4. `attitude_init` initializes a 12-byte caller-owned state:
+rate word, previous-y word, signed long roll remainder and signed long pitch
+remainder. It accepts PAL 50 or NTSC 60; rate 3 is exclusively the h=1
+fixture mode. The caller supplies the prior normalized y direction at
+initialization/rebase. `attitude_step` takes state in a0, player record in
+a1, and normalized x/y directions (-1/0/+1) in d0/d1. It returns d0=0
+or -1 for invalid input/state, preserving other registers. Invalid calls
+do not partially change player bytes or fractions.
+
+Each field scales roll's `4*x` and pitch's `-(current_y+previous_y)`
+(only when current y is nonzero) by exactly 3/rate. Pitch retains byte
+wrapping. Roll retains native byte wrapping before its -20..20 clamp.
+At roll saturation only outward fractional debt is discarded, so it
+cannot accumulate against the stop and delay a later reversal.
+Ordinary release retains sub-unit motion rather than silently dropping it.
+Previous y advances once per consumed field.
+
+The previous-input window is intentionally one field in the responsive
+path. Keeping it at one world tick would preserve a 333 ms control-history
+window. This has a quantified effect distinct from numerical rounding:
+for a held new vertical direction, initialized with any prior direction,
+one second of field steps differs from three native steps by at most
+47/25 (PAL) or 19/10 (NTSC) native pitch units including retained fractions.
+The worst case is reversal. This is a component-level bound for that
+specified input history, not a bound on arbitrary manoeuvres or a claim
+that the full flight-equivalence gate has passed.
+
+The world still owns the damage-roll and low-altitude pitch perturbations.
+Their integration is pending. In particular, the native random roll term
+combines with stick input **before** the roll clamp; appending an impulse
+after an already-clamped field step would not preserve h=1 at the limits.
+The authoritative HUD pitch clamp remains a separate ordered operation.
+Neither it nor world RNG is executed by this helper.
+
+`tmp/dev/tools/test_attitude_c.py` compares 55,296 h=1 cases directly with
+the original deterministic attitude routine: all direction triples, all
+256 roll bytes, and eight pitch values including wrapping boundaries.
+Complete player records match with damage disabled and altitude high
+enough to exclude the random pitch branch. Another 3,960 field steps
+compare against an independent rational model across PAL/NTSC, saturation,
+release, reversal, random inputs and render batches of 1/3/10/25. Six
+invalid input/state cases preserve both record and state. Held-input
+tests also verify the stated history-window difference using the assembled
+field step and its native-equivalent h=1 mode.
+Evidence: `tmp/dev/tmp/c/attitude-tests.json`.
+
+This state must join the production lifecycle manifest and reset alongside
+the input history and player pose. It is not wired into gameplay yet.
+Sub-unit attitude in the camera, the rest of the motion integrator and
+native input/world ownership are still pending; these tests do not prove
+next-render input latency in the running game. Installation must share
+the CUSTOM1 Enhanced framerate gate.
 
 ## Foreground coordinator
 

@@ -418,7 +418,8 @@ batches in assembled-code tests. Its native main-loop installation, command
 effect classification and player/world hand-off are still pending,
 so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
-the HUD's authoritative pitch clamp. The field-rate integrator is not written.
+the HUD's authoritative pitch clamp. A standalone deterministic field-rate
+stick-attitude step is tested; the complete motion integrator is not written.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
 its native installation and elapsed-time gauge slew remain pending.
