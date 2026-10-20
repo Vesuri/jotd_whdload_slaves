@@ -1543,3 +1543,29 @@ in normal C, and no such promotion is made. The loop contains repeated divides
 and is compact enough to fit the 020 instruction cache; the measured result does
 not prove which cost dominates. Broader CPU/cache testing belongs to any later
 D3 evaluation. The normal slave remains 7,708 bytes with its previous SHA-256.
+
+## Current physics profile and rejected collision-gate relocation
+
+`c-runtime-physics-profile` profiles the actual 7,708-byte normal slave on the
+cached cycle-exact 020 over fields 100–600. Physics/AI PCs `$8b486..$8eff7`
+account for 31.247% of total recorded units. The actor-pair collision entry
+`$8c8ae` executes 13,972 times; 1,266 checks reach `$8c8f8` for detailed testing.
+The initial distance gate accounts for 1.522% and the rejection tail for 0.536%.
+The tail executes 13,972 times, including pairs rejected by later detailed tests.
+These are flat-PC costs, not inclusive call-tree timings or universal workloads.
+
+An experimental Fast RAM replacement duplicated the native distance gate and
+its rejection tail, including both scratch-word clears, actor flag writes,
+unsigned comparisons and BCLR condition-code semantics. Accepted pairs returned
+to the unchanged native `$8c8f8`. The experiment preserves all 14,023 full-race
+hashes, 52 sound requests, recorded terminal authoritative ranges and finish/exit
+boundaries, and restarts correctly (`c-collision-gate-fullvar`).
+
+It does not improve performance: `c-collision-gate-cost` renders 189 frames over
+fields 100–1000, compared with the matching lean reference's 192 (10.500 versus
+10.667 fps). The standard candidate window measures 9.8 fps. The source change
+was removed after measurement; its exact patch is retained with the private
+candidate build for reproduction. The normal slave remains unchanged. This
+rules out promoting this small relocation as C's next performance fix; the
+current profile shows substantial remaining cost spread across the wider
+physics/AI routines rather than concentrated in this gate.
