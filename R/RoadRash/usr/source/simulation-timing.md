@@ -1,3 +1,55 @@
+## Opponent curve carry is correct; sampling phase still changes the path
+
+Comparing retained rival `$a6260` records before contact narrows the remaining
+trajectory error. At field 500 B and the fractional-NPC candidate both have
+world x=100 and road centre=-47. At field 600 their centres are -60 and -61.
+At field 800 they are +73 and +56, despite similar longitudinal positions
+(5,991,169 and 6,014,870). This predates the lane/attack difference.
+
+`npc_curve_operands_c.py` captures D1, D6, delta and the raw actor immediately
+before `$8bcd0`, resolving the relocated movement-code address in C. It replays
+the original lap through field 620, including the right-steering release, then
+observes until field 790; no input transition occurs inside the interval.
+`b-npc-curve-operands` uses the retained B binary and contains 42 samples at
+cursors 622–787, with 41 delta-4 updates and one delta-5 update.
+`c-npc-curve-operands` uses the exact retained NPC-lifecycle candidate and
+contains 169 samples at cursors 619–787, all delta 1. The live-field start can
+leave a backlog, so these are explicitly different initial completed cursors.
+
+Every adjacent B centre change equals its preceding signed D1. B starts at
+-50 and reaches +65: the first 41 D1 values sum to 115. Every adjacent C centre
+change is exactly reproduced by the existing quarter accumulator, with initial
+carry 2. C starts at -51 and reaches +51: its first 168 D1 values sum to 409,
+which together with that carry yields 102 whole units. There is no missing
+quarter-unit update or carry loss in this interval.
+
+The native disassembly shows D1 is `floor(curve_byte * position_fraction /
+65536)`, where position_fraction is the low word of the updated longitudinal
+position. D6 separately computes the crossed-segment/interpolation difference;
+the subsequent centre addition uses D1, not D6. Reconstructing possible signed
+curve bytes from C's position/D1 pairs gives nonempty coefficient sets for all
+22 covered segments, unique in 20. These predict B's D1 exactly for 40 of its
+42 samples. For the remaining two, B's value is among the two predictions
+allowed by the insufficiently constrained segment coefficient. No inconsistent
+curve operand is observed; the comparison does not claim those two coefficients
+were uniquely recovered.
+
+A same-trajectory phase check makes the sampling sensitivity explicit. C's 168
+consecutive operands at cursors 620–787 sum to 406, or 101.5 after division by
+four. Selecting every fourth operand from that identical trajectory instead
+gives sums 110, 113, 93 or 90 depending only on the starting phase. This is an
+offline operand comparison, not a simulated alternate gameplay outcome. It
+shows why multiplying update frequency by four and dividing each contribution
+by four cannot guarantee the original sparsely sampled centre trajectory.
+
+The operands and arithmetic comparison are retained in
+`c-npc-curve-operands/comparison.json`; both emulator runs exit cleanly. This
+rules out a carry implementation error in this measured interval and identifies
+native sampling phase as a material source of pre-contact trajectory drift.
+It does not pass the full handling comparison or authorize adjusting a constant
+to match one lap. The remaining work must reconcile the reference road model
+with the one-field simulation across trajectories, not just its final crash.
+
 ## Lane-target dispatch explains B's missing attack checks
 
 `attack_dispatch_c.py` observes the actual AI function dispatch, the return
