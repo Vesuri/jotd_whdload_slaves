@@ -401,3 +401,33 @@ final flag (17 shapes, three nonempty). This uses current captured inputs
 instead of the cached scene transforms, but still writes native render
 scratch. Private scratch relocation, special-object and projectile-pass
 coverage, view/cell boundaries and positive collision cases remain open.
+
+#### Scene boundary and scratch-write comparison
+
+`test_scene_selection_c.py` extends the rebuilt-scene comparison to 96
+synthetic scenes: four XY positions straddling native cell/rebasing
+boundaries, three heights, and eight headings. Each fresh input runs both
++060A8 and +06224, comparing native vertex projection with traversal-only
+vertex processing. Polygon and point drawing remain explicitly omitted.
+Six valid projectile coordinate slots are enabled (mask 003F); the special
+object is colocated with the camera for the zero-height cases and nearby
+for the others, with a varying relative heading.
+
+The corrected fixture passes with 1,210 shape visits, 40 negative-index
+special-object shapes, 271 nonempty plane sets, and 32 nonzero final flags.
+Model order, plane pointers, every facing byte and the final flag agree.
+This includes geometry-positive synthetic cases, but is not a gameplay
+collision/trajectory acceptance test. An earlier fixture enabled mask 0FFF,
+which selected non-model bytes beyond the six supplied slots; those results
+were discarded. The corrected fixture additionally rejects unexpected
+plane counts above 20 in these particular captured models.
+
+The same fixture records every non-stack write during coordinate preparation
+and both scene passes for the traversal-only path. Writes fall in hunk 0
+selection variables, transformed-coordinate/basis arrays and face-visibility
+scratch; hunk 6 coordinate template entries and the scene context; and the
+shared +3958 result byte. Exact observed address ranges are saved in ignored
+`tmp/dev/tmp/c/scene-selection-comparison.json`. No unaccounted world object
+writes were observed in these cases. The observed ranges are evidence for
+relocation, not a complete static write-set proof: indexed accesses must be
+bounded for all supported models before defining private scratch storage.
