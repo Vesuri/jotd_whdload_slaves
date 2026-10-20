@@ -481,6 +481,11 @@ successful private retention under explicit runtime ownership. Ownership still
 defaults off. Tested runtime activation/suspension/modal adapters now establish
 fresh epochs, account for discarded native FIFO keys and hand input ownership
 back and forth. Native flight/menu entry points must still call them.
+Experimental runtime builds also switch the three native VBL countdown
+stores and guidance call by that ownership flag. Runtime ownership suppresses
+their native state updates so the field consumer can replay them once.
+Ownership defaults off; guidance drawing reconstruction and cosmetic timer
+snapshots remain pending before gameplay activation.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

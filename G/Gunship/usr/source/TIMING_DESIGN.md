@@ -3177,5 +3177,44 @@ allocation addresses. A separate 108-call runtime modal fixture consumes a
 world deadline, executes native +08050 with UI/VBL fixtures, completes the
 world once, reactivates and consumes its first fresh field. These tests do not
 replace live interrupt validation. Native flight/menu hooks, retained keyboard
-lifecycle-command handling, and the VBL gameplay-state ownership switch remain
+lifecycle-command handling, and VBL presentation coordination remain
 necessary before activating the consumer in gameplay.
+
+## Native VBL gameplay ownership switch
+
+Experimental runtime builds install `timing-live-vbl.i` after input capture
+installation, behind CUSTOM1. The installer validates all four displaced
+instructions and relocated operands before patching any VBL site. The arena
+must already be ready. Default builds do not include these hooks.
+
+The byte countdown stores at +04BA8, +04BBA and +04C32 target hunk 6
++4296, +42F6 and +42F7. With `RT_CAPTURE_OWNER=1`, their wrappers compute
+the original SUBQ flags but suppress its store. Otherwise they execute the
+native decrement. All registers and condition codes match the displaced
+instruction, including X; native zero guards remain in place.
+
+The +04C12 guidance call similarly tail-calls native +0A1C8 with native
+ownership, or returns without state/display effects under runtime ownership.
+Its trampoline preserves entry registers and flags in either path. These
+are interrupt-only hooks: reading SR is legal in the native VBL server.
+The field consumer already replays the countdowns and extracted guidance
+state in their native order.
+
+`test_timing_vbl_handoff_c.py` compares 180 cases across the original VBL,
+patched VBL with native ownership, and patched VBL with runtime ownership
+followed by field replay. Timer and guidance state agree, and the runtime
+VBL makes no writes to those gameplay fields. Cosmetic sound/drawing
+callbacks are stubbed explicitly. The slave setup suite still passes all
+15 calls, and all three experimental build variants assemble.
+`test_timing_live_vbl_c.py` passes 3,274 register/CCR comparisons: all byte
+values for each timer, all 32 incoming flag combinations at arithmetic
+boundaries, both ownership modes, and the guidance trampoline. It also checks
+the four patch destinations, CUSTOM1/readiness gates and 12 corrupted
+opcode/operand cases rejected before patching. All three default build
+variants remain byte-for-byte unchanged.
+
+This is an ownership mechanism, not gameplay activation. Sampling and
+ownership remain off after load. Guidance drawing must be reconstructed
+separately, and native audio still reads authoritative timers: cosmetic
+snapshots must be coordinated with delayed field consumption. Live
+interrupt/foreground validation and native flight/menu hooks remain open.

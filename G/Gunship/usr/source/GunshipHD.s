@@ -478,6 +478,7 @@ _verify_scene	dc.l	0
 	include "timing-slave.i"
 	include "timing-core.i"
 	include "timing-live-input.i"
+	include "timing-live-vbl.i"
 	ENDC
 
 	IFD VERIFY
