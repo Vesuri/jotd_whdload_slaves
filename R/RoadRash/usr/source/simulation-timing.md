@@ -1,3 +1,51 @@
+## Combined reference motion and road timing on the compact runtime
+
+A private candidate combines the existing four-field endpoint displacement
+correction with `VERIFY_C_ROAD_TIMING` on the newly integrated compact-geometry
+runtime. It still advances one PAL field per tick, preserves velocity/input
+updates, and introduces no arbitrary speed multiplier. It changes authoritative
+movement and therefore requires comparison to B, not just self-equivalence.
+
+`c-combined-motion-build/RoadRash.slave` is 19,624 bytes,
+SHA-256 `35860a067eae178b4a8afd25e4c55321d52d60828d0a5951aff425dbd5adea03`.
+Exact source deltas and the generator are retained in
+`c-combined-motion-source/source.patch` and `make_combined_motion_c.py` under
+the ignored harness. Tracked normal source is unchanged by this experiment.
+
+| Cell | Distance @490 | Difference from corresponding B | fps |
+|---|---:|---:|---:|
+| Fast 020 default | 3,334,538 | -0.886% | 12.2 |
+| Fast 020 Cache | 3,334,538 | -0.399% | 12.2 |
+| Fast 020 NoCache | 3,315,004 | -1.467% | 7.2 |
+| 060/50 | 3,334,538 | — | 23.0 |
+
+All four functional runs pass. Default/Cache 020 meet the short distance
+tolerance, but NoCache remains outside it and loses 0.4 fps against the current
+runtime. This does not establish an overall improvement or close A4.
+
+`c-combined-motion-dynamics` records 501 completed updates. All 500 consecutive
+pairs match `max(0,new_speed + floor(3*new_speed/2) - floor(3*old_speed/2))`
+exactly. At completed cursor 590, position is 3,868,569; at cursor 592 it is
+3,888,007, versus B's 3,888,640 at cursor 590 after 492 applied throttle fields.
+This 633-unit aligned gap supports the reference-integration explanation, but
+is not the prescribed live-field comparison and does not waive its failure.
+
+`c-combined-motion-lap` restores speed near B on the returning curve (9,714 at
+field 800 and 12,009 at 1000). Nevertheless its first sampled crash is at 1538,
+versus B's 1376 and the standalone road candidate's 1372. The final decoded
+rank is 15. Improved early speed/road placement is insufficient to claim
+collision or handling equivalence; the changed overtaking/collision sequence
+still needs investigation.
+
+Full snapshot builds use the previously tested register-preserving nearby
+bridges to avoid WHDLoad patch-target reach limits. Their normal outputs are
+byte-identical to the candidate above. `c-combined-motion-fixed` and
+`c-combined-motion-vary` match all **1595** common completed hashes, all **15**
+sound requests, and all six authoritative cursor-1457 snapshot ranges using
+`c-attacks.json`. This establishes sampled render-cadence independence of the
+changed model, not equivalence to the current runtime or B. No integration is
+made pending NoCache cost/distance and handling resolution.
+
 ## Integrate simulation-only collision geometry
 
 Normal builds and lean `C_SIMULATION` diagnostics now select
