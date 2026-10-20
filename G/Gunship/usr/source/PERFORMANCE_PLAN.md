@@ -752,8 +752,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     including retained UI completion. A private current-view capture primitive
     now follows only the world-selected identity through native projection
     filters (1,024 comparisons); it preserves committed target state and avoids
-    candidate-list saturation. Render-hook/panel integration, live display
-    validation, whole-game timing and native flight-loop activation remain open.
+    candidate-list saturation. The experimental renderer now captures that
+    projection, borrows it for panel drawing and restores committed targeting.
+    Actual native projection matches in 64 views; draw-stub tests verify stale
+    suppression and restoration. Live display validation, whole-game timing
+    and native flight-loop activation remain open.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at

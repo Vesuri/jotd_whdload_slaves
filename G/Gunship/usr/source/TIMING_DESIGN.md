@@ -4260,3 +4260,56 @@ Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. The
 primitive is not yet bound to collector hooks, reset by frame publication,
 or borrowed/restored around the native panel painter. Those integration and
 live bitmap checks remain required; this is not completion of C5d or C.
+
+
+### Target capture and panel borrowing in the runtime (C5d)
+
+The experimental runtime now prepares the capture context in `RT_VIEW` and
+starts a fresh capture epoch in `timing_runtime_present_state`, after private
+camera/scene validation and before native presentation buffers are published.
+`RT_VIEW_PHASE` is 0 closed, 1 collecting or 2 drawing; the arena is now
+28,920 bytes. Activation clears a prior collecting epoch but rejects an
+in-progress panel borrow. Presentation publication also rejects phase 2.
+
+Under enhanced ownership, collector hooks +06356/+063D4 still call the native
+collector during the admitted world visibility pass. During a presentation
+epoch they instead call the private identity-filtered capture. Retained UI
+world completion keeps its existing native visibility permission. No private
+presentation capture runs during retained UI or after the panel closes the
+epoch, so later projectile overlays cannot replace its target projection.
+
+The CUSTOM1-only `timing_target_view_install` validates and patches +05C78
+(panel call) and +046A4 (selected-object painter). `timing_runtime_target_panel`
+saves the full committed target block, publishes a valid private projection
+for native +0468C, then restores all 168 bytes and closes the epoch. The draw
+hook skips +0A6E4 when the selected identity has no current projection. Other
+native panel/sprite work still runs for an admitted epoch. An additional panel
+call after closure cannot draw the stale projection. Ordinary native ownership
+retains the native panel/draw paths. World consumption and rendering remain
+serialized foreground operations; no world consumer runs during the borrow.
+The existing selector hook excludes selection while the borrowed block is
+visible. UI/drawing scratch outside the target block remains native-owned.
+
+Verification in the ignored harness:
+
+- `test_runtime_target_view_c.py`: actual collector/panel/draw hooks across 16
+  visible/missing-target cases and four X positions, including a painter that
+  deliberately overwrites the borrowed block. All committed bytes are restored;
+  repeated closed-frame calls stay hidden. Native passthrough, CUSTOM1-off
+  installation and six corrupt-call rejections pass. Graphics calls are stubbed.
+- `test_target_view_projection_c.py`: 64 native scene views, six with selected
+  candidates and three distinct screen projections; descriptors, X/Y and model
+  pointers match native collection and the committed target block is unchanged.
+  Rasterization is omitted. Each lane restores the same native projection
+  scratch; fresh emulator instances prevent already-translated pre-patch call
+  sites from bypassing hooks. Earlier attempts that reused either were rejected.
+- The 448 existing ownership/ABI cases pass. Camera/instrument publication keeps
+  its 256 native and 256 fractional-camera comparisons. Lifecycle tests retain
+  240 PAL/NTSC fields across two arena addresses and now cover phase-2 rejection
+  and activation reset. All build variants assemble.
+
+This connects the projection adapter to the experimental rendering paths, but
+native flight-loop activation remains absent. Real bitmap/TADS visual checks
+across CPUs, prediction, complete renderer isolation, timing/latency and full
+trajectory acceptance remain open. No claim of complete C5d or C is made from
+these geometry/state fixtures alone.

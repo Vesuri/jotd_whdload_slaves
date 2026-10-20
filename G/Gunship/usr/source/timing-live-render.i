@@ -113,7 +113,8 @@ timing_render_animation:
 timing_render_native_animation: dc.l 0
 
 ; The following native ADDQ overwrites collector flags; its loop reloads
-; scratch registers. Permit collection only inside the admitted world pass.
+; scratch registers. Native collection belongs only to the admitted world
+; pass; an active presentation captures its selected identity privately.
 timing_render_collect:
  move.l a0,-(sp)
  movea.l timing_runtime_arena(pc),a0
@@ -122,8 +123,14 @@ timing_render_collect:
  cmpi.w #1,RT_CAPTURE_OWNER(a0)
  bne .native
  cmpi.w #1,RT_TARGET_PHASE(a0)
+ beq .native
+ cmpi.w #1,RT_VIEW_PHASE(a0)
  bne .skip
- bra .native
+ move.l d0,-(sp)
+ lea RT_VIEW(a0),a0
+ bsr target_view_capture
+ move.l (sp)+,d0
+ bra .skip
 .retained:
  cmpi.w #4,RT_BOUNDARY_PHASE(a0)
  bne .skip

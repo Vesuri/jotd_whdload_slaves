@@ -66,7 +66,10 @@ RT_GAUGES equ RT_TARGET_FIELD+4
 RT_GAUGE_PHASE equ RT_GAUGES+GA_SIZE ; 0 fresh, 1 applying, 2 complete
 RT_GAUGE_FIELD equ RT_GAUGE_PHASE+2
 RT_GAUGE_SCRATCH equ RT_GAUGE_FIELD+4 ; 16-byte instruments + 12-byte camera
-RT_ARENA_SIZE equ RT_GAUGE_SCRATCH+28
+RT_VIEW equ RT_GAUGE_SCRATCH+28
+RT_VIEW_SAVED equ RT_VIEW+TPV_SIZE
+RT_VIEW_PHASE equ RT_VIEW_SAVED+WT_STATE_SIZE ; 0 closed, 1 collecting, 2 drawing
+RT_ARENA_SIZE equ RT_VIEW_PHASE+2
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -259,6 +262,13 @@ timing_runtime_prepare:
  movea.l RT_HUNKS+24(a6),a1
  lea RT_TARGET(a6),a2
  bsr target_select_prepare
+ tst.l d0
+ bne .bad
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+16(a6),a1
+ movea.l RT_HUNKS+24(a6),a2
+ lea RT_VIEW(a6),a3
+ bsr target_view_prepare
  tst.l d0
  bne .bad
  lea timing_runtime_target(pc),a0

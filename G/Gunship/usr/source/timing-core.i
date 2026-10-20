@@ -76,3 +76,4 @@
  include "timing-runtime-present.i"
  include "timing-runtime-target.i"
  include "timing-runtime-gauges.i"
+ include "timing-runtime-target-view.i"

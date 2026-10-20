@@ -9,6 +9,8 @@ timing_runtime_present_state:
  movea.l a0,a6
  cmpi.l #1,RT_READY(a6)
  bne .bad
+ cmpi.w #2,RT_VIEW_PHASE(a6)
+ beq .bad
  cmpi.w #1,RT_CAPTURE_OWNER(a6)
  bne .bad
  tst.w RT_BOUNDARY_PHASE(a6)
@@ -57,6 +59,15 @@ timing_runtime_present_state:
  movea.l a5,a2
  lea RT_PRESENT_SCENE(a6),a3
  bsr scene_state_build
+ ; Reset capture before any native presentation publication. The frame uses
+ ; this committed identity, while projected coordinates come from rendering.
+ lea RT_VIEW(a6),a0
+ movea.l RT_HUNKS(a6),a1
+ adda.l #$a99e,a1
+ bsr target_view_reset
+ tst.l d0
+ bne .done
+ move.w #1,RT_VIEW_PHASE(a6)
  ; Keep native current/previous endpoint caches coherent for native UI.
  lea RT_PRESENT_SCENE(a6),a0
  movea.l RT_HUNKS+16(a6),a1

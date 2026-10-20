@@ -28,6 +28,8 @@ timing_runtime_activate:
  movea.l a0,a6
  cmpi.l #1,RT_READY(a6)
  bne .bad
+ cmpi.w #2,RT_VIEW_PHASE(a6)
+ beq .bad
  tst.w RT_CAPTURE_OWNER(a6)
  bne .bad
  tst.w RT_CLOCK+TC_ACTIVE(a6)
@@ -160,6 +162,7 @@ timing_runtime_activate:
  dc.w RT_BODY+WB_PHASE,2
  dc.w RT_TARGET_PHASE,6
  dc.w RT_GAUGE_PHASE,6
+ dc.w RT_VIEW_PHASE,2
  dc.w RT_CONSUMER+TF_PHASE,TF_EFFECT-TF_PHASE
  dc.w RT_MODAL+TM_PHASE,2
  dc.w RT_FIRE,2

@@ -480,6 +480,7 @@ _verify_scene	dc.l	0
 	include "timing-live-input.i"
 	include "timing-live-vbl.i"
 	include "timing-live-render.i"
+	include "timing-live-target-view.i"
 	include "timing-live-gauges.i"
 	include "timing-live-map.i"
 	ENDC
