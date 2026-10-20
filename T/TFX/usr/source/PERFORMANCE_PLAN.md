@@ -177,6 +177,23 @@ runtime correctness and performance validation remain mandatory for each port.
   from joystick, and anything else in `pl_020` absent from `pl_fpu_new`.
 - Exit: each fix reproduced and verified on `tfx.020`; no fps change expected.
 
+Completed correctness ports: `7a9ea96` (sort) and `18f4c42` (joystick fire).
+Evidence and reproduction: `tmp/dev/docs/correctness-fixes.md`. The original
+full-array sort corrupts guarded depth/index fixtures; the port passes 39
+boundary, insertion and ABI cases across 040, 030+FPU and 060. Actual distinct
+missile allocations prove the duplicate launch before the input fix and one
+launch per press afterward, with keyboard firing and original rendering retained.
+The remaining missing plain-TFX patches belong to memory placement (step 8) or
+rendering/uncapped-mode adapters (step 10), not this correctness port.
+
+Strict 040 timing remains 57 publications per 250 vblanks (nominal PAL 11.4 fps,
+emulator A/B only). Publication cadence and final flight state can differ from
+the old sort. Extra cold-boot image checks repeat, but full-state replay gates
+do not all pass: clock-origin and other captured-state differences remain
+explicit in the report. No new mismatch waiver or complete state equivalence is
+claimed. Step 8 must establish a controlled scene/time comparison before using
+identical screenshots as its exit check; matching frame totals alone is insufficient.
+
 ### 8. Undo the chip-RAM merge
 
 - From the `TFX.040` hunk layout and step 6 symbols, list what truly needs chip RAM
