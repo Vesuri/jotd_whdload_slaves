@@ -777,3 +777,41 @@ three sound requests from `c-events1-replay`. The normal slave is byte-identical
 With the same forced-overflow build but `CUSTOM2=0`, `c-input-full-off` reaches
 the race with selection reason 0 and all checked original timing, input, stack
 and geometry instructions intact.
+
+## Reset before native race preparation
+
+The first human-to-human race transition exposed a missing reset boundary.
+Native initialization clears the game clock at `$8690c`, then `$86616/$8661c`
+call the patched race loop and `$86630/$8665c` call the field handler while
+preparing display buffers. These calls occur before `$a8c4c`, where C previously
+reset its history. A later race therefore used the preceding race's simulation
+cursor during preparation. The overflow guard made this visible as an explicit
+input-history error in `c-restart-f10` and `c-restart-f10-var`; merely removing
+that guard would conceal the stale state.
+
+The selected C patch list now hooks `$8660e` to reset history before preparation,
+clear queued controls and clear the cached start pose. Its initial cursor is
+live field minus one, reproducing the first boot's initial field-1 step.
+The existing reset at interrupt installation remains, establishing the active
+race's cursor after preparation. Both paths use the same history-reset helper.
+The early hook retains the replaced delta assignment and is under CUSTOM2.
+
+`c-restart-fixed` drives the first race to field 1600, exits with native F10
+(raw key `$59`), passes the repair screen with fire, and starts another race.
+At its field 100, the cursor is 99, step count 98 and capture flag zero, replacing
+the prior race's field-1457 capture. RIGHT produces steering 798 at field 120;
+release returns it to zero by field 160. The final screenshot shows the second
+race. `c-reset-fixed-regression` preserves all 1,598 original attack-tape hashes,
+sound requests and fixed-boundary actor/clock/camera/rank state.
+The normal slave remains byte-identical. This covers voluntary race exit and
+restart, not crossing the finish line or progression after winning.
+`c-reset-fixed-off` verifies that `$8660e` and all other checked timing/input
+hooks retain their original instructions when CUSTOM2 is off.
+
+`c-restart-var-settled` repeats the transition with the varying render-period
+pattern. The second race again reaches field 100 with cursor 99, 98 steps and
+capture flag zero. RIGHT is consumed during catch-up; released steering reaches
+zero by live field 200 (cursor 198). An earlier check at live field 160 still had
+steering 24 because the cursor was only 154. Live-field checkpoints are not
+equal simulation boundaries, so that intermediate difference is not treated as
+a state mismatch.

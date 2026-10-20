@@ -357,6 +357,7 @@ pl_main
 pl_c_simulation
 	PL_START
 	PL_IFC2
+	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
 	PL_P	$915A,step_camera_decay

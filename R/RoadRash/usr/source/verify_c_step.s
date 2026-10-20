@@ -88,8 +88,44 @@ STEP_INPUT_SLOTS = 2048
 	ENDC
 step_reset:
 	movem.l d0-d7/a0-a6,-(a7)
+	move.l $a5d4c,d0
+	bsr step_reset_history
+	IFD VERIFY_C_DECAY_TEST
+	bsr step_decay_test
+	ENDC
+	IFD STEP_EXTRAPOLATE
+	bsr step_save_previous
+	ENDC
+	jsr $8f552
+	lea step_start_frame(pc),a0
+	move.w d0,(a0)
+	movem.l (a7)+,d0-d7/a0-a6
+	move.l #$87040,$a5916
+	rts
+
+; Native initialization calls the patched race loop and field handler before
+; installing the race interrupt. Reset history before those priming calls too.
+; Cursor field-1 reproduces the first boot's initial step at field 1.
+step_prepare:
+	movem.l d0-d7/a0-a6,-(a7)
+	move.l $a5d4c,d0
+	subq.l #1,d0
+	bsr step_reset_history
+	lea step_inputs(pc),a0
+	move.w #STEP_INPUT_SLOTS-1,d0
+.clear:
+	clr.b (a0)+
+	dbf d0,.clear
+	lea step_start_frame(pc),a0
+	clr.w (a0)
+	movem.l (a7)+,d0-d7/a0-a6
+	move.w #1,$a6f00
+	rts
+
+; d0 is the initial simulation cursor; the queue follows the live field.
+step_reset_history:
 	lea step_stats(pc),a0
-	move.l $a5d4c,8(a0)
+	move.l d0,8(a0)
 	clr.l 12(a0)
 	clr.l 16(a0)
 	IFD STEP_HASH_RING
@@ -106,17 +142,6 @@ step_reset:
 	IFD VERIFY_C_LATENCY
 	bsr step_latency_reset
 	ENDC
-	IFD VERIFY_C_DECAY_TEST
-	bsr step_decay_test
-	ENDC
-	IFD STEP_EXTRAPOLATE
-	bsr step_save_previous
-	ENDC
-	jsr $8f552
-	lea step_start_frame(pc),a0
-	move.w d0,(a0)
-	movem.l (a7)+,d0-d7/a0-a6
-	move.l #$87040,$a5916
 	rts
 ; Consume every due step without discarding elapsed-time remainder.
 step_main:
