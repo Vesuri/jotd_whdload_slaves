@@ -1,3 +1,45 @@
+## Native rank audit: stale off-screen positions invalidate the old order check
+
+The A4 harness's `order` field sorts all 15 riders by their stored actor `+4`
+positions. This is not the game's complete race order: inactive riders stop
+updating those positions. Do not use prior `order` mismatches alone as evidence
+of a race-order regression, or treat their removal as an A4 pass. Existing raw
+captures remain unchanged for reproducibility; full order equivalence is still
+unproven.
+
+Native `$892a0` computes the player's rank from the count at `$90946` (inactive
+riders ahead, excluding cop `$a5de0`), plus active riders in `$909cc` whose
+unsigned positions exceed the player's, plus one. `$89356..$89366` converts
+10..15 to packed decimal before storing `$a59f4`. Earlier reports of rank 21
+therefore mean raw `$0015`, displayed **15th**, not 21st; raw 20 and 19 mean
+14th and 13th. Equality checks of the raw rank remain meaningful.
+
+The ahead/behind arrays at `$90946`/`$90988` are counted pointer stacks:
+`$90d04` appends and `$90d12` removes the last entry. Their internal order is
+not a proven positional ranking. `$90ac0` estimates inactive progress using
+actor `+$66` multiplied by the low word of the simulation cursor at `$a5d52`.
+A replacement full-order verifier must account for this model rather than
+merely concatenate or sort the arrays.
+
+Live evidence: `tmp/dev/tmp/b-rank-audit-v2/replay.json`, produced by
+`tmp/dev/tools/rank_audit_c.py` with the retained B normal slave, A1200 Fast,
+`CUSTOM2=3`, and the original lap tape at 100-field sample spacing plus tape
+and screenshot boundaries. All **23** audited samples reconstruct exactly the
+decoded stored rank. All 23 disagree with the rank inferred by sorting stored
+positions. At field 100 the native rank is 15 while the old position sort says
+8; at field 1600 native rank is 15 while the sort says 6. The wrapper adds
+`rank_audit` with both inactive lists, reconstructed rank, decoded rank and old
+position-sort rank without changing the legacy fields or comparisons. This is
+a sampled pre-finish validation, not proof about terminal ranking behavior.
+
+The preceding NPC lateral prototype remains private. Quarter-reference
+integration improves rival `$a61e0` at fields 600/1000/1200 from lateral
+-15/-103/-187 to 4/18/5 versus B's 4/11/4, but moves the sampled player crash
+onset from road correction's 1372 to 1544 versus B's 1376. Evidence remains in
+`c-npc-lateral-lap`, `c-npc-lateral-leaders` and the retained build's source
+patch. Neither this prototype nor the rank-audit finding closes handling,
+distance, throughput or input-response acceptance.
+
 # Simulation/presentation separation audit
 
 C is in progress. The normal beta now uses the shared independent simulation
