@@ -1946,3 +1946,35 @@ opening. The periodic +07F80 flight-end check can set player 18 before reserve
 depletion; its scratch-word inputs follow the masked tick test. Preserve that
 ordering when extracting the remaining housekeeping. No native installer calls
 this helper yet; eventual installation must use CUSTOM1 Enhanced framerate.
+
+### Periodic flight-end check and reserve depletion
+
+`timing-world-reserves.i` preserves the native every-sixteenth-tick branch
+at +058AC. On due ticks it runs the unchanged +07F80 flight-end predicate;
+if player 18 is nonzero it reports the cleanup boundary without consuming
+reserves. Otherwise it executes +0590C..+0598A, retaining both reserves'
+sequential dependency, engine-count scaling, damage additions, byte wrapping
+and signed-word saturation. In particular the second reserve's depletion
+observes the first reserve after its update. This is discrete world work,
+not a per-field rate approximation.
+
+`world_reserves_prepare` takes hunk 0 and an even clone buffer in a0/a1.
+Both blocks are relocation-free; every source word is compared with the
+0658 instruction image before any destination write. The output is 164 bytes
+including the original guard RTS and an appended reserve RTS. Cache flushing
+and nonoverlapping buffers remain caller responsibilities.
+`world_reserves_step` takes authoritative player/clone in a0/a1 and preserves
+non-result registers. Return 0 means no periodic work, 1 means reserves were
+updated, and 2 requests flight-end cleanup. It neither advances the tick nor
+performs cleanup or the following periodic RNG/housekeeping. The caller must
+invoke it once after world motion/weapons/damage/script work, never per render.
+
+`tmp/dev/tools/test_world_reserves_c.py` passes 4,096 comparisons with the
+native control-flow entry +058AC, stopping at +058C6 (cleanup), +0598A (after
+reserves) or +05A0C (no periodic work). Complete player bytes and branch outcomes
+match: 1,536 nonperiodic, 1,658 reserve updates and 902 cleanup boundaries.
+Inputs cover tick wrap boundaries, engine flags, collective extremes, damage,
+empty/large reserves, RPM/height and crash/end states. All 81 source-word
+corruptions reject before destination writes (4,178 assembled calls). This
+helper remains standalone; full housekeeping, scheduler composition and
+CUSTOM1-gated installation are still pending.
