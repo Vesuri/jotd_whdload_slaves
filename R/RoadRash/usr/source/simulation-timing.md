@@ -1,3 +1,45 @@
+## Raster response trace and recent-tick prediction experiment
+
+The normal-binary traces `c-fused-response-stages` and
+`c-raster-response-stages` isolate the field-300 response regression. Both
+consume the first right input at simulation cursor 301, live field 302.
+The fused runtime renders at cursor 303 with heading 3 and predicted heading
+5; the raster candidate renders earlier, at cursor 302 with heading 1 and
+predicted heading 1. Its four-tick average truncates the onset prediction.
+The difference is visible-pose selection, not delayed input consumption.
+These are breakpoint observations of the unchanged normal binaries.
+
+The private `c-raster-recent-pose-source` experiment replaces the four-tick
+heading difference with four times the latest completed tick's difference,
+retaining the existing prediction division, measured horizon and direction
+checks. It does not change authoritative heading. The normal binary is
+19,684 bytes, SHA-256
+`4cdac11ec9c056edd9f2635eb5e9a366c22a476a15dcbb647bd702072ffe7bf3`;
+its source patch is retained in `c-raster-recent-pose-build/source.patch`.
+
+Fresh neutral/right field-300 captures have identical initial snapshots and
+first differ at field 306 (120 ms upper estimate). The stage trace
+`c-recent-pose-response-stages` confirms cursor-302 heading 1 now predicts 4.
+This improves the failed raster phase from 200 ms, versus B's 180 ms.
+However, the running eight-phase sweep `c-raster-recent-pose-visible` already
+finds field 302 at 240 ms, worse than B's 200 ms. The completed prefix is
+120/180/240 ms for phases 300/301/302. This is sufficient to reject the
+latest-tick-only candidate; no complete eight-phase result is claimed here.
+The sweep remains running to retain the remaining phase evidence.
+
+`c-raster-recent-pose-guards` checks 63 player-pose calls across steering,
+release at field 310 and reversal at 320. Simulation calls and guarded
+presentation calls retain authoritative heading; the observed horizon is
+three fields, within the existing four-field bound. This short probe does
+not establish long-run visual smoothness or extreme-heading arithmetic.
+
+`c-raster-recent-pose-vary-state` uses explicit period and pattern defines
+and observes 2/3/4/12/16-field presentation intervals. It matches all 1,595
+common completed hashes, sound events and six authoritative snapshot ranges
+against `c-fused-lean-state-v2`. These checks establish short replay isolation,
+not full-race, restart or hardware equivalence for this new predictor.
+The production source remains unchanged. Section C remains incomplete.
+
 ## Raster-edge candidate: full-race state matches, response gate fails
 
 `c-raster-edge-finish`, `-arrest` and `-wreck` replay the retained
