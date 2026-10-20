@@ -124,7 +124,7 @@ step_prepare:
 
 ; d0 is the initial simulation cursor; the queue follows the live field.
 step_reset_history:
-	IFD VERIFY_C_STEERING
+	IFD C_STEERING
 	lea step_steering_fraction(pc),a1
 	clr.l (a1)
 	ENDC
@@ -220,7 +220,7 @@ step_end:
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
 	jsr $8eff8
-	IFD VERIFY_C_STEERING
+	IFD C_STEERING
 	bsr step_steering_finish
 	ENDC
 	IFND STEP_NO_HASH
@@ -942,8 +942,8 @@ step_pose_busy:
 	dc.b 0
 	even
 
-	IFD VERIFY_C_STEERING
-	include verify_c_steering.s
+	IFD C_STEERING
+	include steering.s
 	ENDC
 
 	IFD STEP_EXTRAPOLATE

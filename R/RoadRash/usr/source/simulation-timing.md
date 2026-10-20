@@ -1610,3 +1610,39 @@ actor/clock/spawn-timer/camera/rank ranges and finish/exit times match. It start
 a new race with capture `(98,97,0,1)`. This closes successful-finish/restart
 coverage for the revised steering model; remaining baseline handling, latency
 and normal-runtime integration work are not implied to be complete.
+
+## Integrate conserved one-field steering in the runtime
+
+Normal and lean runtime builds now select `C_STEERING`. Full-snapshot diagnostics
+retain `VERIFY_C_STEERING` as an explicit alias for reproducible older references.
+The implementation is renamed to `steering.s`, with the Makefile dependency
+updated while preserving its original line endings. Its calculations are
+unchanged: evaluate native heading/ground displacement at the four-field
+reference, retain native grip/rounding, integrate one quarter per simulation
+field, and clear the residual on initialization or crash. All three hooks stay
+inside the master-toggle/hardware-selected C patch list.
+
+The rebuilt full diagnostic `c-steering-runtime-full-build` is byte-identical
+to `c-steering-finish-build`, so the previously verified successful-finish and
+arrest tapes exercise these exact diagnostic instructions. Normal-build tests
+are separate: `c-steering-runtime-off` and `c-steering-runtime-chip` inspect the
+three steering entries in addition to the other enhanced hooks and retain the
+original instructions. The actual normal A500 run matches B's distance and
+final state hash exactly at 8.5 fps. CD32 steering/release, pause at active field
+161 and resume at 172 pass with intact stack guards (344 observed bytes used).
+Both integrated lean 040/060 MMU race checks verify enabled translation.
+
+The normal cached 020/030/040/060 matrix measures 10.0/12.5/16.6/18.5 fps in the
+standard window. Relative to the preceding normal build, only 060 changes
+(from 18.9). These results and the remaining A4 differences are retained rather
+than described as B-equivalent performance. The normal slave is 7,920 bytes,
+SHA-256 `60ef76f312d7f08ce067b5a6b32966bb47f074ee78fd1166bd1cd1e0a7916bdb`.
+
+`c-steering-runtime-visible` tests eight fresh neutral/RIGHT pairs against the
+actual normal binary. Each pair starts with identical snapshots. The capture-end
+estimates are 260/240/220/200/180/260/240/220 ms, median 230 ms, matching the
+candidate rather than uncorrected C's 370 ms median. B's median remains 200 ms;
+this integration improves C but does not close the remaining response gap.
+All five standard-window normal configurations retain lateral position 160
+under neutral steering, including the accelerated paths. No delayed interpolation
+or extra presentation wait is added.

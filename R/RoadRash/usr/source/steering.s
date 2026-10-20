@@ -1,10 +1,7 @@
-; Candidate only: normalized player heading and conserved ground displacement.
-; Not enabled in the normal runtime. Crash/skid semantics still need auditing.
-	IFND VERIFY
-	FAIL "Steering candidate is diagnostic only"
-	ENDC
+; Normalize player heading and conserve ground displacement at 50 Hz.
+; Selected only by the enhanced simulation patch list.
 	IFNE STEP_FIELDS-1
-	FAIL "Steering candidate requires one-field simulation"
+	FAIL "Normalized steering requires one-field simulation"
 	ENDC
 
 step_steering_heading:

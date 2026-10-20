@@ -41,6 +41,17 @@ C_OBJECT_FAST = 1
 	ENDC
 	ENDC
 
+; Normalize steering for the one-field runtime. Snapshot diagnostics retain
+; explicit selection so older timing references can still be reproduced.
+	IFD VERIFY_C_STEERING
+C_STEERING = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_STEERING
+C_STEERING = 1
+	ENDC
+	ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
@@ -433,7 +444,7 @@ pl_c_simulation
 	PL_NOP $B2E8,6
 	PL_PSS $B326,step_object_width,2
 	ENDC
-	IFD VERIFY_C_STEERING
+	IFD C_STEERING
 	PL_P	$B93A,step_steering_heading
 	PL_P	$B97A,step_steering_motion
 	PL_P	$B9A0,step_steering_store
