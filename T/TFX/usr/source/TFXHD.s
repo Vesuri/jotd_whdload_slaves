@@ -494,7 +494,11 @@ get_version
     ; this version needs patching (data/bss hunks)
 
         lea pl_fpu_new(pc),a0
+        lea native_fpu_patches(pc),a1
+        btst.b #AFB_68060,attnflags+3(pc)
+        beq.b .new_fpu_list
         lea pl_fpu_new_040(pc),a1
+.new_fpu_list:
         lea pl_fpu_new_060(pc),a2
         move.w  #13574,d0
         rts
@@ -2847,6 +2851,74 @@ pl_fpu_new
 
         PL_END
 
+; Truncate the extended significand directly, without a 32-bit integer limit.
+; Preserve the source, FPCR, integer registers and integer condition codes.
+NATIVE_INT:MACRO
+ni_\1_\2:
+        move.w ccr,-(sp)
+        movem.l d0-d2,-(sp)
+        fmove.x fp\1,-(sp)
+        moveq #0,d2
+        move.w (sp),d0
+        and.l #$7fff,d0
+        cmp.w #$7fff,d0
+        beq .special\@
+        sub.w #$3fff,d0
+        bmi .zero\@
+        cmp.w #63,d0
+        bge .done\@
+        neg.w d0
+        add.w #63,d0
+        cmp.w #32,d0
+        blt .low\@
+        move.l 8(sp),d2
+        clr.l 8(sp)
+        sub.w #32,d0
+        moveq #-1,d1
+        lsl.l d0,d1
+        move.l 4(sp),d0
+        not.l d1
+        and.l d1,d0
+        not.l d1
+        and.l d1,4(sp)
+        or.l d0,d2
+        bra .done\@
+.low\@:
+        moveq #-1,d1
+        lsl.l d0,d1
+        move.l 8(sp),d2
+        not.l d1
+        and.l d1,d2
+        not.l d1
+        and.l d1,8(sp)
+        bra .done\@
+.zero\@:
+        move.l 4(sp),d2
+        or.l 8(sp),d2
+        and.w #$8000,(sp)
+        clr.l 4(sp)
+        clr.l 8(sp)
+.done\@:
+        fmove.x (sp)+,fp\2
+        tst.l d2
+        beq .exact\@
+        fmove.l fpsr,d1
+        or.l #$208,d1 ; INEX2 and accrued INEX for discarded fraction
+        fmove.l d1,fpsr
+.exact\@:
+        movem.l (sp)+,d0-d2
+        move.w (sp)+,ccr
+        rts
+.special\@:
+        lea 12(sp),sp
+        movem.l (sp)+,d0-d2
+        move.w (sp)+,ccr
+        fintrz.x fp\1,fp\2 ; FPSP safety net for NaN/infinity
+        rts
+        ENDM
+
+        include native_fpu_sites.i
+
 pl_fpu_new_040:
         PL_IFC5
         PL_ELSE
@@ -2938,6 +3010,10 @@ pl_fpu_new_040:
         PL_END
 
 install_zero_page_patches:
+    btst.b #AFB_68060,attnflags+3(pc)
+    bne.b .legacy
+    bsr install_native_fpu
+.legacy:
     movem.l a1,-(a7)
     lea needs_fpu_patches(pc),a1
     st.b    (a1)
