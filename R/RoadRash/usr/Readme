@@ -41,6 +41,8 @@
  - raster edge generation runs from Fast RAM on the enhanced path
  - simulation derives rider lean during pose selection, avoiding a second
    traversal of the actor list
+ - normalizes road movement for 50 Hz simulation, retaining fractional
+   motion and resetting it across crashes, actor reuse and new races
  - collision checks skip road-width and edge drawing calculations; rendering
    still builds the complete road geometry
  - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the

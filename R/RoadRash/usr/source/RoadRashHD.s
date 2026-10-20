@@ -111,6 +111,11 @@ C_STEERING = 1
 	ENDC
 C_ROAD_TIMING = 1
 	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_ROAD_TIMING
+C_ROAD_TIMING = 1
+	ENDC
+	ENDC
 
 ; Predict only the displayed rider heading through the measured render
 ; interval. Explicit diagnostic selection retains fixed-horizon controls.

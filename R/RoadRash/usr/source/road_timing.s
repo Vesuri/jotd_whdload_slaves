@@ -1,5 +1,6 @@
-; Enabled only by VERIFY_C_ROAD_TIMING; see simulation-timing.md.
-; Diagnostic road normalization: evaluate the four-field reference,
+; Selected by C_ROAD_TIMING after the Enhanced framerate/CPU/Fast gate.
+; Diagnostics retain explicit VERIFY_C_ROAD_TIMING selection.
+; Road normalization: evaluate the four-field reference,
 ; retaining quarter-unit output while running the simulation every field.
 step_road_fraction: dc.l 0
 step_road_history: dc.w 0,0,0,0

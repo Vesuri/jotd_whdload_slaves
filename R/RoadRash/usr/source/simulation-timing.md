@@ -1,3 +1,55 @@
+## Integrate road normalization for the one-field simulation
+
+The normal enhanced runtime now enables C_ROAD_TIMING. It restores positive
+road-centre motion lost when native products round to zero at one-field
+steps, using the existing four-field reference calculation and fractional
+carry. Player history and per-actor carry remain simulation-owned; companion
+copies, reactivation, crashes and new races retain their explicit handling.
+The existing master-toggle/CPU/Fast gate owns every hook. Diagnostics retain
+explicit VERIFY_C_ROAD_TIMING selection to reproduce preceding references.
+
+`c-road-integrated-build/RoadRash.slave` is byte-identical to the validated
+road candidate: 20,256 bytes, SHA-256
+`3af9c2c9294942e3cbe4d11022431e0d2061d82cb14fef0f220572a1bb87a662`.
+Only normal-build selection and explanatory source/ReadMe text change.
+This is an incremental correctness fix, not a declaration that all B
+handling/distance comparisons now pass. The plan retains those failures and
+the measured 040/060 cost (19.5/22.9 fps versus 20.2/23.0 previously).
+
+Fresh `c-road-integrated-period{1,2,3}-state` runs each match 1,595 completed
+hashes, sound requests and six authoritative snapshot regions against the
+corrected fixed-four-field reference. Observed cadences are 1600 one-field,
+799 two-field and 533 three-field frames, excluding startup bins. The first
+omits drawing. Existing corrected fixed/varying and full finish/arrest
+comparisons retain their scopes. All normal binaries built with these
+diagnostics match the integrated normal binary.
+
+Remaining normal controls and demo checks now pass: CD32 release/pause/resume
+and stack guards, demo fire exit, and unattended timeout at active field 3598
+with native timer 3600, followed by a normal race at field 100. Combined with
+the earlier keyboard, disabled hooks, 11 hardware/two MMU and eight response
+phase checks, these validate the unchanged candidate binary being integrated.
+
+Additional transition evidence is explicitly diagnostic. Private
+VERIFY_C_NEAR_WRECK sets damage to 31 once at simulation cursor 101, below
+the native 32-point wreck threshold. It does not set a wreck/exit flag or
+shorten a timer. The ordinary recorded drive then reaches damage 33 through
+native collision and displays WRECKED. Fixed/varying runs in
+`c-raster-road-near-wreck-{fixed,vary}` match all 2,463 completed hashes,
+three sound requests, terminal regions and exit field 2464. Both restart with
+zero road history and all actor carries. The fixture is absent from the
+normal binary; its source patch is retained beside the diagnostic build.
+This proves the tested damage-exhaustion transition, not natural accumulation
+of all damage from zero over a full race. That latter coverage remains open.
+
+The left-edge drive ends at 6345 with eight damage; the right-edge drive
+finishes at 13388 with four damage. Neither supplies wreck coverage.
+The CUSTOM1=1 drive reproduces all 12,095 standard-drive hashes exactly;
+there is no demonstrated distinct-bike coverage from that attempt. No broader
+claim is inferred from the option's label. Section C remains incomplete:
+original B distance and opponent-order differences, remaining visual/handling
+acceptance and performance work are not waived by this integration.
+
 ## Road correction: finish replay, full hardware matrix and disabled hooks
 
 `c-raster-road-finish-vary` matches the successful joystick-driven fixed

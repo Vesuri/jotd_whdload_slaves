@@ -358,38 +358,41 @@ framerate boolean and the CPU/Fast RAM gate. Unsupported machines retain
 original timing. Normalization, state ownership and validation history are in
 the [dependency audit](simulation-timing.md).
 
-The current 19,700-byte runtime includes Fast RAM movement/collision,
+The current 20,256-byte runtime includes Fast RAM movement/collision,
 AI/acceleration and world projection, compact simulation-only road geometry,
-uncached-020 lane scanning, fused lean derivation and Fast raster edges.
+uncached-020 lane scanning, fused lean derivation, Fast raster edges and
+normalized road movement with fractional carry.
 Heading prediction uses the latest increment with a four-tick fallback when
 integer heading repeats; release/reversal guards and the measured four-field
 horizon bound remain. Prediction never changes authoritative gameplay state.
 
 Current normal rates are A500 8.5 fps, Chip-only 020 12.5, Fast 020
-default/Cache 12.5, NoCache 8.3, 030 16.7, 040 20.2 and 060 23.0.
+default/Cache 12.5, NoCache 8.3, 030 16.7, 040 19.5 and 060 22.9.
 All 11 normal hardware cells and both MMU functional cells pass. The MMU
 configuration disables CPU data-cache emulation, so it is not a hardware
 cache-performance claim. All eight measured response phases meet B's limits:
-180/160/140/120/180/160/140/120 ms (median 150 ms).
+160/140/120/180/160/140/120/180 ms (median 150 ms).
 
 The current build has fresh short replay equivalence at 1/2/3/4-field and
 varying 2/3/4/12/16-field render intervals; one-field coverage omits drawing.
-Full finish, arrest and wreck/restart comparisons, keyboard/CD32 controls,
+Full finish and arrest/restart comparisons, keyboard/CD32 controls,
 pause/resume, demo fire/timeout transitions and enhancement-off checks pass.
-These functional and cadence results do not establish B-equivalent handling.
-Default and uncached 020 distance still fail the one-percent gate, and opponent
+A diagnostic starting at damage 31 verifies that a native collision reaches
+damage 33, takes the WRECKED exit and restarts identically across cadences.
+Naturally accumulated full-race wreck coverage remains missing for this road
+model. These results do not establish B-equivalent handling. Default and
+uncached 020 distance still fail the one-percent gate, and opponent
 trajectories/order still differ. C remains incomplete.
 
-The optional VERIFY_C_ROAD_TIMING correction remains diagnostic. It fixes
-proven loss of positive road-centre motion from one-field integer rounding;
-current scene review restores the rider to the road where B also has it.
-Short fixed/varying replay and complete arrest/restart equivalence pass on
-the raster runtime. A new joystick-only drive successfully finishes and
-restarts with player/history and all actor carries zero; its recorded tape's
-varying-cadence replay is running. Current road-candidate distance and native
-opponent-order differences from B remain open, along with remaining release
-checks. It is being validated as a separate normalization fix, without
-changing A4's reference or declaring C complete.
+Road normalization fixes proven loss of positive road-centre motion from
+one-field integer rounding. Current scene review restores the rider to the
+road where B also has it. The runtime retains explicit diagnostic selection
+through VERIFY_C_ROAD_TIMING for older references. It preserves fractional
+state across companion copies and clears it on reactivation, player crash
+and race reset. The integrated normal binary is identical to the validated
+road candidate. This correctness change costs 040/060 throughput compared
+with the preceding 20.2/23.0 fps runtime; remaining performance work is open.
+The original B distance/opponent-order references are retained unchanged.
 
 The native rank audit found that the old full-order verifier sorted stale
 off-screen positions. Use native lists and completed-state observations;
