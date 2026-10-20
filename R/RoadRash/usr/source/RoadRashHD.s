@@ -19,6 +19,16 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
+; Keep AI dispatch and its hot acceleration helpers in Fast RAM together.
+	IFD VERIFY_C_PHYSICS_AUX
+C_PHYSICS_AUX = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_PHYSICS_AUX
+C_PHYSICS_AUX = 1
+	ENDC
+	ENDC
+
 ; Relocate movement/collision code only after the enhancement hardware gate.
 ; Snapshot diagnostics opt in explicitly to preserve reference builds.
 	IFD VERIFY_C_PHYSICS_FAST
@@ -359,6 +369,11 @@ PatchLoader2:
 ; Full snapshot diagnostics can place the helper beyond short branch reach.
 	lea _base(pc),a0
 	adda.l #step_physics_fast_init-_base,a0
+	jsr (a0)
+	ENDC
+	IFD C_PHYSICS_AUX
+	lea _base(pc),a0
+	adda.l #step_physics_aux_init-_base,a0
 	jsr (a0)
 	ENDC
 .no_c:

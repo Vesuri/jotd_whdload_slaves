@@ -377,7 +377,12 @@ configurations, both MMU checks, full finish/arrest/wreck replays, controls and
 demo transitions pass. Disabled and unsupported paths retain their original
 hooks. The eight-phase response median is now 180 ms; seven phases are one
 capture field later and one four fields earlier than the preceding runtime.
-Three Fast 020 live-field distance cells still exceed B's 1% tolerance.
+The combined AI/acceleration helper copy then improves Fast 020 to 11.9 fps
+(7.0 NoCache) and 060 to 22.8; 030 stays at 16.6 and 040 reaches 18.9.
+The normal matrix, MMU, full-race/restart, controls, demos and disabled-hook
+checks pass. Response median returns to 170 ms, with phase 303 still one
+capture field behind B. Default Fast 020 and NoCache live-field distances
+remain 1.373% below B; the other accelerated cells are within 1%.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 

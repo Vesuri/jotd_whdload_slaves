@@ -1087,3 +1087,7 @@ step_authoritative:
 	IFD C_PHYSICS_FAST
 	include physics_fast.s
 	ENDC
+
+	IFD C_PHYSICS_AUX
+	include physics_aux.s
+	ENDC

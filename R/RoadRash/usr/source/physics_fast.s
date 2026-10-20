@@ -84,13 +84,31 @@ step_physics_fast_fixups:
 step_physics_fast_code:
  ds.b 7040
 step_physics_to_8da5c:
+ IFD C_PHYSICS_AUX
+ IFND VERIFY_C_PHYSICS_AUX_CONTROL
+ jmp aux_8da5c+$0(pc)
+ nop
+ ELSE
  jmp $8da5c
+ ENDC
+ ELSE
+ jmp $8da5c
+ ENDC
 step_physics_to_8dade:
  jmp $8dade
 step_physics_to_8de84:
  jmp $8de84
 step_physics_to_8e166:
+ IFD C_PHYSICS_AUX
+ IFND VERIFY_C_PHYSICS_AUX_CONTROL
+ jmp aux_8e166+$0(pc)
+ nop
+ ELSE
  jmp $8e166
+ ENDC
+ ELSE
+ jmp $8e166
+ ENDC
 step_physics_to_8e2d6:
  jmp $8e2d6
 step_physics_to_8e614:

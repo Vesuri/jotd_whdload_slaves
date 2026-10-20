@@ -5,7 +5,64 @@ on supported hardware when Enhanced framerate is enabled. Runtime integration
 and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
-## Current runtime: Fast RAM movement and collision code
+## Current runtime: combined Fast RAM AI and acceleration helpers
+
+Normal and lean builds now also select `C_PHYSICS_AUX`; full diagnostics
+opt in with `VERIFY_C_PHYSICS_AUX`. The four audited spans below add 2,356
+copied code bytes and eight entry redirects. Initialization remains inside
+the existing Enhanced framerate/CPU/Fast gate. Native data and the simulation
+timestep remain unchanged. Two movement-code stubs call copied helpers directly.
+
+The normal slave is 18,592 bytes, SHA-256
+`4a6a5d667acaf0462ead705b5a342e5f6de8449e2fbe3dedb7bef638b82a966f`.
+Tracked-source normal, full and MMU binaries are byte-identical to the tested
+`c-physics-aux-runtime-build`, `c-physics-aux-full-build` and
+`c-physics-aux-runtime-mmu-build` variants respectively.
+
+`c-physics-aux-runtime-matrix` passes all 11 normal configurations:
+
+| Configuration | Previous fps | Current fps |
+| --- | ---: | ---: |
+| A500 | 8.5 | 8.5 |
+| Chip-only 020 | 12.5 | 12.5 |
+| Fast 020, default | 10.3 | 11.9 |
+| Fast 020, Cache | 10.2 | 11.9 |
+| Fast 020, NoCache | 6.3 | 7.0 |
+| 030, default/Cache | 16.6 | 16.6 |
+| 040, default/Cache | 18.8 | 18.9 |
+| 060, default/Cache | 20.7 | 22.8 |
+
+A500 and Chip-only 020 initial, field-590 and final state hashes remain exact.
+Both enabled-MMU functional cells pass with CACR `$80008000`.
+`c-physics-aux-runtime-off` checks all eight new entries in addition to the
+previously covered hooks. `c-physics-aux-runtime-probe` verifies the normal
+copy, all 30 branch adjustments and the three movement-code branches that
+reach the two direct helper stubs.
+
+`c-physics-aux-{finish,arrest,wreck}` match their steering references across
+12,822/8,377/11,945 completed hashes, 24/241/120 sound requests, all six
+terminal authoritative regions, and terminal times. All three restart with
+`[99,98,0,1]`. The varying-cadence attack comparison below also passes.
+
+Normal keyboard/CD32 steering, release, pause and resume pass in
+`c-aux-runtime-{input,pad}`; stack use is 284/332 bytes with intact guards.
+The fire and timeout demo checks exit at fields 507/3,598 and both enter
+a normal race at field 100. Their stack use is 288/308 bytes with intact
+guards. The resulting race screenshots were inspected.
+
+`c-physics-aux-runtime-visible` measures 180/160/140/200/180/160/140/200 ms,
+median 170 ms. The first three phases match the preceding runtime; the
+remaining five improve by 20–40 ms. Against B, six phases improve, one
+matches, and phase 303 still trails by 20 ms. Capture-end estimates have
+one-field resolution and do not prove all-phase equivalence.
+
+The accelerated matrix's live-field distance is now 3,318,164 in every cell.
+Default Fast 020 and NoCache remain 1.373% below their B references; the
+Cache 020 and all 030/040/060 cells are within 1%. Handling/rank/crash
+equivalence remains unresolved. Throughput is closer to B but still below
+it in several configurations. These improvements do not complete C.
+
+## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
 opt in with `VERIFY_C_PHYSICS_FAST`. The 7,040-byte copy and its eight entry
