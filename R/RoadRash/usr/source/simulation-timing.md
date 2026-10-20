@@ -1,3 +1,33 @@
+## State-age presentation prediction has no demonstrated response benefit
+
+Private `c-pose-state-age-source` adds `render_start_field - simulation_cursor`
+to the measured drawing interval before predicting the player's displayed
+heading, retaining the existing four-field cap, direction guards and simulation
+isolation. Its equal-size control zeros that added term. Both normal binaries
+are 19,316 bytes. This tests an omitted-age hypothesis without adding a wait.
+
+`c-pose-state-age-probe` verifies the formula at 63 player pose calls, including
+release at field 310 and reversal at 320. All 12 sampled render calls have
+state age zero and measured/effective horizon three. Simulation calls and the
+release/reversal exclusions remain unpredicted. The normal catch-up loop rereads
+the live clock after each tick, consistent with these zero-age observations;
+this sample is not a universal guarantee that no field can elapse before drawing.
+
+All eight normal screen-response phases in `c-pose-state-age-visible` and
+`c-pose-state-age-control-visible` are identical: **200, 180, 160, 140, 200,
+180, 160, 140 ms**, median 170 ms. The isolated phase-303 pair reproduces
+140 ms in both binaries. Thus the improvement at that phase versus production
+cannot be attributed to the added state age. Other phases worsen versus
+production; phase 300 remains 20 ms worse than B. This does not close latency
+acceptance, and the candidate is not integrated.
+
+Build directories retain source patches and binaries. Candidate SHA-256:
+`7821efdc6a33a0014ccaf9fa2848fb3e22fbb20028885119fc43a8740dab3942`;
+control: `c369dfdd97149c9e094b858a7afe4dc2e6f7bd5ff6ef391855b25d66f0c5872b`.
+The direct probe and both eight-phase suites completed successfully. Their
+screen timings are capture-based upper estimates under the recorded emulator
+configuration, not measurements on physical hardware.
+
 ## Fixed-clock opponent AI also fails the handling comparison
 
 The private `c-npc-ai-clock-source` experiment starts from the retained
