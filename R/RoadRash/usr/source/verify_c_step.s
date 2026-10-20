@@ -242,8 +242,13 @@ step_end:
 .nohash:
 	ENDC
 	lea step_stats(pc),a0
+	IFD STEP_CAPTURE_END
+	tst.w $a59d0
+	beq .done
+	ELSE
 	cmpi.l #STEP_CAPTURE,8(a0)
 	bne .done
+	ENDC
 	lea step_snapshot(pc),a1
 	lea $a5900,a0
 	move.w #($a8740-$a5900)/4-1,d0
@@ -251,7 +256,11 @@ step_end:
 	move.l (a0)+,(a1)+
 	dbf d0,.copy
 	lea step_stats(pc),a0
+	IFD STEP_CAPTURE_END
+	move.l 8(a0),16(a0)
+	ELSE
 	move.l #STEP_CAPTURE,16(a0)
+	ENDC
 .done:
 	IFD VERIFY_C_LATENCY
 	bsr step_latency_simulated

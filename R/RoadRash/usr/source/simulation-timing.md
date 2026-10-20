@@ -841,3 +841,35 @@ The test does not establish winning progression or audible end-of-race sound.
 With the fixture disabled, `c-finish-regression` retains all 1,598 attack/crash
 tape hashes, sound requests and the field-1457 comparison state from
 `c-reset-fixed-regression`. The normal slave binary remains unchanged.
+
+## Full race through the actual finish line
+
+`STEP_CAPTURE_END` optionally captures the final simulation step when the native
+exit request is set, publishing its actual cursor in the existing capture field.
+This permits equal-boundary comparisons without predicting the race duration.
+With the option absent, `c-endcapture-disabled-build` is byte-identical to
+`c-finish-disabled-build`; the normal slave is also unchanged.
+
+`c-fullrace1` uses ordinary controls throughout a complete race. A host driver
+follows the road, releases controls during crashes, and resumes after remounting.
+It records 148 input changes at exact field boundaries. No game state, finish
+flag, timer or course length is injected. The original finish coordinate is
+1855; the player crosses it at simulation field 13835, finishes in rank 4, and
+the native countdown ends the race at 14024. This includes continued racing
+after the earlier crash/recovery scenario and additional later crashes.
+
+`c-fullracevar` replays those exact recorded inputs with varying render
+intervals. All 14,023 completed active-race hashes match, including six complete
+wraps of the 2,048-slot hash ring. All 52 traced sound requests match: seven
+engine/crash starts, seven stops and 38 primary effects. Neither event log
+overflows. Both runs have finish timestamp 13835 and end timestamp 14024;
+the terminal actor records, stopwatch, simulation clock, camera, crash-camera
+offset and rank cells match exactly.
+
+The varying-cadence run also passes the post-race screens with fire and starts
+another human race. At live field 100 its cursor is 98, step count 97 and capture
+flag zero; the finish flag is clear. `next-race.png` shows the new race.
+This establishes actual finish-line and post-race restart coverage for this
+route. It does not cover every championship outcome or audible sound playback.
+The private evidence and recorded tape are under `tmp/dev/tmp/c-fullrace1` and
+`tmp/dev/tmp/c-fullracevar`.
