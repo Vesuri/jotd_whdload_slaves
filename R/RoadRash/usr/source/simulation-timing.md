@@ -219,6 +219,48 @@ delta/curve distributions for all three runs. The original live-field A4
 failure remains open, including input retroactivity, endpoint integration,
 gear overshoots and rendering debt identified in the earlier accounting.
 
+### Rejected collision-only road projection experiment
+
+The refreshed profile places 4.624% of recorded units in `$89800..$898ff`.
+Simulation calls the native road geometry before world-object projection;
+rendering calls it again before drawing. The region `$8984e..$8989d`
+computes road width and both edge projections. Direct consumers of those
+arrays occur in the rendering path, while object collision projection reads
+the retained centre, height and occlusion arrays.
+
+The private `VERIFY_C_ROAD_COLLISION` candidate copied the 468-byte native
+routine into the already-selected Fast RAM slave hunk. Only simulation used
+this copy. A branch skipped the width/edge region, retaining the native render
+entry and its complete geometry calculation. It was initialized only after
+the master toggle and hardware checks selected C.
+
+`c-road-collision-replay` matches all 1,596 common actor hashes, three sound
+requests and the completed-field-1457 authoritative ranges against
+`c-audit-varying`. The stack guards remain intact. This is short-tape evidence,
+not full-course acceptance or proof that every indirect consumer was audited.
+
+The cached cycle-exact 020 cost comparison over active fields 100–1,000 fails:
+
+| Lean runtime | Completed frames | fps |
+|---|---:|---:|
+| Current reference | 193 | 10.722 |
+| Copied geometry with skip branch | 173 | 9.611 |
+| Compact geometry copy | 174 | 9.667 |
+
+The compact variant omits the 80-byte region from the copy entirely and
+adjusts the sole loop-back displacement crossing it, from `$ff14` to `$ff64`.
+It avoids the extra skip branch but still regresses. No particular cache or
+memory mechanism is claimed as the cause without a trace establishing it.
+The compact variant was cost-tested only; the full gameplay comparison above
+belongs to the first candidate.
+
+Both candidates were removed from tracked source. Their patches, binaries and
+measurements remain in `c-road-collision-{cost,compact}-build` and corresponding
+run directories; `c-road-collision-reference` is the fresh control.
+All accompanying normal builds retain the audited 7,920-byte runtime SHA.
+Do not install this reduction merely because it omits arithmetic: neither
+measured implementation improves throughput.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |
