@@ -3007,3 +3007,42 @@ display rate. Native UI/visibility/target callbacks use the established
 fixtures during consumption. This verifies relocatable setup and use of
 the initialized bindings, not live memory availability, cache behavior or
 production lifecycle hooks.
+
+## Experimental slave allocation and LoadSeg setup
+
+The `TIMING_RUNTIME` build flag now includes the core and `timing-slave.i`
+in the slave. It is a temporary integration build, not production activation.
+Without that flag, ordinary, VERIFY and TIMING_INPUT builds remain byte-for-byte
+unchanged. With it, CUSTOM1 **Enhanced framerate** still gates every allocation
+and preparation call. Other executable versions and non-game modules do not
+allocate this runtime.
+
+The supported gamemule LoadSeg callback prepares timing before the blitter
+patches alter source instructions. It discovers the DOS hunk chain, reads
+Exec's documented `VBlankFrequency`, accepts 50/60, and allocates 27,082 bytes
+using `MEMF_PUBLIC|MEMF_CLEAR`. Display-mode validation at flight activation
+remains required; nominal Exec frequency alone is not live cadence evidence.
+The arena stays paused. A later supported module load may reuse it only when
+the clock and both queues are inactive and no scheduler phase is pending.
+
+`timing_runtime_status` records preparation success (0), invalid chain or
+signature (-1), allocation failure (-2), unsupported frequency (-3), or an
+active/pending old arena (-4). No flight hooks or consumer execution are
+installed, including on setup failure. Future activation must require success
+and readiness. The loader's existing cache flush runs after the callback and
+covers the copied code, as documented in CACHE_AUDIT.md. When the main program
+returns, the allocation is cleared from the slave pointer and freed once.
+
+Integration exposed collisions with the NDK's task/resident size symbols.
+The timing constants are now `TC_STATE_SIZE` and `RT_ARENA_SIZE`; their values
+and layouts are unchanged. Diagnostic input includes also avoid redefining
+history/command symbols when the shared core has already supplied them.
+
+All three experimental slave variants assemble for the 68000. The ignored
+`test_timing_slave_c.py` executes the actual slave dispatch/release entries
+with simulated Exec allocation/free calls: 15 calls cover disabled CUSTOM1,
+other modules/versions, allocation failure, unsupported frequency, paused
+reuse, active/pending rejection, PAL/NTSC setup and duplicate release.
+Native game memory remains unchanged. The standalone arena/consumer suite
+also remains necessary; these checks do not establish live free memory,
+cache correctness on hardware, or native flight-loop ownership.

@@ -226,5 +226,9 @@ timing_input_sample:
 timing_input_commands:
 	ds.b CQ_SIZE
 
+	IFND TH_SIZE
 	include "timing-history.i"
+	ENDC
+	IFND CQ_SIZE
 	include "timing-commands.i"
+	ENDC

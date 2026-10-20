@@ -5,7 +5,7 @@
 RT_READY equ 0
 RT_HUNKS equ 4 ; nine native hunk pointers, already validated by loader
 RT_CLOCK equ RT_HUNKS+36
-RT_HISTORY equ RT_CLOCK+TC_SIZE
+RT_HISTORY equ RT_CLOCK+TC_STATE_SIZE
 RT_COMMANDS equ RT_HISTORY+TH_SIZE
 RT_SCHEDULER equ RT_COMMANDS+CQ_SIZE
 RT_RECORD equ RT_SCHEDULER+TS_SIZE
@@ -42,7 +42,7 @@ RT_OPENING equ RT_CLEANUP+WT_CLEANUP_SIZE
 RT_GUIDANCE equ RT_OPENING+WS_CODE_SIZE
 RT_GROUND equ RT_GUIDANCE+FG_SIZE
 RT_SCENE equ RT_GROUND+GR_CODE_SIZE
-RT_SIZE equ RT_SCENE+SCENE_SIZE
+RT_ARENA_SIZE equ RT_SCENE+SCENE_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -86,7 +86,7 @@ timing_runtime_hunks:
  movem.l (sp)+,d1-d3/a0-a3
  rts
 
-; a0=RT_SIZE arena, a1=nine-pointer native hunk table, d0=50/60 field rate.
+; a0=RT_ARENA_SIZE arena, a1=nine-pointer native hunk table, d0=50/60 field rate.
 ; Return 0 prepared but PAUSED, -1 invalid rate/signature. Preserve others.
 ; Fresh allocation only: never prepare over live or partially committed work.
 ; On signature failure the arena is partial/unusable and READY remains zero.
@@ -100,7 +100,7 @@ timing_runtime_prepare:
 .rate:
  move.l d0,d7
  movea.l a0,a6
- move.w #RT_SIZE/2-1,d1
+ move.w #RT_ARENA_SIZE/2-1,d1
 .clear:
  clr.w (a0)+
  dbf d1,.clear

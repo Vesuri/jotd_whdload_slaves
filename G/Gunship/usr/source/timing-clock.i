@@ -15,7 +15,7 @@ TC_PHASE      = 20              ; remainder, 0 <= phase < rate
 TC_RATE       = 22              ; 50 or 60, selected from display timing
 TC_ACTIVE     = 24
 TC_FAULT      = 26              ; discontinuous history: explicit rebase required
-TC_SIZE       = 28
+TC_STATE_SIZE       = 28
 
 ; a0=state, d0=field epoch, d1=display field rate.
 ; Fresh state, return 0; invalid rate returns -1 without writing.

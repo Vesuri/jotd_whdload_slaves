@@ -465,8 +465,12 @@ sequence matches the independently driven combined fixture; native loop
 installation remains pending.
 `timing-core.i` now supplies a shared include order, and `timing-runtime.i`
 prepares a single paused arena with all consumer/native-copy bindings.
-Loader-chain discovery no longer requires debugger markers. Slave allocation,
-cache flushing, runtime start and native hook installation remain pending.
+Loader-chain discovery no longer requires debugger markers. Production
+activation remains pending.
+An experimental `TIMING_RUNTIME` slave build now allocates/prepares that arena
+at the supported module's LoadSeg callback, behind CUSTOM1, and releases it
+after the main program returns. Existing LoadSeg cache flushing covers setup.
+It leaves sampling paused; runtime start and native flight hooks remain open.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

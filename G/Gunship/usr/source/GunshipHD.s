@@ -16,6 +16,10 @@
 	INCLUDE	whdload.i
 	INCLUDE	whdmacros.i
 	INCLUDE	lvo/dos.i
+	IFD TIMING_RUNTIME
+	INCLUDE "exec/execbase.i"
+	INCLUDE "exec/memory.i"
+	ENDC
 
 	IFD BARFLY
 	OUTPUT	"Gunship.slave"
@@ -119,6 +123,9 @@ _args_end
 PATCH_EXE:MACRO
 .\1
 	lea	pl_\1(pc),a0
+	IFD TIMING_RUNTIME
+	bsr timing_runtime_dispatch
+	ENDC
 	bsr	blitter_dispatch
 	IFD VERIFY
 	bsr	verify_dispatch
@@ -237,6 +244,9 @@ _bootdos
 		moveq	#_args_end-_args,d0
 		lea	patch_gunship(pc),a5
 		bsr	_load_exe
+	IFD TIMING_RUNTIME
+	bsr timing_runtime_release
+	ENDC
 	;quit
 _quit		pea	TDREASON_OK
 		move.l	(_resload,pc),a2
@@ -464,6 +474,10 @@ _verify_scene	dc.l	0
 ;============================================================================
 
 	include "blitter.i"
+	IFD TIMING_RUNTIME
+	include "timing-slave.i"
+	include "timing-core.i"
+	ENDC
 
 	IFD VERIFY
 	IFD TIMING_INPUT
