@@ -1,3 +1,40 @@
+## Separate accumulated movement from live-field lag
+
+Fresh normal-runtime probes `c-road-integrated-completed-motion` and
+`c-road-integrated-completed-motion-nocache` use
+`npc_acceleration_trace_c.py`, the same field-100 throttle input, and the
+current 20,256-byte binary (SHA-256 `3af9c2c…87a662`). They stop at entry to
+`step_end`, after native movement but before the simulation-owned event/pose
+helpers. These are completed movement observations, not full-step hashes.
+The retained B reference is `b-npc-acceleration-native` (SHA-256
+`ae511e817d5f1544cade20c1d2e30dd8631ec05c3396e7625f2fbe53686fb57a`).
+
+At cursor 590, B position is 3,888,640 and C is 3,855,684. Both start at
+524,288: the accumulated distance deficit is 32,956, or 0.979565% of B's
+3,364,352. C reaches this movement boundary at live field 591 with automatic
+caches, and 592 with NoCache. The three sampled 128-byte actor records
+(player, `$a61e0`, `$a6260`) match at all 501 common cursors across the two
+current runs. The automatic-cache run also matches the preceding road
+candidate at every shared cursor. This rules out a new movement difference
+from integrating that candidate within this trace's scope.
+
+The existing A4 field-590 snapshots have positions 3,836,082 (default) and
+3,826,257 (NoCache), exactly the current traces' cursor-588 and cursor-587
+movement positions. Relative to cursor 590, those lag by another 19,602 and
+29,427 units respectively. The total deficits are therefore 52,558 (1.5622%)
+and 62,383 (1.8542%), reproducing the failing live-field measurements.
+Cache-dependent rendering/scheduling changes when movement is observable,
+without changing the sampled actor trajectory at equal simulation cursors.
+
+This is causal evidence, not a replacement acceptance test: A4 still measures
+live field 590 and still fails. It does not establish all-actor equivalence,
+B-equivalent handling, or long-race equivalence. Performance/scheduling work
+must reduce the live-field lag while preserving queued input, one-field
+simulation, native vsync and the response safeguard; the accumulated B
+trajectory difference remains a separate requirement. Do not compensate by
+retroactively applying input, scaling physics to this checkpoint, or changing
+the baseline window.
+
 ## Integrate road normalization for the one-field simulation
 
 The normal enhanced runtime now enables C_ROAD_TIMING. It restores positive
