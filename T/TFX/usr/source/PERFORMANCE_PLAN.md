@@ -291,6 +291,20 @@ Normal and CHIP_ONLY builds pass; both FPSP binaries and pristine inputs are unc
   FPU values kept in registers.
 - Exit: each change A/B-measured; keep only measurable wins.
 
+Completed with no retained code change; report `tmp/dev/docs/tuning-040.md`.
+A fresh baseline exactly repeats step 10's profile, final image and all captured
+hunk bytes. Fast RAM copyback is already requested, and the new-rendering window
+has no cache flushes to remove. Original-rendering SMC protection is retained.
+
+Three same-build screen-copy A/B pairs (aligned MOVE16, MOVEM, longer longword
+unroll) each produce 73 publications/250 vblanks on both sides, with zero FPSP
+entries. Candidate instructions are verified executed; all three are rejected
+for no measurable throughput gain. Their uncontrolled final images/state differ;
+no routine equivalence or new mismatch waiver is claimed. Current-symbol cost
+reporting and three negative controls pass. The final slave and both FPSP files
+are byte-identical to step 10, preserving its CPU regression artifact. These are
+emulator A/B results; Apollo hardware tuning remains dependent on step 14.
+
 ### 12. Palette glitches
 
 - Reported symptom: a stray yellow colour on the A1200/040 (details not remembered).
