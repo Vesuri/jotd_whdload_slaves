@@ -20,7 +20,9 @@ TF_PHASE equ 60 ; 0 fresh, 1 player commands, 2 world commands, 3 executing,
                 ; 4 complete, 5 script modal, 6 flight ended, 7 fault
 TF_TICK equ 62
 TF_FIELD equ 64
-TF_SIZE equ 68
+TF_EFFECT equ 68 ; optional recurring effect clone (runtime always binds)
+TF_HIT_TIMER equ 72 ; native hit countdown byte, paired with TF_EFFECT
+TF_SIZE equ 76
 
 ; a0=TF, d0=command budget per reader (1..128). Preserve other registers.
 ; Return 0 field complete, 1 world complete, 2 retained command boundary,
@@ -146,6 +148,20 @@ timing_flight_consume:
  movea.l TF_HEADING(a6),a1
  move.b $35(a0),(a1)
  clr.b 1(a1)
+ ; The old renderer spawned this effect while the hit timer was nonzero.
+ ; Admit it once per deadline using the committed player and deadline RNG.
+ ; TF_PHASE is already executing; failure cannot replay the constructor.
+ move.l TF_EFFECT(a6),d0
+ beq .effect_done
+ movea.l TF_HIT_TIMER(a6),a1
+ tst.b (a1)
+ beq .effect_done
+ movem.l a5-a6,-(sp)
+ movea.l a0,a5
+ movea.l d0,a1
+ jsr (a1)
+ movem.l (sp)+,a5-a6
+.effect_done:
  movea.l TF_BODY(a6),a0
  clr.w WB_PHASE(a0) ; new deadline admitted once, never a retry
  movea.l TF_GEOMETRY(a6),a1

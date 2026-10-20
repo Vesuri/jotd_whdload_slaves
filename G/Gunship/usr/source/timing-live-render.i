@@ -1,6 +1,6 @@
 ; Experimental native-render gameplay isolation, behind CUSTOM1.
 ; World effect construction already runs through the deadline-owned path.
-; Keep effect animation native; suppress only the duplicate per-render spawn.
+; Field replay owns effect countdowns/animation during enhanced ownership.
 ; a0=prepared arena, a2=resload. Return 0/-1, preserve other registers.
 timing_render_install:
  movem.l d1-d2/a0-a3,-(sp)
@@ -23,6 +23,10 @@ timing_render_install:
  bne .bad
  cmpi.w #$7405,(a0) ; following animation overwrites NZVC before use
  bne .bad
+ lea timing_render_native_animation(pc),a0
+ move.l a1,d1
+ addi.l #$be5a,d1
+ move.l d1,(a0)
  lea timing_render_native_effect(pc),a0
  move.l a3,(a0)
  lea .patches(pc),a0
@@ -38,6 +42,7 @@ timing_render_install:
 .patches:
  PL_START
  PL_PS $5c92,timing_render_effect
+ PL_PS $5c98,timing_render_animation
  PL_END
 
 ; Foreground/user-mode compatible on 68000: no privileged SR reads.
@@ -60,3 +65,21 @@ timing_render_effect:
  rts
  even
 timing_render_native_effect: dc.l 0
+
+; Same ownership decision for the stateful animator. The next native call
+; begins with BTST and does not consume the skipped animator's return flags.
+timing_render_animation:
+ move.l a0,-(sp)
+ movea.l timing_runtime_arena(pc),a0
+ tst.w RT_BOUNDARY_PHASE(a0)
+ bne .skip
+ cmpi.w #1,RT_CAPTURE_OWNER(a0)
+ beq .skip
+ movea.l (sp)+,a0
+ move.l timing_render_native_animation(pc),-(sp)
+ rts
+.skip:
+ movea.l (sp)+,a0
+ rts
+ even
+timing_render_native_animation: dc.l 0

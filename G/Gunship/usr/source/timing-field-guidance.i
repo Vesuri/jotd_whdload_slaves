@@ -5,7 +5,8 @@ FG_QUIT equ FG_CODE_SIZE
 FG_ENABLED equ FG_QUIT+4
 FG_PENDING equ FG_ENABLED+4
 FG_PRESENT equ FG_PENDING+4 ; optional retained sprite presentation context
-FG_SIZE equ FG_PRESENT+4
+FG_EFFECTS equ FG_PRESENT+4 ; native shared effect slot table
+FG_SIZE equ FG_EFFECTS+4
 
 ; a0=validated 0658 hunk 0, a1=even clone, a2=validated hunk 4,
 ; a3=private pending-display byte (initialized by lifecycle owner).
@@ -62,6 +63,9 @@ field_guidance_prepare:
 	move.l a5,FG_ENABLED(a1)
 	move.l a6,FG_PENDING(a1)
 	clr.l FG_PRESENT(a1)
+	movea.l a0,a5
+	adda.l #$c6d0,a5
+	move.l a5,FG_EFFECTS(a1)
 	lea .pending(pc),a4
 	moveq #3,d2
 .pending_patch:

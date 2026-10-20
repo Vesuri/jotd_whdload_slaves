@@ -3550,7 +3550,9 @@ isolation and the installed native-loop/frame handoff remain open.
 `timing-live-render.i` patches the native frame's +05C92 constructor call
 only in the experimental runtime behind CUSTOM1. With runtime ownership or
 a retained UI boundary it returns without allocation, state changes or RNG
-draws: world deadlines already own effect construction. Native ownership
+draws. Damage-triggered effects already used the extracted world constructor;
+the recurring hit-effect deadline call was added in the field-ownership change
+below. Native ownership
 tail-calls the original +09B9A constructor. The hook preserves registers and
 X without privileged SR reads, including foreground user-mode execution.
 The following +0BE5A animation begins with MOVEQ and replaces NZVC; installer
@@ -3569,9 +3571,9 @@ It uses runtime arena capture and VERIFY frame diagnostics and is identical
 to the VERIFY runtime binary; it does not supply the standalone GSIH0002
 diagnostic copy. Standalone input diagnostics are unchanged.
 
-This isolates construction only. The effect animator at +0BE5A still mutates
-effect slot/frame state and must be audited with the other render writes
-before native flight-loop activation. This is not a claim of renderer purity.
+The initial hook isolated construction only. The animator audit and subsequent
+field-ownership change are described below. Other render writes still require
+audit before native flight-loop activation.
 
 ## Effect animation changes allocation lifetime
 
@@ -3599,5 +3601,57 @@ countdowns and animation in consumed-field order, before the corresponding
 world work. The native VBL decrements and render animator must be excluded
 under runtime ownership and retained UI boundaries, with unchanged baseline
 behavior. A whole catch-up batch must not age newly constructed effects using
-fields that preceded their construction. This migration remains to be
-implemented and tested; the constructor hook alone does not solve it.
+fields that preceded their construction. The implementation below addresses
+this dependency; the constructor hook alone did not solve it.
+
+
+## Field-owned effects and recurring deadline construction
+
+`field_effects_step` now replays all six wrapping countdown bytes and the
+native animation rules once per consumed active field, after the other
+field gameplay timers and before world opening/commands/motion. It preserves
+registers, performs no drawing or RNG, and retains native signed-byte frame
+comparisons and timer reset values. The guidance binding carries the effect
+slot-table pointer; FG_SIZE is now 316 bytes.
+
+The experimental VBL patch validates and replaces all six countdown stores
+as one span. Native ownership retains their writes and exact final flags;
+runtime ownership or a retained UI boundary computes those flags without
+stores. The render animator likewise tail-calls native code under native
+ownership and skips state updates under runtime/UI ownership. These hooks
+remain behind CUSTOM1. The following tracer routine initializes its own
+inputs and does not consume animator return flags.
+
+The foreground consumer now explicitly invokes the extracted recurring hit
+effect once per world deadline while the hit countdown is nonzero, after
+committed player motion and heading publication, before geometry/world work.
+It uses the committed player pose and deadline RNG. Damage-triggered effect
+calls remain in native damage order. This closes a gap discovered by the
+integration fixture: extracting the constructor for damage had not itself
+scheduled the renderer's recurring invocation. The constructor is inside
+the non-retryable executing phase, so modal continuation does not repeat it.
+TF_SIZE is now 76 bytes; epoch reset clears only its metadata, retaining the
+new effect/timer bindings. The runtime arena is 27,336 bytes.
+
+Validation in the ignored native-code harness:
+
+- `test_field_effects_c.py`: all 65,536 frame/timer byte pairs, 512 mixed
+  active/inactive slot cases, and 7,168 suppressed hook ABI comparisons.
+- `test_timing_live_vbl_c.py`: 3,274 existing ABI cases, 30 corrupted-site
+  rejections, CUSTOM1 and READY gates, and the complete six-store patch span.
+- `test_effect_cadence_c.py`: the prior slot-release counterexample now ends
+  at field 67/world tick 4 with no rendering, every-field rendering, or
+  rendering every ten fields.
+- `test_runtime_effects_c.py`: 960 fields across PAL/NTSC batches of 1, 3,
+  10 and 25, comparing per-field slot state, allocation masks and final RNG.
+  The first recurring spawn appears on the first deadline, and its timer
+  first decrements on the following field, including catch-up batches.
+- Existing batch tests pass 1,200 fields and 954 command-budget yields;
+  retained UI completion passes twelve cases, lifecycle reset 36 calls and
+  slave setup 15 calls. Constructor ownership checks still pass 128 native
+  and 896 suppressed cases. The field timer regression passes 1,536 cases.
+
+All runtime build variants assemble. Default, VERIFY and standalone input
+builds remain byte-identical. These are assembled/native-harness results;
+full native-loop installation, other render-state isolation and live CPU
+validation remain open.

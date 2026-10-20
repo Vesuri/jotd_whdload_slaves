@@ -258,6 +258,8 @@ timing_runtime_prepare:
  ; Native bindings are stable addresses in the loaded hunks.
  movea.l RT_HUNKS+24(a6),a0
  move.l a0,RT_FIELD+SF_HUNK6(a6)
+ lea $42f7(a0),a1
+ move.l a1,RT_CONSUMER+TF_HIT_TIMER(a6)
  adda.l #$3b88,a0
  move.l a0,RT_PLAYER_READER+CP_PLAYER(a6)
  move.l a0,RT_WORLD_READER+CW_PLAYER(a6)
@@ -365,4 +367,5 @@ timing_runtime_prepare:
  dc.w RT_CONSUMER+TF_BODY,RT_BODY
  dc.w RT_CONSUMER+TF_FIRE,RT_FIRE
  dc.w RT_CONSUMER+TF_HEADING,RT_HEADING
+ dc.w RT_CONSUMER+TF_EFFECT,RT_EFFECTS
 .bindings_end:

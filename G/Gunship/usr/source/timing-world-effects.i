@@ -1,5 +1,5 @@
 ; Native 0658 effect constructor with explicit deadline inputs.
-; Standalone; renderer-side invocation and lifetime migration remain pending.
+; Used by native damage and the foreground recurring hit-effect deadline path.
 WE_CODE_SIZE equ $a4
 
 ; a0 = validated code hunk, a1 = even WE_CODE_SIZE code buffer,

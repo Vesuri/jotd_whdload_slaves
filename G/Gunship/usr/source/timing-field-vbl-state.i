@@ -1,4 +1,5 @@
-; Gameplay-visible timer/guidance state from native VBL +04b48..+04c38.
+ include "timing-field-effects.i"
+; Gameplay-visible timer/guidance/effect state from native VBL and animator.
 ; Requires field-guidance. Standalone; original VBL owners must be excluded
 ; on installation. Cosmetic RNG, sound, counters and drawing stay separate.
 ; a0=hunk 6, a1=hunk 4, a2=prepared guidance clone. Return 1 evaluated,
@@ -25,6 +26,8 @@ field_vbl_state:
 	beq .evaluated
 	subq.b #1,$42f7(a3)
 .evaluated:
+	movea.l FG_EFFECTS(a2),a0
+	bsr field_effects_step
 	moveq #1,d0
 	bra .done
 .inactive:

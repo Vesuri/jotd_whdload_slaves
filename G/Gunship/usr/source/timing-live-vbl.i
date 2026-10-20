@@ -1,5 +1,5 @@
 ; Runtime ownership of native gameplay VBL state, experimental builds only.
-; Cosmetic RNG/audio/counters/drawing outside these four sites stay native.
+; Cosmetic RNG/audio/counters/drawing outside these sites stay native.
 ; Guidance display reconstruction is separate from its extracted state update.
 ; A retained UI boundary freezes gameplay even while keyboard ownership is native.
 ; a0=prepared arena, a2=resload. Validate every site before changing any.
@@ -33,6 +33,18 @@ timing_vbl_install:
  adda.l #$a1c8,a4
  cmpa.l $4c14(a1),a4
  bne .bad
+ ; All six effect countdown stores form one indivisible hook span.
+ lea $4c40(a1),a5
+ movea.l a1,a6
+ adda.l #$c724,a6
+ moveq #5,d1
+.effect_check:
+ cmpi.w #$9139,(a5)+
+ bne .bad
+ cmpa.l (a5)+,a6
+ bne .bad
+ addq.l #1,a6
+ dbf d1,.effect_check
  lea timing_vbl_native_guidance(pc),a3
  move.l a4,(a3)
  lea .patches(pc),a0
@@ -51,6 +63,7 @@ timing_vbl_install:
  PL_PS $4bba,timing_vbl_timer_ground
  PL_PS $4c32,timing_vbl_timer_hit
  PL_PS $4c12,timing_vbl_guidance
+ PL_PSS $4c40,timing_vbl_effect_timers,30
  PL_END
 
 ; Interrupt-only entries: MOVE SR is legal in the native VBL server.
@@ -112,3 +125,29 @@ timing_vbl_guidance:
  rts
  even
 timing_vbl_native_guidance: dc.l 0
+
+; Replace six native SUB.B D0,abs stores. D0 is still native (normally 1).
+; Preserve every register and the exact final subtraction flags in all modes.
+timing_vbl_effect_timers:
+ move.w sr,-(sp)
+ movem.l d1-d2/a0-a1,-(sp)
+ movea.l timing_runtime_arena(pc),a0
+ movea.l RT_HUNKS(a0),a1
+ adda.l #$c724,a1
+ tst.w RT_BOUNDARY_PHASE(a0)
+ bne .suppressed
+ cmpi.w #1,RT_CAPTURE_OWNER(a0)
+ beq .suppressed
+ moveq #5,d2
+.native:
+ sub.b d0,(a1)+
+ dbf d2,.native
+ bra .flags
+.suppressed:
+ move.b 5(a1),d1
+ sub.b d0,d1
+.flags:
+ move.w sr,16(sp)
+ movem.l (sp)+,d1-d2/a0-a1
+ move.w (sp)+,ccr
+ rts
