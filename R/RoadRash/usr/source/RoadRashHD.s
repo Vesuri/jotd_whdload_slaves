@@ -263,6 +263,24 @@ pl_messages_main
 	
 pl_main
 	PL_START
+	IFD VERIFY
+	IFD VERIFY_C_STEP
+	PL_P	$747E,step_main
+	PL_P	$75B6,step_end
+	PL_NOP	$76C6,6
+	PL_PSS	$A40E,step_start_sprite,2
+	PL_PSS	$710C,step_queue_input,4
+	PL_P	$73F4,step_input_key
+	PL_PSS	$9E0E,step_crash_sprite,2
+	PL_NOP	$9E26,6
+	PL_NOP	$9EEC,4
+	PL_P	$9EF0,step_lean_end
+	PL_S	$AECC,$AEE2-$AECC
+	PL_NOP	$6FA0,6
+	PL_NOP	$28C8C,8
+	PL_PSS	$28C4C,step_reset,4
+	ENDC
+	ENDC
 	PL_IFC2X 1
 	PL_PS	$7736,safe_swap
 	PL_PS	$6FA0,bound_delta
@@ -710,6 +728,11 @@ expansion_memory:
 	ENDC
 	ENDC
 	
+	IFD VERIFY
+	IFD VERIFY_C_STEP
+	include	verify_c_step.s
+	ENDC
+	ENDC
 	IFD DEBUG
 		dc.l	WHDLTAG_CUST_DISABLE,vposw
 		dc.l	WHDLTAG_CUST_DISABLE,vhposw

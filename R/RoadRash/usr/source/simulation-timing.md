@@ -152,3 +152,35 @@ contain no audit hooks or storage and remain byte-identical to the final B build
   separate presentation comparison because projection scratch is frame-dependent.
 - Preserve elapsed-time remainder, pause/resume and race transitions, then validate
   throughput, controls, slow-machine catch-up and MMU configurations.
+
+## Fixed-step diagnostic checkpoint
+
+`VERIFY` plus `VERIFY_C_STEP` enables `verify_c_step.s`; it is not a runtime
+feature. Use `CUSTOM2=0` and a first-race functional run, without `VERIFY_C_AUDIT`.
+`STEP_FIELDS` defaults to four and `STEP_CAPTURE` to simulation field 601.
+The `RRCSTEP1` block records the consumed field (+8), step count (+12), captured
+field (+16), quantum (+20), then a frozen `$a5900..$a873f` snapshot (+24).
+Immediately following is `RRCHASH1` and 1024 longword actor hashes, indexed by
+step number (zero unused). Hashes cover every byte of all 35 actor records.
+A missing capture or exhausted hash capacity must not count as a passing replay.
+
+The prototype queues raw controls by active race field, replays inputs in order,
+advances the original simulation with constant delta, and retains unconsumed time.
+It owns camera integration, starter/crash animation, sprite timers and actor lean.
+Before each step it rebuilds the road/world-object collision inputs through
+`$8970e`, `$8b02e` and `$8a492`. This last dependency was material: without it,
+the 12-field rendering test first differed in player collision flags at step 57
+and later in player position. With it, all 399 actor hashes match between the
+fast-render and 12-field test, including the steering/crash sequence; the frozen
+actor snapshot at simulation field 1353 also matches byte for byte.
+
+Evidence is in ignored `tmp/dev/tmp/c-collision-render1` and
+`c-collision-render12`, with their comparison JSON. Both runs used functional
+68020 emulation, not cycle-accurate hardware performance measurement. The test
+compares equal simulation boundaries, not wall-clock snapshots during catch-up.
+
+Remaining limitations include choosing and costing the quantum, interpolation,
+other action/animation paths, input-ring overflow handling, reset and pause
+semantics, complete event/clock comparisons, and the A2/A4/MMU regression suite.
+The 2048-field input ring only flags overflow in this diagnostic; it is not a
+production policy. Matching this one tape is not completion of C1, C2 or C3.
