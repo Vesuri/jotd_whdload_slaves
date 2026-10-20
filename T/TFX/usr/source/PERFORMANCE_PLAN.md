@@ -337,6 +337,23 @@ unless a reproducible faulty build or hardware capture becomes available.
   behaviour unchanged unless measured better; gate new patches by CPU and options.
 - Exit: every executable and option boots on 020, 030, 040, 060 configurations.
 
+Completed: `b0a1139`; report `tmp/dev/docs/selection-regression.md`.
+Automatic mode now selects newest `tfx.020` on full 040+FPU. Explicit choices and
+020/030/060 automatic selection remain unchanged. Eight baseline selections,
+49 supported flight/option cases (three actual publications each), and 16
+intro/menu/configuration startup cases pass. Each advertised executable/option
+is covered, including original rendering, FPS display, combined frame limits
+and CUSTOM5; this is not every possible option-mask combination.
+
+All 239 static FPU replacements are verified on automatic 040, with original
+instructions restored by CUSTOM5. All 245 inspected 060 FPU sites are unchanged.
+The seven unchanged automatic choices reproduce their baseline checkpoint PNG;
+no full-state equivalence or new performance result is claimed. Normal and
+CHIP_ONLY builds pass; both FPSPs are byte-identical to the baseline.
+The no-FPU 020 supports integer TFX: forcing the three FPU builds gives the
+expected Line 1111 exceptions, explicitly excluded from successful boots.
+Palette code remains unchanged; step 12 is still unreproduced.
+
 ### 14. Real hardware and release
 
 - User runs the build on the A1200/040. Update the ReadMe. Commit one coherent feature
