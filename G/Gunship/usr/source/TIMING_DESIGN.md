@@ -1210,6 +1210,49 @@ install that coordinator, decide swept contact eligibility or integrate the
 full world tick. Original ground notification UI and live VBL interleavings
 still need the production validation gate.
 
+## Combined player boundary candidate
+
+`timing-player-boundary.i` exposes the height boundary without bypassing
+controls or private interval parity. `player_boundary_prepare` takes the
+normal player-step pointers (a0 shadow, a1 player, a2 stages, a3 sine,
+a4 packet), separate candidate storage in a5 and the logical interval tick
+in d0. It copies the input state, applies the authoritative pitch clamp and
+stick/impulse attitude, then prepares kinematics through height. Original
+player/shadow remain unchanged, including the authoritative tick.
+
+The 350-byte candidate starts with contiguous PS shadow/player at offsets
+0/76, so `ground_deferred_step` accepts those pointers directly. Its
+kinematics phase is at 184. A separate temporary PS/player workspace at
+186 avoids aliasing the kinematics inputs/outputs; saved authoritative tick
+is at 348. Persistent candidate storage and nested call cost still require
+C4f measurement on the 68000.
+
+`player_boundary_complete` uses the same pointers and candidate (packet/d0
+input ignored). It finishes kinematics into private workspace, restores the
+saved authoritative tick there, includes the boundary's attitude-fraction
+resets, and publishes the complete player/shadow only on success. Failed
+or repeated completion changes neither original. Commit the separate ground
+event only after this returns success; discard it if completion fails.
+The caller must keep originals stable while the candidate is outstanding
+and serialize all evaluation/completion/publication. Publication is not
+interrupt-atomic, matching the existing foreground player-step contract.
+
+`test_player_boundary_c.py` passes 1,356 steps across rates 3/50/60,
+changing controls and supplied impulses, matching `player_step_interval`
+in every player/shadow byte while leaving the authoritative clock at 65535.
+Another 4,096 comparisons run native pitch clamp, native stick attitude and
+whole native motion with ground restored: 2,527 resets and 241 notifications
+match the combined candidate plus deferred commit. Native disturbance RNG
+is disabled in those reference cases and notification UI is stubbed.
+Repeated completion and invalid interval/control/late fraction cases reject
+without publishing. Evidence: `tmp/dev/tmp/c/player-boundary-tests.json`.
+
+This entry is available for the world-deadline path but not installed.
+It does not generate impulses, consume commands, increment the world clock,
+select contact eligibility, or route the scheduler. Ordinary field stepping
+still uses the existing entry until the world adapter is assembled and
+validated. Full C4e/C5 collision and cross-CPU acceptance remain pending.
+
 ## World-owned motion impulse generation
 
 `timing-world-impulses.i` now supplies the native random-motion
