@@ -52,7 +52,7 @@ next record. Display timing, not CPU type, selects the frequency.
 Duplicate or missing stamps latch a fault. Pausing and explicit rebasing
 discard partial phase with accounting; a slow render is not a rebase.
 
-The history has 128 slots of 32 bytes. An interrupt producer copies the
+The history has 128 slots of 40 bytes (5,140 bytes including the header). An interrupt producer copies the
 complete record before publishing its word cursor. A foreground consumer
 copies into private storage before releasing a slot. Full rings preserve
 unread data, latch a fault and count rejected publications. Recovery must
@@ -62,7 +62,8 @@ can interrupt after the consumer's final fault check.
 
 Record fields are declared in `timing-history.i`. They retain native filtered
 direction, held buttons, relative accumulators, raw relative deltas, edge
-mask, mode and a private command sequence. Diagnostic native hooks now supply
+mask, mode, a private command sequence, and the native RNG input-event
+timestamp (seconds and microseconds). Diagnostic native hooks now supply
 these values: raw deltas are accumulated before native scaling, filtered
 directions are copied after the native sampler, and the command counter
 advances only on accepted native FIFO insertions.
@@ -127,7 +128,8 @@ accepted command insertion at +034C8, and fire sampler at +04DC6.
 The normal sampler, native FIFO and native fire latches continue to operate.
 No game consumer reads the new history yet.
 
-The diagnostic marker `GSIH0001` publishes the code/input hunk addresses,
+The diagnostic marker `GSIH0002` (40-byte records; previously `GSIH0001`
+with 32-byte records) publishes the code/input hunk addresses,
 history and scratch-record addresses, accepted-command sequence, raw-delta
 accumulators, fire edges, arm request and native sampler address. An extension
 at +44 publishes the retained-command queue address.
@@ -1114,12 +1116,22 @@ after the correct native clock/input setup, and ordinary fields must
 receive zero impulses. The helper does not itself enforce scheduling or
 select replay behavior. Its eventual native installation is CUSTOM1-gated.
 
-Native RNG mode 0 reads VBL-derived longs at hunk 2 +0014/+0018; mode 1
-reads the authoritative player tick. Deferred consumption must use the
-correct deadline's RNG inputs rather than the VBL values at a later render
-batch. The current history records do not yet retain those two longs,
-and the world adapter has not solved that hand-off. Matching RNG under
-frozen inputs is not proof of render-independent live RNG.
+Native RNG mode 0 reads input-event timestamp longs at hunk 2 +0014/+0018;
+mode 1 reads the authoritative player tick. Native +0E8A/+0E92 copy the
+InputEvent seconds/microseconds into those locations; these are not VBL
+counters. Each field record now retains both raw longs at offsets 32/36.
+Deferred consumption must use the deadline record's values rather than
+those of a later input event. The world adapter must still bind these
+recorded values without overwriting producer-owned live input state.
+Matching RNG under frozen inputs is not proof of render-independent live RNG.
+
+The expanded records pass 457 native-adapter cases and 132 instruction-boundary
+history interruptions. The composed field pipeline checks the timestamp bytes
+on every delivery and includes them in every world-deadline observation:
+240 fields at each of 50/60 Hz produce identical observations for batches of
+1, 3, 10 and 25. This validates transport, not native RNG binding or live
+interrupt timing. Existing live captures used the older diagnostic layout;
+the updated capture reader expects `GSIH0002` and the full 5,140-byte history.
 
 `test_world_impulses_c.py` passes 3,840 native comparisons over both RNG
 modes, damage combinations, ground/low/high altitude, signed speed
@@ -1252,7 +1264,7 @@ must remain behind the CUSTOM1 Enhanced framerate gate.
 
 The ignored development harness assembles both includes into a standalone
 68000 hunk and executes their real instructions with Unicorn.
-`tmp/dev/tools/test_timing_cores.py` exercised 112,781 calls: PAL/NTSC
+`tmp/dev/tools/test_timing_cores.py` exercised 112,847 calls: PAL/NTSC
 deadlines over two minutes, field and cursor wrap, invalid configuration,
 gaps, pause/rebase accounting, full-ring preservation and random FIFO
 traffic. Composition tests consuming 600 fields in render batches of
@@ -1261,9 +1273,9 @@ Non-result registers and stack/return behaviour were checked.
 
 `tmp/dev/tools/test_history_preemption.py` additionally interrupts the real
 consumer at every instruction boundary, runs the producer, restores the
-interrupted CPU state and resumes the consumer. All 120 cases pass at
+interrupted CPU state and resumes the consumer. All 132 cases pass at
 occupancies 0, 1, 127 and 128: no torn record, premature slot release or
-overwrite of unread data. Two full-ring interleavings return a valid copied
+overwrite of unread data. One full-ring interleaving returns a valid copied
 record alongside a newly latched fault, confirming that the coordinator
 must not treat a successful pop as proof of an unfaulted interval.
 

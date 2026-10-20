@@ -76,7 +76,7 @@ scheduler_begin:
 	movem.l (sp)+,d2/a1
 	rts
 
-; a1=private 32-byte field output. Return 1 field delivered, 0 batch drained,
+; a1=private TH_RECORD_SIZE-byte field output. Return 1 field delivered, 0 batch drained,
 ; -2 budget reached (caller must handle excess explicitly), -1 fault/inactive,
 ; -3 previous field/world not acknowledged. Never skip a deadline.
 scheduler_next:

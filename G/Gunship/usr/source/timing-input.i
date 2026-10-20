@@ -90,6 +90,8 @@ timing_input_field:
 	move.l $08(a0),TR_X(a1)
 	move.l $0c(a0),TR_Y(a1)
 	move.l $10(a0),TR_BUTTONS(a1)
+	move.l $14(a0),TR_RNG_SECONDS(a1)
+	move.l $18(a0),TR_RNG_MICROS(a1)
 	move.l $2a(a0),TR_RELATIVE(a1)
 	move.l 24(a2),TR_COMMAND(a1)
 	movea.l 8(a2),a0
@@ -211,7 +213,7 @@ timing_input_fire:
 
 	even
 timing_input_marker:
-	dc.b "GSIH0001"
+	dc.b "GSIH0002"
 	dc.l 0,0,0,0             ; hunk0, hunk2, history, sample
 	dc.l 0,0,0               ; accepted command sequence, raw x/y
 	dc.w 0,0                 ; native fire edges, diagnostic arm request

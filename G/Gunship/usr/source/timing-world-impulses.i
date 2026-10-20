@@ -5,7 +5,7 @@
 ; Does not apply impulses or mutate the player. Call ONCE per world tick,
 ; after native clock/input setup, before applying that boundary's motion.
 ; Eligibility fields are unchanged by attitude and stage-0 arithmetic.
-; Caller owns RNG mode/VBL inputs and serialization with all other RNG users.
+; Caller owns RNG mode/input-event timestamp and serialization with all other RNG users.
 world_motion_impulses:
 	movem.l d1-d7/a0-a6,-(sp)
 	movea.l a0,a5

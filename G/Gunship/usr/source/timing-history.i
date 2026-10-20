@@ -16,12 +16,13 @@ TH_DISCARDED  = 12              ; unread records discarded at rebase
 TH_LAST       = 16              ; last published field stamp
 TH_RECORDS    = 20
 TH_CAPACITY   = 128             ; power of two; full capacity is usable
-TH_RECORD_SIZE = 32
+TH_RECORD_SIZE = 40
 TH_SIZE       = TH_RECORDS+TH_CAPACITY*TH_RECORD_SIZE
 
 ; Record: field.l; native directional x.l/y.l; held buttons.l;
 ; native relative accumulator x.w/y.w; command sequence.l;
-; input mode.w; raw relative delta x.w/y.w; edge mask.w.
+; input mode.w; raw relative delta x.w/y.w; edge mask.w;
+; native RNG input-event timestamp seconds.l/microseconds.l.
 TR_FIELD      = 0
 TR_X          = 4
 TR_Y          = 8
@@ -32,6 +33,8 @@ TR_MODE       = 24
 TR_DX         = 26
 TR_DY         = 28
 TR_EDGES      = 30
+TR_RNG_SECONDS = 32
+TR_RNG_MICROS  = 36
 
 ; a0=state, d0=epoch preceding first field. Does not clear unused record bytes.
 history_init:
@@ -44,7 +47,7 @@ history_init:
 	moveq #0,d0
 	rts
 
-; a0=state, a1=complete 32-byte sample. Return 1 published, 0 inactive,
+; a0=state, a1=complete TH_RECORD_SIZE-byte sample. Return 1 published, 0 inactive,
 ; -1 rejected. Preserve every register except d0/CCR.
 ; On overflow or a stamp gap, preserve ALL unread data and latch the fault.
 ; Every subsequent active producer call counts another lost record until rebase.
@@ -65,10 +68,10 @@ history_publish:
 	moveq #0,d1
 	move.w TH_WRITE(a0),d1
 	andi.w #TH_CAPACITY-1,d1
-	lsl.w #5,d1
+	mulu.w #TH_RECORD_SIZE,d1
 	lea TH_RECORDS(a0),a2
 	adda.w d1,a2
-	moveq #7,d2
+	moveq #TH_RECORD_SIZE/4-1,d2
 .copy:
 	move.l (a1)+,(a2)+
 	dbf d2,.copy
@@ -102,10 +105,10 @@ history_pop:
 	cmp.w TH_WRITE(a0),d1
 	beq .none
 	andi.w #TH_CAPACITY-1,d1
-	lsl.w #5,d1
+	mulu.w #TH_RECORD_SIZE,d1
 	lea TH_RECORDS(a0),a2
 	adda.w d1,a2
-	moveq #7,d2
+	moveq #TH_RECORD_SIZE/4-1,d2
 .copy:
 	move.l (a2)+,(a1)+
 	dbf d2,.copy
