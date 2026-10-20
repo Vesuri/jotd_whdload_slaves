@@ -1,3 +1,34 @@
+## Current runtime profile and rejected lane insertion copy
+
+Fresh normal-runtime profiles `c-current-lane-cache-profile` and
+`c-current-lane-nocache-profile` cover live fields 100–600 using the integrated
+19,296-byte lane-scan runtime. Flat instruction totals are 18,161,919,360 and
+18,163,662,464 profiler units. The lane insertion routine `$8db0a..$8db31`
+accounts for 0.7621% cached / 0.9804% uncached, with 10,168 / 10,148 entries.
+Nearby lane steering `$8db40..$8dbb1` accounts for 0.5333% / 0.5605%.
+These are flat costs, not inclusive call costs or physical-hardware results.
+The larger costs remain spread across drawing, simulation and hardware polling;
+for example the `$aec00` bucket includes the required vsync poll and must not
+be treated as removable computation.
+
+Private `c-lane-insert-source` replaces the auxiliary copy's existing native
+lane-insertion jump stub with a Fast RAM helper. It reproduces the 40-byte native
+routine, changing only its two PC-relative table LEAs to absolute aliases of
+the same mutable tables. Register saves, counter increment, actor ID write and
+index arithmetic remain unchanged. The original native entry is not patched;
+the helper is reachable only through the already gated auxiliary copy.
+Padding preserves 256-byte overall growth. The matched control retains the
+same helper and padding but routes the original stub to native code.
+
+Both normal variants are 19,552 bytes. `c-lane-insert-matrix` measures 11.4 fps
+cached and 8.3 fps uncached; `c-lane-insert-control-matrix` measures 12.0 and
+8.3 respectively. Cached distance is 3,318,164 in the copy versus 3,308,406 in
+the control; both uncached distances are 3,308,406. Functional matrix checks
+pass, but the helper offers no measured uncached gain and regresses cached
+throughput. It is not integrated. Source patches, binaries and provenance are
+retained in the build/test directories. No broader equivalence or release
+matrix is claimed for this rejected performance candidate.
+
 ## State-age presentation prediction has no demonstrated response benefit
 
 Private `c-pose-state-age-source` adds `render_start_field - simulation_cursor`
