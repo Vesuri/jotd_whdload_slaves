@@ -22,14 +22,14 @@ automatically a passing test of this binary.
 | C2c: original safe handoff, no extra pacing | Normal patch list retains the native swap without B's floor/clamp. Historical beam/record trace demonstrates one-field handoff when drawing is omitted. Full-render throughput is not evidence of a limiter; replacing B's safeguards is not fully validated until the other regression requirements pass. |
 | C2d: CPU/Fast selection and fallback | Current normal off/Chip-only probes retain original enhanced-hook instructions; current A500 distance and final state match B exactly. The boolean is off by default and gates all runtime enhancements. |
 | C3a: explicit cadence replay | Fresh current-model checks below match at observed 1/2/3/4 and varying intervals; one-field cadence requires diagnostic drawing omission. Current finish/arrest and equivalent wreck builds additionally prove full-race varying/longer cadence replay. |
-| C3b: A2/A4, controls, demos, transitions and latency | Current normal CD32, fallback and latency tests exist, with current-model full-race transition coverage. Keyboard and both demo-exit tests predate integration and need refreshing. A4 live-field distance, full opponent order and screenshot review remain unresolved. Equal-duration diagnostic distance accounting does not replace A4's fixed-live-field gate. |
-| C3c: hardware throughput and simulation cost | Current normal cached 020/030/040/060 plus A500 and integrated MMU checks exist. The older complete 13-cell matrix and physics profile predate steering integration; refresh missing cells and cost measurements. Current cached throughput is 10.0/12.5/16.6/18.5 fps and remains below B. |
+| C3b: A2/A4, controls, demos, transitions and latency | Current normal keyboard/CD32, both demo exits, fallback and latency tests exist, with current-model full-race transition coverage. A4 live-field distance, full opponent order and screenshot review remain unresolved. Equal-duration diagnostic distance accounting does not replace A4's fixed-live-field gate. |
+| C3c: hardware throughput and simulation cost | All 11 normal hardware cells now have current-binary results, plus the integrated 040/060 MMU checks. The current normal cached-020 physics profile is refreshed below. Cached throughput is 10.0/12.5/16.6/18.5 fps and remains below B; optimization and its validation remain open. |
 
 C remains incomplete. D–F are expected to provide further rendering speedups;
 that expectation does not waive C's original-behavior, latency or verification
-requirements. The next validation work is the missing current-build control/demo
-and hardware checks. The distance/handling
-and response regressions require resolution rather than a renamed baseline.
+requirements. Current-build control/demo and hardware checks are now complete
+at their stated scopes. The next work must address the distance/handling,
+throughput and response regressions rather than rename the baseline.
 
 ### Fresh explicit-cadence replay
 
@@ -63,6 +63,69 @@ populated rather than treating the live counter as a publication marker.
 The retained `c-audit-varying/comparison.json` records ranges, histograms and
 binary hashes. These tests close the explicit short-tape cadence coverage gap;
 they do not close the B-reference regressions above.
+
+### Current normal keyboard and demo transitions
+
+`c-audit-keyboard` runs the normal binary on the cached, cycle-exact 020 setup.
+Joystick steering reaches 798 at active field 120 and returns to zero after
+release at field 160. Keyboard pause holds the active clock at 161 through
+the additional paused interval; keyboard resume advances it to 180. The Fast
+RAM stack guards remain intact, with 276 bytes of observed use. The slave
+copied into the runtime directory matches the audited SHA above.
+
+`c-audit-demo-fire` and `c-audit-demo-timeout` use the same normal binary on the
+functional-speed 020 setup. Both show demo position advancing at fields
+163/263/363/463. Fire exits the first demo at field 566. The unattended demo
+exits at field 3,598, preserving the native 3,600-count timeout with its
+initial two-count offset. Both clear the active race hook on exit, then start
+a human-controlled race at field 100 with demo mode cleared, lateral position
+160 and speed zero. Screenshots were inspected and show the normal race start
+after both exits. Stack guards remain intact, with observed use of 216 and
+232 bytes respectively.
+
+These checks refresh the previously historical keyboard and demo evidence.
+They are functional transition checks, not a new original-behavior distance,
+handling or latency result.
+
+### Complete current normal hardware matrix and refreshed profile
+
+`c-audit-matrix-remaining` adds the six missing normal configurations to
+`c-steering-runtime-matrix`. All 11 runs use the audited normal-binary SHA.
+The table compares actual normal binaries against `b-final-normal-on`, avoiding
+instrumentation differences in the older diagnostic matrix.
+
+| Configuration | B fps | C fps | Fixed-live-field distance change |
+|---|---:|---:|---:|
+| A500 1 MB Chip | 8.5 | 8.5 | 0.000% |
+| A1200 Chip only | 12.5 | 12.5 | 0.000% |
+| A1200 Fast | 12.5 | 5.0 | -1.373% |
+| A1200 Fast + Cache | 16.6 | 10.0 | -1.180% |
+| A1200 Fast + NoCache | 12.5 | 5.0 | -1.373% |
+| 030/50 | 13.3 | 7.5 | -0.192% |
+| 030/50 + Cache | 16.6 | 12.5 | -0.988% |
+| 040/25 | 22.6 | 16.6 | -0.836% |
+| 040/25 + Cache | 22.6 | 16.6 | -0.836% |
+| 060/50 | 23.2 | 18.5 | -1.105% |
+| 060/50 + Cache | 23.2 | 18.5 | -1.105% |
+
+Every cell completes the measurement window. A500 and Chip-only A1200 also
+match B's initial, field-590 and final state hashes exactly. Five accelerated
+cells exceed A4's 1% distance tolerance; none of the accelerated cells improves
+on B's throughput. Passing boot/race checks must not be reported as passing
+those regression gates. The existing current integrated 040/060 MMU results
+remain functional checks with translation enabled, not hardware speed claims.
+The retained `comparison.json` records each normal result path and both distances.
+
+`c-audit-runtime-profile` refreshes the actual normal cached-020 flat profile
+over active fields 100–600. Native physics/AI addresses `$8b486..$8eff7`
+account for 31.165% of recorded units. The largest 256-byte blocks remain
+`$8d900` (2.006% of all units), `$8d300` (1.934%), `$8b500` (1.726%),
+`$8bc00` (1.617%) and `$8c800` (1.604%). This range excludes relocated slave
+helpers and is not the entire inclusive simulation cost. The distribution
+still shows substantial work spread across physics and AI; it does not
+justify repeating the already rejected AI relocation/invariant-read changes.
+Flat emulator units and the 040/060 timing limitations retain the qualifications
+documented in the earlier profile sections.
 
 ## Existing boundaries and ownership
 
