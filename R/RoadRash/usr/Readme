@@ -31,14 +31,14 @@
  Version 2.1 beta (20.10.2026):
  - fixed idle joystick steering recentring and keyboard/CD32 pause handling
  - wait for screen DMA before loading files, fixing the uncached 68030 crash
- - optional field-timed roadside animation (CUSTOM2 bit 0, value 1)
- - optional safe timing (CUSTOM2 bit 1, value 2): at most 25 frames per second,
-   with simulation steps limited to 8 fields after a delay
- - use CUSTOM2=3 for both options; CUSTOM2=0 retains original timing
+ - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
+ - enables field-timed roadside animation and safe timing together: currently
+   at most 25 frames per second, with steps limited to 8 fields after a delay
+ - CUSTOM2=0 (or omitted) retains original timing
  - 50 fps simulation is not enabled by safe timing: small-step testing found
    distance and collision differences. Faster rendering can still change collision
    timing and opponent order; this is not a fixed-step simulation rewrite.
- - input and loading fixes remain active with both timing options disabled
+ - input and loading fixes remain active with Enhanced framerate disabled
 
  Version 2.0 (18.08.2019) done by JOTD:
  - adapted to whdload v17

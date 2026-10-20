@@ -519,8 +519,11 @@ dictate the accelerated path's timestep.
 
 ### G. Integration and release
 - **G1 Options and defaults.**
-  - G1a Map the new behaviour to `CUSTOM` bits: simulation timing (C), caches (D1),
-    `BLTPRI` (D2), public-RAM relocation (D3), queue (E2); CUSTOM1 stays the password.
+  - G1a Keep every framerate enhancement behind the single `CUSTOM2` boolean
+    "Enhanced framerate": simulation timing (C), caches (D1), `BLTPRI` (D2),
+    public-RAM relocation (D3), queue (E2), and CPU optimizations (F).
+    Off retains original timing/rendering; CUSTOM1 stays the password.
+    Hardware selection occurs within the enabled path, not as extra user toggles.
   - G1b Pick per-CPU defaults from the A2 matrix: no change on the 68000 unless it is
     faster.
 - **G2 Verification set.** One pass per change: A4 equivalence, an A2 matrix row, the B1
@@ -651,9 +654,12 @@ B3 makes spectator/roadside phase field-based. B4 tests the small-step limit and
 provides an opt-in safety floor and ceiling. B5 finds no active gate/drain throttling
 in the tested baseline and 25 fps crash scenarios.
 
-Options in this beta: `CUSTOM2=0` retains original timing, `1` selects field-based
-animation, `2` selects safe timing, and `3` selects both. The input/loading fixes are
-unconditional. Safe timing permits at most 25 fps and limits a delayed simulation
+The current user-facing option is the boolean **Enhanced framerate** (`CUSTOM2`):
+omitted or `0` retains original timing; `1` enables the framerate enhancements.
+The normal beta currently enables B3 and B4 together. Diagnostic C builds select
+the independent simulation instead, without applying B's floor/clamp on top.
+The older bit-0/bit-1 options documented in B's historical results are superseded.
+Input/loading correctness fixes remain unconditional. Safe timing permits at most 25 fps and limits a delayed simulation
 step to eight fields. It does not make the game fixed-step or guarantee the same
 collision outcomes across frame rates. C–G remain open; no default timing or release
 packaging decision is made here.

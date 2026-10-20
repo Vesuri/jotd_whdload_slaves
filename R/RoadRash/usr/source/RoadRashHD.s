@@ -71,8 +71,7 @@ _config
 	dc.b	"C1:L:password:none,level 1 Diablo 1000 big money,Millions of dollars and level 4,"
 	dc.b	"PANDA 600,BANZAI 750,KAMIKAZE 750,SHURIKEN 1000,FERRUCI 850,PANDA 750,DIABLO 1000;"
 	
-	dc.b	"C2:X:Field-timed roadside animation:0;"
-	dc.b	"C2:X:Safe timing (25 fps maximum and bounded steps):1;"
+	dc.b	"C2:B:Enhanced framerate;"
 	dc.b	0
 	EVEN
 	include	ReadJoyPad.s
@@ -261,10 +260,16 @@ pl_messages_main
 
 	PL_NEXT	pl_main
 	
-pl_main
-	PL_START
 	IFD VERIFY
 	IFD VERIFY_C_STEP
+C_STEP_BUILD = 1
+	ENDC
+	ENDC
+
+pl_main
+	PL_START
+	PL_IFC2
+	IFD C_STEP_BUILD
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
 	IFD STEP_EXTRAPOLATE
@@ -290,14 +295,11 @@ pl_main
 	PL_NOP	$28C7C,$28C94-$28C7C
 	PL_NOP	$28C9A,$28CBC-$28C9A
 	PL_PSS	$28C4C,step_reset,4
-	ENDC
-	ENDC
-	PL_IFC2X 1
+	ELSE
 	PL_PS	$7736,safe_swap
 	PL_PS	$6FA0,bound_delta
-	PL_ENDIF
-	PL_IFC2X 0
 	PL_PS	$9D32,field_animation
+	ENDC
 	PL_ENDIF
 	IFD VERIFY
 	PL_PS	$6FE0,verify_field
@@ -306,12 +308,14 @@ pl_main
 	PL_PS	$75BC,verify_b_gate
 	PL_PS	$AFF0,verify_b_drain
 	ENDC
+	PL_IFC2
 	IFD VERIFY_SKIP_RENDER
 	PL_NOP	$7730,6
 	ENDC
 	IFD VERIFY_FRAME_PERIOD
 	PL_PS	$7736,verify_pace
 	ENDC
+	PL_ENDIF
 	IFD VERIFY_C_AUDIT
 	PL_PSS	$747E,verify_c_sim_begin,2
 	PL_PS	$75B6,verify_c_render_begin
@@ -718,7 +722,7 @@ _tags
 		dc.l	WHDLTAG_CUSTOM1_GET
 _password		dc.l	0
 	dc.l	WHDLTAG_CUSTOM2_GET
-_timing	dc.l	0
+_enhanced_framerate	dc.l	0
 	IFD VERIFY
 	dc.l	WHDLTAG_ATTNFLAGS_GET
 verify_attn	dc.l	0

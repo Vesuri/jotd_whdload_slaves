@@ -161,7 +161,7 @@ contain no audit hooks or storage and remain byte-identical to the final B build
 ## Fixed-step diagnostic checkpoint
 
 `VERIFY` plus `VERIFY_C_STEP` enables `verify_c_step.s`; it is not a runtime
-feature. Use `CUSTOM2=0` and a first-race functional run, without `VERIFY_C_AUDIT`.
+feature. Use `CUSTOM2=1` (Enhanced framerate) and a first-race functional run, without `VERIFY_C_AUDIT`.
 `STEP_FIELDS` defaults to four and `STEP_CAPTURE` to simulation field 601.
 The `RRCSTEP1` block records the consumed field (+8), step count (+12), captured
 field (+16), quantum (+20), then a frozen `$a5900..$a873f` snapshot (+24).
@@ -365,3 +365,14 @@ first presses fire after 1,000 boot fields, then waits for the demo.
 the native 3,600-count limit with the observed initial two-count offset, then
 starts a normal race. Cleanup clears the demo timer, so the timeout check uses
 elapsed fields rather than expecting its post-exit value to remain 3,600.
+
+All C simulation patches now require the boolean `CUSTOM2=1` (Enhanced framerate).
+Earlier experiments using `CUSTOM2=0` predate this master switch. With it off,
+normal and C diagnostic builds retain original timing; instrumentation may still
+observe execution. Future C–F optimizations must obey the same switch.
+The `toggle-normal-off/on` and `toggle-step-off/on` boot checks inspect the
+simulation entry, delta latch, animation, swap and input-dispatch instructions.
+Both off builds retain the original instructions at all five sites. The enabled
+normal build installs B's patches; the enabled C build installs C's patches and
+keeps the original swap without B's extra floor. `toggle-step-replay` matches
+all 1,598 actor hashes from the pre-switch human-input replay.

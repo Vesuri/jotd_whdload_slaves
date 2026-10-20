@@ -1,5 +1,5 @@
 ; Diagnostic C proof, enabled only by VERIFY + VERIFY_C_STEP.
-; First-race, CUSTOM2=0 functional experiments only. Not a runtime option.
+; Diagnostic experiments require CUSTOM2=1 (Enhanced framerate).
 ; STEP_FIELDS=1 (50 Hz PAL) is the primary candidate. STEP_EXTRAPOLATE is
 ; an optional experiment for larger diagnostic quanta, never a frame-rate mode.
 ; No overflow recovery or complete
