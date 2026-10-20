@@ -770,7 +770,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     804 native next poses without RNG, damage or gameplay writes. Scripted
     translation now has a generation-certified runtime snapshot and bounded
     renderer-only publication (37 PAL/NTSC fixture views). Complete writer
-    coverage, orientation and live raster/visual/cost checks remain open.
+    coverage and live raster/visual/cost checks remain open. Renderer-only
+    heading now uses the same certified interval; three gated native load
+    hooks preserve committed-raster reads (2,560 register/CCR comparisons).
     A separate private forecast now recomputes the
     native steering mode and countdown: 180 prefix-plus-body comparisons
     match, and 44 unresolved modal transitions reject without world writes.

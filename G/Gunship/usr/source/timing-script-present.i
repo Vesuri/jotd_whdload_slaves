@@ -1,4 +1,4 @@
-; Serialized world snapshot for renderer-only index-5 translation.
+; Serialized world snapshot for renderer-only index-5 pose.
 ; Lifecycle owners invalidate SPC_VALID when resetting generation counters.
 SPC_PLAYER equ 0
 SPC_GENERATION equ 4
@@ -7,8 +7,8 @@ SPC_TICK equ 10
 SPC_PHASE equ 14
 SPC_VALID equ 16
 SPC_CURRENT equ 18 ; split XYZ, heading and both metadata bytes (9 bytes)
-SPC_NEXT equ 28 ; packed XYZ words
-SPC_SIZE equ 34
+SPC_NEXT equ 28 ; packed XYZ words and heading byte
+SPC_SIZE equ 36
 
 ; a0=SH,a1=prepared SP,a2=generation record,a3=P,a4=stable bitmap,
 ; a5=two palette bytes,d0=tick,d1=world phase0..2. Return 1/0, -3 bad phase.
@@ -42,7 +42,7 @@ script_present_capture:
  lea SP_PLAYER(a0),a1
  lea script_present_offsets(pc),a0
  lea SPC_NEXT(a6),a2
- moveq #5,d2
+ moveq #6,d2
 .next:
  move.w (a0)+,d3
  move.b 0(a1,d3.w),(a2)+
@@ -58,7 +58,7 @@ script_present_capture:
  movem.l (sp)+,d1-d7/a0-a6
  rts
 
-; a0=SH,a1=current generation record,a2=private six-byte XYZ output,
+; a0=SH,a1=current generation record,a2=private seven-byte XYZ/heading output,
 ; a3=current P,d0=tick,d1=phase,d2=50/60. Invalid clock writes nothing.
 ; Return 1 predicted,0 committed,-3 invalid. Never reads bitmap pixels.
 script_present_build:
@@ -73,7 +73,7 @@ script_present_build:
  movea.l a0,a6
  movea.l a2,a4
  lea script_present_offsets(pc),a0
- moveq #5,d3
+ moveq #6,d3
 .seed:
  move.w (a0)+,d4
  move.b 0(a3,d4.w),(a2)+
@@ -130,6 +130,20 @@ script_present_build:
  add.w (a0)+,d0
  move.w d0,(a4)+
  dbf d4,.axis
+ ; Heading uses the shortest signed byte arc, including wrap at 255/0.
+ move.b SPC_NEXT+6(a6),d0
+ sub.b SPC_CURRENT+6(a6),d0
+ ext.w d0
+ muls.w d3,d0
+ divs.w d2,d0
+ move.l d0,d1
+ swap d1
+ tst.w d1
+ bpl .heading_rounded
+ subq.w #1,d0
+.heading_rounded:
+ add.b SPC_CURRENT+6(a6),d0
+ move.b d0,(a4)
  moveq #1,d0
  bra .done
 .stale:

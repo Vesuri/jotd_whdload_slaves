@@ -99,7 +99,7 @@ timing_runtime_present_state:
  bsr scene_state_build
  lea RT_SCRIPT_PRESENT(a6),a0
  lea RT_SCRIPT_GENERATION(a6),a1
- lea RT_PRESENT_SCENE+48(a6),a2
+ lea RT_SCRIPT_POSE(a6),a2
  lea $3b88(a5),a3
  move.l RT_CLOCK+TC_TICKS(a6),d0
  moveq #0,d1
@@ -109,6 +109,8 @@ timing_runtime_present_state:
  bsr script_present_build
  tst.l d0
  bmi .done
+ move.l RT_SCRIPT_POSE(a6),RT_PRESENT_SCENE+48(a6)
+ move.w RT_SCRIPT_POSE+4(a6),RT_PRESENT_SCENE+52(a6)
  ; Reset capture before any native presentation publication. The frame uses
  ; this committed identity, while projected coordinates come from rendering.
  lea RT_VIEW(a6),a0

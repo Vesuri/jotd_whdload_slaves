@@ -4912,12 +4912,12 @@ builds assemble successfully.
 
 ### Scripted translation snapshot and renderer publication (C6)
 
-`timing-script-present.i` adds a 34-byte cache for index 5. Capture takes the
+`timing-script-present.i` adds a 36-byte cache for index 5. Capture takes the
 completed world's generation/exhaustion, tick/remainder, split XYZ, heading
 and both metadata bytes, then runs the private native forecast against an
 explicit stable bitmap and palette. Unknown terrain, inactivity, exhausted
 identity and unresolved modal transitions produce no valid forecast. The
-snapshot contains only the candidate XYZ needed for fractional presentation.
+snapshot contains the candidate XYZ and heading needed for fractional presentation.
 
 The existing post-world actor callback now captures this snapshot after the
 native world body completes. The target raster owner records its bitmap
@@ -4929,19 +4929,18 @@ cannot alter the cached trajectory. Foreground serialization still excludes
 rendering/swaps throughout world work; this does not certify arbitrary native
 UI drawing as a committed terrain pass.
 
-Rendering seeds six bytes from the current authoritative split coordinates.
+Rendering seeds XYZ and heading from the current authoritative split record.
 Only a matching tick, generation, nonexhausted identity, current XYZ/heading/
 metadata and consistent clock fraction can replace them with the bounded
 forward pose. Signed wrapped-word displacement uses floor rounding, over the
 remaining 17/17/16 PAL or 20 NTSC fields. Publication replaces only the final
 six bytes of the private scene before copying native renderer inputs. It
 never writes the authoritative split arrays or a predicted collision/AI pose.
-Heading still comes from the native committed byte: orientation presentation
-and its renderer ownership remain open.
+Heading publication and its renderer ownership are described below.
 
 Activation clears the cache validity and raster binding, rather than sampling
-a menu or previous lifecycle's bitmap. The arena is now 33,690 bytes; the
-script cache and preview start at 0x7EB6 and 0x7EDC, still reachable with signed
+a menu or previous lifecycle's bitmap. The arena is now 33,700 bytes; the
+script cache and preview start at 0x7EB6 and 0x7EE6, still reachable with signed
 68000 displacements. Preview internals use its own base, and activation reset
 ranges remain below that displacement limit.
 
@@ -4957,3 +4956,42 @@ The existing 600-field actor, 1,056-field guided release and 240-field activatio
 fixtures pass. Ordinary, runtime, VERIFY/runtime and input/runtime assemble.
 Live scripted raster/visual/cost checks, complete writer/ground-object inventory
 and native flight-loop activation remain open; C is not complete.
+
+
+### Renderer-only scripted heading (C6)
+
+The native renderer reads the index-5 heading byte at h6+3CE3 in three
+places: +05D20 constructs premultiplied rotation tables, while +068A2 and
++068D2 rotate coordinates for the plane calculation. These reads also occur
+in the committed raster path. They cannot unconditionally read a predicted
+byte, and borrowing the authoritative player byte would expose predicted
+orientation to world geometry.
+
+The snapshot now retains the forecast heading as well as XYZ. Its builder
+returns seven private bytes, advancing the shortest signed byte-angle delta
+with the same bounded fraction and negative floor rounding as translation.
+An exact half-turn takes the -128 direction. Invalidation seeds the current
+native heading. Runtime publication keeps the seven-byte result in private
+pose scratch and copies only XYZ into native scene coordinate destinations.
+
+`timing-live-script-heading.i` validates all eighteen original instruction
+bytes, including their relocated address operands, before installing three
+CUSTOM1-only call patches. The two replacement byte-load helpers preserve
+all registers except the original destination byte and reproduce the original
+NZVC while preserving X. No privileged status-register instruction is used.
+Only READY, normal enhanced ownership, no retained boundary, an admitted
+presentation phase and no active world raster permit the private heading.
+All other contexts read the original native byte. The private world geometry
+copy is prepared before these live hooks and retains its native reads.
+
+`test_script_heading_fraction_c.py` checks 10,752 heading fractions across
+all 256 signed byte deltas, seven wrap-sensitive start angles and both rates.
+`test_script_heading_c.py` checks 2,560 exact register/CCR cases across the
+two destination registers, eight ownership states, five byte values and all
+32 incoming CCR combinations. It verifies every patch-table target, all
+eighteen signature corruptions, CUSTOM1-off bypass and invalid READY.
+No player writes occur. Runtime scripted publication still passes 37 views
+with predicted heading checks; 256 native and 256 fractional camera/scene
+comparisons pass. All build variants assemble. Live visual orientation,
+committed-raster interaction and cost still require acceptance; this does
+not activate the native flight loop or complete C.
