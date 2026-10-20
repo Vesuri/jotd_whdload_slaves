@@ -113,9 +113,13 @@ verify_stats:
 verify_pace:
 	cmpi.b	#VERIFY_FRAME_PERIOD-1,$aec0c
 	bcs.b	verify_pace
-	btst	#1,_timing+3(pc)
+	IFND C_STEP_BUILD
+	movem.l	d0,-(a7)
+	move.l	_enhanced_framerate(pc),d0
+	movem.l	(a7)+,d0             ; retain MOVE's zero flag
 	beq.b	.original
 	bra	safe_swap
+	ENDC
 .original:
 	jmp	$aecba
 	ENDC
