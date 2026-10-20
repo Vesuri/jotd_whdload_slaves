@@ -57,10 +57,22 @@ window of step 4 on the named machine; no claim without a measurement.
 - Reproducible flight: "start action mode" (C4 bit 4) plus a recorded input tape.
 - Exit: two boots give the same screenshots and game state at the same frame.
 
+Harness evidence: `tmp/dev/docs/replay-flight.md`. The recorded action flight gives
+identical screenshots at four swap checkpoints on 020, 030 + FPU, 040 and 060.
+040/060 also reproduce all captured game-hunk bytes. On 020/030, five absolute timer
+values differ by one vblank; translating the clock origin makes every captured byte
+equal. The strict raw-state exit remains open on those two configurations. The
+harness reports raw and clock-relative equality separately; neither hides differences.
+
 ### 3. Frame counter
 
-- Count page swaps through `@ThreeScreenSwap` (pointer already located for `tfx.020`,
-  `$3f99e`) and vblanks; log per frame.
+- Count the actual presentation path and vblanks; log per frame. The default renderer
+  patches `tfx.020:$019fc` to `do_swap_screen`, which calls `_SetPage`/`_SetLogbase`
+  directly. It bypasses `@ThreeScreenSwap` (`$3f99e`), so that routine alone is not a
+  counter for the default path. Validate the swap-call checkpoint against publication.
+- Obtain a full instruction trace from a backend and PC window that cover the loaded
+  code. The current native 040 MMU captures contain screenshots/DMA but no instruction
+  records, and the default 24-bit profiler window excludes the harness's Z3 code.
 - Exit: counter agrees with a full trace over the fixed window.
 
 ### 4. Baseline matrix
