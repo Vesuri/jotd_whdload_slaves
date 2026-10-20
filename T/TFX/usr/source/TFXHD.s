@@ -2725,6 +2725,8 @@ pl_fpu_new
         PL_GA   $6f4a2,_sprogtab_ptr
         PL_GA   $4d85e,WaitingForVsync_ptr
 
+        PL_W    $4e080,$6024 ; Avoid double missile fire from joystick press
+
         ; Fix sorting when number of objects is at max (same arrays as TFX).
         PL_PSS  $5efbe,do_sort,26
         PL_PSS  $5f03e,do_sort,8
