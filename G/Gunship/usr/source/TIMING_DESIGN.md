@@ -2175,3 +2175,51 @@ this transition's field order and slot identity, alongside constructors and
 world updates; copying a later eligibility mask over world state is not a
 validated solution. This is an outstanding C3/C4h/C7 ownership obligation,
 not covered by the standalone weapon clone or its private fire flags.
+
+### Field-owned guidance progression and render-independent handshake
+
+The release audit found a second dependency: +0A1C8's pending-display byte
+(hunk 0 +0C757) is cleared by the screen-swap routine at +044CA. It waits on
+this flag both when starting the guidance sequence and when completing state
+30/31. Merely replaying the VBL routine while retaining that live flag would
+still make projectile release/completion depend on render frequency.
+
+`timing-field-guidance.i` extracts +0A1C8..+0A2F0 and removes its four display
+calls (one +0A35A reset and three +0A2F0 sprite updates). Native phase,
+activation, hidden-view, guided-slot and eligibility writes remain intact.
+All four reads/writes of the pending-display byte are redirected to a private
+byte; real screen swaps cannot acknowledge this private state. The caller must
+exclude the original VBL state owner when installing the replay path and
+rebuild presentation separately. Skipping these display calls is not itself a
+complete visual implementation.
+
+Chosen hybrid policy: `field_guidance_advance` acknowledges the previous
+field's request at the beginning of the next active delivered field, then runs
+the native progression. This matches the earliest native one-field screen-swap
+handshake and removes delays caused by slow rendering. It intentionally does
+not preserve render-dependent waits. Constructors, this field step and world
+updates must execute in chronological order, so the release uses the guided
+slot that actually exists at that field. Slot-generation/presentation identity
+and full scheduler/lifecycle binding are still required.
+
+`field_guidance_prepare` takes hunk 0, an even clone, hunk 4 and the private
+pending-byte address in a0/a1/a2/a3. It validates callback and pending-byte
+access boundaries before writing; `FG_SIZE` is 308 bytes. The caller owns
+initialization, nonoverlap and cache flushing. `field_guidance_step` is the
+native-equivalence entry, preserving the caller-supplied pending value.
+`field_guidance_advance` is the hybrid entry. Both take the clone in a0, preserve
+non-result registers, return 1 if state was evaluated or 0 if inactive, and
+apply the native quit-zero/enabled-nonzero gate. Inactive calls do not acknowledge
+pending state. Neither entry acknowledges the scheduler or performs drawing.
+
+`tmp/dev/tools/test_field_guidance_c.py` passes 512 native state comparisons
+across phase boundaries, pending/hidden/view combinations and guided-slot
+values, plus three inactive cases. Reference graphics callbacks are stubbed;
+the comparison covers all state writes, with no writes outside the inventoried
+state/private byte/stack. Private pending state is independent of native byte
+55. Another 220 ordered fields cover slot replacement and release timing with
+batches 1/3/10/25. A 72-field hybrid run exactly matches a reference that
+acknowledges the native flag before each active field; arbitrary real swap-flag
+values do not affect it. Nineteen corrupted patch boundaries reject before
+writes (827 helper calls). Installation, graphics reconstruction and complete
+weapon/scheduler composition remain pending behind the CUSTOM1 gate.
