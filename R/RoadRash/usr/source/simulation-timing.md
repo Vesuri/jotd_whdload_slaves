@@ -127,6 +127,58 @@ justify repeating the already rejected AI relocation/invariant-read changes.
 Flat emulator units and the 040/060 timing limitations retain the qualifications
 documented in the earlier profile sections.
 
+### Distance regression: gear thresholds and road-centre rounding
+
+`b-audit-distance-dynamics` / `c-audit-distance-dynamics` and the extended
+`b-audit-road-dynamics` / `c-audit-road-dynamics` trace completed steps on the
+cached cycle-exact 020. B uses the preserved seeded reference; C uses the fresh
+period-1 diagnostic with current steering, Fast object projection and stack.
+Both receive throttle at live field 100. The additional fields are acceleration,
+gear, lateral position, height, riding flags, crash state, road centre, road
+fraction and displacement. They supplement, rather than replace, the earlier
+completed-step distance accounting.
+
+All recorded steps retain lateral position 160 and crash state -1. Every
+successive position increment exactly equals the completed speed multiplied
+by that step's delta. Thus the earlier endpoint-velocity integration bias is
+still present; no additional unexplained displacement term is needed for this
+window. Gear thresholds also produce different overshoots: the first shift
+completes at speed 5,552 in B and 5,432 in C. This is distinct from lost small
+steering movements.
+
+A further difference appears in the road-relative position used for drag:
+
+| First off-road flag | B | C |
+|---|---:|---:|
+| Completed cursor | 533 | 528 |
+| World position | 3,307,451 | 3,216,351 |
+| Road centre | -66 | -66 |
+| Bike lateral position | 160 | 160 |
+| Speed | 10,929 | 10,819 |
+
+C reaches the same road-relative threshold 91,100 world-position units
+earlier. Its first subsequent downshift completes at cursor 530, versus B's
+545. No steering input or crash explains the discrepancy.
+
+The native calculation at `$8babe..$8bace` combines displacement with `d6`,
+the accumulated road-curve change including its fractional lookup difference:
+`3 * floor(floor(displacement / 256) * d6 / 256)`, using signed arithmetic
+shifts. This is quantized before the result is added to actor `+$36`.
+In these traces every nonzero centre update is -3. C has already made 14
+such updates at position 2,694,903 (centre -42); B has made only 13 at
+2,698,025 (centre -39). Coarser steps can combine curve changes before
+rounding, so replacing their delta with one field does not preserve this
+stateful effect. For example, a negative product between -256 and -1 rounds
+to -1 before multiplication by three.
+
+`c-audit-road-dynamics/comparison.json` retains the first off-road states,
+gear transitions and the exact endpoint-integration checks. This identifies
+road-centre integration as a specific remaining normalization target; it
+does not establish that it explains the entire A4 distance/handling gap.
+No speed multiplier or road-state correction has been installed. A candidate
+must account for curvature quantization and be checked against both B handling
+and the existing cross-cadence/full-race evidence.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |
