@@ -41,6 +41,17 @@ C_OBJECT_FAST = 1
 	ENDC
 	ENDC
 
+; Enable caches only after enhanced hardware selection. Preserve the explicit
+; diagnostic alias so older reference builds remain reproducible.
+	IFD VERIFY_C_CACHE
+C_CACHE = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_CACHE
+C_CACHE = 1
+	ENDC
+	ENDC
+
 ; Normalize steering for the one-field runtime. Snapshot diagnostics retain
 ; explicit selection so older timing references can still be reproduced.
 	IFD VERIFY_C_STEERING
@@ -298,10 +309,7 @@ PatchLoader2:
 	bsr	step_select_path
 	tst.l	d0
 	beq.b	.no_c
-	IFD VERIFY_C_CACHE
-	IFND VERIFY
-	FAIL "Cache policy experiment requires VERIFY"
-	ENDC
+	IFD C_CACHE
 ; WHDLoad honors NoCache and flushes after SetCPU. BaseMem is write-through,
 ; never copyback; preserve the existing ExpMem and slave cacheability.
 	move.l #WCPUF_Base_WT|WCPUF_IC|WCPUF_DC,d0

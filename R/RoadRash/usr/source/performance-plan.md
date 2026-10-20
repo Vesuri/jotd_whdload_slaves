@@ -362,6 +362,10 @@ movement, fixing small updates lost to one-field integer rounding. Full finish,
 wreck and arrest replays validate the correction across render cadences.
 Fast RAM world-object projection is now integrated in the enhanced runtime;
 cached-020 throughput improves from 8.7 to 10.0 fps in the standard window.
+Automatic caching is now integrated behind the same enhancement toggle:
+default Fast-RAM 020/030 improve from 5.0/7.5 to 10.0/12.5 fps without a
+separate `Cache` option; `NoCache` remains respected. All 11 normal hardware
+cells and both MMU functional checks pass on the integrated build.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 
@@ -422,9 +426,10 @@ dictate the accelerated path's timestep.
   - D1a Call `resload_SetCPU` on the selected enhanced path: instruction cache on
     (and data cache on 030 and later). Respect `NoCache`; use the single
     "Enhanced framerate" master toggle, with no additional user-facing cache option.
-    Diagnostic `VERIFY_C_CACHE` now tests this policy: automatic 020/030 caching
-    reaches the existing cached rates, and off/Chip fallback and MMU functional
-    checks pass. Coherency and longer gameplay validation remain before integration.
+    Implemented in the enhanced runtime, with `VERIFY_C_CACHE` retained for
+    explicit diagnostic selection. Automatic 020/030 caching reaches the existing
+    cached rates; off/Chip fallback, the full normal matrix, keyboard/CD32,
+    full-finish/restart and MMU page-policy checks pass.
   - D1b Call `resload_FlushCache` after every file load and decrunch (`ReadSomeFile`, the
     loader patches `$496A`/`$4DCA`/`$4800`/`$4844`/`$8E58`) and after `resload_Patch`.
   - D1c Read `CACR` back (A3b) on 020/030/040/060. Find out why `Cache` had no effect on

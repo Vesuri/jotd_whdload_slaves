@@ -5,7 +5,50 @@ on supported hardware when Enhanced framerate is enabled. Runtime integration
 and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
-## C completion audit against the integrated steering runtime
+## Current runtime: automatic enhanced-path caching
+
+Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
+`VERIFY_C_CACHE` as an explicit alias for reproducible references. SetCPU runs
+only after the existing master-toggle/CPU/Fast selection succeeds. It uses
+the policy validated below and honors WHDLoad `NoCache`.
+The normal slave is now 7,940 bytes, SHA-256
+`b881288139d4b54192648e9533139ce7ace28a8de21daf1e7cdadca34ebed2ee`.
+The earlier 7,920-byte audit and experiments below retain their historical
+binary identities rather than silently becoming evidence for this build.
+
+`c-cache-runtime-matrix` passes all 11 normal configurations:
+
+| Configuration | Standard-window fps |
+|---|---:|
+| A500 1 MB Chip | 8.5 |
+| A1200 Chip only | 12.5 |
+| A1200 Fast, plain or `Cache` | 10.0 |
+| A1200 Fast + `NoCache` | 5.0 |
+| 030/50, plain or `Cache` | 12.5 |
+| 040/25, plain or `Cache` | 16.6 |
+| 060/50, plain or `Cache` | 18.5 |
+
+Default Fast-RAM 020 and 030 improve from 5.0/7.5 to 10.0/12.5 fps.
+Already-cached rates do not improve. A500 and Chip-only A1200 exactly match
+B's initial, field-590 and final state hashes. `c-cache-runtime-off` retains
+the original instructions at every enhanced hook inspected by the dispatch
+probe. Both integrated MMU configurations pass in `c-cache-runtime-mmu`.
+
+The rebuilt integrated MMU diagnostic is byte-identical to
+`c-cache-policy-pages-build`, and the rebuilt full-finish diagnostic is
+byte-identical to `c-cache-finish-build`. Thus the preceding page-descriptor
+and 12,822-hash finish/restart checks apply to those exact diagnostic
+instructions. They supplement the separate actual-normal matrix above.
+Normal keyboard and CD32 pause/release tests pass without a user `Cache`
+option; active time holds at field 161 while paused. Stack guards remain
+intact, with observed use of 256 and 344 bytes.
+
+This removes the need for a separate cache option on the selected enhanced
+path. It does not make the cached runtime faster than B, remove the A4
+distance/handling differences, or close the remaining response regression.
+C remains in progress.
+
+## C completion audit against the preceding integrated steering runtime
 
 This audit applies to the normal 7,920-byte runtime with SHA-256
 `60ef76f312d7f08ce067b5a6b32966bb47f074ee78fd1166bd1cd1e0a7916bdb`.
