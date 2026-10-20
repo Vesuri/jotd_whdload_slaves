@@ -276,6 +276,60 @@ The binary is 18,728 bytes, SHA-256
 its build directory retains the source patch. Neither cadence equivalence,
 full-race acceptance nor the hardware/performance matrix has been run for it.
 
+### Later steering divergence: opponent road integration
+
+The extended `b-reference-lateral` / `c-road-window-lateral` snapshots show
+that B's heading repeatedly approaches zero after field 1250 while left
+remains held. `b-lateral-collision-writes` then traces four writes at `$8c266`,
+at fields 1253, 1265, 1286 and 1302, involving actors `$a6260` and `$a61e0`.
+These collision paths reset the steering accumulator `$a7262`.
+`c-road-window-collision-writes` sees no corresponding writes through 1325.
+Both traces schedule the original inputs through 1140 and stop at race-field
+boundaries, resolving relocated collision addresses in C.
+
+`b-reference-rivals` / `c-road-window-rivals` locate the preceding opponent
+error. At field 800 actor `$a61e0` has road centre +54 in B versus +249 in C;
+at field 600 it was -54 versus -213. By field 1250 its C position trails the
+player by 3,678,751 units, whereas B's actor is 27,228 units ahead. The missing
+player collisions therefore cannot be repaired solely by changing player
+steering arithmetic.
+
+The native opponent road routine differs from the player's: at `$8bcd0` it
+adds the interpolated curve value `d1` directly to actor `+$36` on every call.
+It computes a curve difference in `d6` immediately beforehand but does not use
+that difference for this addition. This is a per-call accumulation requiring
+normalization independently of the player's displacement-product correction.
+
+Private `c-road-actors-source` adds a separate quarter-unit carry for each of
+35 actor records. A hook at `$8bcd0` adds one quarter of the native signed value
+per one-field tick, preserving the remainder and replaying the displaced
+following instruction. The table clears with simulation state; actor addresses
+outside the native table fall back to the original addition. This candidate
+also retains the player's four-tick curve history from the previous experiment.
+Actor-slot reuse/remount carry lifecycle and the reverse-travel routine remain
+to be audited before integration.
+
+`c-road-actors-lap` improves the original lap substantially:
+
+| Field | B player position | Candidate position | B rival centre | Candidate rival centre |
+| --- | ---: | ---: | ---: | ---: |
+| 600 | 3,965,632 | 3,933,461 | -54 | -54 |
+| 800 | 5,761,316 | 5,730,305 | 54 | 61 |
+| 1000 | 8,005,924 | 7,948,095 | 16 | 27 |
+| 1200 | 10,124,359 | 10,087,294 | -31 | -27 |
+| 1300 | 11,023,526 | 11,037,597 | -16 | -11 |
+| 1600 | 13,031,078 | 13,138,349 | -13 | -73 |
+
+The sampled player crash is now 1372 versus B 1376; both finish rank 21 with
+one crash. The complete opponent order still differs, including `$a6360` and
+`$a63e0`, so A4b is not passed. These are normal unseeded baseline comparisons,
+not proof that every AI difference is attributable to this arithmetic alone.
+The 18,952-byte candidate SHA-256 is
+`1c95b8dba97ff7ab684e03ac4aff34cb6b264ead687e3c597599b585ad486f0c`.
+Its build directory retains the source patch. The next gates are completed-tick
+cadence equivalence, carry lifecycle/reverse-path audit, and normal hardware
+throughput/distance checks before any runtime promotion.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
