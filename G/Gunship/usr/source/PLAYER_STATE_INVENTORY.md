@@ -365,3 +365,39 @@ that snapshot only. It does not cover the special object, the separate
 twelve-entry pass, all LOD/culling transitions, or rebuild the cached scene
 transforms from committed player/world state. Those remain necessary before
 installation as a world owner; no timing or rendering hook is changed here.
+
+#### Committed scene endpoint and transform rebuild
+
+The native +04288 routine is itself an interpolation loop. It builds a
+27-word vector, subtracts the prior endpoint at hunk 5 +0A, then writes
+intermediate vectors to hunk 6 +3904 (render context +0E). +043F0..+0440C
+finally adds each difference back to the prior endpoint and publishes the
+exact current vector. A world collision check must not read an arbitrary
+intermediate buffer left by this loop.
+
+`timing-scene-state.i` now constructs that 54-byte endpoint directly from a
+committed 12-byte camera vector, the 36-byte six-object coordinate vector
+(native hunk 0 +C6A0), and the special object's six split coordinate bytes
+in hunk 6. It writes a caller-owned destination only and does not use the
+previous-frame buffers or native interpolation counters. Input stability
+and non-overlapping destination are caller contracts. This standalone helper
+is not installed, and world callers must never supply predicted poses.
+
+`test_scene_state_c.py` compares 512 seeded endpoint cases with the actual
++04288..+0444A instructions, stubbing only the renderer at +05C04. It varies
+prior endpoints, the six-slot mask, and interpolation periods 1/3/20/50.
+All 54 bytes match after 8,960 total intermediate images; register, write
+range and destination-canary checks pass. These cases establish endpoint
+construction, not native interpolation's suitability for the new design.
+
+The scene audit also now supports `REBUILD_SCENE=1`: native +057E2 builds
+camera words from the captured player, the new helper supplies the committed
+scene endpoint, and +05C2E..+05C5C rebuilds the native coordinate preparation.
+That preparation computes angle factors, calls +05F8E for cell selection and
+local-coordinate rebasing, +05CBE for basis preparation, and +05EA4 for
+transformed coordinate tables. Repeating native +060A8 with and without
+vertex projection again yields identical selection, visibility bytes and
+final flag (17 shapes, three nonempty). This uses current captured inputs
+instead of the cached scene transforms, but still writes native render
+scratch. Private scratch relocation, special-object and projectile-pass
+coverage, view/cell boundaries and positive collision cases remain open.
