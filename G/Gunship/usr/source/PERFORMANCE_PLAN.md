@@ -408,6 +408,13 @@ project's `docs/timing-design.md`, design D, and its phase-9 gate in `docs/inter
 
 **Status: design selected by the user; no C runtime changes yet.**
 
+Implementation checkpoint: standalone clock/history cores are committed and
+tested, including instruction-boundary producer interruption. Native adapters
+are still pending, so C2/C3 are not complete. The initial C4a/C4b inventory is
+in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
+the HUD's authoritative pitch clamp. The field-rate integrator is not written.
+See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
+
 **Design.** The game has two timing owners:
 
 - **The world runs at exactly 3 ticks per second of real time** (C1). AI decisions,
@@ -492,7 +499,7 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
 - **C4. Player motion at field rate.**
   - C4a. **Inventory** every player field the tick writes (the `a5` = `D3B88` record and the
     camera/state vector built at `+057E2`): position `0(a5)`/`2(a5)`, altitude `28(a5)`,
-    heading and attitude `53..55(a5)`, the rates decayed at `+0594C`/`+0597A`, speed,
+    heading and attitude `53..55(a5)`, the reserves depleted at `+0594C`/`+0597A`, speed,
     collective/throttle, and so on. For each one, record its units, every writer and reader,
     and its update order.
   - C4b. **Classify** each as continuous player motion (integrated per field) or world-owned

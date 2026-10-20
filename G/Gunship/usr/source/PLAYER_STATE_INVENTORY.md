@@ -37,10 +37,10 @@ camera or instrument state.
 | 2A / word | Signed forward speed | +0966E applies rounded approach to target at 30; reset on ground at +0962A. Drives horizontal displacement. | Continuous; world can reset |
 | 30 / word | Target forward speed | +09502/+09528 derive from native flight terms. | Continuous derived value |
 | 35 / byte | Heading, wrapping native angle | +09414/+09456 integrate yaw/bank; +0948E can add random damage perturbation. Camera negates heading plus view offset and shifts by 8. | Continuous angle; world random impulse |
-| 36 / byte | Pitch, signed native attitude | +053C0/+053EA control path; ground reset +09632; weapon recoil +099A4. Camera uses signed half-pitch shifted by 8. | Continuous control; world recoil/reset |
+| 36 / byte | Pitch, signed native attitude | +053C0/+053EA control path; HUD clamp/writeback +05776; ground reset +09632; weapon recoil +099A4 and +09B6E. Camera negates in byte width, then arithmetic-shifts right one and shifts into the high byte. | Continuous control/clamp; world recoil/reset |
 | 37 / byte | Roll, signed native attitude | +05398/+053AE control path, clamp -20..20; ground reset +0962E. Camera negates and shifts by 8. | Continuous control; world reset |
 | 38 / byte | Effective power | Derived at +093F4. | Continuous derived value |
-| 39 / byte | Collective setting, range 0..42 | Command path +05040..+050A2 changes it. | Field-stamped control target; world reads |
+| 39 / byte | Collective setting, range 0..42 | Command path +05040..+050A2 changes it; +0513A clears it. | Field-stamped control target; world reads |
 | 3A / byte | Lift-related term | Derived at +094DC. | Continuous derived value |
 | 3D / byte | Track heading | +09432/+09470 update it. | Continuous derived value |
 | 3E / byte | Signed vertical rate | +09572 adds rounded quarter-error; ground reset +09626. | Continuous; world reset |
@@ -61,6 +61,48 @@ Weapon selection, ammunition, pending launches, cooldowns, engine flags,
 mission configuration and damage state also remain world-owned. Their
 complete field-by-field writer/reader catalogue is still pending; the
 motion table is not a claim that these fields are unused.
+
+## Camera and instrument outputs
+
+The +057E2..+0582A builder writes six consecutive words at **hunk 4 +0000**:
+x, y, altitude plus 24, negated heading-plus-view-offset, negated half-pitch,
+and negated roll. The last three are byte arithmetic shifted left eight
+bits into native angle words. Preserve byte wrapping and the order of pitch
+negation and arithmetic shift; `-(pitch >> 1)` is not equivalent for odd
+values. +04288 consumes this camera/state vector in the original renderer.
+
+The +056D8..+057DC instrument builder writes these hunk 6 outputs:
+
+| Offset / width | Input / transformation | Write site |
+|---|---|---|
+| 157D, 157E / bytes | High bytes of reserve words 04/06, logical shift right 2, gauge conversion then OR 80 hex | +056E8/+056FE |
+| 157F, 1580 / bytes | Collective shifted right 1 and gauge-converted; independently zeroed when engine flag bits 2/3 are clear | +05722/+05736 |
+| 1582 / byte | RPM-like byte 1B shifted right 3, gauge conversion | +05748 |
+| 1586 / byte | Heading byte 35 | +0574E |
+| 1588 / byte | Pitch clamped to -12..20 | +0577A |
+| 1589 / byte | Negated roll byte 37 | +05786 |
+| 158A / byte | Low speed byte 2B minus coarse speed byte 50 | +057B6 |
+| 1584 / word | Altitude plus logical altitude/4, word arithmetic | +057C6 |
+| 158C / byte | Vertical rate shifted into high byte, arithmetic-halved, transformed by +07A1C, then high byte selected | +057DC |
+
+The gauge conversion at +05A10 forms `x + (x >> 1)` with byte arithmetic,
+then caps it at 31. Damage bit 4 in record byte 0F overwrites seven gauge
+bytes starting at 157D with 80 hex at +057A2. This includes retained
+initialization values at 1581/1583; it is not simply a transformation of
+the five gauges computed in this block.
+
+**The instrument builder is not read-only.** +05776 stores the clamped
+pitch back into record byte 36. That currently happens before rendering,
+after the preceding tick's controls/motion/recoil. Rebuilding instruments
+more often must not introduce extra authoritative clamps. The field-rate
+player path needs an explicit corresponding clamp point, and the h=1
+fixture must preserve its order relative to control and weapon impulses.
+The two recoil writes subtract one (+099A4) and four (+09B6E) respectively;
+the latter depends on weapon-selection bit 0.
+
+The enclosing render routine also reuses a5 for a different structure.
+In particular +05C24 and +060D2/+06156/+06200/+06236 are not player
+position/speed writes despite their matching numeric displacements.
 
 ## Gates before C4c
 

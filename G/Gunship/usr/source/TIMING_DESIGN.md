@@ -71,7 +71,15 @@ traffic. Composition tests consuming 600 fields in render batches of
 1, 3, 10 and 25 produced identical field order and world deadlines.
 Non-result registers and stack/return behaviour were checked.
 
-These are sequential core tests, not interrupt-preemption tests or live
-flight evidence. Native hooks, command retention, actual display-rate
+`tmp/dev/tools/test_history_preemption.py` additionally interrupts the real
+consumer at every instruction boundary, runs the producer, restores the
+interrupted CPU state and resumes the consumer. All 120 cases pass at
+occupancies 0, 1, 127 and 128: no torn record, premature slot release or
+overwrite of unread data. Two full-ring interleavings return a valid copied
+record alongside a newly latched fault, confirming that the coordinator
+must not treat a successful pop as proof of an unfaulted interval.
+
+These are assembled-core tests, not live flight evidence. Native hooks,
+command retention, actual display-rate
 detection, bounded catch-up, modal boundaries and CPU timing remain to test.
 The player inventory is recorded separately in PLAYER_STATE_INVENTORY.md.

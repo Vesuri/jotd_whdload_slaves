@@ -109,8 +109,8 @@ history_pop:
 .copy:
 	move.l (a2)+,(a1)+
 	dbf d2,.copy
-	; A producer can have observed a full ring during the copy. Do not
-	; deliver a record after that loss: force coordinator recovery instead.
+	; Detect a producer fault during the copy. A later interrupt can still
+	; fault before return; the coordinator must also check TH_FAULT.
 	tst.w TH_FAULT(a0)
 	bne .fault
 	addq.w #1,TH_READ(a0)        ; release only after the complete copy
