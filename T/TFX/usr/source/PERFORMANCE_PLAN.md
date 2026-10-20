@@ -126,6 +126,28 @@ match plain TFX, or 28.1% to match the older FPU builds. No game/slave code chan
   share of time in rendering, maths and game logic.
 - Exit: report naming every hot region and its cost.
 
+Completed: `tmp/dev/docs/profile-040.md`. A private read-only observer covers the
+frequency-sensitive NOMMU loop and all loaded addresses. Per-PC costs sum exactly
+to the fixed window's scheduler time; two cold boots produce byte-identical
+profiles. Observation on/off gives identical events, screenshots and all captured
+game-hunk bytes. The report includes every region above 0.5%, the complete routine
+region table, per-frame FPSP sites, chip data accesses and cache-flush counts.
+
+Correction to step 4: its default emulator configuration handled unsupported FPU
+instructions without trapping. Target-040 experiments must explicitly enable
+`fpu_no_unimplemented`. With trapping enabled, tfx.020 still presents 57 frames,
+but enters FPSP 2,394 times: 42 per frame at six transcendental sites. There are
+no FINTRZ/FMOVECR traps or cache flush calls in this window. Other FPU matrix rows
+have not yet been remeasured with strict trapping; their ranking is provisional.
+
+Largest self regions: ScanFillDown 14.83%, slave screen copy 12.51%, masked sprite
+merge 8.71%, Project 5.95%, shape-command region 5.73%, and SuperShape view dispatch
+5.29%. Chip data traffic is 1,032,912 reads and 1,249,307 writes. Functional shares
+and remaining small unclassified regions are explicit in the report; step 6 must
+validate symbol names and boundaries. Costs include the emulator's synthetic
+instruction padding and are not hardware-accurate 040/FPU timings. The game,
+slave, FPSP, shared emulator and 060 code path are unchanged.
+
 ### 6. Name `tfx.020` routines
 
 - Transfer `TFX.040` symbols to `tfx.020` by function matching (Ghidra scripts in the
