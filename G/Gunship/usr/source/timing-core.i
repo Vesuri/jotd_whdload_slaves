@@ -50,6 +50,7 @@
  include "timing-scene-state.i"
  include "timing-scene-private.i"
  include "timing-target-collect.i"
+ include "timing-target-view.i"
  include "timing-scene-target.i"
  include "timing-visibility-raster.i"
  include "timing-world-scene.i"

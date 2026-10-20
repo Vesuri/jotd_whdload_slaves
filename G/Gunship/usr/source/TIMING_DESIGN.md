@@ -4218,3 +4218,45 @@ refresh that projection. A presentation adapter must keep the world-selected
 identity while updating only the drawing inputs, and restore the committed
 block before any world consumer runs. This audit does not claim that adapter
 or the remaining complete-renderer isolation is finished.
+
+### Current-view selected-target capture primitive (C5d, not installed)
+
+`timing-target-view.i` captures the already world-selected identity from native
+renderer projection scratch, without projecting the entire scene a second
+time or invoking the selector. `target_view_prepare` validates the native
+collector relocations and copies +0A450..+0A58A. Only operands accessing the
+target block are redirected into the 490-byte private context; scene, model,
+viewport and range reads retain their native bindings. Flush the copied code
+before calling it. The context, native data and output must not overlap.
+
+Before a frame, `target_view_reset` snapshots the committed 168-byte target
+block, validates descriptor offsets, and clears private count/validity. At
+each native collector site, `target_view_capture` first checks that the world
+status is selected (byte 2) and that object identity/subtype matches the
+snapshot. As in native selection, negative identities do not require subtype
+equality. Only this identity reaches the copied collector, with an empty
+private list. This prevents five unrelated candidates from filling the list
+before the selected object is projected. Native viewport/range/model filters
+still apply. A rejected later call does not erase an earlier accepted
+projection of that same identity within the frame.
+
+`target_view_build` returns a private presentation block with the selected
+projection descriptor normalized into the first slot, native projected X/Y
+and model pointer, and the original committed status/identity. It does not
+sample pixels, choose a target, acquire a lock or touch RNG. When no projection
+was captured after reset it returns 0 without writing output: the drawing
+adapter must hide the current-view marker, not reuse a prior frame's result.
+World identity/reuse certification remains part of C6b, not inferred here.
+
+The ignored `test_target_view_c.py` compares 1,024 native-filter cases (65
+captures and 959 ignored/clipped cases), including shuffled descriptor slots,
+negative identities, viewport/range rejection and non-selected status. It
+checks six unrelated candidates before the selected object, stale-frame
+rejection, invalid-reset atomicity, register preservation and native-memory
+write isolation. Preparation corruption checks cover each relocation plus
+the first/last instruction. Graphics are not invoked in this primitive test.
+
+Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. The
+primitive is not yet bound to collector hooks, reset by frame publication,
+or borrowed/restored around the native panel painter. Those integration and
+live bitmap checks remain required; this is not completion of C5d or C.

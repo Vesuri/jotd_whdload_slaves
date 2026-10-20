@@ -749,8 +749,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     21%/10%/7% of elapsed time at three calls per second on those setups.
     The experimental runtime now publishes selection once per world deadline
     and excludes native render collection/selection under enhanced ownership,
-    including retained UI completion. Whole-game timing, current-view target
-    presentation and native flight-loop activation remain open.
+    including retained UI completion. A private current-view capture primitive
+    now follows only the world-selected identity through native projection
+    filters (1,024 comparisons); it preserves committed target state and avoids
+    candidate-list saturation. Render-hook/panel integration, live display
+    validation, whole-game timing and native flight-loop activation remain open.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at
