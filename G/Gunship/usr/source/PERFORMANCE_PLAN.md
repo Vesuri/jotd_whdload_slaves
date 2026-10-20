@@ -404,7 +404,7 @@ release limitations, not implied by these emulator checks.
 This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
 `simulation-and-presentation.md`.
 
-**Status: in progress; C1 awaits the user's cadence choice.** The C4d
+**Status: in progress; C1 is resolved: game time must match real time.** The C4d
 baseline pricing gate supports the proposed original-A500 cadence. In the
 retained A2 68000 traces, contiguous intervals from the return of rendering
 (`+05836`) to the next render call (`+05830`) cost:
@@ -434,31 +434,39 @@ initial time-model notes suggested. The gauge routine `+0ADB6` keeps separate
 drawn heights for the two buffers; elapsed-time slew and per-buffer repaint
 must be treated separately.
 
-- **C1. Choose the tick rate. This is the user's decision.**
-  - (a) A fixed rate equal to the original A500 pace, about 2.7 ticks/s (one tick per 18 fields).
-    The flight model and every per-tick constant stay unchanged, and rendering interpolates
-    between ticks. This is the recommendation for a first version.
-  - (b) A user-selectable rate (CUSTOM option), for example 18 fields per tick plus faster
-    settings. That keeps the "fast" feel of today's accelerated machines as an option.
-  - (c) A higher simulation rate with rescaled constants. This is plan G, not part of C.
+- **C1. Correct real-time clock: exactly 3 simulation ticks per second.**
+  - The user's criterion is that the in-game clock runs at the correct speed.
+    The original Elapsed Time display divides the unsigned tick counter
+    `D3B94` by 3 for seconds, then by 60 for minutes. Its conversion starts at
+    `+023A4` / `+023CE` in PAL 0658 and `+02380` / `+023AA` in NTSC 1489.
+    Executing the original conversion code passes 1,102 boundary cases per
+    version, including minute/hour boundaries and the word counter's maximum.
+    Evidence: ignored `tools/test_clock_c.py`, `tmp/c/clock-contract.json`.
+  - Schedule 3 ticks per 50 PAL fields or 60 NTSC fields, carrying the fractional
+    remainder. PAL deadlines therefore alternate 17/17/16 fields; NTSC uses
+    20 fields. Use the actual display frequency, not the executable's region.
+  - Keep native simulation constants and the display's conversion unchanged.
+    The earlier 18-PAL-field proposal would run the clock about 7.4% slow and
+    does not meet this criterion. C9 still provides original coupled timing.
 - **C2. Tick scheduler.**
-  - C2a. Replace the fixed render count in `+04288` with elapsed time: a tick becomes due when
-    the VBL counter `h2:001C` has advanced N fields since the previous tick.
+  - C2a. Replace the fixed render count in `+04288` with elapsed time: add three
+    clock units per active VBL and consume one display-frequency quantum per tick.
   - C2b. Between ticks, render as many frames as time allows.
   - C2c. Keep an owed-fields accumulator so speed stays exact over time.
   - C2d. Count only fields in which the game screen is active, as the VBL server already does.
 - **C3. Interpolation by elapsed time.**
   - C3a. The interpolation code at `+0433C`–`+043E2` already blends 27 camera/effect words and
     the instrument values with `frac = acc / period`.
-  - C3b. Feed it `frac = fields since tick / N` instead, clamped to [0, 1].
+  - C3b. Feed it `frac = unconsumed clock units / display frequency` instead,
+    clamped to [0, 1].
   - C3c. Render at least one frame per tick.
 - **C4. Catch-up on slow machines.**
-  - C4a. When a frame takes longer than N fields (the A500 in heavy scenes), run overdue ticks
+  - C4a. When a frame takes longer than a tick period (the A500 in heavy scenes), run overdue ticks
     back to back without rendering, up to a bound.
   - C4b. Make the bound a fixed number, and drop or rebase the excess time.
   - C4c. Report that excess time, so pauses and disk loads add no backlog.
   - C4d. Price this first. On the A500 one tick currently costs one or two frames of work.
-    Measure the tick-only cost (`+0563A` minus `+04288`) to decide whether option C1a is
+    Measure the tick-only cost (`+0563A` minus `+04288`) to decide whether C1's rate is
     sustainable on the 68000. If it is not, keep the original behaviour there as an option.
 - **C5. Interpolate everything that moves.**
   - C5a. Only the camera, the instruments and six effect objects are interpolated today.
@@ -466,7 +474,7 @@ must be treated separately.
     rockets and the "special object" at `62(a5)`.
   - C5c. Snapshot their previous and current positions at tick completion, and blend them in the
     renderer.
-  - C5d. At 2.7 ticks/s, any object left out visibly jumps two or three times per second.
+  - C5d. At 3 ticks/s, any object left out visibly jumps three times per second.
 - **C6. Per-frame state to per-tick or per-field.**
   - C6a. Bar gauges `+0ADB6`: currently 1 pixel per frame. Make them per field, keeping the
     pace they had at about 5 fps.
@@ -559,7 +567,6 @@ must be treated separately.
 
 - **F1. Options.** Use CUSTOM bits for:
   - original timing (C9),
-  - the tick rate (C1b),
   - the renderer choice (E1c),
   - triple buffering (D4).
   
@@ -576,7 +583,7 @@ must be treated separately.
 
 ### G. Optional: a higher simulation rate
 
-Only after C is done, and only if the 2.7 Hz control response feels too slow at 25–50 fps.
+Only after C is done, and only if the 3 Hz control response feels too slow at 25–50 fps.
 This means raising the tick rate and rescaling every per-tick quantity:
 - G1. Classify each quantity as a rate, an acceleration, a distance or a countdown, as Stunt Car
   Racer did in the playbook.
