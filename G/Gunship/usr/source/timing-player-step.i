@@ -74,7 +74,8 @@ player_step:
 	lea PS_KINEMATICS(a4),a0
 	movea.l d6,a2
 	movea.l d7,a3
-	bsr kinematics_step
+	move.l AT_PITCH_REMAINDER(a4),d1
+	bsr kinematics_step_fractional
 	tst.l d0
 	bne .bad
 	movea.l a4,a0

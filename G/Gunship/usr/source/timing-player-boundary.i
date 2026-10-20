@@ -67,8 +67,9 @@ player_boundary_prepare:
 	lea PS_PLAYER(a4),a1
 	movea.l d6,a2
 	movea.l d7,a3
+	move.l AT_PITCH_REMAINDER(a4),d1
 	lea PB_KINEMATICS(a6),a4
-	bsr kinematics_prepare
+	bsr kinematics_prepare_fractional
 	bra .done
 .bad:
 	moveq #-1,d0

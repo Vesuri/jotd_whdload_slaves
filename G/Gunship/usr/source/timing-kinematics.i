@@ -49,10 +49,18 @@ kinematics_init:
 ; Returns d0=0/-1; preserves all other registers. On failure neither player
 ; nor shadow state is committed. No RNG, commands, contact or clock updates.
 kinematics_step:
+	move.l d1,-(sp)
+	moveq #0,d1
+	bsr kinematics_step_fractional
+	move.l (sp)+,d1
+	rts
+
+; Same contract, d1=pitch remainder / field rate. Used by combined player.
+kinematics_step_fractional:
 	move.l a4,-(sp)
 	suba.w #KN_SCRATCH,sp
 	movea.l sp,a4
-	bsr kinematics_prepare
+	bsr kinematics_prepare_fractional
 	tst.l d0
 	bne .done
 	bsr kinematics_complete
@@ -67,13 +75,38 @@ kinematics_step:
 ; Candidate layout includes KN_SIZE shadow followed by the player record at
 ; KN_PLAYER. The caller owns serialized use and non-overlapping buffers.
 kinematics_prepare:
+	move.l d1,-(sp)
+	moveq #0,d1
+	bsr kinematics_prepare_fractional
+	move.l (sp)+,d1
+	rts
+
+; Same candidate ABI; d1=pitch remainder, denominator FR_RATE. Preserve the
+; native hover interval (-4,0] when pitch has not reached its next integer.
+; Only stage 0's branch discriminator uses a representative integer pitch.
+; Restore the actual pitch before lift/speed/height; all native math remains.
+kinematics_prepare_fractional:
 	movem.l d1-d7/a0-a6,-(sp)
+	subq.l #8,sp
+	move.l d1,(sp)            ; fraction, then saved original pitch at +4
 	clr.w KN_PHASE(a4)
 	movea.l a0,a5
 	movea.l a1,a6
 	move.l a2,d6
 	move.l a3,d7
 	move.l d0,KN_IMPULSE(a4)
+	moveq #0,d2
+	move.w FR_RATE(a5),d2
+	cmp.l d2,d1
+	bge .bad
+	neg.l d2
+	cmp.l d2,d1
+	ble .bad
+	cmpi.w #3,FR_RATE(a5)
+	bne .fraction_ok
+	tst.l d1
+	bne .bad
+.fraction_ok:
 	; Reject mismatched component rates even if individually valid.
 	move.w FR_RATE(a5),d1
 	cmp.w KN_HEADING+HG_RATE(a5),d1
@@ -98,6 +131,20 @@ kinematics_prepare:
 	move.b KN_PLAYER+$3d(a4),d0
 	move.w d0,KN_OLD_T(a4)
 	moveq #0,d0
+	move.b KN_PLAYER+$36(a4),d0
+	move.l d0,4(sp)
+	tst.l (sp)
+	ble .pitch_ready
+	tst.b d0
+	beq .positive_pitch
+	cmpi.b #-4,d0
+	bne .pitch_ready
+	move.b #-3,KN_PLAYER+$36(a4)
+	bra .pitch_ready
+.positive_pitch:
+	move.b #1,KN_PLAYER+$36(a4)
+.pitch_ready:
+	moveq #0,d0
 	bsr kinematics_stage
 	lea KN_HEADING(a4),a0
 	lea KN_PLAYER(a4),a1
@@ -107,6 +154,8 @@ kinematics_prepare:
 	move.w KN_OLD_T(a4),d1
 	move.l KN_IMPULSE(a4),d2
 	bsr heading_step
+	move.l 4(sp),d1
+	move.b d1,KN_PLAYER+$36(a4)
 	tst.l d0
 	bne .bad
 	moveq #1,d0
@@ -127,6 +176,7 @@ kinematics_prepare:
 .bad:
 	moveq #-1,d0
 .done:
+	addq.l #8,sp
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
 

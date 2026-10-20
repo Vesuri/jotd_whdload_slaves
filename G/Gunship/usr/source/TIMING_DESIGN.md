@@ -2494,3 +2494,53 @@ and coupled turning require further analysis. Do not classify those effects
 as fixed-point rounding or declare C4e passed. Reports are the ignored
 `tmp/dev/tmp/c/stick-motion-before-pitch-fix.json` and
 `tmp/dev/tmp/c/stick-motion-measurement.json`. Production remains unchanged.
+
+
+### Fractional pitch selects the heading branch
+
+Tracing the pulse tape found that integer pitch zero briefly selected hover
+while retained pitch was already positive. With nonzero roll, native hover
+sets track to heading +/-64 angle units (90 degrees); that unintended early
+sideways track then decayed through the bank response. This was a branch
+quantization artifact, not a rounding bound on continuous turning.
+
+`kinematics_step_fractional` and `kinematics_prepare_fractional` accept pitch
+remainder in d1, with denominator equal to the component field rate. Their
+other arguments and candidate layout are unchanged. The original entries
+remain zero-fraction wrappers. Combined ordinary and split player entries
+pass their retained attitude pitch remainder. Invalid fractions reject
+before publication; whole-tick mode requires zero.
+
+The continuous hover interval is (-4,0], extending the native integer
+predicate without changing any integer input's result. A positive remainder
+at integer pitch 0 selects bank immediately; at integer pitch -4 it selects
+hover. For these two crossings only, the private candidate uses representative
+pitch 1 or -3 during native stage 0 and the scaled heading step. This keeps
+both stages' branch choice and yaw clearing consistent. The true pitch is
+restored before lift, speed or height arithmetic, and before publication.
+There is no change to the authoritative pitch, native instruction clones,
+state layouts or heading-response coefficients. Preparation uses eight
+additional temporary stack bytes; C4f still must price the complete path.
+
+`test_fractional_heading_branch_c.py` passes 210 cases across both rates,
+seven pitches around the two boundaries, five fraction values and all roll
+signs. It checks branch choice through yaw ownership, exact hover heading
+and track fractions, restored pitch and unchanged authoritative state. Five
+invalid fractions (including a nonzero whole-tick fraction) reject with an
+unusable candidate. Combined native player/world comparisons still pass
+512 cases; the split-player suite still passes 4,096 native ground cases,
+1,356 split/ordinary field steps and three rollback cases.
+
+Remeasuring the same 44 ten-second stick trajectories reduces maximum track
+difference from 37.0404 to 13.0155 angle units and heading difference from
+16.8267 to 9.4747. In the NTSC pulse fixture, first-second track difference
+changes from +28.632 to -4.85; the end-of-tape heading difference changes
+from +16.729 to -4.5. Position agreement does not uniformly improve: maximum
+x/y differences become 88.46/117.72 native units versus 78.3/52.9 before.
+Retain these counterexamples; the measured branch correction does not
+establish a full trajectory acceptance bound. Native endpoint integration
+and finer integration of the rising/falling roll still produce different
+turn paths, and input-history timing remains unresolved. Before/after reports
+are `tmp/dev/tmp/c/stick-motion-before-heading-fix.json` and
+`tmp/dev/tmp/c/stick-motion-measurement.json`. C4e remains unaccepted and
+production timing remains unchanged.
