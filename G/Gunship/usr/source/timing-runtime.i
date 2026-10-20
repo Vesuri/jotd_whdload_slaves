@@ -47,7 +47,9 @@ RT_GUIDANCE equ RT_OPENING+WS_CODE_SIZE
 RT_GROUND equ RT_GUIDANCE+FG_SIZE
 RT_SCENE equ RT_GROUND+GR_CODE_SIZE
 RT_GUIDANCE_PRESENT equ RT_SCENE+SCENE_SIZE
-RT_ARENA_SIZE equ RT_GUIDANCE_PRESENT+GP_SIZE
+RT_BATCH equ RT_GUIDANCE_PRESENT+GP_SIZE ; 0 idle, 1 running, 2 command,
+                                        ; 3 modal, 4 end, 5 fault, 6 excess
+RT_ARENA_SIZE equ RT_BATCH+2
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.

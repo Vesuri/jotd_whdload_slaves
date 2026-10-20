@@ -64,3 +64,4 @@
  include "timing-runtime.i"
 
  include "timing-runtime-lifecycle.i"
+ include "timing-runtime-batch.i"

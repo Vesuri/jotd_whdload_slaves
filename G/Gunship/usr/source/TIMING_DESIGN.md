@@ -3266,3 +3266,52 @@ These comparisons stub the graphics library calls; they do not establish
 pixel correctness or live sprite timing. The foreground render handoff must
 still invoke this entry. Native VBL guidance stays suppressed only while the
 runtime owns it; production timing remains unchanged.
+
+## Runtime backlog delivery and consumer loop
+
+`timing_runtime_batch` now supplies the foreground loop around the existing
+scheduler and field consumer. Its arguments are the activated arena in a0,
+field budget (1..128) in d0, world budget (1..8) in d1 and command budget per
+reader (1..128) in d2. It preserves non-result registers. An idle call takes
+one scheduler snapshot; it drains that snapshot in order, including each
+due world tick. Producer publications during consumption do not extend it.
+
+Returns are 0 for a drained snapshot, 1 for a command-budget yield, 2 for a
+retained lifecycle command, 3 for a script modal, 4 for flight end, -2 for
+excess time, -1 for failure and -3 for invalid admission. Calls after 1/2
+resume the same delivered field and reader phase. They do not deliver another
+field, rerun the field timers or reset the world budget. Lifecycle commands
+remain retained until their owner resolves them.
+
+The arena's new `RT_BATCH` word tracks idle, running, command boundary,
+script modal, ended, failed and excess states. Modal/end/fault/excess returns
+stay latched: another call cannot repeat native effects or quietly open a
+new snapshot. Activation resets the batch state only after its existing
+pending-work validation succeeds. The arena is now 27,234 bytes.
+
+Excess time is reported without dropping records inside the driver.
+The lifecycle owner must suspend, account for discarded history and explicitly
+rebase before continuing. A pending delivered field/world still prevents
+activation. No render, modal interpreter or native menu runs inside this
+entry. A drained snapshot is the handoff point for presentation; command,
+modal and end returns require their respective owner.
+
+`test_runtime_batch_c.py` compares 1,200 completed player fields and final
+world state against independently delivered scheduler/consumer calls:
+PAL/NTSC, single-field execution and batches of 1/3/10/25. Low command budgets
+cause 954 resumptions without state differences. Field/world limits stay
+latched, command boundaries remain retained, and clearing an upstream fault
+does not silently resume a failed batch. The native script-modal fixture
+also runs through this entry, completes its world once, reactivates and
+consumes the first fresh field (73 calls, 18 fields). Additional checks
+publish a field during consumption and verify that it waits for the next
+snapshot, reject invalid admission without writes, and repeat a geometry
+flight-end result without additional cleanup. Slave setup still passes
+15 calls; all three experimental variants assemble.
+
+The native flight call at +0561C enters +0563A after initialization and
+returns to +05622 on completion. That is the replacement-loop boundary;
+the internal +05830 call enters the old +04288 render-count/interpolation
+loop. Neither has been replaced yet. Native menu/pause command handling,
+render handoff, excess-time policy and live validation remain required
+before this becomes the installed gameplay path.

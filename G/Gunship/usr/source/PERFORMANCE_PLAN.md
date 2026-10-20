@@ -464,6 +464,11 @@ ordering for each delivered field, including bounded command resumes,
 player/world hand-off, ground-event publication and modal returns. Its
 sequence matches the independently driven combined fixture; native loop
 installation remains pending.
+`timing-runtime-batch.i` now drives bounded scheduler snapshots and the field
+consumer together, including command-budget resumes and explicit lifecycle,
+modal, flight-end, fault and excess-time returns. It does not silently start
+a fresh batch after a stop. Native flight-loop and render handoff installation
+remain pending.
 `timing-core.i` now supplies a shared include order, and `timing-runtime.i`
 prepares a single paused arena with all consumer/native-copy bindings.
 Loader-chain discovery no longer requires debugger markers. Production
