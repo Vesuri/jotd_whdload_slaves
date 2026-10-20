@@ -61,8 +61,10 @@ Harness evidence: `tmp/dev/docs/replay-flight.md`. The recorded action flight gi
 identical screenshots at four swap checkpoints on 020, 030 + FPU, 040 and 060.
 040/060 also reproduce all captured game-hunk bytes. On 020/030, five absolute timer
 values differ by one vblank; translating the clock origin makes every captured byte
-equal. The strict raw-state exit remains open on those two configurations. The
-harness reports raw and clock-relative equality separately; neither hides differences.
+equal. The user accepted this specific clock-origin mismatch on 2026-10-20, completing
+step 2. Use the explicit `--clock-relative` comparison for the accepted baseline.
+The harness retains separate raw and clock-relative results; this acceptance does
+not extend to other state differences or waive step 3's counter/trace validation.
 
 ### 3. Frame counter
 
