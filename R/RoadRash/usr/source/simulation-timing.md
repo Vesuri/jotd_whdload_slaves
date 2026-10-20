@@ -1,3 +1,41 @@
+## First NPC braking difference follows the player-speed dispatch threshold
+
+`b-npc-brake-branch` and `c-road-npc-brake-branch` retain the same binaries,
+cache policies and field-100 throttle input as the preceding acceleration
+traces. Breakpoints cover both native and relocated equivalents of dispatch
+$8d3d6, pursuit entry $8d586, the actor threshold comparison $8d59e,
+relative-speed test $8d5c0, speed-limit-helper return $8d62a and brake writer
+$8d630. The trace stops at the race-loop entry after live field 332. It
+records 18 B and 45 C observations without modifying game state.
+
+All six B and 21 C dispatch observations retain actor state bytes $74/$75
+as $08/$00 and stored speed threshold $66 as 7100. The selected target is
+$8d40a while player speed is below that threshold, then $903f2 once it is
+reached. Native dispatch compares the actor's $66 threshold against player
+speed at $8d3aa..$8d3b4 before considering the alternate function slot.
+B changes target at cursor 322 (player speed 7104, previous observation 7000
+at 318). C changes at 325 (7122, previous observation 7096 at 324).
+This is the same threshold, reached at different simulation times; actor
+initial traits and the dispatch state bytes have not changed.
+
+For both first braking decisions, the observed path after dispatch is
+$8d586 -> $8d59e -> $8d5c0 -> $8d630. At $8d5c0 the rival is ahead and
+faster: B position gap 686271 and relative speed 1311, C gap 724756 and
+relative speed 1393. These independently decoded actor differences match
+D7 and the low word of D6 exactly. The nonnegative relative-speed branch at
+$8d5c2 goes directly to braking. Neither first decision reaches the curve
+speed-limit return at $8d62a. The private comparison JSON asserts the
+observed paths, dispatch choices, state bytes and register arithmetic.
+
+Thus this first braking mismatch is downstream of player speed/gear timing
+and differing positions, rather than a missing elapsed-time multiplier in
+the brake branch. Adding an AI delay or changing the shared 7100 threshold
+would mask that dependency. This closes the specific first-brake branch
+question raised below, not all later AI/lateral differences. The next useful
+handling experiment should address the player integration discrepancy while
+preserving immediate field input and the 50 Hz simulation; no production
+AI patch is justified by this trace. C remains incomplete.
+
 ## Early rival lead reverses through different acceleration decisions
 
 `b-npc-acceleration-native` and `c-road-npc-acceleration-native` extend the
