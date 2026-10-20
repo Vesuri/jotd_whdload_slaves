@@ -1,3 +1,51 @@
+## Early rival lead reverses through different acceleration decisions
+
+`b-npc-acceleration-native` and `c-road-npc-acceleration-native` extend the
+unmodified-binary motion trace through simulation cursor 599 (B's last row
+is 602). Both apply throttle at live field 100 through the standard route;
+there are no steering inputs before this trace ends. They observe the same
+post-motion/pre-pose boundary as the startup trace. The B binary/cache policy
+and road-only C candidate are unchanged. These are not complete-step hashes.
+
+`compare_npc_acceleration_c.py` verifies 125 adjacent B intervals and 501 C
+intervals for each of riders $a61e0 and $a6260. Every speed is exactly
+`max(0, previous_speed + previous_acceleration * delta)`. Every position
+increment is exactly new speed times delta. There are no unexplained speed
+writes or position corrections in these intervals. Acceleration selection,
+rather than arithmetic application, differs between the paths.
+
+Both rivals are 3471 position units ahead of B at common cursor 102. Rider
+$a61e0 first falls behind at common cursor 442 (-178); rider $a6260 does so at
+550 (-118). At cursor 598 their respective differences are -12925 and -4606.
+The first rider starts braking at B/C cursors 426/419 and resumes throttle at
+458/449. The second starts braking at 322/325 and resumes at 342/346. Both use
+acceleration -69 while braking; subsequent coasting uses -5, with distinct
+throttle/coast transition sequences. Full acceleration-change lists and the
+common-boundary comparisons are retained beside the C trace.
+
+Fresh natural flag watchpoints in `b-npc-first-brake` and
+`c-road-npc-first-brake` cover fields 310..350 for $a6260. Both set brake at
+$8d630, clear throttle at $8d636, later restore throttle/clear brake at
+$8d612/$8d618, and then clear throttle through the native $8d5f2 coast branch.
+The first braking observations are:
+
+| Quantity | B, cursor 322 | C, cursor 325 |
+| --- | ---: | ---: |
+| Rival position | 2061375 | 2095806 |
+| Player position | 1375104 | 1371050 |
+| Rival speed | 8415 | 8515 |
+| Player speed | 7104 | 7122 |
+| Rival stored speed threshold ($66) | 7100 | 7100 |
+
+The observations confirm the same native flag writer and differing live
+inputs. A watchpoint after the write does not identify which preceding branch
+reached it, so this is not proof of a particular threshold test or a missing
+per-call scale factor. The remaining causal check is the decision path into
+that writer, including its actor dispatch state and speed-limit helper.
+No arbitrary acceleration correction, fixed AI cadence or added input delay
+is introduced. The evidence narrows the investigation without closing B's
+handling/distance acceptance or C's performance requirement.
+
 ## Starter release matches; first NPC acceleration differs by update cadence
 
 The one-time `$8f57a` capture in `b-release-observation` and
