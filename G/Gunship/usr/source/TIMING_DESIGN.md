@@ -3839,6 +3839,42 @@ evidence only, not a pixel-correctness or hardware result. It identifies the
 native raster prefix +05C04..+05C78 as the point at which a committed-view
 visibility pass can stop before panel/HUD/display work. The bitmap binding
 entry at +084E2 selects the current drawing buffer and writes hunk 6 +47C4.
-A native raster visibility pass, its pixel validation and cost measurements
-remain to be implemented; candidate selection must not fall back to pixels
-from a previous or predicted displayed frame.
+`timing-visibility-raster.i` now extracts this prefix, retaining its absolute
+native bindings and appending the native register restore/return. Preparation
+validates all 14 relocation bindings and the native save/restore boundaries
+before changing its 298-byte workspace. It remains unbound from the runtime.
+
+`visibility_raster_step` takes a committed camera and object vector. It borrows
+the native target block from the supplied private selection state, clears the
+candidate count, builds the scene vector and executes the prefix. It waits for
+the blitter before retaining candidates and restoring the native target block.
+It snapshots the two palette rejection colors for the current player mode,
+then uses native ReadPixel to sample each collected candidate's projected
+coordinates into the private selector's indexed pixel array. It does not
+perform selection, publish a lock, draw overlays or swap buffers. The caller
+can pass those pixels/colors to `target_select_step` separately.
+
+This is a foreground-only hardware drawing operation, not a pure geometry
+helper: it changes native raster scratch, the selected drawing bitmap and
+blitter registers. It requires exclusive ownership of drawing and native
+target access. Future renderer suppression must explicitly permit collection
+during this world pass. The current runtime does not call it, and no native
+target hook is installed by this extraction. Its scratch changes must be
+overwritten by the presentation view before the next displayed frame.
+
+The ignored `test_visibility_raster_c.py` compares 48 views (three positions,
+two heights, eight headings) with the original prefix. Candidate state and
+the native-memory/custom-register write results match, with native target
+state restored and all non-result registers preserved. Six views produce a
+candidate. Additional post-collection injections exercise counts zero through
+five and every indexed sample slot; explicit coordinate-derived pixel values
+verify sampling order. Both palette modes are exercised. All 33 altered
+signature words reject setup without workspace writes, and three invalid
+descriptor offsets reject execution before native/private state writes.
+
+Unicorn does not emulate blitter DMA: these results validate CPU execution and
+sample acquisition plumbing, not rendered pixels. Hardware pixel validation,
+cost measurements, world ownership and target publication/exclusion remain
+open. Candidate selection must not fall back to pixels from a previous or
+predicted displayed frame. All three experimental runtime variants assemble;
+ordinary builds do not include this helper.

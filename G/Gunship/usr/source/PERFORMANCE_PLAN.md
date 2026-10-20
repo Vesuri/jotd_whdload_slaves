@@ -568,6 +568,11 @@ from the latest player state and fractional camera, with no old render-count
 loop. Native endpoint comparisons and write-range checks pass. Other objects
 remain committed poses in this publisher; prediction, gauge slew and the
 actual frame-render handoff still need integration.
+An experimental committed-view raster extraction now collects candidates and
+their native pixel samples before overlays, restoring native target state
+after collection. Its CPU behavior matches the original drawing prefix over
+48 views; real blitter pixels, drawing cost, world ownership and lock
+publication/exclusion remain unvalidated. It is not called by the runtime.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:
