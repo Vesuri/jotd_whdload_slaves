@@ -3315,3 +3315,48 @@ the internal +05830 call enters the old +04288 render-count/interpolation
 loop. Neither has been replaced yet. Native menu/pause command handling,
 render handoff, excess-time policy and live validation remain required
 before this becomes the installed gameplay path.
+
+## Native lifecycle/display command adapter
+
+`timing-boundary-command.i` provides the native command execution boundary
+needed by the batch driver's retained-command return. Runtime preparation
+validates +04ED4's entry, its nonlocal return at +04EEC and its ordinary RTS
+at +05334, then stores the decoder entry in `RT_BOUNDARY`. The arena is now
+27,238 bytes.
+
+`boundary_command_step` takes the native player in a0, that four-byte binding
+in a1, native hunk 6 input context in a2 and the full accepted command word
+in d0. It accepts only the previously inventoried boundary commands and
+preserves non-result registers. It returns 0 on normal completion, 4 when
+the player has ended the flight, or -3 for a non-boundary key or empty binding.
+It does not mask command modifiers.
+
+The wrapper supplies the two return addresses expected by the native
+decoder. The direct exit keys discard the inner return before returning
+from the command reader. Escape while paused instead first discards the
+pause handler's saved sound pointer. Both paths return through the adapter
+with the caller's stack intact. Native command effects and the yaw tail
+remain in their original order wherever reached.
+
+Enhanced key 12 is retired, as permitted by C7d: it runs only the existing
+control tail and never changes the old player speed-toggle flag, render-count
+variable or indicator. Other boundary commands execute their native code.
+This does not alter default native decoding.
+
+`test_boundary_command_c.py` passes 396 native state/callback comparisons:
+eleven native boundary commands, sound on/off, yaw and speed combinations,
+immediate/delayed pause release and Escape during pause. It checks stack and
+register preservation, six retired-speed cases, seven non-boundary/modifier
+rejections, an empty binding, and six corrupted signature cases with no
+binding write. UI/audio callbacks are fixtures; this is not live menu or
+pause validation. Runtime preparation still passes 1,221 calls and 240
+PAL/NTSC fields at two allocation addresses, slave setup passes 15 calls,
+and all three experimental variants assemble.
+
+Queue/lifecycle coordination remains the caller's responsibility. Sampling
+must be suspended before blocking UI; this adapter neither acknowledges a
+command nor rebases a partially delivered field. The current consumer may
+already have applied field timers and, on a deadline, world opening before
+returning a boundary. Such work must be resolved without replay, and both
+command readers must account for the command before a fresh epoch is admitted.
+The adapter is prepared but not invoked automatically in gameplay.

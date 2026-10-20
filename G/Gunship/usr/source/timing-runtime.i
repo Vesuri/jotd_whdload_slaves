@@ -49,7 +49,8 @@ RT_SCENE equ RT_GROUND+GR_CODE_SIZE
 RT_GUIDANCE_PRESENT equ RT_SCENE+SCENE_SIZE
 RT_BATCH equ RT_GUIDANCE_PRESENT+GP_SIZE ; 0 idle, 1 running, 2 command,
                                         ; 3 modal, 4 end, 5 fault, 6 excess
-RT_ARENA_SIZE equ RT_BATCH+2
+RT_BOUNDARY equ RT_BATCH+2
+RT_ARENA_SIZE equ RT_BOUNDARY+BC_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -203,6 +204,11 @@ timing_runtime_prepare:
  movea.l RT_HUNKS+16(a6),a2
  lea RT_PENDING(a6),a3
  bsr field_guidance_prepare
+ tst.l d0
+ bne .bad
+ movea.l RT_HUNKS(a6),a0
+ lea RT_BOUNDARY(a6),a1
+ bsr boundary_commands_prepare
  tst.l d0
  bne .bad
  lea RT_GUIDANCE_PRESENT(a6),a0

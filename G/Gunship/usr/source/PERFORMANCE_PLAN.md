@@ -469,6 +469,11 @@ consumer together, including command-budget resumes and explicit lifecycle,
 modal, flight-end, fault and excess-time returns. It does not silently start
 a fresh batch after a stop. Native flight-loop and render handoff installation
 remain pending.
+The native lifecycle/display command adapter now preserves ordinary and
+nonlocal exit stack behavior, including Escape while paused. It retires
+the old key-12 speed toggle in the enhanced path. Retained queue
+acknowledgement and pending-field/world resolution around these calls are
+still required before native-loop activation.
 `timing-core.i` now supplies a shared include order, and `timing-runtime.i`
 prepares a single paused arena with all consumer/native-copy bindings.
 Loader-chain discovery no longer requires debugger markers. Production

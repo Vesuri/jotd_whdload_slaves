@@ -22,6 +22,7 @@
  include "timing-control-targets.i"
  include "timing-control-mode.i"
  include "timing-command-dispatch.i"
+ include "timing-boundary-command.i"
  include "timing-world-commands.i"
  include "timing-command-phase.i"
  include "timing-ground.i"
