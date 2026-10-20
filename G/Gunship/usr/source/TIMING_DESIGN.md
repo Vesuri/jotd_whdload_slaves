@@ -30,6 +30,8 @@ It is also standalone; it does not yet scale or commit player motion.
 future step. It does not select field-specific equations or coefficients.
 `timing-response.i` supplies fraction-aware quarter/eighth/sixteenth
 approach responses using r^h field gains and exact native h=1 rounding.
+`timing-flight-rates.i` connects vertical, forward and RPM responses to
+the native stages, including additive slew/coasting and retained fractions.
 `timing-motion-stages.i` exposes the native preview in ordered slices so
 scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
@@ -434,6 +436,70 @@ difference from the ideal exponential trajectory, including retained
 fractions, is below 0.0021 native units. This is a measured bound for those
 scalar fixtures, not all changing targets or coupled flight dynamics.
 Evidence: `tmp/dev/tmp/c/response-tests.json`.
+
+## Stage-connected flight rates
+
+`timing-flight-rates.i` owns a 24-byte caller-supplied state. Byte offsets
+in this table are hexadecimal:
+
+| Offset | Contents | Unit / reset obligation |
+|---|---|---|
+| 00 / word | Field rate 50/60, or whole-tick fixture 3 | Initialized with the player epoch |
+| 02 / word | Reserved, initialized to zero | Initialization |
+| 04 / long | Vertical response fraction | Denominator 32767; clear on vertical-rate reset |
+| 08 / long | Forward response fraction | Denominator 32767; clear on speed reset |
+| 0C / long | Forward slew conversion remainder | Denominator rate; clear with forward fraction |
+| 10 / long | RPM response fraction | Denominator 32767; reset with initialized RPM |
+| 14 / long | RPM additive conversion remainder | Denominator rate; reset with RPM fraction |
+
+For quantities with both fractions, the full retained amount is
+`main/32767 + conversion/(rate*32767)`. `fraction_add_rate` in
+`timing-fraction.i` adds an exact 3/rate linear increment into this shared
+representation. It divides in native units before converting the residue,
+keeping every 68000 division quotient in range. This avoids maintaining
+independent whole-unit debts for response and slew. The response feedback
+sees the main fraction; the extra conversion remainder is below 1/32767
+native unit and remains retained for subsequent additive updates.
+
+`flight_rates_init` validates the rate and clears all fractions.
+The component entry points take state in a0 and a private player record
+in a1, return d0=0/-1, and preserve other registers:
+
+* `flight_vertical_step` takes native stage-1 terms in a2. It replaces the
+  whole vertical-rate result using the captured target and old rate,
+  **before** the height stage reads the new rate.
+* `flight_forward_step` takes stage-3 corrected error and slew in a2.
+  It **replaces stage 4**, applying the sixteenth response and then the
+  exact-time signed slew. Stage 5 reads the resulting speed from the record.
+* `flight_rpm_step` runs after native stage 6 has built its RPM target,
+  with d0 holding the RPM byte saved **before** that stage. Powered RPM
+  uses the eighth response. Coasting recomputes the native unclamped
+  additive change from collective, coarse speed and ground state, scales
+  that change, then clamps to 0..156. It clears outward fractional debt at
+  saturation while preserving inward debt.
+
+Every component validates the entire fraction state before writes.
+Whole-tick fixture mode requires zero fractions. World ground resets must
+clear the vertical and both forward fractions alongside the native bytes;
+initialization/rebase must reset the full state consistently. Powered/coasting
+transitions share the RPM fraction rather than silently discarding it.
+These obligations are not yet connected to the native lifecycle.
+
+`tmp/dev/tools/test_flight_rates_c.py` passes 71,078 calls. Interposing these
+components into all seven native motion stages at h=1 produces complete
+player records identical to the whole deterministic preview in 4,096
+airborne/low-altitude cases. Twenty thousand signed linear-conversion
+cases preserve exact rational totals, and 6,000 randomized PAL/NTSC
+component cases match independent full-fraction models. Fifteen malformed
+state cases, including signed-long extremes, fail without writes.
+Evidence: `tmp/dev/tmp/c/flight-rates-tests.json`.
+
+Heading, height/coordinate displacement and wind are **not** field-scaled
+by these functions. Running the native stages every field without those
+remaining conversions would still accelerate movement. They remain
+standalone and must not be installed as a complete player step. World
+effects, full coupled-flight acceptance and CUSTOM1-gated native installation
+are still pending.
 
 ## Field-rate deterministic attitude
 
