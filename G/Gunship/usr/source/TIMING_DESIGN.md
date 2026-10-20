@@ -666,6 +666,59 @@ fraction resets on lifecycle transitions and the native scheduler adapter
 remain integration obligations. It is not included in the slave yet;
 installation must use the CUSTOM1 Enhanced framerate gate.
 
+## Native world ground boundary
+
+`timing-ground.i` extracts the unchanged +095A0..+09636 block into a
+152-byte returning code buffer. `ground_prepare` takes the validated
+0658 code hunk, destination and hunk 6 in a0/a1/a2. It checks the entry,
+notification call target, timer destination and reset stores before copying;
+the caller must flush instruction caches before execution.
+
+`ground_step` takes the authoritative player in a0, prepared code in a1
+and an explicit pre-height airborne flag (0/1) in d0. It returns 0 without
+effects when current altitude is nonzero, 1 after ground processing, or -1
+for an invalid flag. Other registers are preserved. The native block keeps
+its landing/crash arithmetic, notification call with argument 7, flight-end
+write and timer write. It clears speed, pitch, roll and vertical rate even
+when the supplied flag says the player was already grounded.
+
+This is an authoritative world operation, not a speculative preview.
+It belongs after height and before forward-speed response, coordinates
+and RPM. Invoking it after the complete continuous coordinator would move
+the resets past their native consumers and fail h=1 ordering. The world
+adapter must therefore expose that intermediate boundary, clear the
+corresponding speed/vertical/attitude fractions on a reset, and finish the
+remaining continuous stages afterward. It must validate the candidate
+before invoking externally visible notification effects.
+
+The native pre-height flag and the field path's pending crossing flag
+serve different purposes. The adapter still needs a tested policy for a
+crossing followed by a rise before the next world deadline; this helper
+does not choose one or consume the pending flag. Once-only scheduling,
+collision equivalence and the native notification routine's complete
+effects remain open. The helper is not installed in gameplay and its
+eventual installation must use the CUSTOM1 gate.
+
+The extracted block matches the original in 10,000 grounded/airborne
+cases, including 1,947 notification calls. The fixture compares the whole
+player record, notification count/argument and timer, and verifies register
+and stack preservation. Three invalid flags and 36 corrupted signature
+bytes reject without destination/player writes. The notification routine
+itself is replaced by a recording stub; its UI effects are outside this
+test. Evidence: `tmp/dev/tools/test_ground_c.py`,
+`tmp/dev/tmp/c/ground-tests.json`.
+
+The combined h=1 motion fixture inserts this block immediately after
+scaled height, then executes scaled forward response, displacement and
+RPM. All 4,096 complete player records, notification counts and timer
+values match a whole native-motion reference with only heading RNG
+excluded. The cases include 2,480 ground resets and 241 notifications;
+signed-height overflow cases exercise the latter. Evidence:
+`tmp/dev/tools/test_ground_motion_c.py`,
+`tmp/dev/tmp/c/ground-motion-tests.json` (61,443 calls).
+This confirms the intermediate ordering at h=1; field-rate contact
+history, fractional resets and actual notification UI remain outside it.
+
 ## Field-rate deterministic attitude
 
 `timing-attitude.i` implements the continuous portion of native
