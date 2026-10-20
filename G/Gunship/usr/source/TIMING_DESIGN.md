@@ -115,6 +115,44 @@ unread fields and command intervals together, and account for losses.
 preserving lifetime loss/discard diagnostics. Native FIFO overflow remains
 the native input acceptance policy; only accepted insertions are retained.
 
+## Foreground coordinator
+
+`timing-scheduler.i` composes the clock, field history and retained-command
+queue. It is assembled/tested separately, not installed into the native main
+loop. Its caller must supply the actual player step, command dispatch and
+native world tick; acknowledgements are not substitutes for those operations.
+
+`scheduler_begin` snapshots the available backlog with a field budget
+(1..128) and world budget (1..8). Newly published fields belong to the next
+batch. `scheduler_next` delivers one private field record and advances the
+clock. It then refuses further input until `scheduler_player_done`. At a
+deadline that acknowledgement requires a world tick, and the coordinator
+refuses later fields until `scheduler_world_done`.
+
+The delivered command cutoff is available to both command readers. Held
+buttons track the latest consumed field; rising-edge bits accumulate until
+world completion, preserving a press released before the deadline. The native
+tick collapses its fire counters to nonzero flags, so the interval retains
+presence rather than inventing multiple launches in one tick.
+
+The coordinator stops **before** consuming a field that would exceed the
+world budget. Exhausting a capped field snapshot also reports a bound.
+Neither condition silently drops time or permits a fresh budget over the
+unfinished batch. Production recovery must explicitly account for/discard
+excess history and rebase the clock, history and command queue together,
+then call `scheduler_rebase` with producers excluded.
+
+Upstream inactive/fault states latch the coordinator until that explicit
+recovery. Completion acknowledgements count already-applied work even if a
+producer fault arrived during it. Clock counters describe accepted fields
+and deadlines; coordinator counters describe completed player/world steps.
+Recovery reporting must include their differences as well as unread history,
+lost publications and discarded clock phase.
+
+The native main-loop adapter, actual display-frequency selection, production
+catch-up limits and modal lifecycle hooks remain pending. Any installation
+must remain behind the CUSTOM1 Enhanced framerate gate.
+
 ## Verification
 
 The ignored development harness assembles both includes into a standalone
@@ -169,6 +207,14 @@ independently delayed player/world readers, exact key/modifier payloads,
 field cutoffs, 16-bit cursor and 32-bit sequence wrap, full-ring preservation,
 invalid roles, pause and loss-accounted rebase. Normal and existing VERIFY
 build hashes are unchanged by this diagnostic command-retention change.
+
+`tmp/dev/tools/test_timing_scheduler.py` passes 12,999 assembled calls.
+PAL/NTSC tapes with batches of 1, 10 and 25 fields produce the same ordered
+player fields and world deadlines, including field-stamp wrap. Tests also
+cover mandatory acknowledgements, snapshot isolation from later publications,
+field/world budgets, all upstream fault/inactive sources, explicit coordinated
+rebase, completion accounting after faults, and a short trigger press retained
+until its world deadline. These tests do not execute the native player or world.
 
 Command effect classification, actual display-rate detection, bounded catch-up,
 modal boundaries, input replay and CPU cost remain to test.

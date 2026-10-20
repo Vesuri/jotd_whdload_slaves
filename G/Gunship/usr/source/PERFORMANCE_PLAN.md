@@ -412,7 +412,9 @@ Implementation checkpoint: standalone clock/history cores are committed and
 tested, including instruction-boundary producer interruption. Diagnostic native
 input producers now capture real fields on 68000/020/060, and a dual-reader
 queue retains accepted keyboard commands through their field cutoffs. The
-foreground scheduler, command effect classification and player/world hand-off are still pending,
+foreground coordinator now enforces field/player/world ordering and bounded
+batches in assembled-code tests. Its native main-loop installation, command
+effect classification and player/world hand-off are still pending,
 so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. The field-rate integrator is not written.
