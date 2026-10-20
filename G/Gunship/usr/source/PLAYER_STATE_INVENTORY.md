@@ -654,3 +654,52 @@ first-field change. Results are in ignored
 `tmp/dev/tmp/c/endpoint-motion-assembled.json`. The harness still coordinates
 anchors/history and provisionally copies non-motion bytes from each preview;
 this is not yet a scheduled assembly player owner or a ground/command test.
+
+#### Transactional endpoint player owner
+
+`timing-endpoint-player.i` now owns an airborne interval's anchor, ten exact
+residues, delayed-control history, span, consumed-field count and logical
+tick in 164 bytes. Initialization validates the display rate/previous input.
+Beginning an interval requires the previous interval to be complete, retains
+fractions/history, and captures the post-world player record. The scheduler
+must select PAL's 17/17/16 spans; NTSC accepts 20, whole-tick fixtures 1.
+Mission/pause rebasing still belongs to the lifecycle owner.
+
+Each field uses private working state: it advances delayed input, previews
+native h=1 motion, distributes its contribution, then publishes the result
+and history together. Invalid or repeated/skipped fields, invalid controls,
+invalid fractions and an exhausted interval cannot publish or consume history.
+This is a foreground transaction, not interrupt-atomic memory publication.
+
+The preview overlays anchored continuous quantities onto the current record,
+allowing current collective, engine flags and other command/world inputs to
+affect this field. One derived value must also be anchored: native +0939C
+reads previous coarse speed (`50`) before +09674 replaces it. An initial
+configuration-2 reversal test exposed power/target drift at field 36 when
+the previous field's candidate coarse speed fed the next preview. Retaining
+the interval's coarse speed removes that unintended feedback.
+
+Publication changes the ten continuous fields and derived target speed,
+effective power, lift, RPM target and coarse speed. It preserves all other
+current bytes, including clock and command inputs. In particular, preview
+yaw consumption is not published each field: the world owner must consume
+yaw once at the deadline. Nonzero impulse words in the packet are rejected;
+world kicks must be applied once before anchoring rather than diluted into
+one field's contribution. Ground contact, world kick scheduling, yaw
+consumption and scheduler integration remain unfinished. The standalone
+owner must not be installed as a complete replacement for those paths.
+
+`test_endpoint_owner_c.py` compares the assembly owner with the earlier
+independently orchestrated native-preview/distribution experiment for neutral,
+reversal and pulse tapes, both flight configurations, PAL and NTSC. All
+6,600 fields (including residues), 360 native endpoint records and associated
+geometry probes match. The final impulse-rejection guard is additionally
+covered by `test_endpoint_owner_transactions_c.py`: 48 calls check invalid
+initialization/span/tick, duplicate/gapped fields, failed controls after
+private history advance, invalid final residue, impulse rejection, exhausted
+intervals, preserved registers and atomic rejection. A 20-field sequence
+checks fresh collective/engine/yaw/view inputs against native previews;
+an inter-tick stick pulse changes fractional roll immediately. A recoil
+applied before the next interval is captured in its anchor. Whole-tick and
+PAL span entry checks also pass. This establishes the standalone owner, not
+the remaining world-effect ordering or production responsiveness.

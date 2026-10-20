@@ -30,7 +30,7 @@ endpoint_motion_step:
 	cmpi.l #EF_DEN,(a4)+
 	bhs .bad
 	dbf d7,.residue
-	lea .fields(pc),a4
+	lea endpoint_motion_fields(pc),a4
 	moveq #EM_COUNT-1,d7
 .field:
 	move.w (a4)+,d5
@@ -88,7 +88,7 @@ endpoint_motion_step:
 
 ; Flags: bit0 word (else byte), bit1 signed, bit2 circular shortest delta.
 ; Residue order is part of the presentation/shadow-state interface.
-.fields:
+endpoint_motion_fields:
 	dc.w 0,5	; X, modulo 65536
 	dc.w 2,5	; Y, modulo 65536
 	dc.w 28,1	; height, unsigned
