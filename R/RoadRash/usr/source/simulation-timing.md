@@ -1,3 +1,48 @@
+## Startup actor state matches; priming leaves a countdown difference
+
+The first `b-first-simulation-state` / `c-road-first-simulation-state`
+attempts installed an entry breakpoint while routing with `monitor fields`.
+Neither captured that entry before the 10,000-field route bound; both exit as
+failed observation setups and provide no starting-state evidence.
+
+The replacement private diagnostics copy state before the first native priming
+call at $86616 and, in a second build, after the fourth call at $8667a. They
+save registers, copy $a5900..$a873f and the additive RNG table/cursors to slave
+storage once, then replay the displaced instruction. The normal field-driven
+menu route is unchanged; snapshots are read back at field 100. No debugger
+memory injection is used. Source deltas and exact binaries are retained in
+`b/c-startup-observe-build` and `b/c-priming-observe-build`.
+
+The B source reconstruction first matches the final B build. The retained
+handling replay binary predates its four-byte explicit CCR clear in
+`field_animation`; removing only that instruction produces a byte-identical
+2,472-byte match to `b-final-replay-on/tested.slave` before adding observation.
+The C base is the exact current road-only private candidate.
+
+`b-startup-observation` / `c-startup-observation` capture field/cursor/delta
+1/1/1. All 11,840 bytes of game state, including all 35 actor records (4,480
+bytes), are identical, as are all 136 additive RNG bytes. This rules out
+different actor initialization or initial traits in these instrumented runs.
+
+`b-priming-observation` / `c-priming-observation` still capture field/cursor/
+delta 1/1/1 after the four setup calls. All actor records and additive RNG
+bytes remain identical. Player position/speed/x are 524288/0/160; riders
+$a61e0 and $a6260 are 524288/0/32 and 720896/0/160 respectively. The wider
+state region differs in 38 bytes: the clock subcounter at $a5d59 (B 0/C 1),
+the starter countdown at $a6ee1 (B 5/C 8), and projected-object records in
+$a7c5f..$a7cef. Exact byte comparisons are retained beside the snapshots.
+
+Native $8f552..$8f59c maintains the starter sequence using $a6ee0/$a6ee1;
+its helper subtracts delta from the remaining count at $8f5a6. Sequence
+completion sets $a59d4, enabling racing. Thus the three-count difference is
+not a friction coefficient or an actor-trait difference. C performs one
+elapsed-time update while B invokes the native initialization simulation four
+times at the same race field. The actor snapshots do not establish that their
+later race activation times match. The next check is the actual $a59d4 release
+boundary and its contribution to pre-input NPC motion, before changing either
+the startup sequence or active 50 Hz timing. No production patch is promoted
+from this observation alone.
+
 ## Early NPC divergence is not increased additive-RNG consumption
 
 `early_rng_c.py` observes every entry to the additive generator at $900ce,
