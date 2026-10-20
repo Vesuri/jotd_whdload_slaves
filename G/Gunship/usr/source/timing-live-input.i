@@ -58,6 +58,8 @@ timing_live_field:
 	movem.l d0-d2/a0-a2,-(sp)
 	movea.l timing_runtime_arena(pc),a2
 	lea RT_CAPTURE(a2),a2
+	tst.w RT_BOUNDARY_PHASE-RT_CAPTURE(a2)
+	bne .boundary
 .capture:
 	movea.l 12(a2),a0
 	movea.l 20(a2),a1
@@ -105,9 +107,16 @@ timing_live_field:
 	clr.l 32(a2)
 	movea.l 16(a2),a0
 	bsr history_publish
+.restore:
 	movem.l (sp)+,d0-d2/a0-a2
 	move.w (sp)+,ccr
 	rts
+.boundary:
+	; A retained field may be finishing with its consumers temporarily active.
+	; UI-time input never enters that old epoch; native sampling still ran.
+	clr.l 28(a2)
+	clr.l 32(a2)
+	bra .restore
 
 timing_live_original:
 	move.l timing_runtime_sampler(pc),-(sp)
@@ -150,6 +159,8 @@ timing_live_command:
 	move.l 24(a2),d0
 	addq.l #1,d0
 	move.l d0,24(a2)
+	tst.w RT_BOUNDARY_PHASE-RT_CAPTURE(a2)
+	bne .recorded
 	movea.l 44(a2),a0
 	move.w d6,d1
 	bsr commands_publish

@@ -55,7 +55,8 @@ RT_BOUNDARY_PHASE equ RT_BOUNDARY_RECORD+8 ; 0 ready, 1 suspended, 2 executing,
                                          ; 3 applied/unmarked, 4 marked,
                                          ; 5 marked/end, 6 failed
 RT_BOUNDARY_RESULT equ RT_BOUNDARY_PHASE+2
-RT_ARENA_SIZE equ RT_BOUNDARY_RESULT+2
+RT_BOUNDARY_ABORTS equ RT_BOUNDARY_RESULT+2 ; lifetime delivered fields exited
+RT_ARENA_SIZE equ RT_BOUNDARY_ABORTS+4
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.

@@ -476,8 +476,11 @@ marker now lets both readers acknowledge an executed boundary without
 repeating it. Runtime suspension/execution now retains the boundary, disables
 private sampling, runs native UI once and records marking failures without
 replay. Its native VBL gameplay timers stay frozen while UI owns keyboard
-input. Pending-field/world completion and rebase coordination are still
-required before native-loop activation.
+input. A completion entry now finishes the retained field/world while
+sampling remains excluded, handles subsequent keyboard/script boundaries,
+and separately accounts native exits that cancel the delivered field.
+Fresh rebase and first-field acceptance are tested; native-loop activation
+and live lifecycle validation remain pending.
 `timing-core.i` now supplies a shared include order, and `timing-runtime.i`
 prepares a single paused arena with all consumer/native-copy bindings.
 Loader-chain discovery no longer requires debugger markers. Production

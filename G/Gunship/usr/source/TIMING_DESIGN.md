@@ -3451,3 +3451,56 @@ This completes suspension/execution, not pending-field completion. After
 the UI returns, the coordinator must finish or explicitly terminate the
 retained field/world, account for both command readers and only then admit
 a fresh epoch. Native-loop installation and live pause validation remain open.
+
+## Completing or cancelling a retained UI field
+
+`timing_runtime_boundary_finish(a0=arena,d0=command budget)` completes only
+the delivered field retained across native UI. It returns 0 complete, 1 for
+a command-budget yield, 2 for another keyboard boundary, 3 for a script modal
+already suspended, 4 for flight end, -1 for failure or -3 for invalid
+admission. Non-result registers are preserved. All returns leave private
+sampling inactive and keyboard ownership native.
+
+The helper temporarily activates the existing consumers without delivering
+another record or rebasing the clock. The live field and accepted-key adapters
+now exclude every retained boundary phase independently of their active
+flags. Native sampling/FIFO handling continues, accepted-command sequence
+counting continues, and accumulated private mouse deltas are cleared, but no
+new fields or commands enter the old epoch. These adapters or external
+producer exclusion are a prerequisite for calling the helper.
+
+Budget retries resume the same player/world reader. A second unmarked boundary
+in the delivered cutoff can be suspended/executed while remaining paused:
+the suspension entry accepts the completed previous boundary and validates
+the new retained head without temporarily enabling the queue. A script modal
+reached by world completion is admitted and suspended before returning to its
+existing interpreter/continuation owner. Normal completion clears the
+discarded backlog's snapshot metadata; fresh activation remains explicit.
+Unread command-reader debt is accounted by the existing rebase operation.
+
+Native direct exit or Escape during pause follows the original decoder's
+return to outer flight cleanup: it skips the remaining motion/world tail.
+The helper clears that pending scheduler phase, discards/accountably retires
+remaining command debt, and increments `RT_BOUNDARY_ABORTS`. It does not
+increment completed player/world counters or run additional world cleanup.
+The already applied field timers and world opening are retained. This
+four-byte counter survives epoch activation; the arena is 27,254 bytes.
+Repetition rejects after the field has been resolved.
+
+`test_runtime_boundary_finish_c.py` compares paused and uninterrupted player
+and endpoint state before and on the first deadline for PAL/NTSC. It covers
+command-budget retries, two keyboard boundaries in one delivered field,
+native pause FIFO consumption, fresh-epoch input acceptance, six native exit
+cases, and a script modal reached during completion. All twelve completion
+cases pass. Live-input tests still pass 452 ABI cases and additionally prove
+that active consumer flags cannot allow publications through any of the six
+retained boundary phases. The earlier ten-case suspension/execution and
+36-call activation suites still pass. All experimental variants assemble.
+An injected post-motion fault preserves the committed step, keeps sampling
+off and rejects replay. A separate backlog fixture starts with three
+snapshotted fields, pauses on the first, discards the other two and verifies
+that only the retained field completes before fresh-epoch input is accepted.
+Slave setup still passes 15 calls.
+
+The native flight-loop hook and live lifecycle behavior remain unvalidated;
+these are assembled runtime/harness results, not installed production timing.
