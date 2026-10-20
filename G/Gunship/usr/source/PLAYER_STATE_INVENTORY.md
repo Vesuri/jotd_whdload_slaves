@@ -431,3 +431,37 @@ shared +3958 result byte. Exact observed address ranges are saved in ignored
 writes were observed in these cases. The observed ranges are evidence for
 relocation, not a complete static write-set proof: indexed accesses must be
 bounded for all supported models before defining private scratch storage.
+
+#### Private scene geometry implementation
+
+`timing-scene-private.i` now provides a standalone prepared geometry path.
+It copies native +05A24..+077B8, relocates 151 verified HUNK relocation entries
+to private code/scratch, coordinate templates and scene context, and replaces
+vertex projection with record traversal. It returns before polygon drawing,
+bypasses point drawing and draw submission, and returns before the UI work
+after coordinate preparation. The workspace is 7,864 bytes including native
+hunk bindings. Preparation validates all relocated addresses and patch-site
+signatures before writing; the caller must flush instruction caches once
+before execution. Source hunks and model data must be the validated 0658
+layout, with non-overlapping buffers.
+
+`scene_private_step` accepts committed camera/object vectors, constructs a
+fresh scene endpoint, rebuilds coordinate selection/transforms, runs both
+native passes, and returns the final native flag as 0/1. It preserves native
+view/LOD/order semantics. Native model/map/actor inputs remain shared read-only
+inputs and must be stable during the call. Its output does not itself mutate
+the player or run cleanup. Thus this is a geometry primitive, not yet the
+scheduled world collision owner or a guarantee against concurrent mutation.
+
+`test_scene_private_assembled_c.py` compares the assembled prepare/step with
+the native projected path for the same 96 boundary/special-object scenes:
+1,210 shape visits, 40 special shapes, 271 nonempty plane sets, and 32 positive
+final flags. It repeats each call using the same workspace. Results and all
+visibility bytes agree, registers are preserved, observed writes stay within
+private storage/stack, and the native code/data images remain byte-identical.
+Each of 151 relocated pointers plus seven patch signatures is independently
+corrupted: all 158 preparations reject without changing the destination.
+These pass. The prototype relocation script uses the executable's HUNK
+records, not scanning for address-looking values. Production integration,
+world-phase ownership, lifecycle handling and collision trajectory acceptance
+remain pending; the primitive is not installed in the slave.

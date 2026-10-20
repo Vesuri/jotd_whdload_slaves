@@ -431,6 +431,9 @@ native modal interpreter. A post-motion coordinator now composes weapons,
 damage, scripts and the periodic tail with once-only modal continuation,
 tested against the native sequence. Remaining field/world ownership, full
 player/world composition and lifecycle continuation remain pending.
+A standalone private scene geometry path now rebuilds committed scene inputs
+and evaluates the native flight-end plane flag without renderer writes; its
+world-tick ownership and collision trajectory acceptance remain pending.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
