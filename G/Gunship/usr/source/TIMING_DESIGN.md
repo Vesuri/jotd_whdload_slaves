@@ -17,6 +17,8 @@ fixes remain baseline behaviour. Future scheduler/player/prediction and
 render optimizations must share this gate.
 C2 and C3 remain incomplete: the foreground player/world consumer, command
 effect classification, and production lifecycle handling are not installed.
+`timing-control-targets.i` implements standalone immediate command targets
+and their common yaw tail; it is not included in a gameplay build yet.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -80,7 +82,7 @@ The diagnostic marker `GSIH0001` publishes the code/input hunk addresses,
 history and scratch-record addresses, accepted-command sequence, raw-delta
 accumulators, fire edges, arm request and native sampler address. An extension
 at +44 publishes the retained-command queue address.
-Unused raw key 7F hex requests a fresh capture at the next active VBL.
+Raw key 7F hex, which has no dedicated native action, requests a fresh capture at the next active VBL.
 This diagnostic-only trigger avoids debugger memory writes. The VBL resets
 the ring with its current field minus one as the epoch, then publishes the
 current field. This is a test fixture, not the production modal/rebase policy.
@@ -103,8 +105,10 @@ The native command hook excludes interrupts across queue publication and
 the field-cutoff update. It preserves the displaced instructions' registers
 and flags, including X, without requiring a privileged SR read in the input
 task. The diagnostic arm key initializes the command epoch before requesting
-the next VBL's field-history reset. It is itself an unused native no-op,
-not a command to replay. Subsequent key words survive native FIFO consumption.
+the next VBL's field-history reset. It is not retained as a command to replay.
+Native decoding still runs the shared yaw tail for this key; it is not a
+strict state-preserving no-op (see the command audit below).
+Subsequent key words survive native FIFO consumption.
 The VBL propagates command loss into the field-history fault. The eventual
 coordinator must also check command faults directly before committing work,
 including losses after a field record was published.
@@ -114,6 +118,78 @@ unread fields and command intervals together, and account for losses.
 `commands_rebase` counts retained slots discarded (the larger unread count),
 preserving lifetime loss/discard diagnostics. Native FIFO overflow remains
 the native input acceptance policy; only accepted insertions are retained.
+
+## Native command ownership audit
+
+Command words below are hexadecimal, including modifiers. The native decoder
+at +04ED4 compares full words, so a dispatcher must not strip modifiers.
+This is an ownership inventory, not an installed command dispatcher.
+
+| Command | Native action / boundary | Owner |
+|---|---|---|
+| 4C/4D, 4E, 4F | Set view byte 1A to 0, +32, -32 | Player/presentation |
+| 50/5A, 51/5B, 52/5C, 53/5D | Add +4, +1, -1, -4 to collective 39; clamp 0..42 | Player control target |
+| 38, 39, 3A | Decrement, clear, increment yaw byte 3F | Player control target |
+| 01, 02 | Toggle engine bits 2/3 in byte 42, conditional on reserves and damage; notify and update instrument state | World |
+| 03 | Toggle bit 4 in byte 42; when the old bit was set, also clear collective 39; notify | Mixed; ordered reset must reach player |
+| 04..07 | Set weapon byte 41 and call +07EEE | World |
+| 09, 0B | Damage-gated resource check at +07C1C; set countermeasure bytes 44/45 to 36; notifications | World |
+| 08, 0A | Damage-gated toggles of bits 1/0 in byte 42; external indicator writes and notifications | World |
+| 0804..0806 | Clear instrument bytes, notify and call +07C38 | World; callback audit pending |
+| 45, 0833 | Set flight-end byte 18, with an exceptional return path | Lifecycle/world |
+| 0C | Toggle byte 51, save/restore a display word and rebuild display | Presentation; callback audit pending |
+| 40, 1C/41, 37/21/22, 34, 42, 46 | Call UI/navigation/modal routines or write their request flags | Lifecycle/UI; callback audit pending |
+
+The common tail at +052CC clamps yaw to -4..4. It then computes the
+byte-width negative absolute value of coarse speed 50 and compares it
+**unsigned** with 15 at +052F0. For every nonzero signed-byte speed this
+clears yaw at +052F6; speed zero retains the clamped value. Preserve the
+actual byte arithmetic rather than substituting an apparent speed threshold.
+This tail runs for ordinary continuing commands, including an unknown key.
+Exceptional flight-end/modal exits need their own lifecycle handling.
+
+`tmp/dev/tools/audit_player_commands_c.py` runs the original decoder, without
+stubs, for all 15 immediate control words plus 7F and their 0800-modified
+variants. All 86,688 combinations of legal collective/yaw targets and seven
+signed coarse speeds match expected complete player records. Memory-write
+hooks observe only view 1A, collective 39 and yaw 3F outside the stack.
+Evidence: `tmp/dev/tmp/c/player-command-audit.json`.
+
+Ownership must therefore be applied to effects, not just whole commands:
+the player reader must apply the shared yaw effect exactly once at the
+command's field, even when the primary action belongs to the world. The
+world reader must not replay that tail against a later player pose.
+The mixed 03 command needs an explicit ordered reset protocol: deferring
+its collective clear and applying it after newer field commands would
+reverse their order. This remains an integration obligation; the two queue
+cursors alone do not solve it. Engine/resource/UI callbacks are not covered
+by the immediate-control fixture.
+
+### Field-owned command helper
+
+`control_target_command` takes the complete command word in d0 and the
+native player record in a0. It applies only the 15 view/collective/yaw
+primary actions above, returning 1 when handled and 0 otherwise. Unknown
+words leave the record untouched. It preserves d1-d7/a0-a6.
+Collective arithmetic retains native byte wrapping before saturation.
+Yaw increment/decrement similarly retains byte width.
+
+`control_target_tail` takes the player record in a0, preserves all data
+and address registers, and applies the native common yaw clamp/speed reset.
+Keeping it separate lets the eventual dispatcher run it once for continuing
+commands whose primary action is world-owned. Neither helper calls game
+code, consumes command cursors, changes the world clock or implements
+fractional motion. CCR is not part of either helper's return contract.
+They are standalone 68000 code and must be reached only through a
+CUSTOM1-gated installer when the native hand-off is ready.
+
+`tmp/dev/tools/test_control_targets_c.py` compares assembled helper output
+with the original decoder in 90,528 cases, including every byte value for
+collective/yaw to exercise wrapping. Complete 86-byte records match.
+It also checks all 65,536 command words: only the 15 owned primary actions
+are accepted, and every rejected word leaves the record unchanged.
+Each call checks preserved registers and stack/return behaviour.
+Evidence: `tmp/dev/tmp/c/control-target-tests.json`.
 
 ## Foreground coordinator
 

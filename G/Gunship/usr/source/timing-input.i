@@ -1,7 +1,8 @@
 ; Native 0658 field producer. Diagnostic installation only (VERIFY+TIMING_INPUT).
 ; Raw key $7f requests a fresh diagnostic capture at the next active VBL.
-; This unused native command is decoded as a no-op. No foreground
-; game consumer is installed yet. Native input/FIFO/latch behaviour is retained.
+; This key has no dedicated native action, but still runs its shared yaw tail.
+; No foreground game consumer is installed yet. Native input/FIFO/latch
+; behaviour is retained.
 ; Accepted native commands are retained for independent player/world readers.
 ; Their effect classification and foreground hand-off are not installed yet.
 

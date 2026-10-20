@@ -59,7 +59,7 @@ camera or instrument state.
 | 3A / byte | Lift-related term | Derived at +094DC. | Continuous derived value |
 | 3D / byte | Track heading | +09432/+09470 update it. | Continuous derived value |
 | 3E / byte | Signed vertical rate | +09572 adds rounded quarter-error; ground reset +09626. | Continuous; world reset |
-| 3F / byte | Yaw control, clamp -4..4 | Command changes +052A6/+052B0, clamp +052E4; clear +05154/+052F6 and +0945A. | Field-stamped control, with native consumption semantics to resolve |
+| 3F / byte | Yaw control, clamp -4..4 | Command changes +052A6/+052B0, clamp +052E4; clear +05154/+052F6 and +0945A. The shared command tail clears it for every nonzero coarse speed, including for unknown commands. | Field-stamped control; world decoder must not replay its common tail |
 | 40 / byte | Target engine/RPM-like value | +09728 derives from engine flags and collective. | Continuous derived value |
 | 50 / byte | Coarse speed | +09674 derives speed shifted right by two. | Continuous derived value |
 | 52 / byte | Crash/landing state | +09604/+09622 ground logic. | World |
@@ -136,6 +136,11 @@ position/speed writes despite their matching numeric displacements.
 
 The first inventory report therefore identifies the continuous/world
 boundary but does not close C4a or C4b.
+
+The command ownership table and 86,688-case native decoder check are in
+`TIMING_DESIGN.md`. In particular, command 03 changes world-owned flags
+and can reset player-owned collective; preserving order across that split
+remains required. Command effects are not cleanly separable by key alone.
 
 ## Executed native motion and control audit
 
