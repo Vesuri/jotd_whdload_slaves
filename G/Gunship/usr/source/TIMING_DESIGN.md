@@ -5015,3 +5015,36 @@ or writes native state. All 176 source-signature corruptions, now including
 each of the eighteen heading-load bytes, reject without changing the private
 destination. Drawing remains stubbed in this fixture; it establishes world
 geometry isolation, not live visual or whole-game collision acceptance.
+
+
+### Compiled guest heading raster comparison (C6)
+
+The ignored visibility harness now has a `VP_HEADING` variant. In each of
+sixteen views (eight camera headings in two palette modes), the first lane
+renders a native heading under ordinary ownership. The second lane sets a
+world heading 128 angle units away, supplies the reference heading through
+private presentation scratch, and invokes the native rendering prefix with
+the actual heading hooks installed. It waits for DMA, compares every byte
+of all five 8,000-byte planes and checks that the world heading is unchanged.
+The private heading is supplied directly: this tests raster consumption of
+the published pose, not the full field-history/forecast/snapshot pipeline.
+
+The first fixture moved the camera but left the player elsewhere. Native
++061BC..+061E4 filters the special object using the player's coordinates, so
+that fixture could exclude it. Its wrong-heading control also passed, and
+those initial bitmap matches are not acceptance evidence. The corrected
+fixture places player XY at the test camera. Its deliberately wrong private
+heading fails the bitmap comparison at view index one (camera heading 32,
+first palette mode), after one completed view. Thus the comparison demonstrably
+observes orientation-dependent pixels rather than only matching background.
+
+The corrected 68000, 68020 and 68060 runs each pass all sixteen views; all record
+twelve views with native target candidates. These are compiled guest tests
+with real DMA, headless FS-UAE, host mouse disconnected (`joyport0=none`),
+scripted menu input and read-only debugger inspection. Results are retained
+under `tmp/dev/tmp/c/script-heading-{000,020,060}-proximity`; the negative-control
+result is under `script-heading-negative-proximity`. The saved final reference
+bitplanes have identical SHA-256 hashes across the three CPUs. All sessions
+completed and were closed.
+This does not establish whole-game visual continuity, prediction cost or
+native flight-loop activation.
