@@ -1095,3 +1095,66 @@ at 302, swap is entered at 304 and returns at 305. That is 100 ms from injection
 to buffer handoff. This one phase is not a latency distribution or a measurement
 of the first changed scanout pixels; it does not close C3b. Performance, A4 and
 latency acceptance remain open.
+
+## Visible steering response: a remaining simulation regression
+
+The buffer-handoff probe does not establish when steering first becomes visible.
+`visible_latency_c.py` and `visible_latency_batch_c.py` now compare paired normal
+binary runs on the real-speed cached A1200 Fast configuration. Each pair reaches
+the same race field with identical initial snapshot hashes; both hold throttle
+from field 100, then one adds RIGHT and the other stays neutral. Eight pairs per
+binary inject at fields 300 through 307. The B reference is the preserved
+`b-final-build/RoadRash.slave`, with its validated `Cache CUSTOM2=3` settings;
+C uses the current normal binary with `Cache CUSTOM2=1`. Neither has timing
+probes or per-tick hashes compiled in.
+
+Twenty consecutive profiler screenshots are retained per run. The capture
+advances 21 active fields; image labels are assigned backwards from that end
+boundary. The table reports capture-end estimates with one PAL field of boundary
+uncertainty, not host-display latency or an exact scanline timestamp. Within each
+pair, the road viewport is pixel-identical until the first differing image.
+The inspected first differences are the player's steering pose, rather than a
+HUD clock change. Initial state and effective configuration equality are checked
+within each pair; B and C do not have identical simulation histories.
+
+| Input field | B first-visible estimate (ms) | C first-visible estimate (ms) |
+|---:|---:|---:|
+| 300 | 180 | 360 |
+| 301 | 220 | 340 |
+| 302 | 200 | 420 |
+| 303 | 180 | 400 |
+| 304 | 220 | 380 |
+| 305 | 200 | 360 |
+| 306 | 180 | 340 |
+| 307 | 220 | 420 |
+
+These are eight consecutive phases of one low-speed steering scenario, not a
+general latency distribution. Their medians are 200 and 370 ms respectively.
+The gap is substantially larger than the capture-boundary uncertainty. Evidence
+is in `b-visible-phases`, `c-visible-phases`, and the reused C field-300 pilot
+pair. Tested slave SHA-256 values are
+`6892f327f8f6c7719a3d5603a4bd1ed6a844dbd228b7e50c916678d58ba10bf3` (B) and
+`fc07ed239f111fb376dc0101fabffee2dd42bd779190df73c87b1a8cdc16e7cf` (C).
+
+Retained instruction traces in `b-visible-steering-trace` and
+`c-visible-steering-trace` explain why presentation scheduling alone is not
+enough. Native player steering at `$8b93a` starts with actor `+$26` (speed times
+elapsed fields), shifts it by eight, multiplies by steering `+$42`, then shifts
+again at `$8b946`. The resulting integer is stored in `+$0c` and normally `+$08`.
+Later `$8b97a..$8b97c` multiplies by that elapsed-movement factor again before
+another shift and the `$d000` scale. Small one-field results round away.
+
+For field-300 input, C's first captured movement factor is 25; B's is 76 with a
+three-field native update. At the end of the 20-image capture (live field 321),
+C has `+$08=6`, `+$22=0`, and lateral position `+$00=160`; B has `+$08=21`,
+`+$22=4`, and `+$00=174`. Both start at 160, with similar speeds (6446 and 6454).
+The traces and player records are retained alongside reduced `steering-math.json`.
+This demonstrates lost small movement in C; it does not assign the entire
+visible-response gap to rounding, since frame throughput also differs.
+
+C1b therefore still needs steering/displacement normalization and fractional
+remainder handling, with the camera, tyre-grip and pose consumers audited too.
+Simply amplifying input or changing the simulation quantum would not establish
+correct behavior. Any correction needs fresh cross-cadence state/event replays,
+B handling comparisons and these visible-response checks. Existing identical
+C replay hashes prove determinism, not correct handling relative to B.

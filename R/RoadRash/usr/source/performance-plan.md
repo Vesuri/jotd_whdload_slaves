@@ -357,7 +357,10 @@ The integrated runtime completes the 13-cell functional matrix and the full-race
 replay, but rendering throughput regresses substantially on supported machines.
 Several live-field A4 distance checks also exceed 1%. Controlled-seed completed-
 tick comparison passes on functional-speed and real-speed 020 configurations.
-Performance, remaining A4 review and latency work still prevent completion.
+Paired visible-response tests now also expose slower steering response in C:
+the one-field path loses small lateral updates to native integer rounding.
+Performance, steering normalization, remaining A4 review and latency work still
+prevent completion. See the visible-response audit in the dependency document.
 
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
