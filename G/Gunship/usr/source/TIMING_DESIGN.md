@@ -4755,3 +4755,55 @@ state, explicitly exclude RNG/damage callbacks, certify lifetime and scripted
 teleports, and bind the terrain sampler to the committed raster after DMA.
 These steps and live visual/cost validation remain open; the terrain helper
 alone does not complete prediction of the scripted helicopter or ground units.
+
+### Private scripted-helicopter steering/motion preview (C6, standalone)
+
+`timing-script-preview.i` copies +09FB0..+0A14A after validating all sixteen
+absolute operands, the entry/return and the changed attack boundary. Its
+1,158-byte context contains a 726-byte private player/split-object snapshot,
+a bitmap binding and classification bytes supplied by the caller, scripted
+target index, private close-object/terrain scratch and copied native code.
+Native object load/store, angle lookup and sine helpers operate on the private
+A5 record; none publishes it back. The script target index must be below 128.
+Zero split X is treated as native inactivity.
+
+Both +07FA4 calls bind to a private adapter that reproduces its word-coordinate
+calculation and invokes the read-only terrain sampler. Unknown relevant queries
+invalidate the candidate. Scripted mode (nonzero P+002C) ignores the first
+terrain result and skips the other queries, so an unknown result there does
+not invalidate an otherwise known pose. The native byte steering, angle lookup,
+word wrapping, sine components, height fallback and final heading negation
+remain copied instructions. The adapter deliberately retains incoming upper
+register halves where the original word instructions retain them.
+
+After the native +/-2 heading adjustment, a branch from +0A0CA to +0A104
+skips the attack gate, RNG and damage callback. These affect player damage and
+notification state but not the object's movement inputs. The movement suffix
+reloads its inputs from the private player/object record. No RNG preview or
+rollback is involved. The caller must use only the index-5 candidate fields,
+never the complete private player snapshot. This routine has no installer and
+is not yet part of the runtime arena or renderer publication.
+
+`test_script_preview_c.py` runs 1,800 fixtures against the complete native
+object body, including its real RNG and hit arithmetic. Native sound and
+indicator callbacks are stubs. All 804 admitted poses match native X/Y/height,
+heading and object metadata; 557 are in scripted mode. The reference makes
+333 RNG calls, 111 hit calls and 111 sound calls, while private execution makes
+none. The sweep rejects 978 unknown-terrain candidates and eighteen inactive
+objects; targeted null-plane/invalid-index checks and irrelevant-query scripted
+mode are also covered. All nineteen signature corruptions reject before writes.
+A write monitor and full native-memory comparison find no gameplay writes.
+The many unknown cases include native coordinate arithmetic that points outside
+the declared bitmap; those cases are not silently relabeled as clear terrain.
+
+Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. Loader/live
+hook includes now precede the shared timing core, keeping configuration,
+arena-pointer references and loader calls near each other as the experimental
+core grows. This changes layout only; CUSTOM1 remains the master gate.
+
+Still required: certify the scripted object's creation/removal/teleport writers,
+provide a stable committed bitmap after DMA completion, integrate a bounded
+fractional pose into renderer-only scene inputs, and measure actual acceptance,
+visual continuity and cost. Ground-object motion/writer inventory and native
+flight-loop activation remain open. The standalone pose comparison is not
+proof of C6 or C completion.

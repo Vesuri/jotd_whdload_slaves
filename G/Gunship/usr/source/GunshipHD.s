@@ -487,7 +487,6 @@ verify_dispatch_near:
 	ENDC
 	IFD TIMING_RUNTIME
 	include "timing-slave.i"
-	include "timing-core.i"
 	include "timing-live-input.i"
 	include "timing-live-vbl.i"
 	include "timing-live-render.i"
@@ -495,6 +494,8 @@ verify_dispatch_near:
 	include "timing-live-gauges.i"
 	include "timing-live-map.i"
 	include "timing-live-actor-generation.i"
+	; Keep loader/live hooks close to their shared configuration and pointer.
+	include "timing-core.i"
 	ENDC
 
 	IFD VERIFY

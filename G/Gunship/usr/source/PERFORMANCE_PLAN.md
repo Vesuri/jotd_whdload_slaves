@@ -766,8 +766,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     is derivable from native order and arithmetic. Never draw them one tick behind.
     The scripted index-5 steering/terrain/RNG dependencies are now inventoried;
     its CPU terrain query has a read-only sampler matching 1,571 native pixel
-    classifications. Private scripted motion, identity/teleport barriers and
-    committed-raster integration remain open.
+    classifications. A private scripted steering/motion preview now matches
+    804 native next poses without RNG, damage or gameplay writes. Scripted
+    identity/teleport barriers, committed-raster integration and renderer
+    publication remain open.
   - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
     inherit its previous occupant's trajectory. Derive each projectile's first presentation
     interval from its spawn and update order. The native six-slot audit proves
