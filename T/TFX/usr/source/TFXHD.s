@@ -719,6 +719,13 @@ split_new_chip_data:
         jmp     resload_Abort(a0)
 .allocated:
         move.l  d0,a4
+        ; Optional fast shadows belong only to the new 040 data/render path.
+        ; Allocation failure retains the complete screen-copy loop.
+        move.l  #bplbytes*8*2,d0
+        move.l  #MEMF_FAST!MEMF_CLEAR,d1
+        jsr     _LVOAllocMem(a6)
+        lea     delta_shadow(pc),a0
+        move.l  d0,(a0)
         lea     new_chip_ranges(pc),a5
 .relocate:
         move.l  (a5)+,d1
@@ -920,6 +927,81 @@ one_digit macro
         swap    d0
         endm
 
+; A menu or a previous flight may have drawn directly into the chip buffers.
+; Start each PlayLevel invocation with invalid shadows and replay its prologue.
+reset_copy_shadows:
+        move.l  a0,-(sp)
+        lea     delta_seen(pc),a0
+        clr.l   (a0)
+        clr.l   4(a0)
+        move.l  (sp)+,a0
+        dc.w    $f227,$6900 ; fmove.x fp2,-(sp), original 040-only prologue
+        move.l  d2,-(sp)
+        JMPPTR play_level_body
+play_level_body_ptr: dc.l 0
+
+; Compare against the last copy to each chip buffer. Only changed blocks
+; need chip writes; first use always initializes both destination and shadow.
+copy_changed_blocks:
+        move.w  ([_logbase_ptr,pc]),d0
+        move.l  delta_shadow(pc),a2
+        move.w  d0,d2
+        mulu.w  #16000,d0
+        adda.l  d0,a2
+        lea     delta_seen(pc),a3
+        tst.b   (a3,d2.w)
+        bne.b   .compare
+        st      (a3,d2.w)
+        move.w  #bplbytes*8/16-1,d0
+.init:
+        rept 4
+        move.l  (a1)+,d1
+        move.l  d1,(a0)+
+        move.l  d1,(a2)+
+        endr
+        dbf     d0,.init
+        rts
+.compare:
+        move.w  #bplbytes*8/16-1,d0
+.block:
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .diff1
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .diff2
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .diff3
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .diff4
+        lea     16(a0),a0
+        dbf     d0,.block
+        rts
+.diff1:
+        subq.l  #4,a1
+        subq.l  #4,a2
+        bra.b   .write
+.diff2:
+        subq.l  #8,a1
+        subq.l  #8,a2
+        bra.b   .write
+.diff3:
+        lea     -12(a1),a1
+        lea     -12(a2),a2
+        bra.b   .write
+.diff4:
+        lea     -16(a1),a1
+        lea     -16(a2),a2
+.write:
+        rept 4
+        move.l  (a1)+,d1
+        move.l  d1,(a0)+
+        move.l  d1,(a2)+
+        endr
+        dbf     d0,.block
+        rts
+delta_shadow: dc.l 0
+delta_seen: ds.b 8
+        even
+
 start_frame:
 	    ;BSR.W	LAB_0144		        ;01464: 610008c0 (@Control thunk)
 	    ;BSR.W	@HandleEjection		    ;01468: 6100f1ea
@@ -1002,6 +1084,11 @@ do_swap_screen:
         move.l  old_bufs(pc),a0
         move.l  fast_buf(pc),a1
         move.l  a0,(a5) ; Restore screen buffer
+        tst.l   delta_shadow(pc)
+        beq.b   .fullcopy
+        bsr     copy_changed_blocks
+        bra     .copied
+.fullcopy:
         move.w  #bplbytes*8/16-1,d0
 .copy:
         move.l  (a1)+,(a0)+
@@ -1010,6 +1097,7 @@ do_swap_screen:
         move.l  (a1)+,(a0)+
         dbf     d0,.copy
 
+.copied:
         ; a1 now points to spite buffer in fast mem
 
         move.l  4+old_bufs(pc),a0
@@ -2925,6 +3013,8 @@ pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
         PL_ELSE
+        PL_P    $016de,reset_copy_shadows
+        PL_GA   $016e4,play_level_body_ptr
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new

@@ -391,3 +391,28 @@ each (50 ms mean frame duration). Mostly three-refresh frames yield closer to
    cockpit/external flights and frame-interval distributions. Report achieved
    rates and remaining bottlenecks; do not equate an emulator result with the
    20 fps hardware goal or change the emulator to manufacture that result.
+
+First retained improvement: new-renderer 040 screen copies use two 64,000-byte
+fast-RAM shadows and write only changed 16-byte blocks to chip RAM. First use
+copies everything; entering PlayLevel invalidates both shadows. Allocation failure
+retains the full copy. Original rendering and 020/030/060 do not allocate shadows.
+
+The final same-build, same-seed 2,000-field pair presents 546 frames disabled and
+578 enabled (+5.86%, nominal PAL 13.65 to 14.45 fps). Its original 250-field prefix
+improves from 73 to 77 (14.6 to 15.4). These are emulator comparisons, not hardware
+rates or a claim that 20 fps is reached. Logical chip writes fall from 8,967,382 to
+3,108,888 in the longer window; these are CPU operations, not physical bus cycles.
+
+Verification: 80 native copy/history/guard cases, four checker negative controls,
+114 in-game completed-copy checks across cockpit and view-change fixtures, and ten
+complete 64,000-byte displayed-plane/PNG comparisons against the disabled path.
+Cached copies match both chip buffers before all 110 tested reuses. All four CPU
+gates and 040 original rendering reach flight; all 245 inspected 060 FPU sites are
+unchanged. Normal/CHIP_ONLY builds have no relocation records. Evidence and tools:
+`tmp/dev/docs/optimization-20fps.md`, `tmp/dev/tmp/opt20/`.
+
+The longer window newly reaches FETOX at tfx.020:$51682 (204 FPSP entries disabled,
+142 enabled). The earlier zero-trap result applies only to its short window.
+Investigate this additional site separately. Hardware measurement is postponed
+because the user does not currently have the Amiga available; optimization remains
+in progress and the 20 fps hardware goal is unverified.
