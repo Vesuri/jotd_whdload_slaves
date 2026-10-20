@@ -34,6 +34,8 @@ approach responses using r^h field gains and exact native h=1 rounding.
 the native stages, including additive slew/coasting and retained fractions.
 `timing-heading.i` replaces native stage 0's angle writes with coupled
 field-rate heading/track updates and explicit world heading impulses.
+`timing-movement.i` replaces height and horizontal displacement/wind,
+retaining native quantization and boundary order while scaling by 3/rate.
 `timing-motion-stages.i` exposes the native preview in ordered slices so
 scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
@@ -504,11 +506,8 @@ component cases match independent full-fraction models. Fifteen malformed
 state cases, including signed-long extremes, fail without writes.
 Evidence: `tmp/dev/tmp/c/flight-rates-tests.json`.
 
-Angles are handled by the separate component below. Height/coordinate
-displacement and wind are **not** field-scaled by these rate functions.
-Running the native stages every field without those
-remaining conversions would still accelerate movement. They remain
-standalone and must not be installed as a complete player step. World
+Angles and displacement use the separate components below. The rate
+functions alone must not be installed as a complete player step. World
 effects, full coupled-flight acceptance and CUSTOM1-gated native installation
 are still pending.
 
@@ -564,6 +563,66 @@ preview. Its retained linear-conversion and flight-rate checks also pass
 (79,270 calls total). This verifies their ordering together; displacement
 is still native whole-tick code in this fixture, and world effects remain
 excluded. Evidence: `tmp/dev/tmp/c/flight-heading-tests.json`.
+
+## Height, horizontal displacement and wind
+
+`timing-movement.i` owns 20 bytes: rate word, pending-contact word,
+height/x/y signed long fractions (each denominator rate), previous-height
+airborne word, and a reserved word. `movement_init` accepts 50/60 or h=1
+fixture 3 and clears the state. Component functions take state in a0 and
+a private player record in a1, return d0=0/-1 and preserve other registers.
+They validate all fractions and bookkeeping flags before writes.
+
+`movement_height` **replaces native stage 2**. It retains the original
+byte-width addition of vertical rate and `(tick & 1) + 1`, arithmetic
+shift by two, word-width height addition and signed zero floor. The
+resulting native-quantized height rate is scaled by 3/rate with a retained
+fraction. Outward debt is cleared at the floor. The private record must
+contain the logical tick parity for the interval being consumed; choosing
+that epoch in the native scheduler remains a hand-off obligation.
+This helper does not advance the world clock.
+
+The height step records whether its input height was nonzero and latches
+a nonzero-to-zero crossing. `movement_ack_contact` clears only the pending
+crossing after world evaluation. It does not decide landing severity,
+crashes, flight end or notifications, and a crossing flag is not a substitute
+for the C5 committed-state/contact comparison. A later rise does not silently
+erase an unconsumed crossing.
+
+`movement_horizontal` **replaces native stage 5** and takes the validated
+native sine helper (+07A44) in a2. It derives coarse speed with the native
+word shift and signed-byte narrowing, then obtains exact native sine/cosine
+increments from the immutable helper/table. Each axis scales movement,
+adds it with native word wrapping, and applies the unsigned 1800..D800 hex
+bounds. Outward fractions are discarded at a bound, preserving inward
+fractions. Airborne wind is then scaled and added **after** both coordinate
+clamps, without a second clamp, matching native order.
+
+Movement and wind share each axis's fraction, so neither contribution
+loses a sub-unit increment or acquires a separate whole-unit debt. Heights,
+coarse speed and trigonometric rates retain native quantization; this does
+not invent extra velocity precision in the native table inputs.
+The selected integration order uses each field's newly updated rates.
+It therefore follows finer semi-implicit integration, rather than forcing
+old whole-tick endpoint displacement. That trajectory difference must be
+measured separately from rounding in the full held-input gate.
+
+`tmp/dev/tools/test_movement_c.py` passes 4,608 original height comparisons,
+including byte parity/wrapping and signed-word floor boundaries, and
+65,536 original horizontal comparisons covering every coarse-speed/angle
+pair, map edges and signed wind. Eight thousand PAL/NTSC full-fraction
+models verify update order, clamps, contact latching and acknowledgement.
+Six corrupt-state cases reject before writes. Evidence:
+`tmp/dev/tmp/c/movement-tests.json` (164,297 calls).
+
+The `test_kinematics_c.py` fixture now connects heading/track, vertical
+response, height, forward response, horizontal motion/wind and RPM in native
+order. All 4,096 h=1 complete player records match the full deterministic
+motion preview; its fraction/model regressions also pass (83,366 calls).
+Evidence: `tmp/dev/tmp/c/kinematics-tests.json`. This is the continuous
+candidate gate, with world RNG/contact effects excluded. It is not proof
+of a complete native tick, field-rate handling bounds, collision equivalence,
+live input latency, CPU cost or production installation.
 
 ## Field-rate deterministic attitude
 
