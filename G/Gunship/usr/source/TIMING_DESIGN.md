@@ -767,6 +767,50 @@ fraction resets on lifecycle transitions and the native scheduler adapter
 remain integration obligations. It is not included in the slave yet;
 installation must use the CUSTOM1 Enhanced framerate gate.
 
+## Fractional camera angles
+
+`timing-camera.i` adds `player_camera_angles`, a read-only presentation
+adapter. It takes the player in a0, combined player-step state in a1
+and a 12-byte camera vector in a2. It replaces only the heading, pitch
+and roll words at offsets 6/8/10 after `presentation_build`; positions
+and instruments remain that builder's responsibility. It returns
+d0=0/-1 and preserves other registers. Invalid rates or angle fractions
+leave all output untouched.
+
+In PAL/NTSC mode, heading includes both its main and conversion fractions.
+The camera contribution is the exact integer quotient
+`trunc((main*rate + conversion)*256 / (32767*rate))`, using two bounded
+68000 signed divisions. Roll includes `trunc(roll_fraction*256/rate)`.
+The adapter uses the committed player state and retained integration
+fractions; it does not predict future player input or motion.
+
+Field-mode pitch uses a linear half-angle after native byte negation,
+plus `-trunc(pitch_fraction*128/rate)`. This deliberately removes the
+native integer half-pitch staircase: otherwise, for example, pitch 0
+and -1 both produce camera angle 0, hiding small initial pitch inputs.
+At odd integer pitch, the enhanced angle can differ from the native
+camera by 128 angle-word units (half an angular unit); it does not change
+the authoritative pitch or flight equations. Native byte-negation wrap
+is retained. Whole-tick fixture rate 3 requires zero fractions and uses
+the exact original byte-negation/arithmetic-shift camera operation.
+This distinction is explicit: zero fractional state at field rate does
+not imply native camera equality for odd pitch.
+
+Repeated presentation neither consumes controls nor changes player,
+fractional or RNG state. This adapter still needs CUSTOM1-gated native
+installation and live input-to-screen validation; changing camera words
+in a CPU fixture alone does not prove display latency.
+
+`tmp/dev/tools/test_camera_c.py` passes 65,536 native angle comparisons
+(all pitch/heading byte combinations with varied roll/view), 12,000
+independent PAL/NTSC fraction models, and eight invalid-state cases.
+Eight first-field stick cases cover both signs of x/y at both rates:
+pitch and roll camera words already change after one player step.
+One hundred repeated camera builds per case preserve the exact angles,
+player/shadow state and gameplay RNG seed. Output guards verify that only
+the three angle words change. Evidence:
+`tmp/dev/tmp/c/camera-tests.json` (221,450 calls).
+
 ## Combined continuous player step
 
 The standalone `timing-player-step.i` now provides a common continuous
@@ -806,8 +850,8 @@ player unchanged, three invalid initializations preserve state, and
 register/stack/input-packet checks pass. Evidence:
 `tmp/dev/tools/test_player_step_c.py`,
 `tmp/dev/tmp/c/player-step-tests.json` (16,285 calls).
-This proves composition; fractional camera presentation and measured
-input-to-screen latency remain open.
+This proves composition; the fractional camera adapter is tested
+separately above, while measured input-to-screen latency remains open.
 
 ## Coupled held-control measurement: C4e not accepted
 

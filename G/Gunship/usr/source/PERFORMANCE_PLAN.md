@@ -437,6 +437,10 @@ explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
 its native installation and elapsed-time gauge slew remain pending.
+A read-only fractional camera adapter now exposes the first field's
+attitude changes in camera angle words; whole-tick camera arithmetic is
+preserved, while enhanced pitch removes the integer half-angle staircase.
+Live input-to-screen latency remains unmeasured.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:
