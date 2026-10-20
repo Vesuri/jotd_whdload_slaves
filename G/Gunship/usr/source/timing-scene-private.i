@@ -136,6 +136,17 @@ scene_private_step:
  beq .bad
  tst.l SCENE_H6(a6)
  beq .bad
+ ; Preparation runs before flight initialization. The native coordinate
+ ; table's transform ranges are initialized later and can change between
+ ; flights. Refresh the source table before rebuilding committed actor
+ ; coordinates; never retain the loader-time ranges or transformed scratch.
+ movea.l SCENE_H6(a6),a3
+ lea $18dc(a3),a3
+ lea SCENE_COORD(a6),a4
+ moveq #$b8/2-1,d1
+.coords:
+ move.w (a3)+,(a4)+
+ dbf d1,.coords
  movea.l a1,a0
  movea.l a2,a1
  movea.l SCENE_H6(a6),a2

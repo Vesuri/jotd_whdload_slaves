@@ -428,10 +428,16 @@ flight-loop caller yet. A foreground loop owner now composes bounded batches,
 draws, retained commands, modal continuation, excess-time rebase and flight
 exit, with PAL/NTSC comparisons against explicit dispatch. Its native entry
 hook and Exec interrupt-exclusion adapters are now installed in experimental
-TIMING_RUNTIME builds only. Live acceptance failed: the first 68020 run ended
-flight at the first committed-geometry deadline (17 fields, one world tick,
-no scheduler fault). This unexpected geometry exit must be resolved before
-activation is accepted. Native world opening and the complete periodic
+TIMING_RUNTIME builds only. The first 68020 live run exposed stale geometry coordinate ranges copied
+before flight initialization: the private check falsely ended flight at
+17 fields while the committed raster flag was clear. Refreshing the native
+coordinate table before rebuilding each committed scene fixes the captured
+model traversal and plane results. The 96-scene native comparison now also
+starts with stale private table data (176 signature rejections still pass).
+The corrected headless 68020 run reached 1,060 fields and 63 world ticks,
+with no lost/discarded history, scheduler fault or unexpected flight exit
+(`tmp/dev/tmp/c/live-loop-020-refresh`). This is initial loop activation
+evidence, not full C9 gameplay/CPU acceptance. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are
