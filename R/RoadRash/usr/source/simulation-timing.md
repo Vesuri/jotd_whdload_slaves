@@ -1,3 +1,33 @@
+## Rendered world-object reuse: short replay rejects direct reuse
+
+A private candidate extends the existing geometry-ready marker to return from
+`step_collision_objects` immediately on the first post-render simulation tick.
+This preserves the rendered mixed actor/world list, its `$a59fc` actor offset,
+`$a59fe` world count and `$a8092` roadside pointer. Later ticks rebuild normally.
+The diagnostic forces reuse on 020; production source is unchanged.
+
+The native collision reader at `$8c3b8` explicitly applies the actor offset,
+and `$8c492` uses the roadside pointer. The depth sorter at `$8b37e` sorts
+separate depth/index arrays rather than the object records. Those facts make
+reuse plausible, but do not prove that the rendered and rebuilt lists are
+interchangeable.
+
+`c-world-reuse-state` tests the candidate against `c-pair-clear-vary-state`
+with the field-timed attack tape and functional CPU settings, period four plus
+variable cadence, capture 1457. The first actor-hash difference is at simulation
+cursor 1238; 216 of the first 1596 hash slots differ. Sound events match. The
+capture differs in three bytes, all in opponent `$a62e0`, at `$a62e1`,
+`$a62fb` and `$a6311`. Thus matching sound and most captured state do not establish
+simulation equivalence. The strict short comparator rejects this candidate.
+
+The private source, 20,544-byte normal companion, 49,820-byte diagnostic and
+rejection summary remain in `c-world-reuse-source`, `c-world-reuse-build` and
+`c-world-reuse-state`. No throughput claim or runtime integration follows from
+this failed replay. Before another reuse attempt, compare object records and
+collision inputs immediately before cursor 1238 against a fresh rebuild;
+the root cause is not yet established. C's B distance and handling gates remain
+open.
+
 ## Integrated 040/060 geometry reuse
 
 The normal runtime now reuses render geometry for the first subsequent
