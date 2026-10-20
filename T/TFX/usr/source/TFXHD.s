@@ -1155,6 +1155,37 @@ box:
         unlk    a6
         rts
 
+box_new:
+        link.w  a6,#0
+        movem.l d0-d7/a0-a3,-(sp)
+        move.w  14(a6),d0       ; x0
+        move.w  18(a6),d1       ; y0
+        move.w  22(a6),d2       ; x1
+        move.w  26(a6),d3       ; y1
+        move.w  10(a6),d4       ; color
+
+        ; _ClipBox
+        cmp.w   #screenh,d1
+        bcc.b   .out
+        cmp.w   #screenh,d3
+        bcs.b   .clipped
+        move.w  #screenh-1,d3
+.clipped:
+        cmp.w   d0,d2
+        bne.b   .wide
+        ; Original blits include a one-pixel-wide rectangle.
+        moveq   #-1,d5
+        bsr     draw_line
+        bra.b   .out
+.wide:
+        move.l  a6,a3   ; preserve a6
+        bsr     draw_rect
+        move.l  a3,a6
+.out:
+        movem.l (sp)+,d0-d7/a0-a3
+        unlk    a6
+        rts
+
 wait_vsync_enabled: dc.w 0
 
 enable_vsync_wait:
@@ -2884,6 +2915,8 @@ pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
         PL_ELSE
+        PL_P    $4dba0,box_new
+        PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new
         PL_P    $500dc,draw_line_strip_new
         PL_P    $4f840,gouraud_fill_new
