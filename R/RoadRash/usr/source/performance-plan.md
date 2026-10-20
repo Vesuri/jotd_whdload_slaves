@@ -383,6 +383,12 @@ The normal matrix, MMU, full-race/restart, controls, demos and disabled-hook
 checks pass. Response median returns to 170 ms, with phase 303 still one
 capture field behind B. Default Fast 020 and NoCache live-field distances
 remain 1.373% below B; the other accelerated cells are within 1%.
+The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
+road integration and preserves its fractional state across copies and crashes.
+It matches completed simulation state across actual 1/2/3/4-field and varying
+presentation schedules (one-field coverage omits drawing), plus full finish
+and arrest/restart replays. It is not enabled in the normal build: complete
+opponent order, distance, performance and remaining transition checks are open.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 

@@ -458,6 +458,34 @@ Wreck-exit coverage, shorter exact render periods, remaining reverse/actor-slot
 lifecycle cases, the final candidate's hardware/MMU/control/latency checks and
 B-equivalence/performance gaps remain open. Section C is not complete.
 
+### Road diagnostic: exact short presentation intervals
+
+Functional-speed 020 runs now exercise the short schedules explicitly with
+`VERIFY_C_ROAD_TIMING`, the seeded attack tape and capture field 1457:
+
+| Run | Requested interval | Measured ordinary intervals | Frame count |
+| --- | ---: | --- | ---: |
+| `c-road-period1-functional` | 1 | 799 at 2 fields | 803 |
+| `c-road-period2-functional` | 2 | 799 at 2 fields | 803 |
+| `c-road-period3-functional` | 3 | 533 at 3 fields | 537 |
+| `c-road-period4-functional` | 4 | 399 at 4 fields | 403 |
+| `c-road-period1-skip` | 1, drawing omitted | 1,600 at 1 field | 1,603 |
+
+Counts include three initial zero-interval samples and, except the skip run,
+one initial one-field sample. The nominal period-1 full-drawing run does not
+reach one-field presentation; it must not be counted as that coverage.
+The existing `VERIFY_SKIP_RENDER` diagnostic provides the actual one-field
+case, preserving simulation work and the native presentation handoff while
+omitting drawing. It is not a full-render throughput or visual test.
+
+Every run matches the real-speed period4 lifecycle reference across 1,595
+conservatively completed hashes, ten sound requests and all six authoritative
+field-1457 regions. Each output directory retains its measured histogram and
+comparison. Together with the prior long/varying tests, this verifies the road
+candidate's simulation invariance across the requested short scheduling cases;
+it does not close its B handling, hardware performance, or remaining transition
+gates. No production source or default runtime behaviour changes in this check.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
