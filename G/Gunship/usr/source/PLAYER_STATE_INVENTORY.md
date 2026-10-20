@@ -264,5 +264,6 @@ writes, in addition to the player-record inventory. Field-history catch-up
 must preserve their ordering and slot identity before consuming a deadline.
 A standalone field-owned guidance step now preserves the native transitions
 with a private next-field acknowledgement in place of the screen-swap flag.
-It is not yet installed or bound to the scheduler. See TIMING_DESIGN.md for
+It is bound to delivered scheduler fields in standalone tests, but is not
+yet installed in gameplay. See TIMING_DESIGN.md for
 the transition and hybrid-handshake tests and remaining presentation work.

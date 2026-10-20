@@ -2396,3 +2396,45 @@ notification/resource/audio UI use the existing explicit test fixtures.
 This closes the standalone post-motion ordering gap, not the complete C4e
 player/world gate. Opening versus field motion, modal lifecycle ownership,
 field-owned countdowns and the CUSTOM1 production installation remain pending.
+
+
+### Combined whole-tick player/world evidence
+
+`tmp/dev/tools/test_player_world_c.py` links the actual extracted opening,
+world motion impulses, split player/ground path and post-motion world body.
+The assembled test uses rate 3 (h = 1), not a 50/60 Hz approximation. Its
+reference executes native +05640 through +056D8, the native pitch clamp,
++05376 stick/attitude, the unmodified +0937C motion and +05894 world body.
+This restores all native motion RNG and contact behavior that earlier
+isolated motion comparisons intentionally excluded.
+
+The enhanced side runs opening, captures impulses through deadline RNG,
+prepares the player candidate, classifies ground contact, commits motion and
+its deferred ground effects, then runs the world body. No native player
+motion routine is substituted for the scaled implementation. The test
+compares the complete native state window, callback/RNG order, hardware
+writes and consumed fire flags, with the existing explicit visibility,
+target-selection and UI fixtures. Live timestamps/fire flags deliberately
+differ from the private deadline packet. Those inputs are normalized; the
+next-y history is checked against the supplied current y because raw input
+sampling is outside this test (native +05376 reads but does not update the
+previous-y latch). No render or raw command/input decoder runs.
+
+The independent fixture sweep passes 512 cases: 505 ordinary completions,
+seven flight ends, 191 ground resets, and zero through three motion RNG
+draws. It varies tick parity/wrap, altitude, speed/damage eligibility, controls,
+previous y, both RNG modes and fire requests (4,620 helper calls). The
+`--sequential` run passes another 512 updates across 32 sequences of up to
+16 ticks, retaining player, object, RNG and private motion state between
+updates. It has 509 ordinary completions, three flight ends, 294 ground
+resets and 3,660 helper calls. A terminal result ends its sequence; the
+fixture restarts instead of continuing gameplay after flight end. Neither
+run encounters a modal screen; the separate world-body suite covers that
+split and continuation contract.
+
+These tests strengthen the h = 1 portion of C4e. They do not establish the
+field-rate trajectory bound, physical-integration acceptance decision,
+world-deadline contact policy, missed-obstacle behavior, render-derived
+flight-end migration or cross-CPU runtime behavior. The order tested here
+is the native whole-tick order; choosing where opening and random impulses
+belong within a multi-field interval remains an installation requirement.

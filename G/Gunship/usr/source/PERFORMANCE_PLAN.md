@@ -447,8 +447,10 @@ equilibria: fractional exponential response continues inside the native
 integer zero-increment range. Those stopping ranges are now retained for
 flight-rate responses. A subsequent altitude-normalization fix removes
 the delayed integer-height boundary that selected a different vertical
-equilibrium. C4e is still not accepted: remaining coupled trajectory
-differences, moving controls and the complete player/world gate need
+equilibrium. Combined whole-tick player/world comparisons now pass with
+native motion RNG, ground effects, opening and post-motion world work,
+including consecutive ticks. C4e is still not accepted: field-rate coupled
+trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
 standalone tests, with the pitch clamp separate from read-only presentation;
