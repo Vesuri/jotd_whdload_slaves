@@ -1,3 +1,49 @@
+## Combined-model crash origin and collision-driven steering
+
+`crash_origin_c.py` replays the original lap input through a known pre-crash
+checkpoint, asserts that the player is still riding, then breaks immediately
+before native writes that enter a crash state. Relocated movement-code sites
+are mapped back to native addresses. The probe preserves field-timed controls;
+B starts observing at 1300, the combined candidate at 1500 after releasing LEFT.
+
+`b-crash-origin` reaches `$8e3b0` at live/simulation field **1374**, before
+crash state 0 is stored. The usual sampled onset at 1376 observes that transition later.
+The caller returns through `$8c450` in world-object collision handling; A0 is
+object-record `$a7c8e`, A4 is handler `$8e35a`. Player lateral position is -468.
+`c-combined-crash-origin` reaches the different object handler's `$8e4b8` at
+live/simulation field **1537**, with A0 `$a7c3e`, A4 `$8e418` and lateral -902.
+This is observed at 1538 by the two-field lap samples. Neither first crash is
+entered through the rider-health or skid-threshold crash-state write. These
+records identify object handlers and record addresses, not a decoded scenery
+sprite identity.
+
+The approach differs before either terminal collision. At field 1374, the
+ordinary lap snapshots place B at position 11,792,110/lateral -468 and the
+candidate at 11,817,279/lateral -385. B's snapshot can interrupt the collision
+routine before its crash-state store, so it must not be treated as a completed
+pre-contact state. Candidate lateral motion briefly reverses during the held-
+LEFT turn. This prompted a separate probe of collision-driven steering writes.
+
+`steering_contact_c.py` watches `$8c25e` and `$8c36c` for player A1 from field
+1200 to 1400, while preserving the original held-LEFT input. All observed
+writes occur at `$8c25e`, which replaces steering and actor `+$42` using the
+current heading multiplied by 64. Results:
+
+| Run | Simulation cursors | Other riders |
+|---|---|---|
+| `b-steering-contact` | 1253, 1265, 1286, 1302 | `$a6260`, then `$a61e0` three times |
+| `c-combined-steering-contact` | 1256..1262 inclusive, 1309 | `$a6260` seven times, then `$a61e0` |
+
+At the first contact, B's player/rival lateral positions are -107/+17, whereas
+the candidate's are -176/-66. During the candidate's repeated contact its
+player heading alternates 4/-51/7/-50/9/-50/13, repeatedly overwriting the
+steering response despite LEFT remaining held. The different NPC approach and
+contact sequence therefore need investigation before attributing the missed
+scenery collision to road thresholds. The trace does not by itself prove that
+per-tick collision frequency is wrong or justify adding a collision cooldown.
+The existing private NPC lateral normalization is the next relevant component
+to evaluate with the combined model; no runtime change is made here.
+
 ## Combined reference motion and road timing on the compact runtime
 
 A private candidate combines the existing four-field endpoint displacement
