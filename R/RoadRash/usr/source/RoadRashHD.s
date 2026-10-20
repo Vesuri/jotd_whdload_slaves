@@ -283,6 +283,11 @@ pl_main
 	IFD VERIFY_FRAME_PERIOD
 	PL_PS	$7736,verify_pace
 	ENDC
+	IFD VERIFY_C_AUDIT
+	PL_PSS	$747E,verify_c_sim_begin,2
+	PL_PS	$75B6,verify_c_render_begin
+	PL_P	$7748,verify_c_render_end
+	ENDC
 	ENDC
 
 	
@@ -699,6 +704,9 @@ expansion_memory:
 	include	verify.s
 	IFD VERIFY_B
 	include	verify_b.s
+	ENDC
+	IFD VERIFY_C_AUDIT
+	include	verify_c_audit.s
 	ENDC
 	ENDC
 	

@@ -352,6 +352,8 @@ a slave option whose default reproduces the original timing until G1 decides the
 
 ### C. Consistent simulation with uncapped vsynced rendering
 
+In progress: [dependency audit](simulation-timing.md) and diagnostic boundary snapshots.
+
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
 not depend on how many frames are rendered. B4's variable-delta results show that
