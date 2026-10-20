@@ -235,3 +235,11 @@ Thus the airborne routine's player-bytes-plus-RNG save set is insufficient
 for previewing ground contact. The field step must retain pre-step contact
 information for world evaluation and must not repeatedly execute these
 notifications or authoritative resets on each rendered field.
+
+The standalone `timing-motion-preview.i` now copies the native arithmetic
+and bypasses the random-heading and contact blocks in that copy. It runs
+on a separate 86-byte record. Memory-write checks across 4,096 cases find
+no writes outside that result and the stack. This establishes a usable
+continuous-arithmetic preview boundary, without claiming that omitted
+world effects or fractional integration have passed C4e. Detailed test
+scope and installation/cache obligations are in `TIMING_DESIGN.md`.

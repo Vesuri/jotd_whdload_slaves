@@ -22,6 +22,9 @@ and their common yaw tail; it is not included in a gameplay build yet.
 `timing-presentation.i` likewise provides a standalone read-only camera and
 instrument builder, with the native pitch clamp factored into a separate
 player operation. Native-loop installation and gauge slew remain pending.
+`timing-motion-preview.i` prepares and executes a native arithmetic clone
+on a separate player record, excluding random/contact world effects.
+It is also standalone; it does not yet scale or commit player motion.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -229,6 +232,56 @@ addresses with guard bytes catch fixed-address or out-of-bounds stores.
 The fixture verifies register preservation and 256 repeated builds with
 unchanged player state and outputs.
 Evidence: `tmp/dev/tmp/c/presentation-tests.json`.
+
+## Native motion preview boundary
+
+`timing-motion-preview.i` reuses the 0658 flight routine rather than
+translating its arithmetic. `motion_preview_prepare` takes the validated
+code-hunk base in a0 and a separate, even, 1,054-byte destination in a1.
+It copies +0937C..+0979A with the embedded RPM table at the same relative
+position. All six sine calls continue to use the original native helper
+and table. Only two branch instructions are changed in the copy:
+
+* +09474 jumps to +09492, bypassing the random damage-heading impulse.
+* +095A0 jumps to +09636, bypassing ground classification, notifications,
+  flight-end state, crash state and the speed/attitude/vertical-rate resets.
+
+The native altitude clamp and arithmetic before/after these world-owned
+blocks still execute. The routine produces a deterministic motion candidate,
+including derived quantities, without advancing gameplay RNG. It is not a
+full native tick: the omitted impulses/contact consequences must be
+evaluated at the world boundary, with their native ordering accounted for
+in the eventual h=1 gate. In particular, an airborne-to-ground transition
+must not be inferred solely from the final candidate height; the pre-step
+airborne state remains an explicit hand-off requirement.
+
+Preparation checks both patch boundaries, routine entry/return, and all
+eight absolute call instructions/targets before writing the destination.
+These checks supplement, not replace, the caller's 0658 version validation.
+It returns 0 on success or -1 on mismatch and preserves non-result
+registers. Allocation bounds and non-overlap are caller contracts.
+**The installer must flush instruction caches after preparation and before
+executing the clone.** No running game code is patched by these helpers.
+
+`motion_preview` takes the authoritative player record in a0, a distinct
+86-byte result in a1 and the prepared clone in a2. It copies the input,
+executes native arithmetic with a5 pointing to the result, and preserves
+all data/address registers (CCR unspecified). The caller owns the scratch
+record and must not overlap it with the source or code. This is a whole
+native increment candidate, not the fractional field-rate integrator.
+Neither helper is included in normal/diagnostic gameplay builds yet.
+Any future installation must use the master CUSTOM1 gate.
+
+`tmp/dev/tools/test_motion_preview_c.py` checks 384 airborne cases against
+the unmodified original routine with random-impulse damage bits clear.
+Another 3,712 low-altitude cases compare against original code with the
+same two world blocks skipped by execution hooks, reaching the contact
+boundary 552 times. This second set tests extraction/isolation, not native
+contact-result equivalence. All 4,096 complete result records match;
+memory-write hooks observe no writes outside the result and stack, and the
+authoritative input remains unchanged. Registers and output guards pass.
+Twenty-one malformed boundary/call fixtures fail before destination writes.
+Evidence: `tmp/dev/tmp/c/motion-preview-tests.json`.
 
 ## Foreground coordinator
 
