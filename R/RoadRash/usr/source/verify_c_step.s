@@ -147,6 +147,10 @@ step_reset_history:
 step_main:
 	btst #0,step_input_overflow(pc)
 	bne step_input_failed
+; Finish/countdown code can request exit inside a catch-up step. Publish that
+; state and let the native outer loop leave the race; never run later ticks.
+	tst.w $a59d0
+	bne .render
 	lea step_stats(pc),a0
 	move.l 8(a0),d0
 	add.l #STEP_FIELDS,d0
@@ -173,6 +177,9 @@ step_main:
 	IFD VERIFY_C_SEED_ATTACK
 	bsr step_event_seed_attack
 	ENDC
+	IFD VERIFY_C_SEED_FINISH
+	bsr step_seed_finish
+	ENDC
 	bsr .run
 	bra step_main
 .run:
@@ -180,6 +187,22 @@ step_main:
 	jmp $87486
 .render:
 	jmp $875bc
+	IFD VERIFY_C_SEED_FINISH
+; Synthetic finish-state boundary. Native action code owns the ensuing finish
+; countdown and exit request; no direct exit flag or shortened timer is seeded.
+step_seed_finish:
+	move.l step_stats+8(pc),d0
+	cmpi.l #501,d0
+	bne .done
+	bset #7,$a5dc8
+	move.l d0,$a5dc2
+	move.w #1,$a5980
+	clr.w $a5982
+	move.w #18,$a5984
+	clr.w $a5986
+.done:
+	rts
+	ENDC
 ; Run stateful presentation helpers exactly once per simulation step.
 step_end:
 	jsr $89138

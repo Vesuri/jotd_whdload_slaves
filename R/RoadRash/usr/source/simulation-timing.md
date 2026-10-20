@@ -815,3 +815,29 @@ zero by live field 200 (cursor 198). An earlier check at live field 160 still ha
 steering 24 because the cursor was only 154. Live-field checkpoints are not
 equal simulation boundaries, so that intermediate difference is not treated as
 a state mismatch.
+
+## Stop catch-up at the race-ending tick
+
+`VERIFY_C_SEED_FINISH` is a synthetic boundary fixture: at field 501 it sets
+the player's finished flag, finish timestamp and native finish-countdown state.
+It does not set the race-exit request or shorten the countdown. Native action
+code at `$90252` calls `$8f136`; the ten countdown increments request exit at
+field 690. This fixture does not cover naturally crossing the finish line.
+
+Before the correction, `c-finish1-before` and `c-finishvar-before` both capture
+the exit flag already set at field 690 but continue through field 691. The
+native outer loop consequently records 691 in `$a5d54`. C now checks the exit
+request before starting another simulation step, publishes the final state
+through the existing rendering path, and lets the native outer loop leave.
+Elapsed time after a terminal race state does not authorize further gameplay.
+
+`c-finish1-fixed` and `c-finishvar-fixed` both stop at cursor 690, with 689
+completed active-race steps (the active cursor starts at field 1), finish timestamp
+501 and end timestamp 690. All completed hashes match across cadences and match
+the corresponding pre-fix prefixes. The frozen field-690 actor, stopwatch,
+simulation clock, camera, crash-camera and rank state also matches. The native
+finish counter reaches ten and the race interrupt hook is cleared in both runs.
+The test does not establish winning progression or audible end-of-race sound.
+With the fixture disabled, `c-finish-regression` retains all 1,598 attack/crash
+tape hashes, sound requests and the field-1457 comparison state from
+`c-reset-fixed-regression`. The normal slave binary remains unchanged.
