@@ -927,3 +927,37 @@ With the endpoint camera adapter called after every rendered-batch boundary,
 the same 1,440-field comparison passes again (21,688 helper calls). Every
 camera build leaves player/owner/history unchanged, final angle words match
 across batches, and world counts plus geometry cleanup results are unchanged.
+
+#### Full-strength disturbance correction
+
+`timing-endpoint-impulse.i` introduces a private completed-interval correction
+from two matching native h=1 candidates, without and with the world's
+disturbance packet. It adds their complete motion difference to the endpoint
+using a one-step distribution, preserving existing fractions. It does not
+scale a once-per-world-tick kick by 1/17 or 1/20, sample RNG, construct the
+candidates or schedule publication. The caller must use identical anchors,
+controls, tick and world inputs for both candidates, apply the correction
+once before ground resolution, and publish transactionally.
+
+With held input and zero initial fractions, the undisturbed endpoint equals
+the first candidate, so the correction yields the disturbed native endpoint
+exactly. Derived flight values and consumed yaw come from the disturbed
+candidate. Changed input can leave actual roll nearer a limit than the
+anchor preview; the correction therefore retains native roll saturation
+at -20/+20 and discards outward fractional debt. A negative signed-word
+altitude result uses the native zero floor and clears height debt rather
+than wrapping below ground to 65535.
+
+`test_endpoint_impulse_c.py` passes 270 native-candidate comparisons over
+3,420 fields: all 45 supported roll/pitch/heading impulse combinations,
+both flight configurations and native/PAL/NTSC intervals. Complete records
+match the disturbed native h=1 endpoint. Two changed-input roll-limit
+examples and three invalid phase/span/residue rejections pass. Separate
+height-floor tests cover underflow and the native signed-height boundary,
+with register and input-candidate preservation.
+
+This helper is not yet connected to candidate construction or scheduled
+RNG ownership; the current endpoint player entry still rejects nonzero
+impulse packets. Changing-input coupled trajectories, map-edge correction
+and combined ground/disturbance acceptance remain open. Passing held-input
+comparisons does not establish those broader gates.
