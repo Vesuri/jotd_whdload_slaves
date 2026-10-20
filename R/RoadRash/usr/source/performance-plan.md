@@ -352,73 +352,49 @@ a slave option whose default reproduces the original timing until G1 decides the
 
 ### C. Consistent simulation with uncapped vsynced rendering
 
-In progress: [dependency audit](simulation-timing.md) and diagnostic boundary snapshots.
-The integrated runtime completes the 13-cell functional matrix and the full-race
-replay, but rendering throughput regresses substantially on supported machines.
-Several live-field A4 distance checks also exceed 1%. Controlled-seed completed-
-tick comparison passes on functional-speed and real-speed 020 configurations.
-The enhanced runtime now normalizes steering and carries quarter-unit lateral
-movement, fixing small updates lost to one-field integer rounding. Full finish,
-wreck and arrest replays validate the correction across render cadences.
-Fast RAM world-object projection is now integrated in the enhanced runtime;
-cached-020 throughput improves from 8.7 to 10.0 fps in the standard window.
-Automatic caching is now integrated behind the same enhancement toggle:
-default Fast-RAM 020/030 improve from 5.0/7.5 to 10.0/12.5 fps without a
-separate `Cache` option; `NoCache` remains respected. All 11 normal hardware
-cells and both MMU functional checks pass on the integrated build.
-Measured rider-heading prediction is now integrated behind that toggle.
-Normal-build median visible response improves from 230 to 170 ms over eight
-input phases (B: 200 ms); two phases still trail B by 20 ms. Finish, arrest
-and wreck replays preserve all authoritative hashes and sound requests.
-The subsequent Fast RAM movement/collision code copy improves standard-window
-030/040/060 throughput to 16.6/18.8/20.7 fps (previously 12.5/16.6/18.5);
-Fast 020 reaches 10.3 default, 10.2 Cache and 6.3 NoCache. All 11 normal
-configurations, both MMU checks, full finish/arrest/wreck replays, controls and
-demo transitions pass. Disabled and unsupported paths retain their original
-hooks. The eight-phase response median is now 180 ms; seven phases are one
-capture field later and one four fields earlier than the preceding runtime.
-The combined AI/acceleration helper copy then improves Fast 020 to 11.9 fps
-(7.0 NoCache) and 060 to 22.8; 030 stays at 16.6 and 040 reaches 18.9.
-The normal matrix, MMU, full-race/restart, controls, demos and disabled-hook
-checks pass. Response median returns to 170 ms, with phase 303 still one
-capture field behind B. Default Fast 020 and NoCache live-field distances
-remain 1.373% below B; the other accelerated cells are within 1%.
-The simulation-only compact road geometry is now integrated behind the same
-enhancement toggle. Default/Cache 020 reaches 12.0 fps, NoCache 7.6, 030 16.6,
-040 19.3 and 060 23.0. All 11 normal configurations, both MMU checks, full
-finish/arrest/wreck and restart comparisons pass. All eight visible-response
-phases remain identical to the previous runtime (170 ms median). Default and
-NoCache 020 distance checks still fail B's tolerance; C remains incomplete.
-The cache-selected Fast RAM lane scan is now integrated for uncached 68020
-machines only. NoCache throughput improves to 8.3 fps; other measured rates
-remain unchanged. All hardware, MMU, full-race, controls/demo, dispatch and
-visible-response comparisons pass against the preceding runtime. C's existing
-B comparison failures remain open. Retesting the private combined road/motion
-correction now passes Cache and NoCache short-distance tolerance, but default
-still fails (-1.1762%) and its crash onset remains 1538 versus B's 1376; that
-correction is not integrated.
-Lean derivation now shares the simulation pose traversal. The integrated binary
-is identical to the validated candidate: cached/default Fast 020 reaches 12.1
-fps and 040 reaches 19.6; other rates are unchanged. Full-race/restart, cadence,
-controls/demo, hardware/MMU and disabled-hook checks pass. All eight measured
-response phases now meet or beat B (170 ms median). This closes the current
-phase-303 latency regression in that test; handling/distance and overall
-throughput requirements remain open.
-The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
-road integration and preserves its fractional state across copies and crashes.
-It matches completed simulation state across actual 1/2/3/4-field and varying
-presentation schedules (one-field coverage omits drawing), plus full finish,
-arrest and wreck/restart replays. The reactivation carry reset has fresh cadence
-and all three exit/restart comparisons; its old finish tape now ends in arrest,
-so the earlier trajectory is not silently accepted as equivalent. It is not
-enabled in the normal build: complete opponent order, NPC integration, distance,
-performance and remaining control/hardware checks are open.
-The native rank audit found that the old full-order verifier sorts stale
-off-screen positions. Corrected rank observations still show nearby-rider
-passing differences from B; full-order equivalence remains unproven.
-Performance and remaining A4/handling differences still prevent completion.
-The fused runtime passes the current eight-phase B visible-response comparison;
-future gameplay changes must retain that result. See the dependency document.
+In progress. The integrated runtime uses 20 ms PAL simulation steps, queued
+field inputs and native vsync, selected only by the default-off Enhanced
+framerate boolean and the CPU/Fast RAM gate. Unsupported machines retain
+original timing. Normalization, state ownership and validation history are in
+the [dependency audit](simulation-timing.md).
+
+The current 19,700-byte runtime includes Fast RAM movement/collision,
+AI/acceleration and world projection, compact simulation-only road geometry,
+uncached-020 lane scanning, fused lean derivation and Fast raster edges.
+Heading prediction uses the latest increment with a four-tick fallback when
+integer heading repeats; release/reversal guards and the measured four-field
+horizon bound remain. Prediction never changes authoritative gameplay state.
+
+Current normal rates are A500 8.5 fps, Chip-only 020 12.5, Fast 020
+default/Cache 12.5, NoCache 8.3, 030 16.7, 040 20.2 and 060 23.0.
+All 11 normal hardware cells and both MMU functional cells pass. The MMU
+configuration disables CPU data-cache emulation, so it is not a hardware
+cache-performance claim. All eight measured response phases meet B's limits:
+180/160/140/120/180/160/140/120 ms (median 150 ms).
+
+The current build has fresh short replay equivalence at 1/2/3/4-field and
+varying 2/3/4/12/16-field render intervals; one-field coverage omits drawing.
+Full finish, arrest and wreck/restart comparisons, keyboard/CD32 controls,
+pause/resume, demo fire/timeout transitions and enhancement-off checks pass.
+These functional and cadence results do not establish B-equivalent handling.
+Default and uncached 020 distance still fail the one-percent gate, and opponent
+trajectories/order still differ. C remains incomplete.
+
+The optional VERIFY_C_ROAD_TIMING correction remains diagnostic. It fixes
+proven loss of positive road-centre motion from one-field integer rounding;
+current scene review restores the rider to the road where B also has it.
+Short fixed/varying replay and complete arrest/restart equivalence pass on
+the raster runtime. A new joystick-only drive successfully finishes and
+restarts with player/history and all actor carries zero; its recorded tape's
+varying-cadence replay is running. Current road-candidate distance and native
+opponent-order differences from B remain open, along with remaining release
+checks. It is being validated as a separate normalization fix, without
+changing A4's reference or declaring C complete.
+
+The native rank audit found that the old full-order verifier sorted stale
+off-screen positions. Use native lists and completed-state observations;
+matching the displayed final rank alone is insufficient. Future changes must
+retain the current response safeguard and the full requirements below.
 
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must

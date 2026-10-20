@@ -1,3 +1,34 @@
+## Road correction: successful finish, reset and response safeguard
+
+The joystick-only drive `c-raster-road-driven-race` successfully finishes at
+simulation field 11907 and exits at 12096. It records 12,095 completed
+hashes and 66 sound requests; the inspected native FINISHED screen shows
+rank 2. Its recorded ten-field input tape is retained as `driven-tape.json`.
+The next race starts with capture (97,96,0,1). Direct memory inspection finds
+all 12 bytes of player road carry/history and all 140 bytes of actor road
+carries zero. This is successful-finish/restart evidence for the corrected
+model, not B handling equivalence. The identical tape's varying-cadence replay
+`c-raster-road-finish-vary` is running; no cross-cadence finish result is yet
+claimed. The retained wreck tape is also being checked under the new model.
+
+All eight fresh normal response pairs in `c-raster-road-visible` have identical
+initial snapshots. Estimates are 160/140/120/180/160/140/120/180 ms, median
+150 ms. Each meets the corresponding B limit 180/220/200/180/220/200/180/220.
+This preserves the response safeguard despite the changed motion and layout.
+
+`c-raster-road-copy` and its extended 5,000-field probe both observe one
+natural companion transfer with zero carry. It preserves the checked registers
+and expected destination carry, but does not establish nonzero carry transfer.
+The separate reactivation check above does observe a nonzero carry being
+cleared. These are distinct coverage claims; no state was injected.
+
+The road candidate's remaining hardware matrix has so far passed A500,
+Chip-only 020 and default 030. The complete matrix, varying finish and wreck
+coverage remain pending. Production physics remains unchanged. The C status
+summary in performance-plan.md is refreshed to the actual integrated runtime
+and current candidate evidence; C1–C3 and all following requirements are
+unchanged, and the original distance/opponent-order failures remain open.
+
 ## Road correction: complete arrest replay and reactivation reset
 
 `c-raster-road-fixed-fullrace` and `c-raster-road-vary-fullrace` finish the
