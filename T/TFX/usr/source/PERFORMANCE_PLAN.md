@@ -362,3 +362,32 @@ Palette code remains unchanged; step 12 is still unreproduced.
 ## Open questions
 
 - Where the yellow colour appears; step 12 searches for it.
+
+## Further optimization: 20 fps target
+
+Target a sustained average of 20 presented frames/s on the Apollo 1240/40 with
+vsync retained and no reduction in scene detail or simulation work. Hardware
+validation is required; emulator throughput is an A/B development measure.
+The latest fixed-window baseline is 73 publications/250 PAL vblanks (14.6 nominal
+fps); 100 publications would reach 20 nominal fps, requiring 37% more throughput.
+A 20 fps average across two- and three-refresh frames requires equal numbers of
+each (50 ms mean frame duration). Mostly three-refresh frames yield closer to
+16.67 fps. Track the interval distribution as well as the aggregate rate.
+
+1. Recheck the current build and presentation path. Distinguish COP1LC publication
+   from visible buffer adoption; the fast renderer currently calls SetPage without
+   an explicit sync wait. Establish cadence, simulation timing and display safety
+   before changing synchronization. Retain the existing fixed-window comparison,
+   then extend promising measurements to at least 2,000 fields.
+2. Optimize expensive exact-output drawing first: masked sprite merge, then flat
+   spans and geometry preparation. Use measured routine costs and completed-call
+   comparisons; keep original rendering and other CPU paths available unchanged.
+3. For each candidate, audit hook boundaries, run native original/replacement
+   comparisons with guards and edge cases, and perform same-build enabled/disabled
+   timing. Reject changes with no useful measured gain. Verify controlled scenes,
+   native-FPU trap counts, CPU/option gates and normal/CHIP_ONLY builds before
+   committing each accepted change.
+4. Measure the retained build on hardware, including longer representative
+   cockpit/external flights and frame-interval distributions. Report achieved
+   rates and remaining bottlenecks; do not equate an emulator result with the
+   20 fps hardware goal or change the emulator to manufacture that result.
