@@ -96,6 +96,31 @@ Offsets below refer to the relocated original code hunk, not host addresses.
 
 ## Native producer diagnostics
 
+`timing-controls.i` now converts a copied history record into the
+10-byte player-step packet. `controls_from_history(a0=record,a1=packet)`
+sign-extends only the low byte of TR_X/TR_Y, exactly as the native
++0544A consumer does. It accepts -1/0/+1 and rejects other direction
+bytes before any output write. Upper longword bits are intentionally
+ignored: the sampler can use a word-sized move for +1 after a long-sized
+-1, so validating the entire long as canonical -1/0/+1 would reject
+valid native inputs.
+
+The adapter does not consume raw mouse deltas or relative accumulators;
+the recorded directions already include the native filter. It zeroes all
+three world-impulse words on success to prevent a reused packet from
+replaying an old impulse. The world owner may supply eligible impulses
+after decoding. Buttons/edges remain the scheduler/world consumer's
+responsibility. This helper does not advance a history cursor or
+acknowledge a field; its native scheduler wiring and replay-mode path
+remain pending.
+
+Thirty-six native comparisons cover all x/y direction pairs and four
+upper-bit patterns, including FFFF0001. Eight invalid-direction cases
+reject without writes. Randomized record metadata, output guards,
+register/stack preservation and zeroed impulse words are checked.
+Evidence: `tmp/dev/tools/test_controls_c.py`,
+`tmp/dev/tmp/c/controls-tests.json`.
+
 The installer validates all four displaced instruction sites before patching
 any of them: the VBL sampler call at +00FA0, raw mouse read at +00FC6,
 accepted command insertion at +034C8, and fire sampler at +04DC6.
