@@ -530,3 +530,53 @@ PAL observes 21 world deadlines, six launches and 90 actor visits per run;
 NTSC observes 18 deadlines, six launches and 72 actor visits. This fixture
 remains airborne and retains its explicit UI/visibility/target stubs; it does
 not establish native-versus-field-rate moving collision equivalence.
+
+#### Moving-geometry acceptance failure
+
+`measure_moving_scene_c.py` now evaluates geometry along 44 ten-second
+trajectories: nine held stick directions plus reversal and pulse tapes,
+two flight configurations, and PAL/NTSC. Motion uses the assembled delayed
+control integrator. Each trajectory gets one stationary special object at
+its native five-second endpoint, with altitude equal to native camera
+altitude (player height +24). Both paths use that identical object pose and
+world scene. The measurement tests geometry at every world deadline without
+applying collision feedback; later hit observations are therefore
+counterfactual probes, not continued gameplay after a crash.
+
+**C4e/C5b do not pass.** Of 1,320 boundary comparisons, 82 hit/no-hit results
+differ: 54 native hits are absent on the field path and 28 converse results
+occur. All 44 trajectories miss the deliberately colocated native hit at
+tick 15. This includes neutral input; the failure is not confined to control
+reversals or PAL deadline rounding. `check_moving_scene_native_c.py` separately
+replays original +05756 clamp, +05376 controls, and native motion with only
+world RNG/contact bypassed. All 1,320 reference records match, normalizing
+only the saved logical clock word, which the reference interval wrapper
+restores. The reference trajectory is not an unverified rewritten model.
+
+Minimal neutral-input example (configuration 0, NTSC, no impulses/commands):
+initial player XY 7000/8000 hex, height 1024, RPM 128, collective 30,
+engine flags 28, other record bytes zero. At world tick 15 / field 300:
+
+| Quantity | Native | Field-rate |
+|---|---:|---:|
+| X / Y | 28672 / 32768 | 28672 / 32768 |
+| Committed height | 1061 | 1058 |
+| Height including shadow fraction | 1061 | 1058.8 |
+| Committed vertical speed | 11 | 11 |
+| Committed RPM | 153 | 152 |
+| Geometry flag at object XYZ 28672/32768/1085 | 1 | 0 |
+
+The first deadline already has height 1025 native versus 1024 committed
+field-rate. The gap grows while vertical response and RPM converge. Native
+height uses the updated vertical byte for a whole tick, whereas the current
+field path scales the quantized native height increment while the response
+changes across the interval. Coupled response/position ordering and rounding
+must be resolved; changing only the renderer or expanding collision bounds
+would not establish the required handling equivalence. No tolerance or
+acceptance decision has been invented to pass this result.
+
+Raw poses, shadow-aware samples, stationary object positions and every hit
+pair are retained in ignored `tmp/dev/tmp/c/moving-scene-comparison.json`.
+The measurement executes 28,295 helper calls. These results supersede any
+interpretation of the earlier batch-invariance or isolated geometry tests as
+moving-contact acceptance. Native production timing remains unchanged.

@@ -434,6 +434,11 @@ player/world composition and lifecycle continuation remain pending.
 A standalone private scene geometry path now rebuilds committed scene inputs
 and evaluates the native flight-end plane flag without renderer writes; its
 world-tick ownership and collision trajectory acceptance remain pending.
+The moving-geometry gate currently fails: 44 ten-second trajectories produce
+82 differing hit decisions in 1,320 world-boundary comparisons (54 native hits
+missed by the field path, 28 converse differences). Native reference records
+were independently verified against original instructions. C4e/C5b remain
+unaccepted; this is not just a pending test or a renderer-isolation issue.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
