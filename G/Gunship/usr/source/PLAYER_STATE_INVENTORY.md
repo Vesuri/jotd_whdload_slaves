@@ -148,8 +148,10 @@ boundary but does not close C4a or C4b.
 
 The command ownership table and 86,688-case native decoder check are in
 `TIMING_DESIGN.md`. In particular, command 03 changes world-owned flags
-and can reset player-owned collective; preserving order across that split
-remains required. Command effects are not cleanly separable by key alone.
+and can reset player-owned collective. The standalone `timing-control-mode.i`
+helpers now preserve the reset's field order while deferring the actual flag
+and indicator update. Queue-dispatcher installation and lifecycle reconciliation
+remain required. Command effects are not cleanly separable by key alone.
 
 ## Executed native motion and control audit
 

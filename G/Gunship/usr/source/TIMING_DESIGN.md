@@ -257,9 +257,56 @@ command's field, even when the primary action belongs to the world. The
 world reader must not replay that tail against a later player pose.
 The mixed 03 command needs an explicit ordered reset protocol: deferring
 its collective clear and applying it after newer field commands would
-reverse their order. This remains an integration obligation; the two queue
-cursors alone do not solve it. Engine/resource/UI callbacks are not covered
+reverse their order. The isolated helpers below now preserve that ordering; installing them in
+the dual-reader dispatcher remains an integration obligation. Engine/resource/UI callbacks are not covered
 by the immediate-control fixture.
+
+### Ordered command 03 effects
+
+`timing-control-mode.i` separates the mixed command without replaying its
+collective reset against later input. Native +05132 toggles engine bit 4;
+if the old bit was set, +0513A clears collective. The indicator call at
++05144 uses D0=14 and D1.b=0/2 for the old-clear/old-set cases. Full-word
+comparison is retained: 0803 is not command 0003.
+
+`control_mode_init` takes a two-byte mode shadow a0 and player a1 and
+copies the current bit as 0/1. Initialize only at a synchronized command
+lifecycle epoch. `control_mode_command` takes those pointers and full command
+d0.w: at the command's field it toggles the shadow, clearing player collective
+only when the old shadow bit was set. It never changes the actual engine
+byte. Return is 1 handled, 0 other command or -1 invalid shadow. The common
+yaw tail remains a separate once-per-continuing-command action.
+
+`control_mode_world` takes player a0, validated native indicator callback
+a1 (+0AF36), and full command d0.w. At the world-command boundary it toggles
+the actual bit and invokes the indicator with native arguments, preserving
+all non-result registers. It deliberately omits the collective clear and
+yaw tail already handled at field time. For example, starting with bit 4 set,
+commands 03 then 51 leave collective at 1 even when the world reader consumes
+03 afterward. Repeating the native whole decoder would incorrectly clear it.
+
+`control_mode_check` compares shadow and actual bit only when both readers
+have reached the same cutoff. Divergence/invalid shadow returns -1 without
+repair. World changes to the engine byte, initialization, load/replay and
+modal lifecycle must reconcile this state explicitly before later fields;
+do not reinitialize the shadow from a world reader that is still behind.
+An aligned opcode scan finds the direct bit-4 toggle at +05132 and a read at
++07ED8; this is not proof that whole-byte/lifecycle writes cannot change it.
+
+`test_control_mode_c.py` compares 3,584 cases against the full native decoder
+across all engine-flag bytes, seven collective values and commands 0003/0803.
+Forty-eight ordered tapes combine mode toggles with collective, yaw, view and
+modified commands in batches of 1/3/10/25. Player-owned state agrees after
+each command, and the complete player plus indicator-call sequence agree
+when the world reader catches up. Three invalid shadows and an intentional
+actual-bit divergence reject/detect without silent repair. The native
+indicator is stubbed while D0/D1.b and call order are checked; this is not
+validation of its rendering internals. Evidence:
+`tmp/dev/tmp/c/control-mode-tests.json` (22,030 helper calls).
+
+These helpers resolve the isolated ordered reset. The actual queue dispatcher,
+indicator callback internals and all other mixed/modal command policies still
+need integration and live validation before C3 can be closed.
 
 ### Field-owned command helper
 
