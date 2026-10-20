@@ -1,3 +1,45 @@
+## Road-reset cadence validation and changed terminal outcome
+
+`c-road-reset-fixed` and `c-road-reset-varying` exercise the attack tape on the
+tracked road-reactivation correction. All 1,595 conservatively completed hashes,
+10 sound requests, and six authoritative snapshot ranges at cursor 1457 agree.
+Measured presentation intervals are 4 fields in the fixed run and 2/3/4/12/16
+in the varying run, excluding startup entries. These are functional-speed
+checks, not throughput or one-field rendering claims.
+
+The old finish tape from `c-road-lifecycle-lane-drive` now ends in **BUSTED**.
+The result directories retain their launch-time names
+`c-road-reset-finish-fixed` and `c-road-reset-finish-varying`; they must not be
+counted as finish coverage. Both match all 7,161 completed hashes, 36 sound
+requests, terminal field 7162, and all six terminal state ranges. Both restart
+with capture cleared and all 12 player-road and 140 actor-carry bytes zero.
+The final and next-race screenshots were inspected. These observations cover
+arrest/restart, riding, airborne state and crash states 0–4.
+
+A matched reference removes only installation of the new reactivation hook,
+retaining its unused helper source and all other build selections. The
+`c-road-reset-reference-exit` replay reproduces the older finish exactly:
+16,454 hashes byte-identical to `c-road-lifecycle-lane-drive`, finish field
+16266, exit field 16455, and 67 sound requests. The changed build's first actor
+hash difference is completed tick 2782. This isolates the new reset as the
+cause of divergence for this input, rather than attributing it to subsequent
+code relocation or compact-geometry integration. Correctly discarding a
+fraction on native repositioning changes later interactions; this comparison
+is evidence of a behavioral change, not a regression pass.
+
+A fresh feedback-driven run (`c-road-reset-driven`) also ends in BUSTED, at
+exit field 6151 after 6,150 hashes and 29 sound requests. The driver used a
+10-field interval, lane 80, deadzone 32, one-interval position prediction,
+no attacks and unrestricted throttle; its exact controls and options are
+retained with the result. Restart and road-state clearing pass, but this run
+does not supply the outstanding finish coverage and has not been replayed at
+a different cadence.
+
+The normal runtime remains byte-identical. The road experiment still needs
+finish/wreck transition revalidation, the other prescribed presentation
+intervals, and the unresolved B handling/distance/performance/latency checks.
+No old finish or wreck result is carried forward as validation of this reset.
+
 ## Clear road carry when native reactivation repositions a rider
 
 The native reactivation routine `$90c64` resets actor road coordinates
