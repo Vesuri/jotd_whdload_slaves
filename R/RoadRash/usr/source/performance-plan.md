@@ -358,13 +358,17 @@ Render as fast as the machine can, presenting completed frames at vsync. There a
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
 not depend on how many frames are rendered. B4's variable-delta results show that
 this requires simulation work, not just removing its optional two-field floor.
+Use separate hardware paths: retain original timing on the 68000; target the new
+50 Hz simulation at 68020+ machines with Fast RAM. A500 simulation cost must not
+dictate the accelerated path's timestep.
 
 - **C1 Separate simulation from presentation.**
   - C1a Audit the race loop, per-field input/clock hook, all delta consumers, and
     the producer/consumer record handshake. Identify simulation state updates,
     rendering preparation and side effects currently executed once per frame.
-  - C1b Choose a fixed simulation step from baseline behaviour and measure its
-    cost on every CPU. Use elapsed active game fields to schedule steps; preserve
+  - C1b Target one PAL field (20 ms, 50 Hz) per simulation step and measure its
+    cost on accelerated CPUs. Optimize its cost before considering a larger step;
+    report A500 compatibility separately. Use elapsed active fields; preserve
     pause, the existing PAL clock rate and input timing. Do not equate one rendered
     frame with one simulation step.
   - C1c Specify ownership of actor state, collision/AI updates, animation, sound
@@ -374,19 +378,24 @@ this requires simulation work, not just removing its optional two-field floor.
   - C2a Advance simulation in consistent steps, consuming accumulated game time.
     Run the required steps before rendering; preserve remainder time. Handle slow
     frames without silently discarding elapsed time or using a different step size.
-  - C2b Render the available simulation state as often as possible. If interpolation
-    is needed for smooth motion between steps, keep it separate from authoritative
-    gameplay state and collision tests.
+  - C2b Render the latest available simulation state as often as possible. Use
+    forward extrapolation if needed for smooth motion between steps, isolated from
+    authoritative gameplay state and collision tests. Delayed interpolation and
+    an added 80 ms presentation or input delay are explicitly rejected.
   - C2c Retain the original safe vsync/copper buffer handoff without extra pacing
     waits. Replace B's optional presentation floor and delta-clamp mitigation only
     when the independent simulation passes validation. No new frame-limiter option.
+  - C2d Select the accelerated path only after verifying CPU and Fast RAM
+    availability. Preserve the original path on unsupported configurations,
+    including 68020+ without Fast RAM; test both dispatch and fallback.
 - **C3 Verify.**
   - C3a Replay identical field-timed input at render intervals of 1, 2, 3, 4 and
     varying/longer intervals. Compare simulation state, distance, clock, opponent
     order, collisions, crashes and event counts at identical simulation boundaries.
   - C3b Run A2/A4, review deliberate presentation differences, and verify pause,
     resume, race transitions, keyboard/CD32 controls and per-field input response.
-    Retain original-behaviour comparisons; explain any intentional baseline change.
+    Measure input-to-display latency explicitly. Retain original-behaviour
+    comparisons; explain any intentional baseline change.
   - C3c Measure rendering throughput and simulation cost on the A500 through 060,
     plus MMU functional checks. Confirm that no artificial frame cap remains and
     that missed rendering deadlines do not change simulation speed.

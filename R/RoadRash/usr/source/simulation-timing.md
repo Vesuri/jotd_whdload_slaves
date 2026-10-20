@@ -228,9 +228,9 @@ on input. These smoke tests do not measure complete input-to-display latency or
 prove transition/restart behaviour.
 
 
-### Experimental interpolation and actor isolation
+### Rejected interpolation experiment and actor-isolation evidence
 
-`STEP_INTERPOLATE` enables presentation interpolation for two- or four-field
+The former `STEP_INTERPOLATE` experiment enabled interpolation for two- or four-field
 quanta. It keeps previous and current actor positions, draws an intermediate
 position with a one-step display delay, and restores the authoritative actor and
 camera records before publishing the completed frame. This is still diagnostic,
@@ -271,3 +271,44 @@ all 399 actor hashes and the frozen actor snapshot. Audio event counts remain a
 separate verification requirement. These tests used the now-rejected delayed
 interpolation experiment; they remain evidence about simulation ownership, not
 acceptance of its presentation latency.
+
+
+### Current direction: forward prediction without deliberate display delay
+
+The user rejected the one-step interpolation delay. `STEP_EXTRAPOLATE` replaces
+that experiment: it draws the current position plus the observed per-field motion
+for the elapsed remainder, never deliberately drawing one simulation step behind.
+Authoritative state is still restored after drawing. A crash-state transition or
+zero current speed suppresses prediction for that actor. The simulation quantum
+is still provisional; this change alone does not resolve input waiting for a step.
+An 80 ms input delay is also unacceptable and must be measured independently.
+
+Earlier interpolation results above are historical isolation evidence only.
+They do not validate the prediction path, its collision corrections, or latency.
+
+
+Forward-prediction replay `c-predict-render1/12` matches all 399 actor hashes.
+The recorded moving-player positions satisfy current + elapsed-fraction × motion,
+including quarter- and three-quarter-step predictions ahead of current position.
+These results verify prediction arithmetic/isolation on that tape, not latency.
+
+Following the user's timing clarification, the primary candidate is now one PAL
+field per simulation step: **50 Hz with catch-up**. `STEP_FIELDS` defaults to one.
+The earlier A500 overload is a compatibility finding, not a reason to impose a
+larger simulation quantum on accelerated Amigas. Accelerated-machine cost and
+50 Hz gameplay validation must decide the implementation. Forward prediction is
+only a diagnostic alternative for larger quanta; delayed interpolation is removed.
+
+The hardware policy is now two paths: original timing on 68000, and fixed 50 Hz
+simulation on 68020+ with Fast RAM. CPU and memory detection and production
+dispatch remain to be implemented; these experiments do not change the normal
+slave. The loader's existing `expansion_memory=$80000` is a game address in Chip
+RAM, not evidence of an allocated Fast RAM region.
+
+The `c-50-target-*-q1` cost runs, with caches enabled and diagnostic hashing and
+snapshot copying disabled, reached field 1000 with simulation cursors 999
+(A1200 Fast), 999 (030/50), 998 (040/25), and 999 (060/50). At the sampled fields
+300, 600, and 1000 none had growing simulation debt. This supports continuing the
+50 Hz accelerated candidate, but does not establish correct gameplay speed or
+input latency. Rendering still needs optimization; these are emulator results,
+subject to the CPU-model limitations recorded in the baseline.

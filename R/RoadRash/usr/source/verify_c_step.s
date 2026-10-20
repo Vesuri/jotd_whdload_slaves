@@ -1,6 +1,7 @@
 ; Diagnostic C proof, enabled only by VERIFY + VERIFY_C_STEP.
 ; First-race, CUSTOM2=0 functional experiments only. Not a runtime option.
-; STEP_FIELDS=4 is provisional. Optional STEP_INTERPOLATE is experimental.
+; STEP_FIELDS=1 (50 Hz PAL) is the primary candidate. STEP_EXTRAPOLATE is
+; an optional experiment for larger diagnostic quanta, never a frame-rate mode.
 ; No overflow recovery or complete
 ; pause/transition/action audit yet. See simulation-timing.md before extending.
 ; All game addresses below are absolute. Normal builds contain none of this.
@@ -13,7 +14,7 @@
 STEP_CAPTURE = 601
 	ENDC
 	IFND STEP_FIELDS
-STEP_FIELDS = 4
+STEP_FIELDS = 1
 	ENDC
 step_reset:
 	movem.l d0-d7/a0-a6,-(a7)
@@ -25,7 +26,7 @@ step_reset:
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
 	clr.b step_input_overflow-step_queued_field(a1)
-	IFD STEP_INTERPOLATE
+	IFD STEP_EXTRAPOLATE
 	bsr step_save_previous
 	ENDC
 	jsr $8f552
@@ -55,7 +56,7 @@ step_main:
 	ble .highwater
 	move.w d0,$a5d38
 .highwater:
-	IFD STEP_INTERPOLATE
+	IFD STEP_EXTRAPOLATE
 	bsr step_save_previous
 	ENDC
 	bsr step_collision_objects
@@ -385,13 +386,14 @@ step_track_events:
 .done:
 	rts
 
-	IFD STEP_INTERPOLATE
+	IFD STEP_EXTRAPOLATE
 	IFNE STEP_FIELDS-2
 	IFNE STEP_FIELDS-4
-	FAIL "STEP_INTERPOLATE requires STEP_FIELDS=2 or 4"
+	FAIL "STEP_EXTRAPOLATE requires STEP_FIELDS=2 or 4"
 	ENDC
 	ENDC
-; Presentation experiment: interpolate positions with a one-step display delay.
+; Presentation experiment: predict forward from the latest simulation state.
+; There is no deliberate one-step presentation delay.
 ; Authoritative actors and camera are restored before publishing completion.
 step_save_previous:
 	lea $a5d60,a0
@@ -430,6 +432,11 @@ step_view_begin:
 	lea $a5d60,a2
 	moveq #35-1,d6
 .actor:
+	move.b $6e(a1),d0
+	cmp.b $6e(a2),d0
+	bne .nextactor
+	tst.w $12(a2)
+	beq .nextactor
 	move.l (a1),d0
 	move.l (a2),d1
 	bsr .long
@@ -450,6 +457,7 @@ step_view_begin:
 	ext.l d1
 	bsr .long
 	move.w d0,$32(a2)
+.nextactor:
 	lea $80(a1),a1
 	lea $80(a2),a2
 	dbf d6,.actor
@@ -464,6 +472,7 @@ step_view_begin:
 	jmp $8970e
 .long:
 	sub.l d0,d1
+	add.l d1,d0
 	IFNE STEP_FIELDS-4
 	asr.l #1,d1
 	ELSE

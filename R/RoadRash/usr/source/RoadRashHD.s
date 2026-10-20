@@ -267,7 +267,7 @@ pl_main
 	IFD VERIFY_C_STEP
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
-	IFD STEP_INTERPOLATE
+	IFD STEP_EXTRAPOLATE
 	PL_PS	$75C8,step_view_begin
 	PL_P	$7748,step_view_end
 	ENDC
