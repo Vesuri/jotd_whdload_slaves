@@ -13,7 +13,7 @@ world_scene_check:
  movea.l a0,a4
  movea.l a1,a5
  movea.l a2,a3
- move.l SC_H6(a5),d0
+ move.l SCENE_H6(a5),d0
  beq .bad
  addi.l #$3b88,d0
  cmp.l a4,d0

@@ -2,15 +2,15 @@
 ; Requires timing-scene-state.i. Only validated native model data is supported.
 ; Native model/map/actor inputs remain read-only shared inputs and must be
 ; stable throughout a step. This is not a transactional snapshot of the world.
-SC_START equ $5a24
-SC_CODE_SIZE equ $1d94
-SC_COORD equ SC_CODE_SIZE
-SC_CONTEXT equ SC_COORD+$b8
-SC_H0 equ SC_CONTEXT+$64
-SC_H6 equ SC_H0+4
-SC_SIZE equ SC_H6+4
+SCENE_START equ $5a24
+SCENE_CODE_SIZE equ $1d94
+SCENE_COORD equ SCENE_CODE_SIZE
+SCENE_CONTEXT equ SCENE_COORD+$b8
+SCENE_H0 equ SCENE_CONTEXT+$64
+SCENE_H6 equ SCENE_H0+4
+SCENE_SIZE equ SCENE_H6+4
 
-; a0=validated hunk 0, a1=validated hunk 6, a2=even SC_SIZE workspace.
+; a0=validated hunk 0, a1=validated hunk 6, a2=even SCENE_SIZE workspace.
 ; Preserve other registers, return 0/-1. No writes on signature failure.
 ; Buffers must not overlap; flush instruction caches before first execution.
 scene_private_prepare:
@@ -49,13 +49,13 @@ scene_private_prepare:
  move.w (a3)+,d2
  adda.l d2,a0
  addq.l #2,a3
- lea SC_START(a4),a1
+ lea SCENE_START(a4),a1
  cmpa.l 0(a1,d1.w),a0
  bne .bad
  dbf d7,.check
- lea SC_START(a4),a0
+ lea SCENE_START(a4),a0
  movea.l a6,a1
- move.w #SC_CODE_SIZE/2-1,d7
+ move.w #SCENE_CODE_SIZE/2-1,d7
 .copy:
  move.w (a0)+,(a1)+
  dbf d7,.copy
@@ -82,13 +82,13 @@ scene_private_prepare:
  adda.l d2,a0
  move.l a0,0(a6,d1.w)
  dbf d7,.patch
- move.w #$4e75,$5c5c-SC_START(a6)
- move.w #$4e75,$63f8-SC_START(a6)
- move.l #$6000ffe8,$6372-SC_START(a6)
- move.l #$4e714e71,$6356-SC_START(a6)
- move.w #$4e71,$635a-SC_START(a6)
+ move.w #$4e75,$5c5c-SCENE_START(a6)
+ move.w #$4e75,$63f8-SCENE_START(a6)
+ move.l #$6000ffe8,$6372-SCENE_START(a6)
+ move.l #$4e714e71,$6356-SCENE_START(a6)
+ move.w #$4e71,$635a-SCENE_START(a6)
  lea .vertices(pc),a0
- lea $6642-SC_START(a6),a1
+ lea $6642-SCENE_START(a6),a1
  moveq #6,d7
 .vertex_copy:
  move.w (a0)+,(a1)+
@@ -116,24 +116,24 @@ scene_private_prepare:
 scene_private_step:
  movem.l d1-d7/a0-a6,-(sp)
  movea.l a0,a6
- tst.l SC_H0(a6)
+ tst.l SCENE_H0(a6)
  beq .bad
- tst.l SC_H6(a6)
+ tst.l SCENE_H6(a6)
  beq .bad
  movea.l a1,a0
  movea.l a2,a1
- movea.l SC_H6(a6),a2
- lea SC_CONTEXT+14(a6),a3
+ movea.l SCENE_H6(a6),a2
+ lea SCENE_CONTEXT+14(a6),a3
  bsr scene_state_build
- lea SC_CONTEXT(a6),a5
+ lea SCENE_CONTEXT(a6),a5
  lea $15dc(a2),a0
  move.l a0,$5e(a5)
  clr.b $62(a5)
- lea $5c2e-SC_START(a6),a0
+ lea $5c2e-SCENE_START(a6),a0
  jsr (a0)
- lea $60a8-SC_START(a6),a0
+ lea $60a8-SCENE_START(a6),a0
  jsr (a0)
- lea $6224-SC_START(a6),a0
+ lea $6224-SCENE_START(a6),a0
  jsr (a0)
  moveq #0,d0
  move.b $62(a5),d0

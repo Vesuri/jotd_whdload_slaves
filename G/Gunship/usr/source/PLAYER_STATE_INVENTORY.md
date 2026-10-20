@@ -496,3 +496,37 @@ injected on the second scheduler health check after a positive result. The
 player end byte and applied metadata survive the fault; retry after clearing
 the upstream fault is rejected. These standalone checks do not yet constitute
 full scheduled-player/world composition or moving collision acceptance.
+
+#### Geometry-gated world body
+
+`timing-world-scene-body.i` composes scheduled geometry with the post-motion
+world body. It validates body/player bindings before application, consumes
+the body phase before the check, and routes a positive result directly to
+native cleanup. Weapons, damage, scripts and the periodic tail are skipped
+on that path. A clear result runs the existing body sequence; modal handling
+still belongs to its lifecycle owner. Geometry/check faults leave the body
+in its in-progress/error phase, retaining applied geometry metadata for
+recovery. The coordinator does not acknowledge the scheduler's world tick.
+
+The combined fixture now includes the geometry modules, checks geometry on
+every due deadline after committed player motion, and rejects repeated
+geometry evaluation. Assembly exposed constant-name collisions with the
+script and guidance modules; the geometry constants now use `SCENE_` and
+`SGE_` prefixes so all modules coexist.
+
+A positive colocated-special-object fixture compares the coordinator against
+native flight-end cleanup over the full native state window. State matches
+byte for byte; entry tracing confirms cleanup executes once with no weapons,
+damage or script entry. Body phase becomes ended, geometry retains its
+applied result, and the scheduler remains pending explicit world completion.
+A repeated coordinator call is rejected without state changes or cleanup.
+This establishes cleanup routing, not lifecycle recovery or moving-contact
+acceptance. The native slave timing remains unchanged.
+
+The integrated `test_scheduled_world_c.py` run passes 1,440 delivered fields
+at 50/60 Hz with batch sizes 1 and 25 (23,900 helper calls). For each rate,
+all committed poses and normalized native world states agree across batches.
+PAL observes 21 world deadlines, six launches and 90 actor visits per run;
+NTSC observes 18 deadlines, six launches and 72 actor visits. This fixture
+remains airborne and retains its explicit UI/visibility/target stubs; it does
+not establish native-versus-field-rate moving collision equivalence.
