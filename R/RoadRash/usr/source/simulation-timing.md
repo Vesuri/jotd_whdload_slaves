@@ -185,6 +185,33 @@ elapsed tick for subsequent frames, to test whether chasing newly arriving
 ticks contributes to the phase sensitivity. That hypothesis is untested;
 it must not introduce a limiter, discard time or weaken latency gates.
 
+### Fixed frame-target scheduling experiment: rejected
+
+The subsequent private `c-frame-target-source` captures the live field counter
+once on entry to `step_main`, then consumes ticks through that target. Fields
+arriving during catch-up remain due on the next outer frame; the prototype
+neither discards elapsed time nor adds a wait. Its equal-layout control retains
+the same capture but compares against the live clock on each iteration.
+The experiment starts from the normal source, without actor relocation.
+
+`c-frame-target-cost` and `c-frame-target-control-cost` run the cycle-exact
+cached 020 with CUSTOM2=1 and UP at field 100. Both start with 29 rendered
+frames. Over fields 100–1000, the fixed target produces 183 frames versus
+193 for the live-clock control. Sampled simulation cursors at fields
+100/300/600/1000 are 97/297/596/998 versus 99/299/599/999. These samples
+show greater simulation age in the candidate, not dropped ticks or a measured
+input-response result. The result supplies no reason to replace the current
+catch-up loop. No full gameplay or latency acceptance is claimed.
+
+Both diagnostic binaries are 8,844 bytes. Candidate SHA-256:
+`d5a7a209f85fb89f6175c17f3121d467a62ea244ee5a4ed6d1513c53997224b1`;
+control:
+`9de194737abed1dd117e0ee009c07e6f2924e9ef5f9d8375f3ab71c77188b2ee`.
+The exact source delta is retained in
+`tmp/dev/tmp/c-frame-target-build/source.patch`. Normal runtime code remains
+unchanged. This rejects this particular scheduling change; it does not explain
+the actor-relocation regression or close C's outstanding throughput gates.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
