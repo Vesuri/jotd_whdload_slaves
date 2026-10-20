@@ -1,3 +1,38 @@
+## Raster-edge candidate: full-race state matches, response gate fails
+
+`c-raster-edge-finish`, `-arrest` and `-wreck` replay the retained
+`c-steering-finish-lane`, `c-steering-finish-drive` and
+`c-steering-quarter-fullrace` field-input tapes with varying render intervals.
+The full diagnostic uses STEP_HASH_RING and STEP_CAPTURE_END. Comparisons
+against the corresponding fused-runtime references pass:
+
+| Outcome | Completed hashes | Sound requests | Finish field | Exit field |
+| --- | ---: | ---: | ---: | ---: |
+| Finish | 12822 | 24 | 12634 | 12823 |
+| Arrest | 8377 | 241 | 0 | 8378 |
+| Wreck | 11945 | 120 | 0 | 11946 |
+
+Every hash, sound request, capture record and all six authoritative terminal
+memory ranges match. These runs omitted RR_RESTART: they validate the full
+race and terminal outcome, not the subsequent restart. The original full
+comparison script correctly fails on the missing next_race field after its
+terminal checks. `compare_terminal_c.py` records the narrower evidence with
+`restart_tested: false`; the strict full comparison is unchanged. No restart
+coverage is claimed from these runs.
+
+The normal candidate's eight-phase visible-response test is retained in
+`c-raster-edge-visible`. Each phase uses fresh neutral/right runs and verifies
+identical initial snapshots. The completed estimates are
+200/180/160/140/200/180/160/140 ms, median 170 ms (the same median as the
+integrated fused runtime). Seven phases meet or beat B; field 300 is the
+sole B regression. Field-300 input first changes the captured road/
+rider region at field 310 (200 ms upper estimate), versus field 309 (180 ms)
+in `b-visible-phases`. The integrated fused runtime previously responds at
+307 (140 ms) for this phase. This candidate therefore fails the current
+per-phase B response safeguard despite its modest throughput gain and exact
+simulation outputs. It is not promoted. Further normal controls/demo and
+restart integration checks are not started for this failed candidate.
+
 ## Raster-edge candidate: hardware, cadence and image validation
 
 The unchanged normal raster-edge candidate passes all 11 hardware cells in
