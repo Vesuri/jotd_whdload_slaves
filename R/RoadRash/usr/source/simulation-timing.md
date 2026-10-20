@@ -522,6 +522,40 @@ regions. The measured enabled normal candidate is 19,076 bytes, SHA-256
 The tracked correction remains opt-in diagnostic code; the default normal
 binary still matches SHA-256 `4a6a5d667acaf0462ead705b5a342e5f6de8449e2fbe3dedb7bef638b82a966f`.
 
+### Current road diagnostic: MMU and wreck-fixture checks
+
+`c-road-final-mmu` passes the 040 and 060 functional MMU cells using the current
+arithmetic and lifecycle code (`C_SIMULATION`, `VERIFY_MMU` and
+`VERIFY_C_ROAD_TIMING`). Both report TC `$8000`, CACR `$80008000`, exclusively
+one-field simulation deltas, and distance 3,331,396. The tested 19,712-byte
+instrumented binary SHA-256 is
+`83c13f85e4ab6fa9329fecffe37b17500ec981e0d31211b49b7c030e819af6d5`.
+These are translation/functionality checks with the harness's data-cache
+emulation disabled, not physical cached throughput measurements.
+
+The retained old wreck tape now produces arrest under the corrected physics:
+`c-road-final-wreck-fixed` exits at field 7963 after 7,962 completed ticks and
+18 sound requests, with damage 9. Its final screenshot shows BUSTED; restart
+and the road-state zero checks pass. It must not count as wreck coverage.
+
+A controlled wreck fixture uses the previously recorded lane-following finish
+route, with starting damage set to 10 by a private diagnostic reset patch.
+Only that starting condition changes; subsequent collisions accumulate damage
+through the native game code. The exact fixture patch is retained in
+`c-road-wreck-fixture-fixed-build/fixture.patch`. It is absent from tracked
+source and normal builds. This is explicitly a controlled transition test,
+not a claim that the old unmodified wreck tape still has the same outcome.
+
+`c-road-wreck-fixture-fixed` and `c-road-wreck-fixture-vary` match all 14,443
+completed hashes, 57 sound requests, terminal timing and the six authoritative
+terminal regions. Both captured damage 32 and exit field 14444, without a
+finish. The fixed run's inspected screenshot shows WRECKED. Both restart with
+all twelve player road-state bytes and 140 per-actor carry bytes zero.
+Together with the unseeded finish and arrest replays, this covers the three
+native exit types for the road-state transition audit, with the stated wreck
+initial-condition limitation. B-equivalence and remaining performance/control/
+latency checks are still open; the correction remains diagnostic-only.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
