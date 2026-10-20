@@ -115,6 +115,15 @@ fixture must preserve its order relative to control and weapon impulses.
 The two recoil writes subtract one (+099A4) and four (+09B6E) respectively;
 the latter depends on weapon-selection bit 0.
 
+The standalone `timing-presentation.i` builder now reproduces these outputs
+without player writes; a separate `player_pitch_clamp` retains the native
+authoritative operation. All 65,536 pitch/vertical-rate byte pairs compare
+against the original builder when the clamp is applied first. This proves
+the extraction, not its eventual scheduling relative to controls/recoil.
+The lower clamp check uses BMI after byte subtraction, not signed BLT;
+out-of-range positive pitch bytes 116..127 therefore also become -12.
+The helper preserves that behaviour.
+
 The enclosing render routine also reuses a5 for a different structure.
 In particular +05C24 and +060D2/+06156/+06200/+06236 are not player
 position/speed writes despite their matching numeric displacements.

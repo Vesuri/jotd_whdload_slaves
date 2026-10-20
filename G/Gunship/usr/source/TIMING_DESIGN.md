@@ -19,6 +19,9 @@ C2 and C3 remain incomplete: the foreground player/world consumer, command
 effect classification, and production lifecycle handling are not installed.
 `timing-control-targets.i` implements standalone immediate command targets
 and their common yaw tail; it is not included in a gameplay build yet.
+`timing-presentation.i` likewise provides a standalone read-only camera and
+instrument builder, with the native pitch clamp factored into a separate
+player operation. Native-loop installation and gauge slew remain pending.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -190,6 +193,42 @@ It also checks all 65,536 command words: only the 15 owned primary actions
 are accepted, and every rejected word leaves the record unchanged.
 Each call checks preserved registers and stack/return behaviour.
 Evidence: `tmp/dev/tmp/c/control-target-tests.json`.
+
+## Read-only presentation builder
+
+`timing-presentation.i` separates the native +056D8..+05830 work into two
+operations. `player_pitch_clamp` takes the player record in a0 and performs
+the exact native byte clamp. Its lower-bound branch uses BMI after byte
+subtraction, including the native overflow behaviour for out-of-range
+positive bytes. It must be scheduled explicitly relative to controls and
+recoil in the player step; calling it from rendering would reintroduce
+frame-dependent authoritative writes.
+
+`presentation_build` reads that player state and writes only instrument
+targets and the camera vector. Inputs are a0 = player, a1 = the 16-byte
+instrument block (native hunk 6 +157D), a2 = the 12-byte camera vector,
+and a3 = the native interpolation table (hunk 4 +01C8).
+It preserves all data/address registers; CCR is unspecified. Because the
+native instrument block starts at an odd address, a1 must have the same
+parity so its word at offset 7 is aligned. Other pointer inputs are even.
+The builder preserves untouched instrument bytes and applies the seven-byte
+damage override exactly. It reproduces the vertical gauge's table
+interpolation and rounding, and byte-width angle wrapping/negation.
+
+This builds **target values**, not the per-buffer gauge animation. The
+elapsed-field slew and native installation still belong to C4g; this
+helper alone does not complete that item. When installed, it must share
+the CUSTOM1 gate and use the actual native table and output addresses.
+
+`tmp/dev/tools/test_presentation_c.py` compares the original native builder
+against explicit clamp followed by presentation build in 65,536 cases.
+Every pitch/vertical-rate byte pair is covered, with random remaining
+player bytes and retained instrument values. Complete player records,
+all 16 instrument bytes and all 12 camera bytes match. Alternate output
+addresses with guard bytes catch fixed-address or out-of-bounds stores.
+The fixture verifies register preservation and 256 repeated builds with
+unchanged player state and outputs.
+Evidence: `tmp/dev/tmp/c/presentation-tests.json`.
 
 ## Foreground coordinator
 

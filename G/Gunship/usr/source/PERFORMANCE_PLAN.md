@@ -419,6 +419,9 @@ effect classification and player/world hand-off are still pending,
 so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. The field-rate integrator is not written.
+The camera/instrument builder is now extracted and native-equivalent in
+standalone tests, with the pitch clamp separate from read-only presentation;
+its native installation and elapsed-time gauge slew remain pending.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:
