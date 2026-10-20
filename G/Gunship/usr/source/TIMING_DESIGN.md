@@ -3572,3 +3572,32 @@ diagnostic copy. Standalone input diagnostics are unchanged.
 This isolates construction only. The effect animator at +0BE5A still mutates
 effect slot/frame state and must be audited with the other render writes
 before native flight-loop activation. This is not a claim of renderer purity.
+
+## Effect animation changes allocation lifetime
+
+The six unconditional byte decrements at +04C40..+04C5E update hunk 0
++0C724..+0C729 once per native gameplay VBL. The animator at +0BE5A tests
+bit 0 of each slot's type byte (hunk 0 +0C6D6 plus slot index). A negative
+timer resets to 8 and advances that slot's animation frame (+0C6DC). On
+frame 6 it writes lifetime 1 at +0C6D0 plus slot index. The world active-effect
+branch at +0C456 decrements that lifetime and clears the shared allocation
+bit at +0C464 when it reaches zero. Subsequent effect allocation, including
+whether allocation succeeds and consumes RNG, can therefore depend on how
+often the renderer calls the animator.
+
+The ignored `audit_render_effect_c.py` executes the actual native six-timer
+decrement block, animator and lifetime-release branch. Its single active
+effect starts with native constructor values: lifetime 64, type 9, frame 0,
+timer 12. At PAL with a three-Hz world, rendering every field releases it at
+field 67 (world tick 4); rendering every ten fields releases it at field 84
+(world tick 5). Optional score bookkeeping is excluded by the slot's native
+flag, and execution stops before unrelated aggregate calculations. This
+is a focused ownership counterexample, not a full-game timing result.
+
+C7a must retain field-based countdown semantics while advancing both the
+countdowns and animation in consumed-field order, before the corresponding
+world work. The native VBL decrements and render animator must be excluded
+under runtime ownership and retained UI boundaries, with unchanged baseline
+behavior. A whole catch-up batch must not age newly constructed effects using
+fields that preceded their construction. This migration remains to be
+implemented and tested; the constructor hook alone does not solve it.

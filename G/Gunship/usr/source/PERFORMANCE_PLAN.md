@@ -613,7 +613,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   calling it per displayed frame changes later simulation state.
 - `+0BE5A` advances those effect slots using the six VBL-decremented bytes at `+0C724`.
   These bytes are effect-animation timers, not warning-lamp timers as the initial
-  time-model notes suggested.
+  time-model notes suggested. Animation completion writes the shared slot lifetime,
+  which the world uses to release the allocation bit. A native-instruction fixture
+  releases the same slot on world tick 4 versus 5 at different render cadences.
+  Countdown and animation advancement therefore need ordered field ownership;
+  leaving the animator in the render call is not presentation-only.
 - The gauge routine `+0ADB6` keeps separate drawn heights for the two buffers. Elapsed-time
   slew and per-buffer repaint must be treated separately.
 - Rendering produces a result the tick consumes: `+05C28` clears `D3958`, the shape-facing
@@ -722,7 +726,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     rules, keeping hits and damage on world ticks. Measure this before doing it.
 - **C7. Per-frame work that is not presentation.**
   - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation
-    `+0BE5A` keeps its VBL timers.
+    `+0BE5A` keeps its field-based timers. Replay countdowns and animation once per
+    consumed field, excluding the native VBL/render writes under enhanced ownership,
+    so shared slot lifetime and reuse cannot depend on drawing frequency.
   - C7b. The renderer's flight-end result `D3958`: work out what it detects, then evaluate it
     on committed state at the world tick, with or without drawing. Price evaluating it
     without drawing.
