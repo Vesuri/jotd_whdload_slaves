@@ -107,6 +107,12 @@ POSE_PREDICT_MEASURED = 1
 	ENDC
 	ENDC
 
+	IFD VERIFY_C_COLLISION_GEOMETRY
+	IFND C_STEP_BUILD
+	FAIL "Collision geometry reduction requires the C simulation"
+	ENDC
+	ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
@@ -370,6 +376,9 @@ PatchLoader2:
 	ENDC
 	IFD VERIFY_C_ROAD_FAST
 	bsr step_road_fast_init
+	ENDC
+	IFD VERIFY_C_COLLISION_GEOMETRY
+	bsr step_collision_geometry_init
 	ENDC
 	IFD C_PHYSICS_FAST
 ; Copy after C patches so the relocated code includes the steering hooks.

@@ -1,3 +1,45 @@
+## Compact collision geometry on the current runtime
+
+The earlier collision-only road experiment is retested after integration of
+Fast RAM physics/AI. It copies `$8970e..$8984d` and `$8989e..$898e1` into a
+388-byte Fast routine, omitting width and both edge projections only for the
+simulation's collision-preparation call. Centre, height and occlusion remain;
+native rendering still executes the full geometry routine. The sole relative
+branch crossing the omitted span is adjusted from `$ff14` to `$ff64`.
+
+`c-current-collision-geometry-matrix` measures the private 19,040-byte normal
+candidate against the current normal-runtime matrix:
+
+| Configuration | Current fps | Compact fps | Compact distance @490 |
+|---|---:|---:|---:|
+| Fast 020, default caches | 11.9 | 12.0 | 3,308,406 |
+| Fast 020, NoCache | 7.0 | 7.6 | 3,308,406 |
+| 060/50 | 22.8 | 23.0 | 3,318,164 |
+
+All three functional checks pass. Unlike the earlier lean-runtime experiment,
+these measurements improve throughput, especially NoCache (+8.6%). They do not
+prove which phase/cache interaction changed. Both 020 distances are still
+outside B's 1% tolerance and lower than the current normal runtime. Functional
+pass is not A4 acceptance.
+
+`c-current-collision-geometry-fixed` matches the fresh matched
+`c-current-lut-reference` (despite its name, that reference has no lookup): all
+1595 completed actor hashes, all three sound requests and all six authoritative
+snapshot ranges at cursor 1457 agree. RNG and the attack tape are identical;
+the diagnostic render floor is four fields. The in-flight final hash is excluded.
+
+Retain the candidate in `collision_geometry.s` under
+`VERIFY_C_COLLISION_GEOMETRY`, requiring C simulation and VERIFY. It rejects the
+separate road relocation and width lookup combinations. Initialization occurs
+only after the Enhanced framerate/CPU/Fast gate and flushes caches after copying.
+The default normal binary remains byte-identical to the current runtime.
+Tracked lean and full diagnostic builds are byte-identical to the corresponding
+private tested builds (`c-collision-geometry-tracked-build` and
+`c-collision-geometry-tracked-fixed-build`). No normal integration is made yet:
+full-course/restart, cross-cadence, all-CPU/MMU, disabled-path, visible-response
+and presentation checks remain necessary. This candidate does not resolve the
+outstanding handling or distance differences.
+
 ## Current-runtime exact road-width lookup retest
 
 `c-current-cost-audit` profiles the current 18,592-byte enhanced normal slave on
