@@ -6,6 +6,10 @@
 ; publications, but retained command payloads still need their own hand-off.
 
 timing_input_install:
+	move.l _custom1(pc),d0
+	bne .enabled
+	rts
+.enabled:
 	movea.l verify_marker+8(pc),a1
 	; Validate every displaced instruction before modifying any of these sites.
 	cmpi.w #$4eb9,$fa0(a1)

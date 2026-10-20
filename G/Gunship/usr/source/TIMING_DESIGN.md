@@ -10,8 +10,11 @@ No field-rate integrator has been written.
 `timing-clock.i` and `timing-history.i` are 68000-compatible cores.
 The clock is still standalone. The history now has native producer hooks in
 `timing-input.i`, installed only in builds with both VERIFY and TIMING_INPUT
-defined and CUSTOM2 nonzero, for the 0658 executable. Normal and existing
-verification builds are byte-identical to their preceding versions.
+defined, CUSTOM1=1 and CUSTOM2 nonzero, for the 0658 executable.
+The boolean CUSTOM1 option **Enhanced framerate** gates all added framerate
+patches and defaults off. The original slave's cache policy and compatibility
+fixes remain baseline behaviour. Future scheduler/player/prediction and
+render optimizations must share this gate.
 C2 and C3 remain incomplete: the foreground player/world consumer, retained
 command payloads, and lifecycle handling are not installed.
 
@@ -110,10 +113,16 @@ overwrite of unread data. Two full-ring interleavings return a valid copied
 record alongside a newly latched fault, confirming that the coordinator
 must not treat a successful pop as proof of an unfaulted interval.
 
-`tmp/dev/tools/test_timing_input.py` passes 454 assembled adapter cases.
+`tmp/dev/tools/test_timing_input.py` passes 457 assembled adapter cases.
 It compares mouse, keyboard and fire hook register/CCR results with their
 displaced native instructions, checks sampler-result preservation, complete
 record payloads, signed-delta overflow, and diagnostic arm/recovery.
+It also verifies the master gate and the version-17 slave header's boolean
+configuration string. With CUSTOM1 off the input installer leaves all state
+untouched and never calls the patch service; with it on, validated installation
+reaches that service. The blitter suite passes 182 cases, including off/on
+dispatch against both PAL and NTSC executables. Live diagnostic captures below
+predate the master gate; repeating them now requires CUSTOM1=1.
 
 Live FS-UAE captures on 68000, 68020 and 68060 each published 47 consecutive
 active-field records with no loss/fault. All retained the injected raw delta

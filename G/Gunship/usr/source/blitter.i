@@ -5,6 +5,8 @@
 
 blitter_dispatch:
 	movem.l d0-d7/a0-a6,-(sp)
+	move.l _custom1(pc),d0
+	beq .done
 	lea pl_gamemule_658(pc),a3
 	cmpa.l a3,a0
 	beq .game

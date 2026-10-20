@@ -595,8 +595,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.
-- **C10. Option.** A CUSTOM bit that restores the original coupling, for comparison and for
-  users who prefer it.
+- **C10. Option.** `CUSTOM1=1`, exposed as the boolean **Enhanced framerate**,
+  is the master opt-in for all framerate enhancements. Omitted/zero retains
+  original timing and rendering paths. All future C/D/E optimizations must
+  use this same gate. The new blitter patches and diagnostic native input
+  producer are gated already; the original slave's cache policy and existing
+  compatibility/protection fixes remain baseline behaviour.
 
 ### D. Remove fixed overheads
 
@@ -667,12 +671,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
 
 ### F. Release
 
-- **F1. Options.** Use CUSTOM bits for:
-  - original timing (C10),
+- **F1. Options.** Use CUSTOM options for:
+  - the master boolean **Enhanced framerate**, CUSTOM1 (C10),
   - the renderer choice (E1c),
   - triple buffering (D4).
   
-  Defaults: new timing, with the renderer chosen by CPU.
+  Default: enhancements off. Renderer and buffering choices only apply when
+  Enhanced framerate is enabled.
 - **F2. All versions.** Apply each patch to every supported `gamemule`/`titlmule`/`scrnmule`
   version at its own offsets. Where a version cannot be tested, say so in the ReadMe.
 - **F3. ReadMe and slave version.** Bump the version, add a history entry, and document the

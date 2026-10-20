@@ -59,7 +59,7 @@ BOOTDOS
 CACHE
 CBDOSLOADSEG
 
-slv_Version	= 16
+slv_Version	= 17
 slv_Flags	= WHDLF_NoError|WHDLF_Examine
 slv_keyexit	= $5D	; num '*'
 
@@ -99,6 +99,8 @@ slv_info		dc.b	"adapted & fixed by JOTD",10
 		dc.b	0
 slv_CurrentDir:
 	dc.b	"data",0
+slv_config:
+	dc.b	"C1:B:Enhanced framerate;",0
 
 _program:
 	dc.b	"Gunship",0
@@ -450,7 +452,7 @@ _load_exe:
 	rts
 
 _tag		dc.l	WHDLTAG_CUSTOM1_GET
-_custom1	dc.l	0
+_custom1	dc.l	0	; master Enhanced framerate toggle; off by default
 	IFD VERIFY
 		dc.l	WHDLTAG_CUSTOM2_GET
 _verify_seed	dc.l	0
