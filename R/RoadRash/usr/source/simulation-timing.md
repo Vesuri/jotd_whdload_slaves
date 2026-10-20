@@ -1,3 +1,55 @@
+## Separating side-contact guard fails the handling regression
+
+`c-heading-exchange-probe` records native $8ef5c entry and $8efb6 exit
+without changing game state. At cursors 1255–1259 the current runtime
+exchanges headings (-52,8)→(8,-52), (13,-50)→(-50,13),
+(-52,11)→(11,-52), (21,-50)→(-50,21), and
+(-52,19)→(19,-52). Both added heading impulses are zero. The relative
+lateral displacements are 7, -9, 6, -10 and 7, all at delta 1. With
+coefficient 5120, the native magnitude multiplication/high-word extraction
+rounds every velocity-derived impulse to zero. These reversals are therefore
+the unconditional exchange itself, not division amplification or attack
+damage. The second and fourth exchanges occur while this side's relative
+motion is separating.
+
+The matching `b-heading-exchange-probe` confirms the same exchange mechanism
+at delta 4. Its four player-heading results are -1, 3, 3 and 4 at
+cursors 1253/1265/1286/1302. Only the last contact has an added heading
+impulse (2 from the other actor). Its zero health-damage impulse, established
+separately, must not be confused with this heading impulse.
+
+A new private candidate narrows the earlier separating-contact experiment:
+only native side-contact caller $8ebb4 (return $8ebb8), only two riding
+racers below the traffic bank, and only when both added heading impulses
+are zero. It skips the exchange for separating/stationary relative lateral
+motion; positional correction and subsequent attack damage still execute.
+Rear-end calls and nonzero attack impulses retain the native response.
+It uses the current road-normalized runtime, without the rejected
+longitudinal endpoint or NPC lateral corrections from older experiments.
+
+`c-side-heading-guard-probe` verifies actual execution: cursor 1255 exchanges
+(-52,8)→(8,-52), then 1256 retains (13,-50) and 1257 retains (25,-48).
+Cursor 1322 exchanges (-52,1)→(1,-52), then 1323 retains (0,-50).
+Thus the guard works as intended, but the full lap does not meet the B gate.
+`c-side-heading-{guard,control}-lap2` use the original tape and two-field
+samples. The equal-layout control crashes at 1374 and ends at position
+13,138,349, lateral -901. The guard never crashes through field 1600 and
+ends at 13,783,002, lateral -986 (displayed rank 13 versus control 15).
+B's retained crash is at 1376. Preventing repeated exchanges alone does not
+restore the required handling, so the guard is not integrated. No full-race
+cadence, response or performance acceptance is claimed for it.
+
+Both builds are 20,608 bytes and differ only in the enabled byte at file
+offset 9250. Their build directories retain `source.patch`. SHA-256:
+
+- Guard: `e12958a6e6b00821b05a8ec668d45a3bc3e01c7302ddb8594680a5930ce27568`.
+- Control: `eef0cbab846a8b38f3d74394f342590548c4576e65c11b0d223993b74a27a05c`.
+
+The initial private build failed on a 68020-only PC-relative TST encoding
+under the 68000 assembler target; replacing that flag test with BTST fixed
+it. Initial `-lap` launches had no runnable binary; only `-lap2` runs are
+evidence. All sessions terminated normally after the successful runs.
+
 ## Attack damage does not explain the heading reversals
 
 Read-only entry/exit probes at native $8ee46/$8eece now isolate health
