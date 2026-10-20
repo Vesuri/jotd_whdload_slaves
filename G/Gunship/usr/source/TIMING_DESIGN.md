@@ -2965,3 +2965,45 @@ world acknowledgement. The fault/exit fixture passes 279 helper calls.
 These are assembled 68000 Unicorn checks. The native frame-loop entry,
 producer/lifecycle hooks, memory/context initialization and renderer hand-off
 are not installed by this change.
+
+## Runtime arena and loader-facing setup
+
+`timing-core.i` provides the shared assembly dependency order. Including it
+installs no game hooks. `timing-runtime.i` defines one even, caller-allocated
+27,082-byte arena for the clock, history, command queues, endpoint state,
+consumer/lifecycle contexts, events, presentation scratch and prepared native
+copies. The source sizes determine all offsets; bindings no longer depend
+on the test harness's fixed scratch addresses.
+
+`timing_runtime_hunks(a0=first code address, a1=36-byte output)` follows
+the valid DOS LoadSeg chain for exactly nine hunks. DOS BPTRs address the
+link word; each code address is four bytes later. Null/misaligned first
+addresses, early termination, excess hunks and unrepresentable BPTRs reject
+without publishing a partial output table. This assumes loader-owned valid
+segment memory, not arbitrary pointer probing or executable-version detection.
+
+`timing_runtime_prepare(a0=arena, a1=hunk table, d0=50/60)` prepares all
+native copies with their existing signature checks, initializes the contexts
+and native bindings, and leaves sampling paused. `RT_READY` becomes one only
+after success. Invalid rates leave the arena unchanged. A signature failure
+leaves a partial, unusable arena with readiness zero; never execute its
+contents. Preparation is for fresh allocations, not recovery over committed
+work. Native game memory is not patched or executed during setup.
+
+The caller must allocate nonoverlapping memory, validate the executable,
+flush instruction caches after preparation, establish the mission's current
+control mode, reset any later lifecycle metadata, and resume at a freshly
+sampled epoch before consumer execution. The existing source remains
+standalone: no slave allocation, production entry patch or automatic
+activation is added here. Those must obey CUSTOM1 **Enhanced framerate**.
+
+`test_timing_runtime_c.py` passes 1,221 assembled 68000 Unicorn helper calls.
+It checks loader discovery against the captured DOS chain, malformed-chain
+rejection, invalid rates, early/late signature failures, arena canaries and
+write confinement during preparation. All native memory remains unchanged
+by setup. Four runtime-only consumer runs execute 240 fields across PAL/NTSC
+and two arena addresses, with identical player/history trajectories for each
+display rate. Native UI/visibility/target callbacks use the established
+fixtures during consumption. This verifies relocatable setup and use of
+the initialized bindings, not live memory availability, cache behavior or
+production lifecycle hooks.
