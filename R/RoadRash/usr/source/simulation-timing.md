@@ -1,3 +1,34 @@
+## Recheck road normalization after raster integration
+
+Fresh normal lap replays `c-raster-current-lap` and `c-raster-road-lap`
+use the unchanged field-timed tape and default Fast 020 configuration.
+The private road variant enables only the existing VERIFY_C_ROAD_TIMING
+correction on the integrated raster runtime. It is 20,256 bytes, SHA-256
+`3af9c2c9294942e3cbe4d11022431e0d2061d82cb14fef0f220572a1bb87a662`;
+`c-raster-road-build/source.patch` retains the selection change.
+
+| Normal runtime | Sampled crash | Final position | Final lateral | Displayed rank |
+| --- | ---: | ---: | ---: | ---: |
+| Retained B default reference | 1376 | 13031078 | -931 | 15 |
+| Integrated raster | 1444 | 10275100 | -1009 | 15 |
+| Raster plus road correction | 1374 | 13138349 | -901 | 15 |
+
+All have one crash, but neither C run matches B's native ahead-list order.
+For the road variant the final relevant sequence is $a63e0/$a62e0/$a6360,
+versus B's $a6360/$a62e0/$a63e0. This comparison uses native lists rather
+than the rejected stale-position sort. The road variant's final position,
+lateral and native ordering reproduce the older `c-fused-road-lap`; its
+sampled crash appears two fields earlier with the new render phase.
+`c-raster-road-lap/comparison.json` retains the explicit observations.
+
+The three-cell `c-raster-road-matrix` records 12.5 fps for default/Cache and
+8.3 fps for NoCache. Default/Cache distance is 3311794: -1.562% against
+B default and -0.615% against B Cache. NoCache distance is 3301969,
+-1.854% against B NoCache. Only the explicit Cache distance passes the
+unchanged one-percent gate. The improved trajectory therefore remains
+insufficient for integration; neither the fixed-field distance nor opponent
+order criterion is waived. Production remains at the raster integration.
+
 ## Integrate Fast raster edges and responsive heading prediction
 
 The normal runtime now includes the validated raster-edge Fast RAM helper and
