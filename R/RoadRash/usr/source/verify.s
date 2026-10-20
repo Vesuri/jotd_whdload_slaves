@@ -107,3 +107,11 @@ verify_stats:
 	dc.l	0
 	ENDC
 	ds.l	64                 ; +64 frame-duration histogram; bucket 63 = overflow
+
+; Functional timing tests only. The display swap still uses the original path.
+	IFD VERIFY_FRAME_PERIOD
+verify_pace:
+	cmpi.b	#VERIFY_FRAME_PERIOD-1,$aec0c
+	bcs.b	verify_pace
+	jmp	$aecba
+	ENDC

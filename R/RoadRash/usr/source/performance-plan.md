@@ -315,9 +315,15 @@ a slave option whose default reproduces the original timing until G1 decides the
     preload synchronization fix, not an emulator-only exception. Evidence: ignored
     `tmp/dev/tmp/b2-{load,copy,rle,fixed-copy,matrix,normal,replay}` and
     `tmp/dev/docs/b-correctness.md`.
-- **B3 Frame-tied animation `$a5990`.** Patch `$89d32` to derive the phase from the race
+- **B3 Frame-tied animation `$a5990` — complete (2026-10-20).** Patch `$89d32` to derive the phase from the race
   field counter (`($a5d4c >> 2) & 7`) so that it matches today's 4-fields-per-frame look at
   any rate. Check it visually at 12.5 and 25 fps.
+  - Result: `CUSTOM2` bit 0 enables the field-based phase; default remains original.
+    VERIFY records the field and phase at the hook. All 250 sampled phases match
+    `(field >> 2) & 7` at 12.5 fps and exactly 25 fps, with scenes visually checked.
+    The 25 fps run uses a fast functional 68020 configuration, not a hardware speed
+    claim. Evidence: `b3-animation-020`, `b3-animation-25-run`, `b3-normal-on`,
+    `b3-retry`, and `b3-replay-on` under the ignored harness output directory.
 - **B4 Small deltas.**
   - B4a A VERIFY option that renders only every Nth frame, or skips `$afd60`, to force
     delta 1 and 2 on a 68020.

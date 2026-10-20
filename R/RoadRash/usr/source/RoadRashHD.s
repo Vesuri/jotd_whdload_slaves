@@ -71,6 +71,7 @@ _config
 	dc.b	"C1:L:password:none,level 1 Diablo 1000 big money,Millions of dollars and level 4,"
 	dc.b	"PANDA 600,BANZAI 750,KAMIKAZE 750,SHURIKEN 1000,FERRUCI 850,PANDA 750,DIABLO 1000;"
 	
+	dc.b	"C2:X:Field-timed roadside animation:0;"
 	dc.b	0
 	EVEN
 	include	ReadJoyPad.s
@@ -261,9 +262,15 @@ pl_messages_main
 	
 pl_main
 	PL_START
+	PL_IFC2X 0
+	PL_PS	$9D32,field_animation
+	PL_ENDIF
 	IFD VERIFY
 	PL_PS	$6FE0,verify_field
 	PL_PS	$71DC,verify_frame
+	IFD VERIFY_FRAME_PERIOD
+	PL_PS	$7736,verify_pace
+	ENDC
 	ENDC
 
 	
@@ -286,6 +293,31 @@ pl_main
 	PL_NOP	$2F116,2
 	PL_END
 	
+
+; Four fields per phase, independent of rendered frame rate. The original
+; ANDI.B #7 at $89d38 retains the wrap and the original condition codes.
+field_animation:
+	move.l	d0,-(a7)
+	move.l	$a5d4c,d0
+	IFD VERIFY
+	movem.l	a0,-(a7)
+	lea	verify_animation(pc),a0
+	move.l	d0,8(a0)
+	ENDC
+	lsr.l	#2,d0
+	move.b	d0,$a5990
+	IFD VERIFY
+	and.l	#7,d0
+	move.l	d0,12(a0)
+	movem.l	(a7)+,a0
+	ENDC
+	move.l	(a7)+,d0
+	rts
+	IFD VERIFY
+verify_animation:
+	dc.b	'RRANIM01'
+	dc.l	0,0
+	ENDC
 
 FUNCTION_KEYPRESS:MACRO
 	btst	#JPB_BTN_\1,d0
