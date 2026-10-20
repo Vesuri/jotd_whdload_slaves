@@ -1157,6 +1157,59 @@ crossing followed by departure before the next world deadline. This helper
 does not establish swept collision equivalence or C5b acceptance. It is
 not called by ordinary fields or installed into the game yet.
 
+## Deferred ground side effects
+
+`timing-ground-deferred.i` makes the native ground boundary usable on a
+private motion candidate. `ground_deferred_prepare` first uses the existing
+validated ground extraction, then replaces the six-byte notification call
+with a six-byte write of native D0.w to a private event record. It redirects
+the timer store to that record's byte +2. The native MOVEQ supplies message
+7; notification +0A150 preserves registers, and the following native
+instruction replaces the condition codes. All ground classification and
+candidate-player writes remain native.
+
+The event is four bytes: notification word, timer byte, ready byte. Prepare
+takes the original a0/a1/a2 code/destination/hunk6 arguments plus its stable
+event address in a3. Flush caches after preparing the clone. The event must
+be separate from all code/player/shadow storage.
+
+`ground_deferred_step` takes candidate PS shadow a0, candidate player a1,
+deferred clone a2, the bound event a3 and airborne flag d0. It rejects a
+nonempty event, then evaluates through `player_ground_step`, including
+fraction resets. Success records either `00000001` (no external effects) or
+`0007B401` (message 7, timer 180). No live timer or notification is touched.
+Invalid flags do not alter the candidate/event. Candidate failure requires
+an explicit event discard; do not commit merely because evaluation succeeded.
+
+After motion completion and publication, `ground_deferred_commit` takes
+event a0, native notification entry a1 and live timer address a2. It validates
+the complete event, clears it before calling out, then performs notification
+followed by the timer write in native order. Return values are 1 for applied
+effects, 0 for a valid decision with no effects, and -1 for invalid/not ready.
+Repeated commit is rejected. All three helpers preserve non-result registers.
+The foreground caller still owns serialization and once-per-deadline scheduling.
+
+`test_ground_deferred_c.py` passes 10,000 native comparisons, including
+6,666 player resets and 1,965 notifications. Evaluation preserves the live
+notification counter and timer; commit matches native results, and pending
+re-evaluation/double commit cannot duplicate effects. Three invalid airborne
+flags and 36 corrupted extraction signatures reject. Notification UI remains
+stubbed while its arguments/count are checked. Evidence:
+`tmp/dev/tmp/c/ground-deferred-tests.json`.
+
+`test_deferred_ground_motion_c.py` evaluates the deferred boundary, completes
+the split motion and only then commits effects. All 4,096 h=1 native-motion
+comparisons pass (2,480 resets, 241 notifications). A candidate with a pending
+notification and deliberately invalid late speed fraction fails without
+publishing motion or applying the notification/timer. Explicit discard and
+five malformed commit records are checked. Evidence:
+`tmp/dev/tmp/c/deferred-ground-motion-tests.json`.
+
+This supplies deferred effects for the split coordinator, but does not yet
+install that coordinator, decide swept contact eligibility or integrate the
+full world tick. Original ground notification UI and live VBL interleavings
+still need the production validation gate.
+
 ## World-owned motion impulse generation
 
 `timing-world-impulses.i` now supplies the native random-motion
