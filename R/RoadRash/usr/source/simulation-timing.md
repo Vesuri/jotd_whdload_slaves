@@ -1,3 +1,42 @@
+## Reject conditional direction-bit updates
+
+A private extension tests actor A1 +$69 bit 0 before the native pair-distance
+gate's BSET at $8c8c4 or BCLR at $8c8de. Two Fast helpers retain the flag's
+value/condition-code effects and jump back before the original position
+comparison; no pair ordering, arithmetic or rejection decision is changed.
+`c-pair-direction-vary-state` matches 1,596 common hashes, sound requests and
+six field-1457 regions against the current conditional-tail runtime. This is
+short replay coverage only; the candidate is not accepted for full gameplay.
+
+The initial 20,568-byte candidate/control keep identical layouts. Their
+`c-pair-direction-{fast,control}-matrix` results are 12.5/8.3 fps on the
+cached/default and uncached 020, 21.3/20.2 on 040 and 23.0/23.0 on 060.
+The candidate's default 020 distance is 3,311,794 versus the control's
+3,321,603. Although faster than its control on 040, it remains slower than
+the current integrated 21.8 fps and loses a tick in the live-field distance
+sample. A layout-controlled follow-up was therefore necessary before
+attributing the apparent gain to fewer writes.
+
+The second pair appends the helpers after existing code and reuses four
+initialization NOP bytes for its call. Every existing assembler symbol keeps
+its original relative offset. Padding makes the binary exactly 256 bytes
+larger than the current runtime (20,736 total); this preserves relative
+layout and total-size modulo 256, not a verified absolute runtime-address
+claim. In `c-pair-direction-aligned-{fast,control}-matrix`, candidate/control
+rates are 12.5/12.5 (020), 8.3/8.3 (NoCache), 21.5/21.8 (040), 23.0/23.0
+(060). Both default 020 distances are 3,311,794; both uncached distances are
+3,301,969. The placement-preserving candidate is slower than its control,
+so no direction-bit change is integrated. Full-race/response validation was
+not pursued after this result; the existing runtime remains unchanged.
+
+Private builds retain `source.patch`; the appended-helper builds additionally
+retain `pair_direction.s`. Normal SHA-256 values:
+
+- Initial candidate: `321787db8528fe3662ed65d0a31e9a9f65e2e834e4d2411d18df295e7d667be3`.
+- Initial control: `6e727e29015eac5a9994dedf7638e60ab12edf13333257c0256ab35e92e3a7ca`.
+- Appended candidate: `ffcb89db2ddf367efe0435239757372ab52eb60230340f9279767699e7bccb84`.
+- Appended control: `48db9b2a736f68d4646e803153eee453840f7767d3cd99f3b0f99f7f2a99a383`.
+
 ## Avoid redundant actor-pair flag writes
 
 The copied collision tail at native $8cb70/$8cb76/$8cb7c clears actor A1 bit 4
