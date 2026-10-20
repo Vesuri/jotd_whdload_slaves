@@ -74,6 +74,7 @@ step_end:
 	bsr step_spark_events
 	bsr step_derive_lean
 	bsr step_scenery_cursor
+	bsr step_pose_events
 	jsr $8f552
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
@@ -537,4 +538,28 @@ step_spark_test:
 	rts
 step_sparks:
 	ds.b 35
+	even
+
+; Pose selection contains attack-state transitions and the sound-event gate at
+; $a5991. Run it at the simulation boundary, including invisible catch-up steps.
+step_pose_events:
+	move.l step_stats+8(pc),d0
+	lsr.l #2,d0
+	move.b d0,$a598d
+	move.b d0,$a5990
+	clr.w $a8734
+	lea step_pose_busy(pc),a0
+	st.b (a0)
+	jsr $89d20
+	lea step_pose_busy(pc),a0
+	clr.b (a0)
+	rts
+step_pose_clear:
+	btst #0,step_pose_busy(pc)
+	beq .done
+	bclr #4,$68(a1)
+.done:
+	rts
+step_pose_busy:
+	dc.b 0
 	even

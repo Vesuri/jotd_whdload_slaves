@@ -252,3 +252,22 @@ match between `c-spark-interp` and `c-spark-base` on the steering/crash tape.
 The earlier `c-interp-render1/12` comparison also matched across rendering rates.
 The final crash screenshot was inspected for correct road, rider, bike and HUD
 presentation; this is not complete visual validation of every scene or action.
+
+### Attack-state preparation
+
+Pose selection at `$89d20` also owns attack-state transitions (`$8aa90/$8abae`)
+and the `$a5991` sound-event gate. The diagnostic now evaluates it once per
+simulation step, after derived lean and crash state, including catch-up steps.
+The visual phase bytes at `$a598d/$a5990` derive from simulation time rather than
+incrementing on every draw. The original crash-bit clearing branch runs only
+when called from simulation. Complete action/weapon coverage is still pending.
+
+`c-attacks-before1/12` exercises fire-button attacks with both steering
+orientations. The tape changes 304 actor hashes relative to the no-attack tape,
+and sampled player flags confirm active attack states. Its actor hashes already
+match between those render intervals; this alone does not prove sound-event
+ownership. After moving pose/event preparation, `c-attacks-pose1/12` also matches
+all 399 actor hashes and the frozen actor snapshot. Audio event counts remain a
+separate verification requirement. These tests used the now-rejected delayed
+interpolation experiment; they remain evidence about simulation ownership, not
+acceptance of its presentation latency.

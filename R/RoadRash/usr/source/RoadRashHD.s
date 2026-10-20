@@ -276,7 +276,9 @@ pl_main
 	PL_PSS	$710C,step_queue_input,4
 	PL_P	$73F4,step_input_key
 	PL_PSS	$9E0E,step_crash_sprite,2
-	PL_NOP	$9E26,6
+	PL_PS	$9E26,step_pose_clear
+	PL_NOP	$9D24,6
+	PL_NOP	$9D32,6
 	PL_PS	$A104,step_spark_test
 	PL_NOP	$A11C,6
 	PL_NOP	$9EEC,4
