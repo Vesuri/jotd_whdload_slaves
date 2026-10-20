@@ -404,6 +404,36 @@ release limitations, not implied by these emulator checks.
 This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
 `simulation-and-presentation.md`.
 
+**Status: in progress; C1 awaits the user's cadence choice.** The C4d
+baseline pricing gate supports the proposed original-A500 cadence. In the
+retained A2 68000 traces, contiguous intervals from the return of rendering
+(`+05836`) to the next render call (`+05830`) cost:
+
+| Window | Complete sampled intervals | Mean cycles | Maximum cycles | Mean / maximum fields |
+|---|---:|---:|---:|---:|
+| Take-off | 25 | 34,099 | 37,426 | 0.240 / 0.263 |
+| Hover | 28 | 33,639 | 36,244 | 0.237 / 0.255 |
+| Ground attack | 25 | 41,431 | 109,046 | 0.292 / 0.767 |
+
+These intervals span the loop boundary and cover one native tick's work outside
+`+04288`, including interrupt/OS cycles that occur inside the interval. They do
+not cross the omitted fields between trace captures. At 142,101 cycles per PAL
+field, their mean cost is 1.32–1.62% of an 18-field budget. This is a feasibility
+measurement of the existing loop, not a measurement of a finished scheduler:
+moving effect updates out of drawing, preserving input history and making
+snapshots will add work. Sustained catch-up, pause recovery and the final 68000
+cost remain to be validated. The ignored harness retains the reproducible
+analysis in `tools/price_ticks_c.py` and `tmp/c/tick-cost.json`.
+
+Two cadence dependencies need particular care during implementation.
+`+09B9A` allocates an effect slot and calls the gameplay RNG three times, so
+calling it per displayed frame changes later simulation state. `+0BE5A`
+advances those effect slots using the six VBL-decremented bytes at `+0C724`;
+these bytes are effect-animation timers, not six warning-lamp timers as the
+initial time-model notes suggested. The gauge routine `+0ADB6` keeps separate
+drawn heights for the two buffers; elapsed-time slew and per-buffer repaint
+must be treated separately.
+
 - **C1. Choose the tick rate. This is the user's decision.**
   - (a) A fixed rate equal to the original A500 pace, about 2.7 ticks/s (one tick per 18 fields).
     The flight model and every per-tick constant stay unchanged, and rendering interpolates
