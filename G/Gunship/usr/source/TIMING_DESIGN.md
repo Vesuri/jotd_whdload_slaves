@@ -666,6 +666,65 @@ fraction resets on lifecycle transitions and the native scheduler adapter
 remain integration obligations. It is not included in the slave yet;
 installation must use the CUSTOM1 Enhanced framerate gate.
 
+## Coupled held-control measurement: C4e not accepted
+
+`tmp/dev/tools/measure_held_motion_c.py` runs 32 ten-second comparisons:
+eight scenarios, configuration byte 10 equal to 0/2, and PAL/NTSC.
+Scenarios hold collective and initial attitude with no new stick input:
+level attitude, climb/descent settings, forward pitch, bank, yaw, wind and
+engine coasting. Initial coordinates are 7000/8000 hex, altitude 1024,
+RPM 128 and speed/vertical rate zero. Powered cases set engine flags to
+1C hex (both engine-enable bits and powered response); coast sets zero.
+The bank case uses pitch 8 and roll 16, within native control limits.
+
+The reference runs native deterministic motion at three ticks per second;
+the candidate runs `kinematics_step` every field. Each field uses its
+logical interval's tick parity. Samples at exact whole seconds compare
+integer native state against candidate integer-plus-fraction state.
+All cases remain airborne and away from map limits; world effects, new
+stick input, collisions and presentation are outside this measurement.
+Evidence: `tmp/dev/tmp/c/held-motion-measurement.json` (18,594 calls).
+
+Maximum absolute differences across the sampled ten seconds:
+
+| Quantity (native units) | Field path versus native | PAL versus NTSC field paths |
+|---|---:|---:|
+| x coordinate | 14.44 | 0.37 |
+| y coordinate | 30.75 | 0.61 |
+| Height | 12.30 | 0.22 |
+| Forward speed | 2.174 | 0.100 |
+| Vertical rate | 2.052 | 0.097 |
+| RPM | 2.492 | 0.040 |
+| Heading (256 units/turn) | 0.342 | 0.057 |
+| Track (256 units/turn) | 2.882 | 0.090 |
+
+The largest sampled horizontal distance difference is 30.840 map units.
+These are observations, **not accepted rounding bounds**. In particular,
+the configuration-2 level-attitude case exposes a persistent equilibrium
+change: native vertical rate settles at -2, whereas fractional exponential
+response approaches -4. After ten NTSC seconds, native altitude is 1009
+and candidate altitude including fraction is 996.75. Native powered RPM
+stops at 153 while the candidate continues toward its target of 156.
+
+The native response's rounding creates a zero-increment interval. For
+quarter response, error -2 gives `(-2 + 2) >> 2 = 0`; for eighth response,
+error +3 gives `(3 + 4) >> 3 = 0`. Applying a pure exponential below a
+whole tick removes these native stopping ranges. This is a handling
+change that can accumulate displacement indefinitely; it must not be
+described as a small residual rounding error. The next response revision
+must preserve these native equilibria while retaining field-rate motion,
+then repeat the coupled gate, including moving targets and fractional
+heading/track coupling.
+
+Separately, finer integration has an intentional displacement difference
+even without rounding: N equal semi-implicit steps under constant
+per-tick acceleration A travel `v0 + A*(N+1)/(2*N)`, versus the native
+single-step `v0 + A`. Four steps give the playbook's `v0 + 5*A/8`;
+20 NTSC steps give `v0 + 21*A/40`. The design retains finer integration,
+but that does not justify changing a settled native velocity. The full
+C4e gate remains unpassed until these two effects are separated and the
+remaining trajectory differences have an explicit acceptance bound.
+
 ## Native world ground boundary
 
 `timing-ground.i` extracts the unchanged +095A0..+09636 block into a
