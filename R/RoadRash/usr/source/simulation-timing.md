@@ -5,6 +5,65 @@ on supported hardware when Enhanced framerate is enabled. Runtime integration
 and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
+## C completion audit against the integrated steering runtime
+
+This audit applies to the normal 7,920-byte runtime with SHA-256
+`60ef76f312d7f08ce067b5a6b32966bb47f074ee78fd1166bd1cd1e0a7916bdb`.
+Historical tests below retain their original scope; a passing older build is not
+automatically a passing test of this binary.
+
+| Requirement | Evidence and remaining work |
+|---|---|
+| C1a: boundaries and delta consumers | The ownership table and direct-delta audit below identify the race loop, field hook, display handshake and per-frame side effects. |
+| C1b: 20 ms simulation, clock, pause and normalized effects | Runtime uses `STEP_FIELDS=1`; camera decay and steering have explicit normalization. Current CD32 pause/resume passes. Original-speed equivalence remains incomplete: live-field distance and collision/handling comparisons still differ from B. |
+| C1c: ownership and field input | Simulation owns actor/collision/AI updates, camera, poses and sound requests; display retains buffer publication. Current finish, wreck and arrest tapes compare completed-tick hashes and sound events across cadences. This does not prove B-equivalent handling. |
+| C2a: consume elapsed time | Catch-up uses one-field steps and queued field inputs. Terminal ticks stop catch-up; history exhaustion aborts explicitly rather than dropping input/time. Historical overflow and initialization tests exist; current full-race replay validates terminal/restart behavior. |
+| C2b: latest state, no delayed interpolation | Normal runtime renders completed simulation state without interpolation. Current normal eight-phase visible-response median is 230 ms versus B's 200 ms. No explicit interpolation delay exists, but the measured response regression remains open. |
+| C2c: original safe handoff, no extra pacing | Normal patch list retains the native swap without B's floor/clamp. Historical beam/record trace demonstrates one-field handoff when drawing is omitted. Full-render throughput is not evidence of a limiter; replacing B's safeguards is not fully validated until the other regression requirements pass. |
+| C2d: CPU/Fast selection and fallback | Current normal off/Chip-only probes retain original enhanced-hook instructions; current A500 distance and final state match B exactly. The boolean is off by default and gates all runtime enhancements. |
+| C3a: explicit cadence replay | Fresh current-model checks below match at observed 1/2/3/4 and varying intervals; one-field cadence requires diagnostic drawing omission. Current finish/arrest and equivalent wreck builds additionally prove full-race varying/longer cadence replay. |
+| C3b: A2/A4, controls, demos, transitions and latency | Current normal CD32, fallback and latency tests exist, with current-model full-race transition coverage. Keyboard and both demo-exit tests predate integration and need refreshing. A4 live-field distance, full opponent order and screenshot review remain unresolved. Equal-duration diagnostic distance accounting does not replace A4's fixed-live-field gate. |
+| C3c: hardware throughput and simulation cost | Current normal cached 020/030/040/060 plus A500 and integrated MMU checks exist. The older complete 13-cell matrix and physics profile predate steering integration; refresh missing cells and cost measurements. Current cached throughput is 10.0/12.5/16.6/18.5 fps and remains below B. |
+
+C remains incomplete. D–F are expected to provide further rendering speedups;
+that expectation does not waive C's original-behavior, latency or verification
+requirements. The next validation work is the missing current-build control/demo
+and hardware checks. The distance/handling
+and response regressions require resolution rather than a renamed baseline.
+
+### Fresh explicit-cadence replay
+
+`c-audit-period-{1,2,3,4}` rebuilds the current simulation with steering, Fast RAM
+object projection and stack, fixed diagnostic RNG, sound-event capture, and
+the identical `c-attacks.json` field tape. `c-audit-varying` adds the existing
+1/2/3/4/12/2/16/4 interval pattern. All normal binaries produced alongside these
+diagnostics match the runtime SHA above.
+
+Observed histograms matter: requested periods 1 and 2 both produce 799
+two-field intervals, while periods 3 and 4 produce 533 three-field and 399
+four-field intervals. The varying run observes 2/3/4/12/16-field intervals.
+These counts exclude startup bins. `c-audit-one-field` uses the existing
+`VERIFY_SKIP_RENDER` diagnostic and observes 1,600 one-field intervals. It
+retains simulation, geometry and the native display handoff, but omits drawing:
+it establishes one-field scheduling coverage, not full-render 50 fps.
+
+All six runs match 1,596 common completed actor hashes and all three sound
+requests, including their tick numbers. At completed simulation field 1,457,
+the entire actor range `$a5d60..$a6edf`, clock/spawn range `$a5d50..$a5d5f`,
+camera longs `$a5d1e/$a5d22`, and rank ranges `$a7220..$a7227` and
+`$a59f4..$a59f5` match byte for byte. Thus player distance and actor crash state
+also agree at that boundary. All stack guards remain intact.
+The full snapshot includes presentation-owned bytes and is not expected to be
+identical across cadences.
+
+The linear diagnostic's live step counter can include a tick whose hash has
+not yet been written: period 3 stops during tick 1,599. The comparison therefore
+uses the shared completed window through tick 1,596, checking every slot is
+populated rather than treating the live counter as a publication marker.
+The retained `c-audit-varying/comparison.json` records ranges, histograms and
+binary hashes. These tests close the explicit short-tape cadence coverage gap;
+they do not close the B-reference regressions above.
+
 ## Existing boundaries and ownership
 
 | Boundary | Existing behaviour | Requirement for C |
