@@ -68,3 +68,55 @@ boundary_command_step:
  ; outer caller. Pause/Esc first drops its own saved sound pointer.
  jsr (a1)
  rts
+
+; a0=paused command queue, a1=original eight-byte retained player head.
+; Call once AFTER native boundary completion, with both readers excluded.
+; Mark execution for both readers without advancing either cursor or changing
+; the caller's copy. They re-peek and acknowledge the marked record normally.
+; Return 1 marked, -3 invalid/stale/already-marked/active/faulted. Preserve others.
+; The lifecycle owner must retain its own execution phase across mark failure:
+; a rejection is never permission to replay the native command.
+boundary_command_mark:
+ movem.l d1-d3/a0-a3,-(sp)
+ tst.w CQ_ACTIVE(a0)
+ bne .bad
+ tst.w CQ_FAULT(a0)
+ bne .bad
+ tst.w 6(a1)
+ bne .bad
+ move.w CQ_WRITE(a0),d1
+ sub.w CQ_PLAYER(a0),d1
+ beq .bad
+ cmpi.w #CQ_CAPACITY,d1
+ bhi .bad
+ move.w CQ_PLAYER(a0),d2
+ sub.w CQ_WORLD(a0),d2
+ cmpi.w #CQ_CAPACITY,d2
+ bhi .bad
+ add.w d1,d2
+ cmpi.w #CQ_CAPACITY,d2
+ bhi .bad
+ move.w CQ_PLAYER(a0),d2
+ andi.w #CQ_CAPACITY-1,d2
+ lsl.w #3,d2
+ lea CQ_RECORDS(a0),a2
+ adda.w d2,a2
+ move.l (a1),d3
+ cmp.l (a2),d3
+ bne .bad
+ move.l 4(a1),d3
+ cmp.l 4(a2),d3
+ bne .bad
+ moveq #0,d0
+ move.w 4(a1),d0
+ bsr control_command_class
+ cmpi.l #CC_BOUNDARY,d0
+ bne .bad
+ move.w #CQ_BOUNDARY_DONE,6(a2)
+ moveq #1,d0
+ bra .done
+.bad:
+ moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d3/a0-a3
+ rts

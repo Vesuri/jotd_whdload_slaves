@@ -81,7 +81,8 @@ CW_SIZE equ 28
 ; Return 1 processed/acknowledged, 0 none due, 2 retained boundary, or error.
 ; Field-primary/unknown commands are acknowledged without replaying effects.
 ; COMMITTED records completed dispatch before ack (including no-op dispatch);
-; APPLIED counts processed ordinary commands for recovery accounting.
+; APPLIED counts processed commands, including externally completed boundaries.
+; Marked boundaries acknowledge without running the native decoder again.
 ; Never advance the player cursor. Lifecycle/serialization is caller-owned.
 control_world_next:
 	movem.l d1-d7/a0-a6,-(sp)
@@ -96,6 +97,17 @@ control_world_next:
 	bne .done
 	move.l (sp),CW_SEQUENCE(a6)
 	move.w 4(sp),CW_KEY(a6)
+	tst.w 6(sp)
+	beq .unhandled
+	cmpi.w #CQ_BOUNDARY_DONE,6(sp)
+	bne .bad_record
+	moveq #0,d0
+	move.w 4(sp),d0
+	bsr control_command_class
+	cmpi.l #CC_BOUNDARY,d0
+	bne .bad_record
+	bra .acknowledge
+.unhandled:
 	movea.l CW_PLAYER(a6),a0
 	movea.l CW_DECODER(a6),a1
 	movea.l CW_INDICATOR(a6),a2
@@ -106,6 +118,7 @@ control_world_next:
 	beq .done
 	tst.l d0
 	bmi .done
+.acknowledge:
 	move.w #1,CW_COMMITTED(a6)
 	addq.l #1,CW_APPLIED(a6)
 	movea.l CW_QUEUE(a6),a0
@@ -115,6 +128,9 @@ control_world_next:
 	tst.l d0
 	bne .done
 	moveq #-1,d0
+	bra .done
+.bad_record:
+	moveq #-3,d0
 .done:
 	adda.w #8,sp
 	movem.l (sp)+,d1-d7/a0-a6

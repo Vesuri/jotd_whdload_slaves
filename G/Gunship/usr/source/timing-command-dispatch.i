@@ -56,6 +56,8 @@ CP_SIZE equ 24
 ; or negative queue/state error. World reader is never advanced here.
 ; CP_COMMITTED distinguishes effects applied before an acknowledgement fault.
 ; Boundary commands remain retained, with sequence/key available to the owner.
+; A paused lifecycle owner's completion marker skips native effects and tail;
+; both readers still acknowledge independently. Other marker values reject.
 control_player_next:
 	movem.l d1-d7/a0-a6,-(sp)
 	suba.w #8,sp
@@ -72,6 +74,14 @@ control_player_next:
 	moveq #0,d0
 	move.w 4(sp),d0
 	bsr control_command_class
+	tst.w 6(sp)
+	beq .unhandled
+	cmpi.w #CQ_BOUNDARY_DONE,6(sp)
+	bne .bad_record
+	cmpi.l #CC_BOUNDARY,d0
+	bne .bad_record
+	bra .acknowledge
+.unhandled:
 	cmpi.l #CC_BOUNDARY,d0
 	beq .boundary
 	cmpi.l #CC_MODE,d0
@@ -93,6 +103,7 @@ control_player_next:
 	; Unknown and world-primary commands also have a field-owned yaw tail.
 	movea.l CP_PLAYER(a6),a0
 	bsr control_target_tail
+.acknowledge:
 	move.w #1,CP_COMMITTED(a6)
 	addq.l #1,CP_APPLIED(a6)
 	movea.l CP_QUEUE(a6),a0
@@ -106,6 +117,9 @@ control_player_next:
 	bra .done
 .boundary:
 	moveq #2,d0
+	bra .done
+.bad_record:
+	moveq #-3,d0
 .done:
 	adda.w #8,sp
 	movem.l (sp)+,d1-d7/a0-a6

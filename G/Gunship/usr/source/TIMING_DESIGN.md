@@ -3360,3 +3360,44 @@ already have applied field timers and, on a deadline, world opening before
 returning a boundary. Such work must be resolved without replay, and both
 command readers must account for the command before a fresh epoch is admitted.
 The adapter is prepared but not invoked automatically in gameplay.
+
+## Retiring completed boundary commands through both readers
+
+The command record's previously reserved word at +6 now uses value 1
+(`CQ_BOUNDARY_DONE`) to record a lifecycle owner's completed native command.
+Newly published records still clear this word. No queue size or arena size
+changes are needed.
+
+`boundary_command_mark(a0=queue,a1=original eight-byte player-head record)`
+returns 1 on success or -3 on rejection, preserving non-result registers.
+It requires a paused, unfaulted queue, the exact unmarked retained player
+head, a boundary-class key and valid reader distances. The world reader
+must not have passed the player head. All checks precede the only write:
+setting the retained slot's marker. Neither cursor nor the caller's private
+copy changes. Active, stale, malformed or already marked requests reject.
+The lifecycle owner must exclude both readers and mark only after native
+execution, retaining its execution phase if marking fails; rejection does
+not authorize executing the native key again.
+
+Both command readers recognize this marker only on boundary-class keys.
+They skip the native primary and yaw tail, update their completion/accounting
+metadata and acknowledge the slot independently. The world reader can still
+process older world-primary commands before reaching it. Invalid marker
+values or a marker on an ordinary command reject without applying effects
+or advancing a cursor. The normal full-record acknowledgement check still
+prevents an old unmarked private copy from acknowledging a marked head.
+
+`test_boundary_mark_c.py` passes 216 combinations across all twelve boundary
+keys, normal/wrapped cursors, sequence wrap, and world-reader lag up to the
+queue's capacity (11,110 calls). It also verifies ten atomic rejection cases
+and twelve invalid-marker reader cases. An integrated batch test retains
+key 12 on field 2, executes/marks it, resumes that same field and lets both
+readers retire it by the first world deadline. All 17 fields complete with
+exactly 17 yaw-tail calls: the boundary adds no duplicate tail. An older
+world-primary command remains queued until the deadline.
+
+That integrated fixture pauses only the command queue around a nonblocking
+retired key; it does not establish full UI pause/rebase behavior. Runtime
+preparation still passes its 1,221 calls and 240 PAL/NTSC fields, and all
+experimental variants assemble. Production lifecycle coordination remains
+pending.

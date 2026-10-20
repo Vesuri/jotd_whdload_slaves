@@ -14,6 +14,7 @@ CQ_DISCARDED  = 20
 CQ_RECORDS    = 24
 CQ_CAPACITY   = 128
 CQ_SIZE       = CQ_RECORDS+CQ_CAPACITY*8
+CQ_BOUNDARY_DONE = 1          ; record word +6: lifecycle owner ran native key
 
 ; a0=state, d0=sequence epoch preceding the first command.
 commands_init:
