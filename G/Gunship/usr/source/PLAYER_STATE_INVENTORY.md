@@ -210,7 +210,8 @@ transition tests; treating direction alone as a rate would miss this. The
 copy occurs in the world decoder called at +05884, not in the VBL sampler.
 The continuous-player delay wrapper now retains 17/20 fields of y history
 to preserve that time horizon. The split ground transaction also retains
-and commits this history; scheduler adoption remains pending.
+and commits this history. The scheduler bridge now supplies each delivered
+field stamp to that transaction; production installation remains pending.
 
 The pitch perturbation at +053DC is not conditional on the roll-damage bit:
 it can run when the high altitude byte is zero, speed is at least eight,

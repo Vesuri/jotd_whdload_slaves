@@ -2623,3 +2623,41 @@ packet; each preserves authoritative player/shadow/history and rejects
 retry (36,899 calls). Notifications remain stubbed as in the prior native
 ground suite. Full scheduler adoption, deadline collision policy and
 production installation still remain pending.
+
+
+### Scheduler adoption of delayed control history
+
+`field_player_prepare_delayed` now binds the delayed ground-compatible
+transaction to the existing scheduler bridge. It takes the same arguments
+as `field_player_prepare`. Its context extends the original 40 bytes with
+an initialized control-delay pointer at `FP_DELAY=40` (44 bytes total), and
+its candidate must be `PD_SIZE` rather than `PB_SIZE`. The ordinary entry
+retains its original 40-byte contract and never reads the extension.
+Both entries share phase, field, command-cutoff and rate validation.
+
+The delayed entry stamps history from the delivered record/scheduler field,
+not the world tick or render time. Retained commands still block preparation.
+`FP_BOUND=2` selects delayed completion; value 1 remains ordinary completion.
+The common completion validates scheduler identity/health, publishes the
+player and control history together, marks `FP_COMMITTED`, then acknowledges
+the field. Rejection before publication invalidates both candidate phases.
+An upstream fault at acknowledgement retains the published history and
+counts the applied field, just as it retains committed player motion.
+Lifecycle recovery must rebase history explicitly, not replay that field.
+
+`test_field_command_player_delay_c.py` passes 1,920 fields with the actual
+clock, field history, dual command readers, mode commands, delayed player
+bridge and camera rebuilding. PAL/NTSC batches of 1/3/10/25 produce identical
+per-field player/shadow/control-history states and world observations; each
+run consumes 240 fields and produces the expected 14/12 world deadlines
+(26,207 calls). The world remains an observer fixture, not the full world
+body, and ground selection is not exercised in this suite.
+
+`test_field_player_delay_c.py` passes 12 rejection cases plus an injected
+producer fault exactly at acknowledgement after publication (155 calls).
+These cover retained commands, phase/identity/rate errors, invalid motion,
+changed history and stale completion; published history is retained after
+the injected fault, and duplicate completion cannot advance it again.
+The original entry's 11 rejection cases and post-publication fault test also
+remain green (130 calls). Production hooks and lifecycle rebasing are still
+pending; this closes the standalone scheduler/control-history hand-off.
