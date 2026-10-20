@@ -154,6 +154,23 @@ slave, FPSP, shared emulator and 060 code path are unchanged.
   shared environment); map paraj's `TFX` patch targets to `tfx.020`.
 - Exit: symbol map covering the profile's hot routines and every routine paraj patched.
 
+Completed: `tmp/dev/docs/symbol-map.md`. The accepted map covers all 30 hot regions
+and all 60 active address-bearing rows (57 distinct sites) in the plain-TFX main
+and 060 patch lists. It separates 723 unique complete relocation-masked symbol
+spans from reviewed semantic matches and explicitly local names for unnamed
+helpers. Short normalized instruction matches remain candidates only. Shared
+Ghidra exporters audit 37 selected function entries; symbol spans and profiling
+intervals are not assumed to be complete function bodies.
+
+Step 7 targets: sort hooks `$5efbe` and `$5f03e`, depth array `$5bf16`, object count
+`$5bf10`; duplicate-fire hook `$4e080`, skipping to `$4e0a6`. The two sort hook
+sequences match the integer build byte-for-byte. Later ports require adapters:
+GouraudFill at `$4f840` has a different ABI, the frame limit is a MOVEQ at `$1abfe`,
+and delta time moved from A4+500 to A4-$ba4. The six observed FPSP sites belong to
+`@tan`, `@sin`, `@cos`, `@atan2`, `@atan` and `@asin`. Input hashes, coverage,
+original-byte guards and negative controls pass. No executable/slave code changed;
+runtime correctness and performance validation remain mandatory for each port.
+
 ### 7. Port missing correctness fixes
 
 - Sort fix when objects are at maximum (`do_sort`, `depth_ptr`), double missile fire
