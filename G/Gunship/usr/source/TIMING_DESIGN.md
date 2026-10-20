@@ -1978,3 +1978,41 @@ empty/large reserves, RPM/height and crash/end states. All 81 source-word
 corruptions reject before destination writes (4,178 assembled calls). This
 helper remains standalone; full housekeeping, scheduler composition and
 CUSTOM1-gated installation are still pending.
+
+### Remaining periodic housekeeping with deadline RNG
+
+`timing-world-periodic.i` extracts +0598A..+05A0C, replacing the loop-back
+branch with RTS and redirecting its one bound-128 RNG call to the private
+deadline RNG's register-bound entry. Call it once only when
+`world_reserves_step` returns 1. Native object-table loads/stores, mission-table
+swap and notification/map callbacks retain their order. A rejected random
+threshold still consumes exactly one draw; no extra draws are introduced.
+
+`world_periodic_prepare` takes hunk 0, an even destination, the deadline RNG
+base and hunk 6 in a0/a1/a2/a3. It validates the entry, early-out branch, eight
+relocated calls and two relocated global reads before writing. `WP_SIZE` is
+136 bytes: 130 native bytes, RTS and the bound native player pointer.
+`world_periodic_step` takes native player/clone in a0/a1 and returns 0/-1 with
+non-result registers preserved. It rejects a different player address before
+execution: +046DE can branch into +0475A, which reads the absolute native
+player coordinates. The complete player and trailing object tables must be
+present; an isolated 86-byte player copy is insufficient. Cache flushing,
+once-only scheduling and deadline-record lifetime remain caller obligations.
+
+The callback audit identified world-triggered presentation writes: +0475A
+updates coordinate words in hunk 1 +0180..+0194, while +046DE can set the
++0192 word to 256. These writes are retained here and must be distinguished
+from arbitrary render-frequency updates during the remaining map/timer audit.
+The callback also changes hunk 4 notification bytes and hunk 0 +0A99E state.
+
+`tmp/dev/tools/test_world_periodic_c.py` passes 512 native comparisons in both
+RNG modes across 11 callback paths. The reference uses native timestamp memory;
+the clone uses the same recorded timestamp while live memory deliberately
+differs. Player/table bytes, seed, mission tables, notification/map state and
+ordered callback arguments match. Write tracing permits only inventoried
+state and stack; each execution draws once. Native +07B7E/+07BD0, +08036,
++07FBE and +046DE/+0475A run; audio endpoints +0B4E4/+0B57C are stubbed.
+Twenty-two patch-boundary corruptions reject without destination writes, and
+a mismatched player binding rejects without state writes (537 calls total).
+This remains standalone. Full world sequencing, lifecycle/audio behavior,
+map timer policy and CUSTOM1-gated installation are not yet validated.
