@@ -241,6 +241,26 @@ timing_runtime_prepare:
  bsr scene_private_prepare
  tst.l d0
  bne .bad
+ ; Coordinate-only map entry has no OS calls; bind only the known routine.
+ movea.l RT_HUNKS(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ lea $3b88(a1),a1
+ cmpi.w #$3039,$475a(a0)
+ bne .bad
+ cmpa.l $475c(a0),a1
+ bne .bad
+ addq.l #2,a1
+ cmpi.w #$3239,$4760(a0)
+ bne .bad
+ cmpa.l $4762(a0),a1
+ bne .bad
+ cmpi.w #$4e75,$487a(a0)
+ bne .bad
+ lea $475a(a0),a0
+ move.l a0,RT_CONSUMER+TF_MAP_ENTRY(a6)
+ movea.l RT_HUNKS+16(a6),a0
+ lea $1c5(a0),a0
+ move.l a0,RT_CONSUMER+TF_MAP_MODE(a6)
  ; Wire arena-relative pointers from immutable offset pairs.
  lea .bindings(pc),a0
  move.w #(.bindings_end-.bindings)/4-1,d0

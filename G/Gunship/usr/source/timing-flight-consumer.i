@@ -22,7 +22,9 @@ TF_TICK equ 62
 TF_FIELD equ 64
 TF_EFFECT equ 68 ; optional recurring effect clone (runtime always binds)
 TF_HIT_TIMER equ 72 ; native hit countdown byte, paired with TF_EFFECT
-TF_SIZE equ 76
+TF_MAP_ENTRY equ 76 ; optional native coordinate-only entry
+TF_MAP_MODE equ 80 ; native panel mode byte (1 = map)
+TF_SIZE equ 84
 
 ; a0=TF, d0=command budget per reader (1..128). Preserve other registers.
 ; Return 0 field complete, 1 world complete, 2 retained command boundary,
@@ -137,6 +139,18 @@ timing_flight_consume:
 .motion_result:
  tst.l d6
  bmi .fault
+ ; Recalculate from this field's committed pose, independent of map draws.
+ move.l TF_MAP_ENTRY(a6),d0
+ beq .map_done
+ movea.l TF_MAP_MODE(a6),a1
+ cmpi.b #1,(a1)
+ bne .map_done
+ movea.l d0,a1
+ movem.l d1-d7/a0-a6,-(sp)
+ jsr (a1)
+ movem.l (sp)+,d1-d7/a0-a6
+.map_done:
+ tst.l d6
  beq .field_complete
  movea.l a5,a0
  movea.l TF_FIRE(a6),a1

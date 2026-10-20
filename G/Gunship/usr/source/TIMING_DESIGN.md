@@ -3655,3 +3655,48 @@ All runtime build variants assemble. Default, VERIFY and standalone input
 builds remain byte-identical. These are assembled/native-harness results;
 full native-loop installation, other render-state isolation and live CPU
 validation remain open.
+
+
+## Map coordinates follow consumed player fields
+
+The +0468C panel dispatcher calls +0489A in map-panel mode 1. Its prefix
+increments hunk 5 +48, compares the new word against 8, and calls +0475A only
+when unsigned-below. That coordinate routine clears the same counter at
++04840. Consequently the normal zero-start path refreshes on every map frame,
+not every eighth frame. Counters initially 7 or above skip refresh until
+word wrap; this odd native behavior is preserved when enhanced ownership
+is inactive.
+
+The foreground consumer now calls the native coordinate-only +0475A entry
+once after each successful committed player field when panel mode is 1.
+Runtime preparation validates its player X/Y bindings and return boundary.
+Its eight-byte entry/mode binding extends TF_SIZE to 84 and the runtime arena
+to 27,344 bytes; epoch reset retains those pointers. The routine computes
+clamped map and rotor-sprite positions, sets the existing two-buffer dirty
+count when needed and updates cached coordinates. It makes no OS calls.
+
+`timing-live-map.i` validates the complete +0489A..+048B6 prefix and keeps a
+relocated native copy. Native ownership executes that copy, including the
+original counter behavior and sprite update. Runtime ownership or a retained
+UI boundary skips coordinate mutation and calls the sprite update directly.
+The +048B6 drawing path and its buffer-indexed dirty-count decrement remain
+native. The installer is experimental and CUSTOM1-gated; installed clones
+are covered by the existing LoadSeg cache flush.
+
+`test_timing_live_map_c.py` passes 288 native register/CCR/state comparisons,
+including counter wrap and foreground user mode, 2,016 runtime/retained-UI
+exclusion cases, and 14 corrupted-prefix rejections. The fixture stubs the
+sprite update and verifies exactly one call in every lane; it does not claim
+rendered sprite equality. `test_runtime_map_c.py` passes 800 moving-player
+fields across PAL/NTSC batches of 1, 3, 10 and 25, comparing each field's
+committed pose and map outputs; three other panel modes leave those outputs
+untouched. Retained UI completion passes twelve cases, lifecycle reset
+36 calls and slave setup 15 calls. All runtime variants assemble, and
+ordinary, VERIFY and standalone input binaries remain byte-identical.
+
+The targeting path in the same panel dispatcher is separate and remains an
+integration blocker: +0A450 collects projected candidates, +0A58C commits
+selection, and +0A6A2 tests a rendered pixel through +0825E. The existing
+private geometry check deliberately disables candidate collection. Moving
+map-coordinate refresh does not isolate target acquisition or make it
+independent of rendering.

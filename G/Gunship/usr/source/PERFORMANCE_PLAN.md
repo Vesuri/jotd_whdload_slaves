@@ -738,7 +738,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C7b. The renderer's flight-end result `D3958`: work out what it detects, then evaluate it
     on committed state at the world tick, with or without drawing. Price evaluating it
     without drawing.
-  - C7c. Map re-check every 8 frames `+0468C`: move it to fields or ticks.
+  - C7c. Map coordinate refresh: move it to consumed fields. The earlier
+    “every 8 frames” description was wrong: +0489A increments a counter and
+    calls +0475A when it is below 8, but +0475A resets it, so the normal
+    zero-start path refreshes every map frame. The experimental runtime now
+    calls +0475A after committed field motion in map-panel mode 1 and excludes
+    that render-prefix mutation while retaining sprite updates and the
+    two-buffer drawing countdown. Production activation remains pending.
   - C7d. Key code 12 (`+04EF2`, `D1548` toggle): retire it, or redefine it as the
     prediction switch with no effect on game speed.
   - C7e. Leave the buffer-indexed dirty counters (2 frames = both buffers) as they are.
