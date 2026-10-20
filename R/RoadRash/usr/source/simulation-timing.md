@@ -1,3 +1,50 @@
+## Fast raster-edge candidate: small cached gain and live differential audit
+
+The current fused-runtime profile attributes 4.4511% of recorded flat units
+to $b1994..$b1ab7, with 15900 calls. This edge-word routine builds D0/D2/D4/D6
+from two repeated background words and selected road/stripe masks. The two
+word reads separated by SWAP are required to replicate each 16-bit value;
+they are not simply duplicate loads that can be deleted.
+
+Private `c-raster-edge-source` moves this routine into the selected Fast RAM
+slave hunk. The sole PC-relative data access becomes an absolute read of the
+same mutable pointer at $b1950; all internal branches target copied labels.
+It removes the initial clears of D0/D2 (both halves are overwritten by their
+word/SWAP/word sequence) and the ANDs of already-zero D4/D6. It retains all
+conditional flag reads, mask ORs, output registers and register restoration.
+The new $b1994 entry is patched only inside the existing C enhancement gate.
+
+The matching control retains the identical helper and code layout but writes
+the original entry word instead of installing the jump. Both normal binaries
+are 19672 bytes. Cached 020 results are candidate 12.5 fps versus control
+12.4; both report distance 3318164. Uncached results are 8.3 fps for each,
+with distances 3298632/3308406 respectively. All four functional cells pass.
+The small cached gain is not evidence of a general hardware improvement.
+The earlier `c-raster-edge-matrix` attempt failed before emulator execution
+because the generated assembly had syntax errors; only the successfully built
+`c-raster-edge-built-matrix` and control matrix provide timing evidence.
+
+`c-raster-edge-audit-source` adds a private differential wrapper: capture all
+15 data/address registers, run the native routine via a displaced-entry stub,
+restore the same inputs, run the optimized helper, then compare all output
+registers and the five condition bits. Both routines only read their native
+data and write their own stack, so the first invocation does not alter inputs
+to the second. The wrapper returns the optimized result and counts mismatches.
+The unchanged field-scheduled handling tape in `c-raster-edge-audit-lap`
+executes 40953 comparisons with zero mismatches through field 1600. This checks
+live edge outputs, not the instrumented run's speed or B handling equivalence.
+It is not exhaustive input coverage or a complete pixel/cadence release audit.
+
+Exact source deltas are retained in the three build directories. Normal
+candidate SHA-256 is
+`4d7ff898b451d6c64785b9524059a6b5b317ee66a92ab76b036faf82e13362a2`,
+control is `330a480a8b6da1ecd10442fcc92e57915d758aae24cc6c7c1e19a288f907f563`,
+and the differential binary is
+`6310743844f8339133e5dea5a01ea9e0311e40ac784566077ca57e61fda0e045`.
+The candidate remains private pending broader hardware, cadence, rendering
+and regression validation. C's existing handling/distance failures are not
+resolved by this rendering optimization.
+
 ## Fused-runtime profile and projection register-save experiment
 
 `c-fused-current-profile` measures the actual integrated 19376-byte normal
