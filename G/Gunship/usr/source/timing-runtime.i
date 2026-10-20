@@ -79,7 +79,9 @@ RT_SCRIPT_GENERATION equ RT_RELEASE_COORDS+36
 RT_SCRIPT_PRESENT equ RT_SCRIPT_GENERATION+AG_SIZE
 RT_SCRIPT_POSE equ RT_SCRIPT_PRESENT+SPC_SIZE
 RT_SCRIPT_BITMAP equ RT_SCRIPT_POSE+8
-RT_SCRIPT_PREVIEW equ RT_SCRIPT_BITMAP+4
+RT_DRAW_ENTRY equ RT_SCRIPT_BITMAP+4
+RT_DRAW_READY equ RT_DRAW_ENTRY+4
+RT_SCRIPT_PREVIEW equ RT_DRAW_READY+2
 RT_ARENA_SIZE equ RT_SCRIPT_PREVIEW+SP_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
@@ -297,6 +299,9 @@ timing_runtime_prepare:
  bsr script_preview_prepare
  tst.l d0
  bne .bad
+ movea.l RT_HUNKS(a6),a0
+ adda.w #$5c04,a0
+ move.l a0,RT_DRAW_ENTRY(a6)
  lea timing_runtime_actors(pc),a0
  move.l a0,RT_CONSUMER+TF_ACTOR_ENTRY(a6)
  move.l a6,RT_CONSUMER+TF_ACTOR_CONTEXT(a6)

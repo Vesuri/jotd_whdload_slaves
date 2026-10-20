@@ -163,3 +163,34 @@ timing_runtime_present_state:
 .done:
  movem.l (sp)+,d1-d7/a0-a6
  rts
+
+
+; One complete enhanced draw after a drained snapshot. Producers may publish
+; while drawing; those records belong to the next bounded batch. Never enter
+; the old 04288 interpolation/count loop or its per-tick accounting tail.
+; a0=arena. Return 0, or admission/publication failure. Preserve other regs.
+; DRAW_READY is set by the loader only after every isolation hook succeeds.
+; No modal, lifecycle or scheduler work runs here; caller owns the flight loop.
+timing_runtime_draw:
+ movem.l d1-d7/a0-a6,-(sp)
+ cmpi.l #1,RT_READY(a0)
+ bne .bad
+ cmpi.w #1,RT_DRAW_READY(a0)
+ bne .bad
+ movea.l RT_HUNKS(a0),a1
+ adda.w #$5c04,a1
+ cmpa.l RT_DRAW_ENTRY(a0),a1
+ bne .bad
+ bsr timing_runtime_present_state
+ tst.l d0
+ bne .done
+ movea.l RT_DRAW_ENTRY(a0),a1
+ movea.l RT_HUNKS+24(a0),a4
+ jsr (a1)
+ moveq #0,d0
+ bra .done
+.bad:
+ moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d7/a0-a6
+ rts

@@ -5048,3 +5048,43 @@ bitplanes have identical SHA-256 hashes across the three CPUs. All sessions
 completed and were closed.
 This does not establish whole-game visual continuity, prediction cost or
 native flight-loop activation.
+
+
+### Single-frame runtime render handoff (C2/C4g)
+
+`timing_runtime_draw` in `timing-runtime-present.i` now composes publication
+with exactly one native +05C04 call. It requires a prepared arena, an installed
+renderer admission flag and the expected hunk-0 entry binding, then delegates
+all drained-snapshot/lifecycle/fraction validation to
+`timing_runtime_present_state`. Only successful publication reaches drawing.
+It supplies native hunk 6 in A4, preserves all non-result registers and returns
+publication failures without drawing. Interrupt producers remain enabled;
+records arriving during the draw wait for the next bounded backlog snapshot.
+
+Preparation records the +05C04 binding and leaves `RT_DRAW_READY` zero. The
+CUSTOM1-gated loader sets it only after all input, VBL, render, map, gauge,
+target and generation/heading installers succeed. A prepared arena whose
+later installer failed cannot enter this bridge. The arena is 33,706 bytes;
+the new fields and shifted preview start remain within signed-displacement
+reach. Lifecycle reset retains the installation flag, because native hooks
+remain installed across ordinary suspend/activate epochs.
+
+`test_runtime_draw_c.py` passes forty draws over eighty PAL/NTSC fields. A
+native-entry observation stub checks the published scene and A4 binding,
+then emulates a producer appending a field during drawing. All forty such
+records remain unread until the next batch; no player/world consumption is
+hidden in the render handoff. Twelve invalid installation/binding/ownership
+cases leave arena and native memory unchanged. Native drawing is stubbed in
+this fixture; the compiled raster probes separately cover real draw behavior.
+The loader fixture passes nineteen calls, including failed preparation and
+a VBL-install signature failure after successful preparation, both leaving
+drawing inadmissible. The 240-field lifecycle fixture still passes at both
+rates and two arena addresses. All build variants assemble.
+
+This is the render handoff for the replacement loop, not its activation.
+The native call +0561C -> +0563A still owns flight, and the new bridge has no
+production loop caller yet. The loop owner must still compose bounded batch
+results with interrupt-excluded lifecycle transitions, retained command and
+script continuation, excess-time reporting/rebase, and flight exit. It must
+also explicitly retire or preserve the old +04470..+04494 frame-accounting
+tail; this bridge does not silently execute it once per extra render.
