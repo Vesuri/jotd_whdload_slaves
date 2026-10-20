@@ -19,6 +19,17 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
+; Relocate movement/collision code only after the enhancement hardware gate.
+; Snapshot diagnostics opt in explicitly to preserve reference builds.
+	IFD VERIFY_C_PHYSICS_FAST
+C_PHYSICS_FAST = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_PHYSICS_FAST
+C_PHYSICS_FAST = 1
+	ENDC
+	ENDC
+
 ; The enhanced runtime uses an optional WHDLoad-managed Fast RAM stack.
 ; Keep the legacy diagnostic define as an explicit test-build opt-in.
 	IFD VERIFY_C_FAST_STACK
@@ -342,6 +353,13 @@ PatchLoader2:
 	ENDC
 	IFD VERIFY_C_ROAD_FAST
 	bsr step_road_fast_init
+	ENDC
+	IFD C_PHYSICS_FAST
+; Copy after C patches so the relocated code includes the steering hooks.
+; Full snapshot diagnostics can place the helper beyond short branch reach.
+	lea _base(pc),a0
+	adda.l #step_physics_fast_init-_base,a0
+	jsr (a0)
 	ENDC
 .no_c:
 	ENDC

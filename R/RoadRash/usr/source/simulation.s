@@ -1083,3 +1083,7 @@ step_authoritative:
 	ENDC
 	include verify_c_events.s
 	ENDC
+
+	IFD C_PHYSICS_FAST
+	include physics_fast.s
+	ENDC

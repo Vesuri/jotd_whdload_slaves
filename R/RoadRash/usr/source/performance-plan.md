@@ -370,9 +370,14 @@ Measured rider-heading prediction is now integrated behind that toggle.
 Normal-build median visible response improves from 230 to 170 ms over eight
 input phases (B: 200 ms); two phases still trail B by 20 ms. Finish, arrest
 and wreck replays preserve all authoritative hashes and sound requests.
-The new normal build retains the prior fps in all 11 configurations, passes
-both MMU checks, controls and demo transitions, and retains the original hooks
-when disabled. Four live-field distance cells still exceed B's 1% tolerance.
+The subsequent Fast RAM movement/collision code copy improves standard-window
+030/040/060 throughput to 16.6/18.8/20.7 fps (previously 12.5/16.6/18.5);
+Fast 020 reaches 10.3 default, 10.2 Cache and 6.3 NoCache. All 11 normal
+configurations, both MMU checks, full finish/arrest/wreck replays, controls and
+demo transitions pass. Disabled and unsupported paths retain their original
+hooks. The eight-phase response median is now 180 ms; seven phases are one
+capture field later and one four fields earlier than the preceding runtime.
+Three Fast 020 live-field distance cells still exceed B's 1% tolerance.
 Performance, remaining A4/handling review and latency work still
 prevent completion. See the visible-response audit in the dependency document.
 

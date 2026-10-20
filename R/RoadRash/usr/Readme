@@ -35,6 +35,7 @@
  - on 68020+ with Fast RAM, advances simulation in 20 ms PAL steps and renders
    completed frames as fast as possible while retaining vsync
  - enhanced path enables CPU caches automatically unless NoCache is specified
+ - movement and collision code executes from Fast RAM on the enhanced path
  - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the
    original stack if the optional allocation is unavailable or unsuitable
  - predicts the displayed rider heading through the measured render interval

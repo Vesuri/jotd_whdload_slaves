@@ -5,11 +5,73 @@ on supported hardware when Enhanced framerate is enabled. Runtime integration
 and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
-## Current runtime: measured rider-heading prediction
+## Current runtime: Fast RAM movement and collision code
+
+Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
+opt in with `VERIFY_C_PHYSICS_FAST`. The 7,040-byte copy and its eight entry
+redirects are initialized after the existing C patches, only when the
+Enhanced framerate/CPU/Fast selection succeeds. Actors, graphics, simulation
+quantum and the native display handshake are unchanged. The implementation
+and relocation details are described in the candidate audit below.
+
+The normal slave is 15,600 bytes, SHA-256
+`63fbc6383922e5ce96d05d90e08445135ae5e978409877b7302d685cde4641c8`.
+The tracked-source normal and lean builds are byte-identical to
+`c-physics-fast-runtime-build`; its full diagnostic is byte-identical to
+`c-physics-fast-full-build`. These identities connect the candidate tests to
+the integrated implementation.
+
+`c-physics-fast-runtime-matrix` passes all 11 normal configurations:
+
+| Configuration | Prior fps | Current fps |
+| --- | ---: | ---: |
+| A500 | 8.5 | 8.5 |
+| Chip-only 020 | 12.5 | 12.5 |
+| Fast 020, default | 10.0 | 10.3 |
+| Fast 020, Cache | 10.0 | 10.2 |
+| Fast 020, NoCache | 5.0 | 6.3 |
+| 030, default/Cache | 12.5 | 16.6 |
+| 040, default/Cache | 16.6 | 18.8 |
+| 060, default/Cache | 18.5 | 20.7 |
+
+A500 and Chip-only 020 initial, field-590 and final state hashes exactly match
+the preceding runtime, which matched B. Both MMU functional cells pass in
+`c-physics-fast-runtime-mmu`, with TC translation enabled and CACR
+`$80008000`. These are functional checks, not real 040/060 data-cache timings.
+`c-physics-fast-runtime-off` verifies all eight new entry sites plus the
+previously checked enhancement hooks retain their native instructions.
+
+Full finish/arrest/wreck comparisons in `c-physics-fast-{finish,arrest,wreck}`
+match 12,822/8,377/11,945 completed hashes and 24/241/120 sound requests.
+All six authoritative terminal regions and terminal times match their
+respective steering references; each next race resets to `[99,98,0,1]`.
+The varying-cadence attack replay remains the 1,596-hash comparison below.
+
+Normal keyboard and CD32 tests pass in `c-physics-runtime-{input,pad}`:
+release recentres steering, pause holds field 161, and resume advances active
+time. Observed stack use is 276/332 bytes with guards intact. Demo fire exits
+at field 507; timeout exits at 3,598 with the existing two-field timer offset.
+Both reach a normal race at field 100. Screenshots were inspected; demo stack
+use is 268/284 bytes with intact guards.
+
+`c-physics-fast-runtime-visible` measures 180/160/140/220/200/180/160/240 ms
+over phases 300–307: median 180 ms versus the preceding runtime's 170 ms
+and B's 200 ms. Seven phases are one capture field later than the preceding
+runtime, while phase 302 is four fields earlier. These capture-end estimates
+have one-field resolution; neither aggregate throughput nor median response
+proves response equivalence at every phase. This trade-off remains explicit.
+
+Three live-field A4 distances still exceed B's 1% tolerance: default Fast 020
+(-1.953%), Fast 020 Cache (-1.471%), and Fast 020 NoCache (-1.663%).
+All 030/040/060 cells are within that distance tolerance, but this does not
+settle handling/rank/crash equivalence. Accelerated throughput still falls
+short of B in several configurations. C remains incomplete.
+
+## Preceding runtime: measured rider-heading prediction
 
 Normal and ordinary lean runtime builds now select `C_POSE_PREDICT` with
 `POSE_PREDICT_MEASURED`. Explicit `VERIFY_C_POSE_PREDICT` selection preserves
-fixed-horizon diagnostic controls. The current normal slave is 8,212 bytes,
+fixed-horizon diagnostic controls. That normal slave is 8,212 bytes,
 SHA-256 `91ba5e9a2c5828c0cd7031bf68ff0917e6c0f62c928b3475ef266fd0bc79e484`.
 Prediction remains behind the existing Enhanced framerate/CPU/Fast selection.
 It affects the displayed rider heading, never authoritative actors or events.
