@@ -212,6 +212,48 @@ The exact source delta is retained in
 unchanged. This rejects this particular scheduling change; it does not explain
 the actor-relocation regression or close C's outstanding throughput gates.
 
+### Actor relocation handoff trace: different deadline phases
+
+`c-actor-fast-handoff` and `c-actor-control-handoff` use the same tested actor
+binaries as above, cached cycle-exact 020, UP at field 100. Each collects
+400 breakpoint events beginning at field 300: render entry `$875c8`, swap
+entry `$87736`, swap return `$8773c`, publication `$871dc`, and consumer
+release `$8713a`. The breakpoints observe existing instructions; no timing
+instrumentation is inserted into the slave. The retained JSON includes
+beam position, live field, SOFT counter, record readiness and buffer pointers.
+
+Comparing the common live-field window 310–700:
+
+| Observation | Chip actor control | Fast actors |
+| --- | ---: | ---: |
+| Render entries | 77 | 66 |
+| Median render-entry beam line | 115 | 227.5 |
+| Median swap-entry beam line | 146 | 268 |
+| Swap entries before line 250 | 76 of 78 | 24 of 65 |
+| Complete swap intervals of five fields | 72 | 3 |
+| Complete swap intervals of six fields | 4 | 62 |
+| Median swap-return beam line | 254 | 254 |
+
+Counts differ because the window cuts through different frames; interval counts
+use consecutive returns wholly inside it. Beam medians describe phase within
+the raster, not elapsed duration across a wrapped raster.
+
+Both record-ready flags are zero at every sampled render entry, and screen
+buffers remain distinct and alternate at consecutive swaps. The slower cadence
+therefore does not arise from waiting for an occupied producer record at that
+point. Fast actors usually finish drawing after the line-250 SOFT signal and
+wait for the next one. This supports the earlier flat profile's increased
+vsync wait, while preserving the requirement for a safe buffer handoff.
+
+The trace establishes where the deadline is missed, not why the initial
+timing differs or how much individual drawing/simulation operations contribute.
+Extra waiting also means more elapsed ticks to consume before the next render,
+which can sustain a slower cadence; that feedback is an interpretation, not an
+isolated causal measurement. Do not remove the original swap wait or infer a
+fixed frame limiter from these five/six-field intervals. The next optimization
+needs enough measured work reduction to improve complete frame throughput,
+with phase and input-response checks alongside instruction/Chip-access counts.
+
 ## Preceding runtime: automatic enhanced-path caching
 
 Normal and lean runtime builds now select `C_CACHE`; full diagnostics retain
