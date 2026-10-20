@@ -2772,3 +2772,42 @@ with batches 1/25 (23,815 calls), retaining the same six launches per run,
 90/72 PAL/NTSC actor visits, 21/18 world deadlines and 2/1 periodic checks.
 State and traces still match across batch sizes. Other world phases and
 lifecycle recovery remain the caller's responsibility.
+
+
+### Field-owned timer/guidance state
+
+`timing-field-vbl-state.i` composes the three world-written VBL countdowns
+with the existing guidance extraction. `field_vbl_state` takes hunk 6 in a0,
+hunk 4 in a1 and the prepared guidance clone in a2. It validates the clone's
+quit-byte binding before effects. A negative quit byte returns 0 inactive;
+otherwise it saturating-decrements +4296 and +42F6, advances guidance, then
+saturating-decrements +42F7 and returns 1. Guidance retains its own stricter
+quit-zero gate. Other registers are preserved. Native setters remain intact.
+
+`scheduled_field_vbl_state` takes a 24-byte context: scheduler, hunk-6,
+hunk-4 and guidance pointers, then last field and valid/committed words.
+It replaces `scheduled_guidance_step`, not an additional call alongside it.
+The pre/post scheduler checks and persistent field identity prevent duplicate
+timer/guidance updates after a producer fault. No field/world acknowledgement
+is performed. An explicit lifecycle rebase must initialize metadata.
+
+This extracts state only. Native cosmetic RNG, sound, counters and drawing
+are not called. The original VBL decrement owners must be excluded when
+installed; cosmetic consumers need coordinated snapshots (some native
+amplitude calculations use the pre-decrement value). This is not yet an
+installation patch or a complete VBL-state migration.
+
+`test_field_vbl_state_c.py` compares 1,536 cases with native +04B48 through
++04C38 (or its negative-quit skip), covering every byte value in each timer,
+zero saturation and quit values 0/1/2/127/128/255. Timer values observed at
+guidance entry also match. Cosmetic callbacks and guidance bodies are stubbed
+for this arithmetic/order comparison; the separate guidance suites test its
+actual transitions. A fresh-CPU fault test uses the real extracted guidance,
+injects a producer fault after all updates, and proves timers and guidance
+cannot run twice. Binding and wrong-phase cases reject without timer writes.
+
+The combined scheduled player/world fixture now uses this field-state entry.
+A 1,440-field PAL/NTSC rerun with batches 1/25 passes with identical native
+state (including all three countdown bytes), player history and actor traces
+across batches. Launch/actor/periodic counts remain unchanged (23,815 calls).
+The focused timer/ordering/fault suite uses 1,551 helper calls.

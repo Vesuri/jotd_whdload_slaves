@@ -272,3 +272,22 @@ with a private next-field acknowledgement in place of the screen-swap flag.
 It is bound to delivered scheduler fields in standalone tests, but is not
 yet installed in gameplay. See TIMING_DESIGN.md for
 the transition and hybrid-handshake tests and remaining presentation work.
+
+
+### World-written VBL countdown bytes
+
+Three hunk-6 bytes are shared between world setters and native VBL work:
+
+| Offset | Native VBL decrement | World writers / use |
+| --- | --- | --- |
+| 4296 | +04BA8, only if nonzero | Hit routine +07E5A/+07E92 ORs 24/8; hit-flash/audio response. |
+| 42F6 | +04BBA, only if nonzero | Ground +095F4 sets 180; hit +07E54/+07E8C ORs 24/8; VBL response amplitude. |
+| 42F7 | +04C32, only if nonzero | Damage +09E22/+09E48 sets 64/128; render +05C8A tests effect eligibility. |
+
+The first two update before guidance +04C12; the third follows it. Native
++04B48 skips these updates when the signed quit byte (hunk 4 +01C6) is
+negative. Guidance itself requires quit exactly zero. The standalone
+`field_vbl_state` preserves both gates and this order; its scheduler wrapper
+runs once per delivered field. Installation must remove the original VBL
+writes and coordinate cosmetic readers, which can need pre-decrement values.
+No native VBL hook is changed yet. See TIMING_DESIGN.md for comparison scope.

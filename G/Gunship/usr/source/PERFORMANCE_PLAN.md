@@ -463,8 +463,10 @@ ordering. A combined scheduled fixture now runs guidance, delayed player
 motion and the extracted native world path with identical state across
 PAL/NTSC catch-up batch sizes (2,880 fields). World opening now has a
 deadline guard that retains applied clock/cooldown state across a producer
-fault and rejects retries. Production adoption, remaining lifecycle recovery
-and trajectory/collision acceptance remain. C4e is still not accepted: field-rate coupled
+fault and rejects retries. Three world-written VBL countdowns now replay
+with guidance in native order per delivered field, with native arithmetic
+and combined batch comparisons. Production adoption, remaining lifecycle
+recovery and trajectory/collision acceptance remain. C4e is still not accepted: field-rate coupled
 trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in
