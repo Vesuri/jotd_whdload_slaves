@@ -458,6 +458,11 @@ diagnostics. A standalone modal continuation now runs the native interpreter
 with sampling off, finishes the pending world tail and acknowledges it once.
 Helper metadata resets, production producer exclusion and native hook
 installation still require adapter integration.
+The standalone `timing-flight-consumer.i` now owns the assembled foreground
+ordering for each delivered field, including bounded command resumes,
+player/world hand-off, ground-event publication and modal returns. Its
+sequence matches the independently driven combined fixture; native loop
+installation remains pending.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

@@ -2911,3 +2911,57 @@ acknowledgement; retry rejects. Four corrupted interpreter signatures reject
 without replacing the prepared context. Production hook installation and
 reset of the other per-epoch helper contexts remain outstanding.
 The assembled 68000 Unicorn suite passes 830 helper calls.
+
+## Assembled foreground field consumer
+
+`timing-flight-consumer.i` replaces the test harness's per-field orchestration
+with an assembled foreground owner. It takes a prepared 68-byte context and
+a command budget of 1..128 per reader. Context pointers bind the scheduler,
+delivered record, field state, world opening, both command readers, control
+mode, retained impulses, endpoint/ground operation, scene geometry, world
+body, fire, heading, ground notification and timer. All bindings must be
+stable, prepared and nonoverlapping.
+
+`timing_flight_consume` runs after `scheduler_next` delivers a record. It
+checks the delivered field and command cutoff, decodes controls, applies
+field timers/guidance and any due world opening, then drains player commands.
+At a deadline it drains world commands before motion, verifies control mode,
+and generates the retained native impulse packet. The endpoint/ground step
+publishes player motion and acknowledges the player phase. Any published
+ground event is committed even when a producer fault arrives after motion.
+Due world work then prepares fire/heading, runs geometry and the remaining
+world body, and acknowledges completion exactly once.
+
+Command-budget exhaustion (-2) retains the reader phase; resumption does not
+repeat field timers or opening. A command lifecycle boundary returns 2 with
+the command retained. Other results are 0 field complete, 1 world complete,
+3 script modal, 4 flight ended, -1 latched failure and -3 invalid admission.
+Modal return retains scheduler world ownership and the world's modal phase
+for `timing-modal.i`. The caller handles that lifecycle and later resets the
+consumer context; this entry cannot silently admit another field past it.
+Flight-end completion acknowledges the world and requires caller exit.
+
+Failures latch rather than retry partially applied effects. Existing child
+COMMITTED flags, event state and scheduler counters remain available for
+explicit recovery. A successful completed context can admit the next
+delivered field; repeated calls on the completed field reject.
+
+`test_flight_consumer_c.py` compares the complete sequence with the existing
+independently driven stage fixture. It executes 1,200 fields: one reference
+and four consumer runs per display rate, with batch sizes 1, 3, 10 and 25
+and one-command budgets forcing continuation. Completed-field player/history,
+world memory, callback traces, RNG effects and final camera angles agree
+(13,246 helper calls). The comparison samples both paths after due world
+effects; pre-world and post-world player bytes are intentionally different.
+The existing UI/visibility/target fixtures remain in use.
+
+The separate fault fixture checks invalid admission without effects,
+retained lifecycle commands, budget resumption, pending native script-modal
+ownership, and a producer fault after due player publication. It verifies
+that published ground-event state is consumed, the player step is counted
+once, the world remains pending, and subsequent calls cannot replay work.
+It also exercises a positive-geometry flight end, checking cleanup and one
+world acknowledgement. The fault/exit fixture passes 279 helper calls.
+These are assembled 68000 Unicorn checks. The native frame-loop entry,
+producer/lifecycle hooks, memory/context initialization and renderer hand-off
+are not installed by this change.
