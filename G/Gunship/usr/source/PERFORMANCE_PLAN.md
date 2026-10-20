@@ -346,7 +346,8 @@ take-off. Its AI remains active, so the helicopter can leave the view.
 a0, one a1, one a6) and the unique pixel-write helper call before modifying the
 loaded game. It replaces each loop with `JSR/NOP` and wraps the pixel helper
 with the same double-read wait. Registers and the original wait's CCR effects
-are preserved. This is unconditional on all three recognised gamemule paths.
+are preserved. The master CUSTOM1 **Enhanced framerate** option now gates
+these patches on all three recognised gamemule paths.
 Instruction signatures avoid assuming a common offset delta between releases.
 Any missing, additional or malformed match aborts before patching.
 
@@ -389,7 +390,7 @@ release limitations, not implied by these emulator checks.
   - B1a. Replace the 14 BBUSY loops of §1.6 with a slave routine that does a dummy DMACONR read,
     then the BBUSY loop. Patch each with `PL_PS`/`PL_P`, keeping the loop's register use.
   - B1b. Add a wait to `+0828A` before its read-modify-write.
-- **B2. Make B1 the default.** Apply B1 for all CPUs, since the cost on the 68000 is a few cycles
+- **B2. Apply B1 for every CPU when Enhanced framerate is enabled.** The cost on the 68000 is a few cycles
   per blit. Patch the other two supported versions (`gamemule_1489`, `gamemule_german`) at their
   matching offsets.
 - **B3. Cache audit.**
