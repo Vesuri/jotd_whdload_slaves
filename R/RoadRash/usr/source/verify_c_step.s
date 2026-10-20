@@ -1,6 +1,7 @@
 ; Diagnostic C proof, enabled only by VERIFY + VERIFY_C_STEP.
 ; First-race, CUSTOM2=0 functional experiments only. Not a runtime option.
-; STEP_FIELDS=4 is provisional. No interpolation, overflow recovery or complete
+; STEP_FIELDS=4 is provisional. Optional STEP_INTERPOLATE is experimental.
+; No overflow recovery or complete
 ; pause/transition/action audit yet. See simulation-timing.md before extending.
 ; All game addresses below are absolute. Normal builds contain none of this.
 ;
@@ -24,6 +25,9 @@ step_reset:
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
 	clr.b step_input_overflow-step_queued_field(a1)
+	IFD STEP_INTERPOLATE
+	bsr step_save_previous
+	ENDC
 	jsr $8f552
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
@@ -51,6 +55,9 @@ step_main:
 	ble .highwater
 	move.w d0,$a5d38
 .highwater:
+	IFD STEP_INTERPOLATE
+	bsr step_save_previous
+	ENDC
 	bsr step_collision_objects
 	bsr .run
 	bra step_main
@@ -64,6 +71,7 @@ step_end:
 	jsr $89138
 	bsr step_track_events
 	bsr step_actor_animations
+	bsr step_spark_events
 	bsr step_derive_lean
 	bsr step_scenery_cursor
 	jsr $8f552
@@ -375,3 +383,158 @@ step_track_events:
 	jsr $9080c
 .done:
 	rts
+
+	IFD STEP_INTERPOLATE
+	IFNE STEP_FIELDS-2
+	IFNE STEP_FIELDS-4
+	FAIL "STEP_INTERPOLATE requires STEP_FIELDS=2 or 4"
+	ENDC
+	ENDC
+; Presentation experiment: interpolate positions with a one-step display delay.
+; Authoritative actors and camera are restored before publishing completion.
+step_save_previous:
+	lea $a5d60,a0
+	lea step_previous(pc),a1
+	move.w #$1180/4-1,d0
+.copy:
+	move.l (a0)+,(a1)+
+	dbf d0,.copy
+	rts
+step_view_begin:
+	lea $a5d60,a0
+	lea step_authoritative(pc),a1
+	move.w #$1180/4-1,d0
+.save:
+	move.l (a0)+,(a1)+
+	dbf d0,.save
+	lea $a5d00,a0
+	lea step_camera(pc),a1
+	moveq #$4c/4-1,d0
+.camera:
+	move.l (a0)+,(a1)+
+	dbf d0,.camera
+	move.l $a5d4c,d7
+	sub.l step_stats+8(pc),d7
+	cmpi.l #STEP_FIELDS-1,d7
+	bls .phase
+	moveq #STEP_FIELDS-1,d7
+.phase:
+	lea step_view_stats(pc),a0
+	addq.l #1,8(a0)
+	move.l d7,12(a0)
+	move.w d7,d0
+	lsl.w #2,d0
+	addq.l #1,16(a0,d0.w)
+	lea step_previous(pc),a1
+	lea $a5d60,a2
+	moveq #35-1,d6
+.actor:
+	move.l (a1),d0
+	move.l (a2),d1
+	bsr .long
+	move.l d0,(a2)
+	move.l 4(a1),d0
+	move.l 4(a2),d1
+	bsr .long
+	move.l d0,4(a2)
+	move.w $30(a1),d0
+	ext.l d0
+	move.w $30(a2),d1
+	ext.l d1
+	bsr .long
+	move.w d0,$30(a2)
+	move.w $32(a1),d0
+	ext.l d0
+	move.w $32(a2),d1
+	ext.l d1
+	bsr .long
+	move.w d0,$32(a2)
+	lea $80(a1),a1
+	lea $80(a2),a2
+	dbf d6,.actor
+	move.w d7,d0
+	mulu #12,d0
+	lea step_view_stats+32(pc),a0
+	adda.w d0,a0
+	move.l step_previous+4(pc),(a0)+
+	move.l step_authoritative+4(pc),(a0)+
+	move.l $a5d64,(a0)+
+	jsr $891ae
+	jmp $8970e
+.long:
+	sub.l d0,d1
+	IFNE STEP_FIELDS-4
+	asr.l #1,d1
+	ELSE
+	asr.l #2,d1
+	ENDC
+	move.w d7,d2
+	beq .done
+	subq.w #1,d2
+.add:
+	add.l d1,d0
+	dbf d2,.add
+.done:
+	rts
+step_view_end:
+	movem.l d0-d7/a0-a6,-(a7)
+	lea step_authoritative(pc),a0
+	lea $a5d60,a1
+	move.w #$1180/4-1,d0
+.restore:
+	move.l (a0)+,(a1)+
+	dbf d0,.restore
+	lea step_camera(pc),a0
+	lea $a5d00,a1
+	moveq #$4c/4-1,d0
+.camera:
+	move.l (a0)+,(a1)+
+	dbf d0,.camera
+	movem.l (a7)+,d0-d7/a0-a6
+	jmp $871dc
+	cnop 0,4
+step_view_stats:
+	dc.b 'RRCVIEW1'
+	dc.l 0,0
+	ds.l 4
+	ds.l 12
+step_camera:
+	ds.b $4c
+step_previous:
+	ds.b $1180
+step_authoritative:
+	ds.b $1180
+	ENDC
+
+; Rider spark lifetime is simulation-owned; drawing consults a cached effect.
+step_spark_events:
+	lea $a5d60,a1
+	lea step_sparks(pc),a0
+	moveq #35-1,d0
+.next:
+	clr.b (a0)
+	btst #7,$6a(a1)
+	beq .advance
+	tst.b $6e(a1)
+	bne .advance
+	tst.b $6f(a1)
+	bne .advance
+	st.b (a0)
+	bclr #7,$6a(a1)
+.advance:
+	addq.l #1,a0
+	lea $80(a1),a1
+	dbf d0,.next
+	rts
+step_spark_test:
+	movem.l d0/a0,-(a7)
+	move.l a1,d0
+	sub.l #$a5d60,d0
+	lsr.w #7,d0
+	lea step_sparks(pc),a0
+	btst #0,(a0,d0.w)
+	movem.l (a7)+,d0/a0
+	rts
+step_sparks:
+	ds.b 35
+	even

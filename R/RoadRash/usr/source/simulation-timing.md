@@ -226,3 +226,29 @@ pause/resume smoke tests (`c-clock-input-keyboard`, `c-clock-input-cd32`). The
 active field counter stays at 161 throughout the paused observation, and resumes
 on input. These smoke tests do not measure complete input-to-display latency or
 prove transition/restart behaviour.
+
+
+### Experimental interpolation and actor isolation
+
+`STEP_INTERPOLATE` enables presentation interpolation for two- or four-field
+quanta. It keeps previous and current actor positions, draws an intermediate
+position with a one-step display delay, and restores the authoritative actor and
+camera records before publishing the completed frame. This is still diagnostic,
+not a released option or a rendering-rate cap. Other mutable presentation globals
+and action paths still need the full ownership audit.
+
+The `RRCVIEW1` block near the `$875c8` hook records frame count (+8), last fraction
+index (+12), four fraction histogram counters (+16), and four triples of previous,
+current and rendered player position (+32). The observed fractions include 1/4
+and 3/4, with exact expected positions; the view is not simply repeating whole
+simulation positions. `c-interp-pose` records that check, including the failed
+initial isolation comparison.
+
+Restoring actor state exposed the rider spark flag: rendering cleared `+$6a`
+bit 7 at `$8a11c`, causing the initial interpolated/non-interpolated replay to
+first differ at step 355. The diagnostic now consumes that event in simulation
+and stores a separate spark bit for drawing. After this split, all 399 hashes
+match between `c-spark-interp` and `c-spark-base` on the steering/crash tape.
+The earlier `c-interp-render1/12` comparison also matched across rendering rates.
+The final crash screenshot was inspected for correct road, rider, bike and HUD
+presentation; this is not complete visual validation of every scene or action.

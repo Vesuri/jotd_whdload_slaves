@@ -267,12 +267,18 @@ pl_main
 	IFD VERIFY_C_STEP
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
+	IFD STEP_INTERPOLATE
+	PL_PS	$75C8,step_view_begin
+	PL_P	$7748,step_view_end
+	ENDC
 	PL_NOP	$76C6,6
 	PL_PSS	$A40E,step_start_sprite,2
 	PL_PSS	$710C,step_queue_input,4
 	PL_P	$73F4,step_input_key
 	PL_PSS	$9E0E,step_crash_sprite,2
 	PL_NOP	$9E26,6
+	PL_PS	$A104,step_spark_test
+	PL_NOP	$A11C,6
 	PL_NOP	$9EEC,4
 	PL_P	$9EF0,step_lean_end
 	PL_S	$AECC,$AEE2-$AECC
