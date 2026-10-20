@@ -367,6 +367,10 @@ pl_c_simulation
 	IFD VERIFY_FRAME_PERIOD
 	PL_PS	$7736,verify_pace
 	ENDC
+	IFD VERIFY_C_LATENCY
+	PL_PS	$75C8,step_latency_render
+	PL_PS	$7736,step_latency_swap
+	ENDC
 	PL_ENDIF
 	PL_END
 	ENDC

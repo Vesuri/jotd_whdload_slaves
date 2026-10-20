@@ -446,3 +446,48 @@ slow-RAM address. The selected C path matches all 1,598 actor hashes from the
 camera-normalized replay (`c-select-replay`). The normal slave remains
 byte-identical to the master-toggle build. These are functional dispatch checks,
 not a replacement for the full C regression/performance matrix.
+
+## Input-to-frame handoff measurements
+
+`VERIFY_C_LATENCY` records the first RIGHT input after reset through polling,
+historical input replay, simulation completion, frame construction and return
+from the original vsynced buffer swap. It is optional instrumentation in the C
+patch list, never an extra user mode. `RRCLAT01` contains fourteen longwords
+after its marker; the layout is documented in `verify_c_latency.s`.
+The latency builds disable actor hashing and frozen snapshot copies.
+
+The host accelerates from field 100, injects RIGHT at field 300, and inspects the
+first frame constructed from a simulation tick that consumed that input. Times
+below are field-count differences multiplied by 20 ms. They have field
+resolution, are single-phase samples rather than latency distributions, and
+measure buffer handoff, **not completed scanout or a proven first changed pixel**.
+
+| Emulator configuration | Input sampled | Input replayed | Simulation done | Frame starts | Swap starts | Swap returns |
+|---|---:|---:|---:|---:|---:|---:|
+| Fast functional execution | 20 ms | 20 ms | 20 ms | 20 ms | 40 ms | 60 ms |
+| A1200 Fast + Cache | 20 ms | 40 ms | 40 ms | 80 ms | 140 ms | 160 ms |
+| 030/50 + Cache | 20 ms | 60 ms | 60 ms | 100 ms | 140 ms | 160 ms |
+| 040/25 + Cache | 20 ms | 20 ms | 40 ms | 40 ms | 80 ms | 100 ms |
+| 060/50 + Cache | 20 ms | 20 ms | 40 ms | 40 ms | 80 ms | 100 ms |
+
+Evidence: `c-latency-functional`, `c-latency-<cell>/latency.json`.
+040/060 numbers retain the emulator-model limitations documented in the baseline.
+All samples replay the input for historical field 301, so there is no deliberate
+four-field input quantum. Nevertheless the measured presentation wait is too
+large to claim the requested response goal is met. Catch-up work and rendering
+cost must be reduced before promoting this candidate. The probe leaves all 1,598
+actor hashes unchanged (`c-latency-regression`); disabling the probe yields a
+byte-identical diagnostic slave to `c-select-build`.
+
+The A1200 Fast + Cache flat-PC profile over fields 100–300
+(`c-latency-profile/aprof.txt`) records 199 simulation updates and 19 renders.
+Geometry, actor-pose preparation and world-object projection each execute 218
+times: once per simulation update plus once per render. Flat instruction-address
+ranges account for 36.63% of recorded units in `$8b486..$8eff7` (physics/AI),
+9.28% in `$8b02e..$8b37d` (world-object projection), 6.21% in
+`$89d20..$8a491` (actor pose/selection), and 5.16% in `$8970e..$89a9b`
+(road geometry). These are disjoint flat-PC costs, not inclusive call-tree
+estimates. Stack/register traffic also appears prominently in the Chip-access
+profile. Moving the CPU-only stack to public memory is a concrete next
+experiment, subject to D3e's stack/interrupt/DMA audit; redundant projection and
+pose work remain further candidates.

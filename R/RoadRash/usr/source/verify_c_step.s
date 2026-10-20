@@ -69,6 +69,9 @@ step_reset:
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
 	clr.b step_input_overflow-step_queued_field(a1)
+	IFD VERIFY_C_LATENCY
+	bsr step_latency_reset
+	ENDC
 	IFD VERIFY_C_DECAY_TEST
 	bsr step_decay_test
 	ENDC
@@ -155,6 +158,9 @@ step_end:
 	lea step_stats(pc),a0
 	move.l #STEP_CAPTURE,16(a0)
 .done:
+	IFD VERIFY_C_LATENCY
+	bsr step_latency_simulated
+	ENDC
 	rts
 	cnop 0,4
 step_stats:
@@ -264,6 +270,9 @@ step_queue_input:
 	andi.w #2047,d3
 	lea step_inputs(pc),a0
 	move.b $a598c,(a0,d3.w)
+	IFD VERIFY_C_LATENCY
+	bsr step_latency_input
+	ENDC
 	lea step_queued_field(pc),a0
 	move.l $a5d4c,(a0)
 	bra .done
@@ -298,6 +307,9 @@ step_replay_inputs:
 .idle:
 	jsr $8744c
 .applied:
+	IFD VERIFY_C_LATENCY
+	bsr step_latency_replayed
+	ENDC
 	dbf d4,.next
 	lea step_replaying(pc),a0
 	clr.b (a0)
@@ -713,4 +725,11 @@ step_previous:
 	ds.b $1180
 step_authoritative:
 	ds.b $1180
+	ENDC
+
+	IFD VERIFY_C_LATENCY
+	IFD STEP_EXTRAPOLATE
+	FAIL "Latency probe currently requires latest-state presentation"
+	ENDC
+	include verify_c_latency.s
 	ENDC
