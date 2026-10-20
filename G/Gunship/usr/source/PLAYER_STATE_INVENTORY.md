@@ -1,11 +1,26 @@
 # Player state inventory — C4a/C4b
 
-This is the first static inventory, not the completed equivalence gate.
+This is a static inventory with native-code execution checks, not the completed equivalence gate.
 Offsets in the first column are **hexadecimal byte offsets** from a5 =
 D3B88. Code offsets are relative to the original code hunk. Widths and
 arithmetic below describe native storage; physical unit conversions and
 exhaustive indirect readers/writers remain to be established.
 No field-rate integrator may be enabled on the strength of this inventory.
+
+## Initialization boundary
+
++020F6..+02106 passes length 86, value zero and the player-record address
+to the native fill routine. This resets every byte, including fields not
+individually assigned later. Fractional player state must reset at this
+boundary too.
+
+The subsequent mission loads write record offsets 16/17 (mission parameters),
+04/06 (reserves), 10/11 (configuration/difficulty), 12 (load parameter),
+14/15 (wind), 00/02 (position), 0E (damage), 13 (damage count), 0C (tick),
+19/18 (mission state). The sources are longs in the mission block; native
+stores truncate them to the destination byte/word. +021C8/+021E0 set
+waypoint words 08/0A from selected object coordinate high bytes shifted by
+eight. These are world initialization writes, not integration increments.
 
 ## Native update order
 
@@ -121,3 +136,88 @@ position/speed writes despite their matching numeric displacements.
 
 The first inventory report therefore identifies the continuous/world
 boundary but does not close C4a or C4b.
+
+## Executed native motion and control audit
+
+`tmp/dev/tools/audit_player_motion_c.py` executes the original +0937C
+airborne routine against a retained full-memory snapshot. In 384 cases
+spanning pitch, roll, yaw, speed, vertical rate, damage, engine flags, wind,
+power and map boundaries, its player writes cover exactly these 14 fields:
+00/02/1C/2A/30 as words, and 1B/35/38/3A/3D/3E/3F/40/50 as bytes
+(19 bytes total). The observed writer PCs match the table above.
+This is an airborne-path result: ground contacts and other callers remain
+outside this coverage.
+
+Outside the player record and stack, the only observed writes are to the
+gameplay RNG seed at hunk 4 +03CC, including its low word at +03CE.
+The RNG writes occur at +07A96 and +07ABE. A preview cannot advance this
+seed, nor can it turn a native world-rate damage impulse into field-rate
+noise. Merely restoring the seed does not resolve impulse timing/ownership.
+The original input/output records and access lists are retained in
+`tmp/dev/tmp/c/player-motion-fixtures.json` and `player-motion-accesses.json`.
+
+The native +07A44 trigonometric helper indexes a 256-entry signed table at
+hunk 4 +01C8. Samples at angles 0/64/128/192 are 0/32767/0/-32767.
+It multiplies by the signed amplitude, doubles the product and takes the
+high word: the native fixed-point sine operation, with its signed rounding.
+This establishes useful integration units without guessing physical labels:
+
+* Heading and track heading use 256 native angular units per turn.
+* Speed word 2A is in quarter map-coordinate units per native tick.
+  Its arithmetic shift by two is narrowed to signed byte 50 before the
+  sine/cosine displacement calculation. Preserve that narrowing in h=1.
+* Signed wind bytes are direct map-coordinate increments per native tick.
+* Vertical-rate byte 3E is in quarter native height units per tick. Height
+  integration first adds `(tick & 1) + 1` in **byte** width, then arithmetic
+  shifts right two and sign-extends. Byte wrapping and tick parity matter.
+* Vertical-rate approach uses one quarter of the error, forward-speed
+  approach uses one sixteenth plus a signed one-unit slew term, and the
+  powered RPM response uses one eighth. Their rounding offsets are 2, 8
+  and 4 respectively. They cannot all be replaced by one generic decay.
+* The unpowered/coasting RPM path is additive and clamped, rather than
+  the powered path's one-eighth approach. Its increment depends on
+  collective, coarse speed and whether the player is on the ground.
+
+`tmp/dev/tools/audit_player_controls_c.py` separately executes +05376,
+the attitude tail after navigation/waypoint work. Across 972 cases covering
+all current x/y and previous-y directions, representative roll/height states
+and damage, its only writes are pitch byte 36, roll byte 37 and the same RNG
+seed. The navigation prefix +05336..+05374 is not covered by this result.
+
+Without random impulses, roll adds four times the current x direction and
+clamps to -20..20. Pitch changes only when current y is nonzero, subtracting
+`current_y + previous_y`. Previous y is the byte at code hunk +05524, copied
+from the preceding native control sample by +04E42. Reversal therefore
+cancels the first native increment, while sustained deflection doubles it.
+The field-rate equivalent needs an explicit previous-control state and
+transition tests; treating direction alone as a rate would miss this.
+
+The pitch perturbation at +053DC is not conditional on the roll-damage bit:
+it can run when the high altitude byte is zero, speed is at least eight,
+and the low altitude byte is below the low speed byte. This is another
+world-owned random impulse, with its predicate evaluated at the intended
+world boundary. Evidence is retained in `player-control-accesses.json`.
+
+## Ground boundary execution check
+
+`tmp/dev/tools/audit_player_ground_c.py` executes +095A0..+09636 in 864
+cases after altitude has reached zero, varying previous airborne status,
+speed, vertical rate, roll, configuration and damage. The external
+notification routine +0A150 is replaced with a return in this fixture;
+its own side effects are outside this coverage. The native branches and
+player stores are executed unchanged. Results are retained in
+`tmp/dev/tmp/c/player-ground-audit.json`.
+
+All cases clear speed word 2A and pitch/roll/vertical-rate bytes 36/37/3E.
+This reset happens even when the player was already grounded. The native
+code preserves the pre-integration airborne test in d2 at +09576..+0957A;
+that flag controls whether landing/crash classification runs before the
+reset. The fixture reaches crash states 0/2/3/4 and 270 flight-end cases.
+These counts describe fixture coverage, not gameplay probabilities.
+
+The special flight-end branch also writes a notification timer at hunk 6
++42F6 (+095F4), in addition to calling +0A150 and setting player byte 18.
+Thus the airborne routine's player-bytes-plus-RNG save set is insufficient
+for previewing ground contact. The field step must retain pre-step contact
+information for world evaluation and must not repeatedly execute these
+notifications or authoritative resets on each rendered field.
