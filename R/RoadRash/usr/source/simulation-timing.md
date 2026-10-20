@@ -1,3 +1,49 @@
+## Starter release matches; first NPC acceleration differs by update cadence
+
+The one-time `$8f57a` capture in `b-release-observation` and
+`c-release-observation` records the first racing enable at simulation cursor
+41 in both runs (live fields 41 and 43, delta 4 and 1). Each captures the
+player and riders $a61e0/$a6260 before replaying the displaced enable write.
+The source patches and binaries remain in `b/c-release-capture-build`.
+
+The follow-up `b-early-motion-native` / `c-road-early-motion-native` traces
+use the unmodified retained B handling binary and road-only C candidate.
+They route only to the early race entry, without settling to field 100, then
+observe `$8f57a` and the post-motion boundary (native $875b6 in B; the patched
+step-end destination in C). C's boundary precedes its additional pose/camera
+work. No throttle is applied. These are early motion observations, not full
+completed-step state hashes or a throughput measurement.
+
+Both unmodified runs confirm cursor 41 for the first inactive-to-active write.
+All three complete 128-byte actor records are identical at that boundary.
+The later visits to the enable instruction, B cursor 70 and C 73, already have
+$a59d4=1; they are starter animation repetitions, not a second race start.
+Thus the earlier post-priming countdown difference does not establish a
+three-tick race-start error and does not justify a compensating starter patch.
+
+`compare_early_motion_c.py` checks every active motion row up to cursor 100:
+14 B rows (through 98, cumulative delta 57) and 59 C rows (through 100,
+cumulative delta 59). For both rivals, every speed equals previous speed plus
+previous acceleration times the current delta, and every position increment
+equals the new speed times delta. The first active call sets acceleration to
+39 while speed remains zero: B cursor 45, C cursor 42. Subsequent calls retain
+that acceleration. This produces an initial three-tick speed advantage for C,
+not a different acceleration constant or missing arithmetic operation.
+
+At the 14 common cursors, C's speed is 117 higher except cursor 54 (156).
+B's cursor 54 consumes delta 4 and cursor 58 consumes delta 5, accounting for
+that temporary difference. At cursor 98 the rivals' speeds are B 2067/C 2184,
+and C is 3237 position units ahead. The same differences apply to both rivals;
+the unthrottled player remains stationary. Exact comparisons are retained in
+`c-road-early-motion-native/comparison.json`; B's final cursor-102 row is
+excluded from the pre-field-100 scope.
+
+This isolates an early cadence effect but does not explain the later reversal
+of the rival's longitudinal difference or its lateral/contact divergence.
+It supplies no basis for adding startup input delay or changing acceleration
+constants. No production change is promoted; B handling/distance and overall
+throughput acceptance remain open.
+
 ## Startup actor state matches; priming leaves a countdown difference
 
 The first `b-first-simulation-state` / `c-road-first-simulation-state`
