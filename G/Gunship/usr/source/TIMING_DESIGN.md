@@ -308,6 +308,58 @@ These helpers resolve the isolated ordered reset. The actual queue dispatcher,
 indicator callback internals and all other mixed/modal command policies still
 need integration and live validation before C3 can be closed.
 
+### Retained player command dispatcher
+
+`timing-command-dispatch.i` classifies all 41 explicit full-word comparisons
+in native +04ED4..+05334: 15 player controls, mixed 03, 13 world-primary words
+and 12 lifecycle/display/navigation boundaries. Other words have no native
+primary effect but still run the common yaw tail. The modified 0804/0805/0806
+checks occur *after* that tail and remain world-primary actions. Boundary
+words are 45, 0833, 0C, 40, 1C, 41, 37, 21, 22, 34, 42 and 46; they require
+an explicit owner before either reader can continue past them.
+
+`control_command_class` takes d0.w and returns 0 unknown, 1 player, 2 mixed
+mode, 3 world, 4 boundary, preserving other registers. The source table is
+checked against the native comparison operands, not inferred from key names.
+
+`control_player_next` takes a 24-byte context in a0 and the field's recorded
+command cutoff in d0. Initialize its queue/player/mode pointers at 0/4/8 and
+zero the rest. It peeks at most one player command, records sequence/key at
+12/16, then applies player or mixed-mode primary effects plus the shared yaw
+tail. World-primary and unknown commands receive only that tail. It finally
+acknowledges the player reader; the world reader is untouched. Return 1 means
+applied and acknowledged, 0 none due, 2 retained boundary, or a negative
+queue/state error. The boundary return performs no tail or primary effect
+and leaves that command and all later commands retained.
+
+`CP_COMMITTED` at 18 reports whether this call applied its field effects;
+`CP_APPLIED` at 20 counts processed ordinary commands. Both are updated before
+acknowledgement. A producer fault can therefore return an error with effects
+already committed and the command still retained. Recovery must account for
+that event rather than replay it. A subsequent faulted call applies nothing.
+The scheduler/lifecycle owner must check upstream state and stop on boundaries.
+This is a one-command primitive; field draining and native installation remain
+caller responsibilities, not an unbounded loop inside the dispatcher.
+
+`test_command_dispatch_c.py` verifies all 41 native compared words and 1,106
+classification cases including modifier variants and unknowns. Sixteen queued
+tapes across batching 1/3/10/25 and sequence wrap match native player/control
+results as the independent world reader catches up. All 12 boundaries remain
+at the head, all 13 world-primary words perform only the field yaw tail, and
+invalid mode state preserves the command/player. The indicator callback is
+stubbed; other world effects and modal execution are not exercised. Evidence:
+`tmp/dev/tmp/c/command-dispatch-tests.json` (3,774 calls).
+
+`test_command_dispatch_fault_c.py` injects a producer fault at acknowledgement
+entry after a collective increment. The increment remains applied exactly once,
+`CP_COMMITTED=1` and the lifetime count records it, but neither reader cursor
+advances. A retry reports the queue fault without repeating the increment.
+Evidence: `tmp/dev/tmp/c/command-dispatch-fault-tests.json`.
+
+The world dispatcher and boundary handlers remain pending. In particular,
+world processing must not invoke the original common tail or repeat field
+control primaries after this reader has already applied them.
+
 ### Field-owned command helper
 
 `control_target_command` takes the complete command word in d0 and the
