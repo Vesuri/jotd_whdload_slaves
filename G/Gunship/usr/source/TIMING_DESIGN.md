@@ -28,6 +28,8 @@ on a separate player record, excluding random/contact world effects.
 It is also standalone; it does not yet scale or commit player motion.
 `timing-fraction.i` supplies tested signed rational increments for that
 future step. It does not select field-specific equations or coefficients.
+`timing-response.i` supplies fraction-aware quarter/eighth/sixteenth
+approach responses using r^h field gains and exact native h=1 rounding.
 `timing-motion-stages.i` exposes the native preview in ordered slices so
 scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
@@ -382,6 +384,56 @@ exactly three native increments over 50 PAL or 60 NTSC fields. Mixed-sign
 and residual, with exact total accounting. This proves the arithmetic
 component, not the complete player-step equivalence gate.
 Evidence: `tmp/dev/tmp/c/fraction-tests.json`.
+
+## Fraction-aware approach response
+
+`timing-response.i` implements the scalar approach terms used by vertical
+rate (quarter), powered RPM (eighth), and forward speed (sixteenth).
+It does not include speed's separate signed slew or the additive unpowered
+RPM path. Angular response needs its own modular-error interpretation.
+
+`response_step` takes a0 = signed long fractional state with denominator
+32767, d0 = sign-extended native word error (target minus integer state),
+d1 = response shift 2/3/4, and d2 = PAL 50 or NTSC 60. It returns an integer
+increment in d0 and status 0/-1 in d1, preserving other registers. The
+caller adds the increment using the native state's width. Invalid input
+leaves the fraction untouched. Whole-tick fixture rate 3 requires zero
+fraction and performs the original word-width rounding-bias addition and
+arithmetic shift exactly, including overflow behaviour.
+
+For field rate F and native shift k, the gain is
+`alpha = 1 - (1 - 2^-k)^(3/F)`. Constants retain sixteen fractional bits
+beyond the numerator for denominator 32767:
+`G = round(alpha * 32767 * 65536)`. The 68000 uses split unsigned-word
+products with explicit sign handling, avoiding floating point or 64-bit
+instructions. The six constants are checked against 60-digit Decimal
+evaluation in the test harness.
+
+Let `P(x) = trunc(x * G / 65536)`. For integer error e and signed fraction
+f, the update forms `T = P(e) + f - trunc(P(f)/32767)`, returns
+`q = trunc(T/32767)` and retains `T - q*32767`. Thus the target error includes
+the old fraction; it is not recomputed solely from the visible integer
+state. Product truncation is below one fraction unit, not a whole native
+state unit. Each response quantity needs independent fractional storage
+and explicit lifecycle/impulse/saturation handling.
+
+This is a scalar response component, not the complete field motion step.
+The caller still must apply native derived targets, update order, wrapping,
+slew, clamps and world effects. The complete player h=1/held-input gate
+cannot be inferred from this arithmetic check.
+
+`tmp/dev/tools/test_response_c.py` passes 246,315 calls, including 196,608
+comparisons with returning copies of original native instructions: every
+signed-word error for quarter/sixteenth rounding, and every byte target/old
+RPM pair for the powered eighth response. Twenty thousand random field
+cases match an independent integer model, including signed fractions.
+Invalid parameters preserve state and non-result registers are checked.
+For each rate/shift pair, nine constant targets spanning small values and
+near signed-word limits are followed for ten seconds. The largest observed
+difference from the ideal exponential trajectory, including retained
+fractions, is below 0.0021 native units. This is a measured bound for those
+scalar fixtures, not all changing targets or coupled flight dynamics.
+Evidence: `tmp/dev/tmp/c/response-tests.json`.
 
 ## Field-rate deterministic attitude
 
