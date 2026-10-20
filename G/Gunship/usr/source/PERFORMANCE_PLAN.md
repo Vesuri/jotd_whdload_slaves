@@ -562,7 +562,9 @@ its native installation remains pending. A separate field-clocked bar-gauge
 primitive now matches 2,000 native updates and 738 skipped-draw catch-ups.
 It is bound to the experimental field consumer, lifecycle and CUSTOM1-gated
 painter, with 800 PAL/NTSC fields invariant across batch sizes. Live gauge
-validation and remaining cockpit render-count timers are still pending.
+validation is still pending. The cockpit audit confirms +0AB20 is a
+two-buffer repaint count (C7e) and +0AD30 derives needle geometry directly
+from current instruments; neither needs a field-rate countdown.
 A read-only fractional camera adapter now exposes the first field's
 attitude changes in camera angle words; whole-tick camera arithmetic is
 preserved, while enhanced pitch removes the integer half-angle staircase.
@@ -712,7 +714,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C4f. Price the per-field step and the history on the 68000; it renders about 5 fps and
     consumes about 10 fields per render.
   - C4g. Rebuild the camera/state vector (`+057E2`) and the instrument values from the
-    player state on every render. Gauges and needles slew per field (old C6a).
+    player state on every render. Gauges advance per consumed field (old C6a).
+    Native needles have no incremental slew: +0AD30 derives their endpoints
+    directly from the latest instrument angles. Keep their per-buffer restore
+    caches and +0AB20 repaint counts drawing-owned, as required by C7e.
   - C4h. The native tick skips the integration of already-integrated player quantities and
     reads the field-rate result. This is Wing Commander's world rotation hook, which
     excludes the ordinary player.

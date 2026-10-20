@@ -25,8 +25,9 @@ effect classification, and production lifecycle handling are not installed.
 and their common yaw tail; it is not included in a gameplay build yet.
 `timing-presentation.i` likewise provides a standalone read-only camera and
 instrument builder, with the native pitch clamp factored into a separate
-player operation. Native-loop installation, remaining instrument timers and live gauge validation
-remain pending.
+player operation. Native-loop installation and live gauge validation remain
+pending; the cockpit refresh/needle audit below distinguishes drawing caches
+from animation.
 `timing-motion-preview.i` prepares and executes a native arithmetic clone
 on a separate player record, excluding random/contact world effects.
 It is also standalone; it does not yet scale or commit player motion.
@@ -4171,5 +4172,49 @@ Additional ignored harness checks:
 
 Ordinary, runtime, VERIFY/runtime and input/runtime builds assemble. Pixel
 writes are stubbed in gauge tests; full live gauge validation remains open.
-The native flight-loop activation is still absent, and remaining cockpit
-render-count timers (including +0AB20) still require ownership auditing.
+The native flight-loop activation is still absent. The cockpit refresh/needle
+audit below resolves +0AB20 as bitmap bookkeeping, not an elapsed-time timer.
+
+
+### Cockpit repaint counts and direct needle geometry (C4g/C7e audit)
+
+The decrement at +0AB20 belongs to bitmap repair. +0AA9C..+0AB12 pairs eight
+restore descriptors with words at hunk 0 +0B04E..+0B05C; +0AB18 skips a zero
+word, otherwise decrements it and passes the rectangle to +09274. These counts
+must remain draw-owned under C7e. Advancing them on consumed fields could
+exhaust the repairs before either physical bitmap is drawn.
+
+Two indexed producers use the shared base +0B04C:
+
+- +0AF36 maps an icon index through +0AFA4 and stores 2 at +0AF54 before
+  updating its source artwork.
+- +0B0A6 detects a changed numeric/text value, updates its cached value and
+  stores 2 at +0B0CE using the descriptor's word at +12.
+- The pitch-band artwork change at +0AC98 also stores 2 directly to +0B05A
+  at +0ACE0. It is the same two-buffer repair request, not a flight timer.
+
+The native needle routine +0AD30 has no incremental angular slew. Its input
+byte selects a quadrant-reflected sine/cosine pair from +0AFC4; the routine
+adds the fixed center and writes the selected buffer's endpoint bytes at
+record +12/+18, then draws the line. The old endpoint does not influence the
+new endpoint. +0AC14 restores the prior needle rectangles; +0ACF0 supplies
+current instrument angles. Rendering the latest field-rate instrument value
+therefore supplies the desired responsiveness without introducing a separate
+needle integrator or consuming endpoint caches during skipped renders.
+
+The ignored `test_cockpit_presentation_c.py` executes the native instructions:
+24 restore-count cases (eight records, initial 0/1/2, six calls each) show
+exactly 0/1/2 repairs; 41 producer cases cover all 32 icon mappings and nine
+text dirty offsets; 512 needle cases cover all 256 angles in both buffers,
+including repeated draws and randomized previous endpoints. The needle
+oracle independently calculates lookup/quadrant geometry. All pass. Graphics
+writers are stubbed, so this establishes state ownership and drawing arguments,
+not live bitmap appearance. No game-code patch is required for these routines.
+
+Current-view target drawing remains separate work: +046A4 calls +0A6E4,
+which reads the selected descriptor and projected X/Y/model pointer from the
+committed target block. Suppressing render-time selection alone does not
+refresh that projection. A presentation adapter must keep the world-selected
+identity while updating only the drawing inputs, and restore the committed
+block before any world consumer runs. This audit does not claim that adapter
+or the remaining complete-renderer isolation is finished.
