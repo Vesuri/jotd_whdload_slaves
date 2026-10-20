@@ -1,3 +1,63 @@
+## NPC motion and directional collision-response experiments
+
+Three private normal-build experiments extend the combined reference-motion and
+road-timing candidate. All retain the default-off CUSTOM2 gate and one-field
+simulation. None is promoted: reducing repeated heading exchanges does not
+restore B's recorded handling or first scenery collision.
+
+| Candidate / replay prefix | Steering-write observations, fields 1200–1400 | First sampled crash | Lateral at 1400 / 1600 |
+|---|---:|---:|---:|
+| B reference | 4 | 1376 | already crashed |
+| Combined motion, previous experiment | 8 | 1538 | -475 / -902 |
+| `c-combined-npc` | 21 | 1316 | -488 / -627 |
+| `c-contact-direction` (NPC plus guard) | 9 | 1556 | -359 / -871 |
+| `c-contact-only` (guard without NPC change) | 5 | none through 1600 | -508 / -984 |
+
+The NPC experiment evaluates the existing lateral formula at four times the
+one-field displacement, then divides its result by four with a per-actor signed
+remainder. Its 35 carries reset at race start and follow the existing actor-copy
+hook; reactivation and non-riding carry lifecycle remain unaudited. The first
+contact cluster moves to cursors 1228..1238. Heading alternates
+3/-50/5/-50/7/-50/9/-50/13/-50/23 while LEFT is held. A second cluster spans
+1303..1312. This worsens the earlier repeated-heading-exchange observation.
+
+`c-combined-npc-impulse` breaks before native `$8ef5c`, preserving raw actor
+records. In the first cluster, side bit 1 of actor `+$69` remains set while
+`+$22` relative lateral displacement changes sign on successive ticks. Native
+response exchanges headings regardless of that sign. This motivates a private
+guard, but does not establish that world displacement is a sufficient collision
+normal: the side bit derives from previous road-relative coordinates and the
+response has already applied positional separation.
+
+The guard replicates `$8ef5c`'s initial relative-displacement calculation, then
+skips the heading exchange for zero/separating displacement according to the
+side bit, only when both actors are riding and below the traffic bank at
+`$a6560`. Detection, separation and damage remain native. Other paths resume at
+`$8ef64`. The same entry also serves rear-end responses, so this experiment is
+not validated for all contact classes. No cooldown or collision sampling limit
+is introduced.
+
+With NPC normalization, the recorded headings become 3,3,8,6,9,15,4,-3,-7.
+Without it, the five observations occur at cursors 1256,1257,1298,1299,1300,
+with headings 4,5,7,11,21. These are steering-write counts, not counts of impulses
+actually applied: the downstream steering write still executes when the guard
+returns early. Both lap outcomes fail the B comparison despite removal of the
+rapid sign alternation. Further changes need to account for actor approach and
+contact geometry, rather than treating fewer exchanges as acceptance evidence.
+
+Reproduction lives in the ignored harness: `make_combined_npc_c.py`,
+`make_contact_direction_c.py`, and the three matching `*-source` directories
+with exact deltas; results are in `*-lap` and `*-contact`. Normal binary sizes
+and SHA-256 values are:
+
+- NPC: 19,924 bytes, `a6271575b06a9054ba57dba84fce0a45ad904dba61c7532668c146a2b04f633e`.
+- NPC plus guard: 20,008 bytes, `5c55a4d159c0fb0dd33d43c188ad1f7de2d6dc9c96f6e6b56539e359429993e4`.
+- Guard only: 19,712 bytes, `33282bb4a1c2e14a1ad778c73c61e0e6649ffe41310a6f0716075c4a2fe730b8`.
+
+These are functional experiments on cycle-exact cached 020 emulation. No new
+throughput, full-race cadence, latency, or hardware-matrix acceptance is claimed.
+The production runtime and C's remaining acceptance gates are unchanged.
+
 ## Combined-model crash origin and collision-driven steering
 
 `crash_origin_c.py` replays the original lap input through a known pre-crash
