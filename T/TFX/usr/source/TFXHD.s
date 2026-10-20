@@ -494,6 +494,12 @@ get_version
     ; this version needs patching (data/bss hunks)
 
         lea pl_fpu_new(pc),a0
+        btst.b #AFB_68040,attnflags+3(pc)
+        beq.b .new_render_list
+        btst.b #AFB_68060,attnflags+3(pc)
+        bne.b .new_render_list
+        lea pl_fpu_new_render_040(pc),a0
+.new_render_list:
         lea native_fpu_patches(pc),a1
         btst.b #AFB_68060,attnflags+3(pc)
         beq.b .new_fpu_list
@@ -1991,6 +1997,18 @@ copy_linebuf_part:
         move.l  a5,d0
         bra     c2p_32pixels_masked
 
+; tfx.020 passes the scan stream inline at SP+4 and y in A5.
+; Adapt to the existing C-argument fill without moving the caller's stream.
+gouraud_fill_new:
+        movem.l d0-d7/a0-a6,-(sp)
+        lea     64(sp),a0
+        move.l  a0,-(sp)
+        move.l  a5,-(sp)
+        bsr     gouraud_fill
+        addq.l  #8,sp
+        movem.l (sp)+,d0-d7/a0-a6
+        rts
+
 gouraud_fill:
         link    a6,#0
         movem.l d0-d7/a0-a6,-(sp)
@@ -2769,6 +2787,18 @@ pl_fpu
         PL_GA   $45216,WaitingForVsync_ptr
 
         PL_END
+
+; The new fills are enabled only for the target 040, with an off path.
+pl_fpu_new_render_040:
+        PL_START
+        PL_IFC4X 2
+        PL_ELSE
+        PL_P    $4f840,gouraud_fill_new
+        PL_P    $4f9f8,texture_fill
+        ; Keep original ScanFillDown: the equivalent port measured slower on 040.
+        PL_GA   $55bec,_texture_ptr_ptr
+        PL_ENDIF
+        PL_NEXT pl_fpu_new
 
 pl_fpu_new
         PL_START
