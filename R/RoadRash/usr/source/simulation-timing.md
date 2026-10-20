@@ -136,6 +136,61 @@ handling or full-race acceptance. The source deltas are retained in
 Further work must reduce the candidate's cost and cover the remaining
 movement paths, full-race outcomes and response phases before integration.
 
+### Compact correction tests and the longer lap discrepancy
+
+Two private variants retain the same displacement formula. The compact version
+saves old velocity in a two-byte stack slot between the hooks, replacing the
+global scratch word and its A0 save/restore. The native update between those
+hooks has no calls or exits: both acceleration branches join at `$8b4d2`.
+The correction uses `floor(3*v/2) = v + floor(v/2)` to reduce arithmetic.
+The aligned variant saves the adjacent actor words in a four-byte slot and
+reads its speed half, preserving the incoming stack alignment instead.
+
+`c-reference-motion-compact-varying` matches the earlier formula's fixed-period
+reference across 1,595 conservatively completed hashes, three sound requests
+and all six authoritative field-1,457 regions. The shorter code does not
+produce a useful throughput improvement:
+
+| Fast 020 policy | Compact fps | Four-byte-slot fps | Distance, both |
+| --- | ---: | ---: | ---: |
+| Default | 11.8 | 11.9 | 3,321,166 |
+| Cache | 11.8 | 11.9 | 3,321,166 |
+| NoCache | 6.8 | 6.8 | 3,301,708 |
+
+Against B these distances differ by -1.284%, -0.798% and -1.862% respectively.
+The four-byte-slot result isolates a small cached improvement within this
+equal-size layout, but does not prove that stack alignment alone caused it.
+Neither variant closes the default/NoCache gates. The original larger helper
+had a more favorable sampled phase; reducing instruction count did not
+preserve that advantage.
+
+Both normal candidates are 18,676 bytes. Compact SHA-256:
+`264625a71035c1b6e1e1a2a5f665db56d14fca7f4cadfb5e4cccc64bc8b657fb`;
+four-byte-slot:
+`31bfa48b9522a51e3b6a392922775b6781440f3b1bcdf167d8757ec917538629`.
+Their build directories retain exact source deltas. Neither is promoted;
+the aligned variant has not received the compact variant's replay acceptance.
+
+The original A1b lap tape is now also replayed on the current normal runtime
+in `c-aux-runtime-lap` and on the compact candidate in
+`c-reference-motion-compact-lap`. Both end with rank 21 and one sampled crash,
+as does `b-final-replay-on`, but the complete opponent orders differ.
+Crash onsets are 1442/1444 for current/candidate C versus B's 1376.
+Thus the distance correction does not close A4 handling equivalence.
+
+The trace identifies a larger divergence after the first steering input:
+at field 800 B's player speed is 9,772 with flags `$4200`, while current C
+is at 7,710 with `$4a00` and corrected C at 7,700 with `$4a00`.
+Bit 3 of actor `+$68`, set by the native road-relative lateral bounds check,
+therefore still marks both C players off-road when B is back on the road.
+By field 1000, B travels at 12,024 versus 7,099 in both C variants.
+Their positions are 8,005,924 / 7,084,951 / 7,096,105 respectively.
+This much larger later difference cannot be resolved by the small endpoint
+correction alone. The next investigation should trace road-centre/relative
+position across the returning curve and steering input, including positive
+curve updates. The earlier road-operand audit covered the initial negative
+curve and does not establish equivalence through this later section.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
