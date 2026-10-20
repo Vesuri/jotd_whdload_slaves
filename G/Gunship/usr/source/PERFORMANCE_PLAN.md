@@ -402,15 +402,36 @@ release limitations, not implied by these emulator checks.
 ### C. Game time independent of frame rate
 
 This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
-`simulation-and-presentation.md`.
+`simulation-and-presentation.md`. The design is the hybrid used in Wing Commander, where
+the world kept its intended 10 Hz and the player's own motion became responsive (that
+project's `docs/timing-design.md`, design D, and its phase-9 gate in `docs/internals.md`).
 
-**Status: paused at the user's request; C1 is resolved: game time must match
-real time.** No C runtime changes have been implemented yet. Presentation must
-extrapolate forward from the latest completed state: the user rejects the
-333 ms visual delay of previous/current interpolation. The C4d
-baseline pricing gate supports the proposed original-A500 cadence. In the
-retained A2 68000 traces, contiguous intervals from the return of rendering
-(`+05836`) to the next render call (`+05830`) cost:
+**Status: design selected by the user; no C runtime changes yet.**
+
+**Design.** The game has two timing owners:
+
+- **The world runs at exactly 3 ticks per second of real time** (C1). AI decisions,
+  gameplay RNG, weapon launches, damage, collision results, the mission, effects, fuel and
+  the Elapsed Time clock keep their native per-tick code. Decisions per second, random draws
+  per second and every duration therefore stay as designed.
+- **The player's own motion runs at field rate.** Controls are sampled every field. The
+  helicopter's attitude, heading, speed and position are integrated every elapsed field with
+  the native flight equations, scaled to the field's share of a tick. The camera and the
+  instruments follow that state on every rendered frame. Input reaches the screen on the
+  next rendered frame, not up to 333 ms later.
+- **Other moving objects** keep their world-tick motion and are drawn with bounded
+  renderer-only prediction (C6).
+
+"Faithful" means the same game per second of real time, not the same bits per tick. Native
+code still decides everything discrete. The proof for the player path is that it reproduces
+the native tick when given a whole tick at once (C4e).
+
+Forward extrapolation alone was rejected: it smooths pictures while input and the player's
+motion stay at 3 Hz. Raising the whole simulation rate (G) was rejected as the main route:
+it changes how often discrete logic runs and needs every quantity rescaled.
+
+**Measured basis.** The tick is cheap. In the retained A2 68000 traces, contiguous
+intervals from the return of rendering (`+05836`) to the next render call (`+05830`) cost:
 
 | Window | Complete sampled intervals | Mean cycles | Maximum cycles | Mean / maximum fields |
 |---|---:|---:|---:|---:|
@@ -421,103 +442,152 @@ retained A2 68000 traces, contiguous intervals from the return of rendering
 These intervals span the loop boundary and cover one native tick's work outside
 `+04288`, including interrupt/OS cycles that occur inside the interval. They do
 not cross the omitted fields between trace captures. At 142,101 cycles per PAL
-field, their mean cost is 1.32–1.62% of an 18-field budget. This is a feasibility
-measurement of the existing loop, not a measurement of a finished scheduler:
-moving effect updates out of drawing, preserving input history and making
-snapshots will add work. Sustained catch-up, pause recovery and the final 68000
-cost remain to be validated. The ignored harness retains the reproducible
-analysis in `tools/price_ticks_c.py` and `tmp/c/tick-cost.json`.
+field, the mean cost is 1.4–1.7% of a 17-field tick (up to 1.8% of a 16-field
+one). This measures the existing loop, not the finished scheduler: input history,
+the field-rate player step and snapshots add work, priced in C4f. The ignored harness retains the analysis in
+`tools/price_ticks_c.py` and `tmp/c/tick-cost.json`.
 
-Two cadence dependencies need particular care during implementation.
-`+09B9A` allocates an effect slot and calls the gameplay RNG three times, so
-calling it per displayed frame changes later simulation state. `+0BE5A`
-advances those effect slots using the six VBL-decremented bytes at `+0C724`;
-these bytes are effect-animation timers, not six warning-lamp timers as the
-initial time-model notes suggested. The gauge routine `+0ADB6` keeps separate
-drawn heights for the two buffers; elapsed-time slew and per-buffer repaint
-must be treated separately.
+**Known cadence dependencies.**
 
-Rendering also produces a result consumed by the tick loop: `+05C28` clears
-`D3958`, the shape-facing routine writes it at `+0691C`, and `+0583C` tests it
-after rendering and can set the player's flight-end state. This dependency
-must be separated before skipping render calls for catch-up or using predicted
-poses. Its collision semantics and the cost of evaluating it without drawing
-remain to be validated.
+- `+09B9A` allocates an effect slot and calls the gameplay RNG three times, so
+  calling it per displayed frame changes later simulation state.
+- `+0BE5A` advances those effect slots using the six VBL-decremented bytes at `+0C724`.
+  These bytes are effect-animation timers, not warning-lamp timers as the initial
+  time-model notes suggested.
+- The gauge routine `+0ADB6` keeps separate drawn heights for the two buffers. Elapsed-time
+  slew and per-buffer repaint must be treated separately.
+- Rendering produces a result the tick consumes: `+05C28` clears `D3958`, the shape-facing
+  routine writes it at `+0691C`, and `+0583C` tests it after rendering and can set the
+  player's flight-end state (C7).
 
-- **C1. Correct real-time clock: exactly 3 simulation ticks per second.**
-  - The user's criterion is that the in-game clock runs at the correct speed.
+- **C1. World clock: exactly 3 ticks per second.**
+  - C1a. The criterion is that the in-game clock runs at the correct speed.
     The original Elapsed Time display divides the unsigned tick counter
     `D3B94` by 3 for seconds, then by 60 for minutes. Its conversion starts at
     `+023A4` / `+023CE` in PAL 0658 and `+02380` / `+023AA` in NTSC 1489.
     Executing the original conversion code passes 1,102 boundary cases per
     version, including minute/hour boundaries and the word counter's maximum.
     Evidence: ignored `tools/test_clock_c.py`, `tmp/c/clock-contract.json`.
-  - Schedule 3 ticks per 50 PAL fields or 60 NTSC fields, carrying the fractional
+  - C1b. Schedule 3 ticks per 50 PAL fields or 60 NTSC fields, carrying the fractional
     remainder. PAL deadlines therefore alternate 17/17/16 fields; NTSC uses
-    20 fields. Use the actual display frequency, not the executable's region.
-  - Keep native simulation constants and the display's conversion unchanged.
-    The earlier 18-PAL-field proposal would run the clock about 7.4% slow and
-    does not meet this criterion. C9 still provides original coupled timing.
+    20 fields. Use the measured display frequency, not the executable's region.
+  - C1c. Keep native world constants and the display's conversion unchanged.
 - **C2. Tick scheduler.**
   - C2a. Replace the fixed render count in `+04288` with elapsed time: add three
     clock units per active VBL and consume one display-frequency quantum per tick.
-  - C2b. Between ticks, render as many frames as time allows.
-  - C2c. Keep an owed-fields accumulator so speed stays exact over time.
-  - C2d. Count only fields in which the game screen is active, as the VBL server already does.
-- **C3. Forward extrapolation by elapsed time.**
-  - C3a. Replace the native previous/current blend at `+0433C`–`+043E2` with
-    presentation predicted from the latest completed simulation state. Derive
-    the next pose from native motion arithmetic where possible; audit each
-    object's update order before using a velocity or last-position difference.
-  - C3b. Use `frac = unconsumed clock units / display frequency`, clamped to
-    [0, 1], to predict within the next tick interval. At zero fraction, render
-    the latest completed pose exactly. Do not introduce a one-tick visual delay.
-  - C3c. Render between ticks, except during bounded catch-up. Keep predicted
-    poses separate from authoritative state; collision, damage and AI must not
-    consume them. Reset prediction on discontinuities and object replacement,
-    and bound projectile prediction at known impacts.
-  - C3d. Forward prediction does not increase the 3 Hz input/physics cadence.
-    Raising that cadence requires the per-quantity audit in G.
-- **C4. Catch-up on slow machines.**
-  - C4a. When a frame takes longer than a tick period (the A500 in heavy scenes), run overdue ticks
-    back to back without rendering, up to a bound.
-  - C4b. Make the bound a fixed number, and drop or rebase the excess time.
-  - C4c. Report that excess time, so pauses and disk loads add no backlog.
-  - C4d. Price this first. On the A500 one tick currently costs one or two frames of work.
-    Measure the tick-only cost (`+0563A` minus `+04288`) to decide whether C1's rate is
-    sustainable on the 68000. If it is not, keep the original behaviour there as an option.
-- **C5. Predict everything that moves.**
-  - C5a. Only the camera, the instruments and six effect objects are interpolated today.
-  - C5b. List the world objects that move per tick: enemy vehicles and helicopters, missiles,
-    rockets and the "special object" at `62(a5)`.
-  - C5c. Snapshot authoritative poses and motion inputs at tick completion, then
-    predict presentation poses in the renderer. Track object identity so a reused
-    slot cannot inherit its previous occupant's trajectory.
-  - C5d. At 3 ticks/s, any object left out visibly jumps three times per second.
-- **C6. Per-frame state to per-tick or per-field.**
-  - C6a. Bar gauges `+0ADB6`: currently 1 pixel per frame. Make them per field, keeping the
-    pace they had at about 5 fps.
-  - C6b. Effect spawning `+09B9A`: one per frame while `D42F7` is set. Make it per tick or per
+  - C2b. Between ticks, render as many frames as time allows; each render first consumes
+    the elapsed fields' input history (C3) and player steps (C4).
+  - C2c. Count only fields in which the game screen is active, as the VBL server already does.
+- **C3. Field-stamped input history.**
+  - C3a. Extend the VBL server's joystick/mouse read (`+01068`) and fire latch (`+04DC6`) to
+    publish one record per field into a bounded ring: stick or mouse deltas, buttons, and
+    the keyboard command position. A full ring keeps the unread records, counts the loss and
+    forces a rebase.
+  - C3b. The player path (C4) consumes every record once, in field order.
+  - C3c. The world tick consumes the same interval once: button edges, held fire, keyboard
+    commands and the controls that feed world decisions. It must not apply stick deflection
+    to the player a second time.
+  - C3d. Audit how the native tick turns the accumulated stick and mouse values into control
+    targets before choosing what a record holds.
+- **C4. Player motion at field rate.**
+  - C4a. **Inventory** every player field the tick writes (the `a5` = `D3B88` record and the
+    camera/state vector built at `+057E2`): position `0(a5)`/`2(a5)`, altitude `28(a5)`,
+    heading and attitude `53..55(a5)`, the rates decayed at `+0594C`/`+0597A`, speed,
+    collective/throttle, and so on. For each one, record its units, every writer and reader,
+    and its update order.
+  - C4b. **Classify** each as continuous player motion (integrated per field) or world-owned
+    (committed per tick: fuel, damage, weapons, flight-end and landing states, scripted
+    motion).
+  - C4c. **Scale with the playbook's unit rules:** multiply rate and acceleration increments
+    by h = the field's share of a tick (3/50 PAL, 3/60 NTSC). Use r^h for a multiplicative
+    decay r. Scale slew limits, preserving saturation. Keep signed remainders in
+    slave-owned fractional shadow state. The native variables stay the integer part, so the
+    renderer, AI and HUD read them unchanged.
+  - C4d. Run the native flight arithmetic where possible, previewing it on saved state
+    rather than reimplementing it. Wing Commander previews its native steering routines and
+    restores their state afterwards.
+  - C4e. **Equivalence gate:** one step with h = 1 must reproduce the native tick's player
+    state bit-exactly. With held input, 50/3 PAL or 20 NTSC field steps over a tick must match
+    the native tick within a stated rounding bound. Check the integrator's displacement
+    difference explicitly: the playbook's `v0 + 5*A/8` versus `v0 + A` example. Decide
+    whether acceptance preserves the original handling or the finer physical integration,
+    and record the decision.
+  - C4f. Price the per-field step and the history on the 68000; it renders about 5 fps and
+    consumes about 10 fields per render.
+  - C4g. Rebuild the camera/state vector (`+057E2`) and the instrument values from the
+    player state on every render. Gauges and needles slew per field (old C6a).
+  - C4h. The native tick skips the integration of already-integrated player quantities and
+    reads the field-rate result. This is Wing Commander's world rotation hook, which
+    excludes the ordinary player.
+- **C5. Hand-off between the player and the world.**
+  - C5a. At each world tick, the world (AI targeting, ranges, collisions, lock-on, landing
+    and pad checks) reads the player's latest field-rate state as authoritative.
+  - C5b. Ground and object collision of the player is evaluated on committed state at the
+    world tick. Test that fast movement between ticks cannot pass through terrain or
+    obstacles that the native 3 Hz check would have caught, or the reverse. Do not assume
+    finer motion improves collision detection.
+  - C5c. **Weapon launch latency: user decision.** Wing Commander accepts up to one world
+    tick between trigger and launch, which is 100 ms there and up to 333 ms here.
+    Alternatives:
+    - (a) Launch at the next world tick, from the player pose at that tick.
+    - (b) Timestamp the trigger field, commit the launch at the next world tick, and start
+      the projectile from the trigger-field pose, advanced by the elapsed fraction. Show it
+      from the trigger field as presentation only. Ammunition, lock and damage remain
+      world-tick events.
+
+    Option (b) changes the native launch pose and time, so it needs its own validation.
+  - C5d. Render-time aiming (gun sight, target box) may show the current view but must not
+    commit a lock, target change or launch.
+- **C6. Presentation of world objects.**
+  - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
+    keep their world-tick motion. Draw them predicted from the latest completed state, at
+    most one tick ahead, using `current + (next - current) * frac` where the next native pose
+    is derivable from native order and arithmetic. Never draw them one tick behind.
+  - C6b. Certify object identity at the native constructors, so that a reused slot doesn't
+    inherit its previous occupant's trajectory. Derive each projectile's first presentation
+    interval from its spawn and update order.
+  - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
+    poses into world state or pass them to collision, damage or AI.
+  - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
+    shows visible errors for projectiles, move their free flight to field rate under C4's
+    rules, keeping hits and damage on world ticks. Measure this before doing it.
+- **C7. Per-frame work that is not presentation.**
+  - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation
+    `+0BE5A` keeps its VBL timers.
+  - C7b. The renderer's flight-end result `D3958`: work out what it detects, then evaluate it
+    on committed state at the world tick, with or without drawing. Price evaluating it
+    without drawing.
+  - C7c. Map re-check every 8 frames `+0468C`: move it to fields or ticks.
+  - C7d. Key code 12 (`+04EF2`, `D1548` toggle): retire it, or redefine it as the
+    prediction switch with no effect on game speed.
+  - C7e. Leave the buffer-indexed dirty counters (2 frames = both buffers) as they are.
+- **C8. Catch-up, pause and modal screens.**
+  - C8a. When a render takes longer than a tick (the 68000 in heavy scenes), run overdue
+    world ticks back to back up to a fixed bound. The player path still consumes every
     field.
-  - C6c. Effect animation `+0BE5A`: check it, and make it per tick or per field.
-  - C6d. Map re-check every 8 frames `+0468C`: make it per field.
-  - C6e. Key code 12 (`+04EF2`, `D1548` toggle): redefine it as the prediction on/off switch,
-    with no effect on game speed, or retire it.
-  - C6f. Leave the buffer-indexed dirty counters (2 frames = both buffers) as they are.
-- **C7. Input.** Controls are read once per tick, as now. Keep the joystick/mouse accumulation in
-  the VBL server, and make sure that catch-up ticks (C4) do not reuse the same stick deflection
-  more than once.
-- **C8. Validate.**
-  - C8a. Matched-tick state equality between the 68000, 68020 and 68060, with the A2 seed and the
-    same input on the same ticks.
-  - C8b. Equal-elapsed-fields check: the same number of ticks per 500 fields on every CPU.
-  - C8c. Durations in play: fuel, mission clock, weapon reload, lamp blink.
-  - C8d. Check zero-fraction poses against completed simulation state and predicted
-    endpoints against the next native update in free motion. Exercise spawn,
-    impact, slot reuse, teleport and pause/resume boundaries. Confirm extra
-    presentation frames cannot change authoritative state or gameplay RNG.
-- **C9. Option.** A CUSTOM bit that restores the original coupling, for comparison and for users
-  who prefer it.
+  - C8b. Drop and report excess time. Pause, the map, menus and disk loads disable sampling,
+    discard unread active history, and rebase, so they create no catch-up debt.
+  - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
+    landing.
+- **C9. Validate.**
+  - C9a. **World equality across CPUs:** matched world-tick state on the 68000, 68020 and
+    68060, with the A2 seed and the same field-stamped input, using the A4 gate. The
+    authoritative state must not depend on render rate. Also run a diagnostic with drawing
+    replaced by a field wait.
+  - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
+    the emulated clock, on PAL and NTSC, in all windows.
+  - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
+    camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
+    input field to the first displayed frame that reflects it.
+  - C9d. **Player path:** C4e's equivalence on every CPU, over all input combinations at
+    several initial rates.
+  - C9e. **Durations in play:** fuel, mission clock, weapon reload, lamp blink and effect
+    lifetimes, per second.
+  - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
+    the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
+    death and landing. Extra frames must not change world state or gameplay RNG.
+- **C10. Option.** A CUSTOM bit that restores the original coupling, for comparison and for
+  users who prefer it.
 
 ### D. Remove fixed overheads
 
@@ -589,7 +659,7 @@ remain to be validated.
 ### F. Release
 
 - **F1. Options.** Use CUSTOM bits for:
-  - original timing (C9),
+  - original timing (C10),
   - the renderer choice (E1c),
   - triple buffering (D4).
   
@@ -604,15 +674,15 @@ remain to be validated.
   asynchronous-blitter emulator limitation documented under B4. The reported
   68060 T-74 copy-protection graphics issue remains deferred at the user’s request.
 
-### G. Optional: a higher simulation rate
+### G. Optional: more of the world at field rate
 
-Only after C is done, and only if the 3 Hz control response feels too slow at 25–50 fps.
-This means raising the tick rate and rescaling every per-tick quantity:
+Only after C is done, and only if C6's prediction of world objects shows visible errors at
+25–50 fps. Move the free motion of the affected objects to field rate with C4's rules, while
+their decisions, launches, hits and damage stay on the 3 Hz world tick:
 - G1. Classify each quantity as a rate, an acceleration, a distance or a countdown, as Stunt Car
   Racer did in the playbook.
-- G2. Audit the flight model, AI, weapons, fuel and timers.
+- G2. Audit each object type's motion code and its writers: AI, collisions, spawn and reset.
 - G3. Validate behaviour in play, not only the arithmetic.
 
-This is large and risky. Forward prediction can provide visual smoothness at the
-original tick rate, but improving input response requires a higher simulation
-cadence or a separately validated input/presentation design.
+Raising the whole simulation rate, discrete logic included, is not planned. It would change
+how often AI decisions and random draws happen, and so change how the game plays.
