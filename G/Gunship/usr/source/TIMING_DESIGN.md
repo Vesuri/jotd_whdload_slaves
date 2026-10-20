@@ -1226,6 +1226,48 @@ D1 bits while preserving the native low-word bound. Shared native entry
 redirection remains pending until render-side spawning is removed and all
 world calls have the correct deadline record available.
 
+## Effect constructor with private world inputs
+
+`timing-world-effects.i` copies native +09B9A..+09C3C into a 164-byte
+constructor. It redirects the three RNG calls to the deadline RNG's
+D1-bound entry and the heading read to a private word. The native allocator,
+sine helper, effect tables, arithmetic, a5 pose ABI and register clobbers
+remain unchanged. This makes the inputs explicit without temporarily
+replacing renderer or interrupt-owned storage.
+
+`world_effect_prepare` takes validated code hunk a0, code storage a1,
+prepared deadline RNG a2 and private heading address a3. It validates the
+allocator call, failure branch, heading-load opcode, return and three RNG
+call targets before writing the destination. The caller owns storage,
+version validation and instruction-cache flushing. The constructor retains
+the native zero-draw allocation-failure path and X/Y/height draw order.
+
+`test_world_effects_c.py` compares 1,024 executions across both RNG modes,
+all 64 pool-occupancy masks, varied poses, headings and seeds. The reference
+uses native input/heading storage; the clone uses private deadline inputs
+while live input and render heading contain unrelated values. Output
+registers, pool masks, effect tables and seed match. Draw counts are zero
+for a full pool and three otherwise. Write tracing permits only seed,
+allocation masks, effect tables and stack; player and private/live inputs
+remain unchanged. Eleven malformed preparation cases preserve destination
+storage. Evidence: `tmp/dev/tmp/c/world-effects-tests.json`.
+
+The render-side eligibility byte hunk 6 +42F7 is decremented at +04C32
+inside the +04B48 VBL callback. It already measures fields, not rendered
+frames: do not move that countdown to 3 Hz. Its world-side setters write
+64 or 128 fields at +09E22/+09E48. The +05C92 render invocation tests it
+at +05C8A. Its deadline value still needs history or an explicit lifecycle
+policy so catch-up does not consult a later field's countdown.
+
+The native heading source hunk 6 +390A lies in the renderer's camera vector
+(start +3904). +04390 writes intermediate vectors and +0440A writes the
+completed vector; extra rendering can therefore change the constructor's
+heading input. The world adapter must supply the appropriate committed
+heading explicitly. The extracted constructor alone does not establish
+the render caller's a5 pose, choose that heading, move the invocation, or
+change VBL effect animation. Those remain C7 integration work; this helper
+is not installed into gameplay.
+
 ## Field-rate deterministic attitude
 
 `timing-attitude.i` implements the continuous portion of native
