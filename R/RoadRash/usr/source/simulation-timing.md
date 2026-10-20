@@ -172,12 +172,52 @@ stateful effect. For example, a negative product between -256 and -1 rounds
 to -1 before multiplication by three.
 
 `c-audit-road-dynamics/comparison.json` retains the first off-road states,
-gear transitions and the exact endpoint-integration checks. This identifies
-road-centre integration as a specific remaining normalization target; it
-does not establish that it explains the entire A4 distance/handling gap.
-No speed multiplier or road-state correction has been installed. A candidate
-must account for curvature quantization and be checked against both B handling
-and the existing cross-cadence/full-race evidence.
+gear transitions and the exact endpoint-integration checks. This initially
+identified road-centre integration as a normalization hypothesis. The operand
+and fixed-four-field tests below narrow that conclusion: a discrepancy against
+one variable-delta B run does not establish an error against the four-field
+handling reference. No speed multiplier or road-state correction is installed.
+
+### Road operand trace: distinguish variable B rounding from the reference
+
+`b-audit-road-operands` and `c-audit-road-operands` break at `$8babe`,
+before the native road-centre update. They read signed `d6`, displacement and
+the old centre, then verify that the next observed centre exactly equals the
+previous centre plus the independently calculated update. All 166 B and 503 C
+observations pass. The B run contains 160 delta-3 and six delta-4 updates;
+all C updates use delta 1.
+
+The C trace has 35 negative curve changes, each -1; B has 34 changes of -1
+and one of -2. In the relevant speed range, two small negative changes each
+round to a -3 centre update, while one combined change can also round to
+only -3. This explains the observed three-unit centre difference without
+assuming a different road table or steering input.
+
+An offline four-field grouping of the C operands, tested at all four grouping
+phases, still ends at centre -105 and crosses the off-road threshold at
+positions 3,216,351–3,248,688. Simply retaining fractional products is not a
+faithful correction: it ends at approximately -15.82 rather than -105.
+Even multiplying displacement by four before fractional accumulation ends
+at approximately -63.94. These are calculations over the captured trajectory,
+not closed-loop gameplay tests; they reject a simplistic correction rather
+than validate a replacement model.
+
+`b-audit-four-field-road-operands` adds a native B diagnostic with fixed RNG
+and `VERIFY_FRAME_PERIOD=4`. Its 126 observed updates all use delta 4 and all
+pass the same native-formula check. Its road centre first crosses -64 at
+position 3,234,720, compared with C's 3,216,351: the 18,369-unit difference
+is smaller than that B step's 43,328-unit displacement. Its -2 curve changes
+produce -6 updates at this speed, preserving changes that the mostly delta-3
+run combines differently.
+
+This short straight-input trace therefore does not justify altering C's
+road-centre integration to match the mostly delta-3 B run. It is consistent
+with the four-field reference within its discrete crossing interval; that
+is narrower than proving road handling equivalent over a complete course.
+`c-audit-road-operands/comparison.json` retains the crossing operands and
+delta/curve distributions for all three runs. The original live-field A4
+failure remains open, including input retroactivity, endpoint integration,
+gear overshoots and rendering debt identified in the earlier accounting.
 
 ## Existing boundaries and ownership
 
