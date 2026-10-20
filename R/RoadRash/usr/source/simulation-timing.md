@@ -1,3 +1,28 @@
+## Early NPC divergence is not increased additive-RNG consumption
+
+`early_rng_c.py` observes every entry to the additive generator at $900ce,
+without filtering by current A1 or caller. Both runs start at live field 100,
+apply the original throttle input and stop at race-loop entry after field 580;
+there are no other lap inputs in that interval. B uses its retained default
+cache-policy reference, while C uses the current road-only candidate with Cache.
+
+`b-early-rng-calls` and `c-road-early-rng-calls` both record zero calls.
+Their 136-byte additive table/cursor snapshots at $90000..$90087 are identical,
+SHA-256 `4380ceb485be5237f57dba2199ac7b46029654486c87c577a94cf7fe5d521786`.
+The comparison is retained in `c-road-early-rng-calls/comparison.json`.
+Thus neither a different initial additive-generator state nor increased calls
+to this generator explains the previously measured early NPC lateral divergence
+around fields 400..500. In particular, the random approach branch at $9058a
+uses this generator and is not being rolled four times as frequently here.
+
+Live disassembly is retained in each run's `rng-code.txt`. The nearby $90180
+routine called by the race loop is a capped player counter update using delta,
+not the generator at $90160 (whose call at $9017e lies before that entry).
+This distinction prevents treating the once-per-simulation $90180 call as an
+extra random draw. No random-call throttle or probability adjustment is added.
+This evidence covers the observed generator/window only, not later spawning,
+all initial rider traits or every random routine in the game.
+
 ## Missing NPC contacts are preceded by lateral separation
 
 `npc_pair_bounds_c.py` observes riders $a61e0/$a6260 in either orientation
