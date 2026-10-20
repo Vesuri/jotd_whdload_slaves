@@ -1,6 +1,6 @@
 ; Continuous control + flight composition. Requires attitude and kinematics.
-; Standalone, not installed. Commands and the authoritative pitch clamp must
-; already be applied in their scheduled order. No world decisions occur here.
+; Standalone, not installed. Commands must already be applied in their
+; scheduled order. Pitch clamp precedes stick/motion; no world decisions.
 PS_ATTITUDE equ 0
 PS_KINEMATICS equ AT_SIZE
 PS_SIZE equ AT_SIZE+KN_SIZE
@@ -53,6 +53,9 @@ player_step:
 	dbf d0,.copy_player
 	lea PS_ATTITUDE(a4),a0
 	lea PS_PLAYER(a4),a1
+	bsr attitude_pitch_clamp
+	tst.l d0
+	bne .bad
 	movea.l d5,a2
 	move.w (a2),d0
 	ext.l d0

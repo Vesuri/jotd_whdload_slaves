@@ -848,7 +848,8 @@ input packet in a0..a4. The packet contains signed words for x/y direction
 and supplied roll/pitch/heading impulses. Both entry points return d0=0/-1
 and preserve other registers.
 
-The step applies attitude before flight arithmetic, which reads the newly
+The step applies the authoritative pitch clamp, then attitude, then flight
+arithmetic, which reads the newly
 updated integer attitude. Retained attitude fractions are not substituted
 into native table inputs. It checks matching rates, operates on
 stack copies and publishes the player and both shadow states only after
@@ -859,8 +860,8 @@ nested kinematics transaction; stack high-water and CPU cost still need
 the C4f check.
 
 This entry point does not decode the native history records or keyboard
-commands, decide world-impulse eligibility, apply the authoritative HUD
-pitch clamp, or perform world contact/weapon effects. The caller must
+commands, decide world-impulse eligibility, or perform world
+contact/weapon effects. The caller must
 schedule those operations and supply the logical tick parity. The
 native adapter and CUSTOM1-gated installation remain pending.
 
@@ -874,9 +875,25 @@ per deadline. Invalid interval values and rejected player steps leave the
 record and shadow state unchanged. This entry adds another player-record
 copy to the C4f stack/cost accounting.
 
+`attitude_pitch_clamp` applies native +05756..+05776 byte/BMI semantics
+before each consumed field's controls, not on repeated renders. It clears
+the pitch fraction when the integer is clamped or when a fraction points
+outward at exactly -12/+20, and preserves inward fractions. It validates
+rate and pitch fraction before writes; previous-y and roll state remain
+unchanged. The combined transaction rolls back this clamp too if a later
+input or motion check rejects the field. Native whole-tick ordering is
+clamp, controls, motion; world recoil still belongs after motion and is
+seen by the next consumed field's clamp.
+
+The clamp passes 3,840 native-byte/fraction combinations, repeated
+idempotence checks, and five invalid-state cases. Evidence:
+`tmp/dev/tools/test_pitch_clamp_c.py`,
+`tmp/dev/tmp/c/pitch-clamp-tests.json` (11,527 calls).
+
 The assembled step passes 4,096 complete player-record comparisons
-against original deterministic attitude followed by the native motion
-preview at h=1. The fixture suppresses random attitude eligibility with
+against the original clamp, deterministic attitude and native motion
+preview at h=1, now covering every initial pitch byte. The fixture
+suppresses random attitude eligibility with
 airborne/no-damage input; motion-preview world omissions still apply.
 Another 1,320 fields exercise holds, reversals, neutral controls and
 supplied impulses at PAL/NTSC, comparing every player and shadow byte
@@ -884,7 +901,7 @@ with the separate components. Ten early/late failures leave state and
 player unchanged, three invalid initializations preserve state, and
 register/stack/input-packet checks pass. Evidence:
 `tmp/dev/tools/test_player_step_c.py`,
-`tmp/dev/tmp/c/player-step-tests.json` (16,285 calls).
+`tmp/dev/tmp/c/player-step-tests.json` (17,605 calls).
 This proves composition; the fractional camera adapter is tested
 separately above, while measured input-to-screen latency remains open.
 
@@ -1116,8 +1133,10 @@ Both preserve non-result registers and reject invalid impulses before writes.
 The native world adapter still has to generate eligible impulses once in
 the correct RNG order and deliver them to the appropriate field step.
 An impulse record must not be replayed on subsequent fields or lost during
-catch-up/rebase. The authoritative HUD pitch clamp remains a separate
-ordered operation. Neither it nor RNG generation runs in these helpers.
+catch-up/rebase. The authoritative HUD pitch clamp is a separate ordered
+helper called by the combined player entry point before the attitude
+step. The low-level `attitude_step` entries still do not clamp pitch or
+generate RNG.
 
 `tmp/dev/tools/test_attitude_c.py` compares 55,296 h=1 cases directly with
 the original deterministic attitude routine: all direction triples, all

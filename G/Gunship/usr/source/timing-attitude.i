@@ -152,3 +152,60 @@ attitude_step_impulses:
 .done:
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
+
+; Scheduled authoritative pitch clamp, before this field's stick/motion.
+; a0=attitude state, a1=player; d0=0/-1, other registers preserved.
+; Native byte/BMI semantics are deliberate (including extreme byte values).
+; Clear stale pitch debt after an actual clamp, or outward debt exactly at
+; a limit. Preserve inward debt so reversing controls is not delayed.
+attitude_pitch_clamp:
+	movem.l d1-d3,-(sp)
+	moveq #0,d3
+	move.w AT_RATE(a0),d3
+	cmpi.w #50,d3
+	beq .rate
+	cmpi.w #60,d3
+	beq .rate
+	cmpi.w #3,d3
+	bne .bad
+.rate:
+	move.l AT_PITCH_REMAINDER(a0),d0
+	cmp.l d3,d0
+	bge .bad
+	neg.l d3
+	cmp.l d3,d0
+	ble .bad
+	move.b $36(a1),d1
+	move.b d1,d2
+	cmpi.b #-12,d1
+	bmi .low
+	cmpi.b #20,d1
+	blt .check
+	move.b #20,d1
+	bra .check
+.low:
+	move.b #-12,d1
+.check:
+	cmp.b d2,d1
+	bne .clear
+	cmpi.b #-12,d1
+	bne .upper
+	tst.l d0
+	bmi .clear
+	bra .store
+.upper:
+	cmpi.b #20,d1
+	bne .store
+	tst.l d0
+	ble .store
+.clear:
+	clr.l AT_PITCH_REMAINDER(a0)
+.store:
+	move.b d1,$36(a1)
+	moveq #0,d0
+	bra .done
+.bad:
+	moveq #-1,d0
+.done:
+	movem.l (sp)+,d1-d3
+	rts
