@@ -37,8 +37,9 @@ sequencer and music interrupts remain on their existing field/timer clocks.
 ## Direct delta references
 
 The captured program disassembly contains **39 direct references** to `$a6f00`:
-five writes, one zero check, and 33 consumers. This inventory does not rule out
-indirect aliases or other frame-dependent updates.
+five writes, one zero check, and 33 consumers. In addition, `$8f5a6` reads its
+low byte at `$a6f01` for the shared start/crash animation interpreter. This
+inventory does not rule out other indirect aliases or frame-dependent updates.
 
 | Addresses | Role |
 |---|---|
@@ -63,6 +64,55 @@ indirect aliases or other frame-dependent updates.
 Keeping the core physics delta constant is necessary but insufficient. The
 sprite-selection timer at `$8aecc`, camera integration and event consumption are
 explicit examples outside the initial physics block.
+
+The start-signal animation is also gameplay state. `$8a40e` calls `$8f552` while
+building the banner; that routine calls the byte-delta animation interpreter and
+sets `$a59d4` at `$8f57a` to start racer updates. A fixed-physics-step prototype
+that leaves this animation on the render path produces the same player distance
+but different opponent state. Per-step actor hashes first diverge at step 6;
+with slower rendering, the same actor-state sequence begins five steps later.
+The signal transition must run on simulation time; rendering should reuse its
+selected sprite without advancing it. Moving that update into the provisional
+four-field simulation produces matching hashes of all actor records for 199
+straight-line steps at the two tested rendering rates, with a byte-identical
+actor snapshot at simulation field 601. This is a diagnostic proof of the split,
+not final validation or a selected production timestep. The longer steering/crash tape initially diverges at step 202 (simulation
+field 809); queuing historical field inputs moves the first divergence to the
+crash at step 357 (field 1429). Moving crash animation and sprite timers into
+simulation then produces matching actor hashes for all 399 steps at tested
+render intervals of 1, 3 and 4 fields. A 12-field rendering interval still
+diverges, so these results do not yet establish independent timing under
+multi-step catch-up. The nominal one-field test includes actual two-field
+frames and is not proof of sustained 50 fps.
+
+`$89d20` is not a pure draw-list builder either: `$89e26` clears actor crash bit 4,
+and `$89e0e` calls `$8f190`, which advances crash/recovery state and updates rider
+records. `$8a492` advances `$a808e`, the scenery cursor read by AI and collision
+routines (`$8dfcc`, `$8e056`, `$8c49c`). These are additional split points, not
+exceptions that can be excluded from gameplay comparisons.
+
+Additional dependencies exposed by catch-up tests:
+
+- `$89eec` writes actor `+$34`, a lean/orientation value read by physics at
+  `$8c054`, `$8e372` and `$8e480`. Computing it for simulation is insufficient
+  if rendering can subsequently overwrite it; authoritative writes need one owner.
+- `$8c3b2..$8c408` reads the projected world-object list at `$a7c3e`, using
+  `$a59fc/$a59fe` to locate its section. `$8b02e`, on the presentation path,
+  builds those records and updates `$a59e4`, used by special-actor simulation.
+  The collision check `$8c7f2` uses projected distance, scale and sprite data.
+  Updating only the scenery cursor does not remove this dependency.
+- `$8c48e` also combines world scenery at `$a808e` with a display-record pointer
+  at `$a8092`. These inputs must describe the same simulation boundary.
+- Sprite selection can clear actor `+$69` bit 4 at `$8aa90/$8abae`, and rider
+  presentation clears `+$6a` bit 7 at `$8a11c`. These remain audit obligations;
+  passing a tape without the relevant action does not validate them.
+- The field input handler writes raw `$a598c`, which physics and attack handling
+  read directly. Queueing steering alone is insufficient: IRQ polling must not
+  overwrite the input belonging to an in-progress historical simulation step.
+
+The catch-up prototype uses a provisional four-field quantum and no interpolation.
+It is diagnostic code only; rendering its discrete positions faster does not yet
+satisfy the smooth-presentation requirement. The normal slave remains unchanged.
 
 ## Diagnostic snapshots
 
