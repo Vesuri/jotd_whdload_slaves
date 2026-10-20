@@ -1,3 +1,49 @@
+## Uncached profile and rejected normal-pose omission
+
+`c-raster-current-nocache-profile` profiles the integrated 19,700-byte normal
+runtime over exactly fields 100–600, CACR=0. Flat PC totals are
+18,162,007,936 units; the header total includes a 27,047,424-unit gap.
+The native vsync poll accounts for 5.618%, normal riding pose selection
+$8a8aa..$8a92b for 1.625% (3,958 entries), lane insertion for 0.983%
+and lane steering for 0.561%. These are flat emulator costs, not inclusive
+calls or physical hardware cycle measurements. The profile has 1,511
+unmatched returns, so inclusive attribution is not used.
+
+The highest Chip-cost PCs include native blitter-busy reads and instructions
+following blit dispatch. Their stalls cannot be treated as CPU work removed
+merely by relocating the instruction. Existing vsync and blitter waits remain.
+
+Private `c-pose-normal-skip-source` tests omission of the ordinary riding
+sprite selector at $8a8aa only while step_pose_busy is set. Attack/event
+paths before that branch remain native; rendering executes the displaced
+BCLR and continues normally. The skipped branch returns through the native
+D3 restore at $8a92c. The exact patch is in its build directory. This is an
+ownership hypothesis, not a validated equivalence claim.
+
+The 19,736-byte candidate and equal-size control have identical offsets for
+step_main, step_pose_busy, step_pose_normal_skip and raster_edge_fast,
+recorded in `c-pose-normal-skip-build/layout.json`. The control writes the
+original entry opcode instead of redirecting it. The complete two-cell
+matrices measure:
+
+| Variant | Cache fps | NoCache fps |
+| --- | ---: | ---: |
+| Simulation pose omission | 11.5 | 8.3 |
+| Equal-layout native control | 12.2 | 8.3 |
+
+No uncached gain is demonstrated and cached throughput regresses. The
+candidate SHA-256 is
+`5c4c97ff7e10b1d02c51c523ea912849dc9a83f7a0fdf7f1f62ba43a9eaa6bd1`;
+control SHA-256 is
+`29d23e13f35a068711d26770b1f88dfe6b27d6425afd3bcb14990396b917204a`.
+The independent large diagnostic in `c-pose-normal-skip-vary` fails before
+entering a race: WHDLoad reports the $a8aa patch target outside slave memory.
+The helper appended after diagnostic storage exceeds the patch target's
+signed range. The route-failure screenshot retains the exact error. No state,
+event or cadence equivalence is claimed from that run. Repairing that
+layout and performing broad validation is not justified for this slower
+candidate; it remains private. Production is unchanged.
+
 ## Recheck road normalization after raster integration
 
 Fresh normal lap replays `c-raster-current-lap` and `c-raster-road-lap`
