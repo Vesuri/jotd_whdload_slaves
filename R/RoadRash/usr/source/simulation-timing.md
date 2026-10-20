@@ -684,3 +684,36 @@ with `VERIFY_SKIP_RENDER`: its measured histogram has 1,600 one-field frames
 and all three requests match the full-render cases. This supplies an actual
 one-field scheduling comparison; it is not a full-render throughput or visual
 quality result.
+
+## Long replay hash collection and siren coverage
+
+`STEP_HASH_RING` makes the diagnostic hash buffer reusable for long runs without
+increasing its memory footprint or crossing 68000 PC-relative addressing limits.
+It requires hashing and a power-of-two slot count. The frozen snapshot stays in
+the same position; the following header becomes `RRCHASH3`: capacity at +8,
+last completely published simulation step at +12, and the hash ring at +16.
+Step N uses slot `N & (capacity-1)`. The producer stores the hash before publishing
+N, so an interrupted, partially executed step cannot be mistaken for a completed
+hash. Race reset clears the published counter. The default linear `RRCHASH2`
+format is unchanged when the option is absent.
+
+The host collects periodically, rejects a backward counter or a gap larger than
+the capacity, and assembles a complete linear trace. `c-long1-replay` and
+`c-longvar-replay` collect through two wraps of the 2,048-slot ring over 6,000
+active fields. All 5,985 common completed actor hashes match. Their first 1,598
+hashes also match the earlier linear-buffer replay, and the fixed field-5501
+actor, clock, camera and rank snapshots match. `c-ring-disabled-build` remains
+byte-identical to `c-events1-build`.
+
+Both longer runs add a siren-start request (kind 5, parameter 10) at simulation
+field 4878, with the earlier three requests unchanged. Thus siren dispatch now
+has cross-render-rate coverage. The special actor remains inactive in this
+route; its timer threshold alone is not evidence of an exercised special actor.
+
+The route also exposed a test-input issue: holding UP after a crash keeps the
+player running away from the motorcycle. This is native behavior: `$8b6ce`
+checks raw controls, and `$8b6ee` calls the manual running handler `$8b7a8` when
+input is held, bypassing the automatic return at `$8b6f4`. The long screenshot
+shows the rider running off-road; both traces retain state 3 accordingly. Further
+routes must release controls during recovery to cover remounting and subsequent
+riding. Do not count mere time spent in state 3 as completed crash recovery.

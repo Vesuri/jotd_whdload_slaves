@@ -8,7 +8,9 @@
 ;
 ; RRCSTEP1: cursor +8, count +12, captured field +16, quantum +20,
 ; frozen $a5900..$a873f at +24. RRCHASH2 follows with a longword slot count and actor
-; hashes (slot zero unused). Copies/hashes perturb timing: no FPS claims.
+; hashes (slot zero unused). STEP_HASH_RING uses RRCHASH3 and publishes a
+; completed-step counter for loss-checked host collection across ring wrap.
+; Copies/hashes perturb timing: no FPS claims.
 
 ; Select only if enabled, CPU >= 020, and the allocated public slave hunk is
 ; in a conventional Fast RAM window. Do not mistake Chip or $c00000 slow RAM
@@ -53,6 +55,14 @@ STEP_HASH_SLOTS = 2048
 	IFGT STEP_HASH_SLOTS-8192
 	FAIL "STEP_HASH_SLOTS exceeds signed indexed addressing"
 	ENDC
+	IFD STEP_HASH_RING
+	IFD STEP_NO_HASH
+	FAIL "STEP_HASH_RING requires hashing"
+	ENDC
+	IFNE STEP_HASH_SLOTS&(STEP_HASH_SLOTS-1)
+	FAIL "STEP_HASH_RING requires a power-of-two capacity"
+	ENDC
+	ENDC
 	IFND STEP_CAPTURE
 STEP_CAPTURE = 601
 	ENDC
@@ -65,6 +75,10 @@ step_reset:
 	move.l $a5d4c,8(a0)
 	clr.l 12(a0)
 	clr.l 16(a0)
+	IFD STEP_HASH_RING
+	lea step_hashes(pc),a1
+	clr.l 12(a1)
+	ENDC
 	lea step_queued_field(pc),a1
 	move.l $a5d4c,(a1)
 	clr.b step_replaying-step_queued_field(a1)
@@ -142,11 +156,19 @@ step_end:
 	eor.l d2,d0
 	dbf d1,.hash
 	move.l step_stats+12(pc),d1
+	IFD STEP_HASH_RING
+	andi.w #STEP_HASH_SLOTS-1,d1
+	lsl.w #2,d1
+	lea step_hashes+16(pc),a0
+	move.l d0,(a0,d1.w)
+	move.l step_stats+12(pc),-4(a0) ; publish only after the hash is complete
+	ELSE
 	cmpi.l #STEP_HASH_SLOTS,d1
 	bcc .nohash
 	lsl.w #2,d1
 	lea step_hashes+12(pc),a0
 	move.l d0,(a0,d1.w)
+	ENDC
 .nohash:
 	ENDC
 	lea step_stats(pc),a0
@@ -173,8 +195,13 @@ step_snapshot:
 	ds.b $a8740-$a5900
 
 step_hashes:
+	IFD STEP_HASH_RING
+	dc.b "RRCHASH3"
+	dc.l STEP_HASH_SLOTS,0 ; capacity and last completely published step
+	ELSE
 	dc.b "RRCHASH2"
 	dc.l STEP_HASH_SLOTS
+	ENDC
 	ds.l STEP_HASH_SLOTS
 
 step_start_sprite:
