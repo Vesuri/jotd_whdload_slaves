@@ -4426,3 +4426,54 @@ routine as though it were a pure velocity function would consume world effects.
 Ground/static object tables and other scripted constructors still need a full
 writer inventory. No family may inherit a previous occupant's endpoint based
 only on a matching slot number or unchanged allocation mask.
+
+### Shared-actor allocation generations (C6b, experimental runtime)
+
+`timing-live-actor-generation.i` validates all 44 bytes of native +0BEA8..+0BED2
+(instructions and relocated mask operands), copies that allocator unchanged,
+and installs a CUSTOM1-only entry hook. All three constructor call sites
+(+09A1E, +09B9A, +0BADE) reach it, including native calls retained by world
+clones. Under normal enhanced ownership or the admitted retained-UI phase-4
+world completion, a successful result 1..6 advances the corresponding private
+32-bit generation. Full allocation failure does not advance any generation.
+Native ownership and other UI phases execute the exact native allocator only.
+
+`timing-actor-generation.i` stores six longwords and a sticky exhaustion mask
+in 26 bytes at `RT_ACTOR_GENERATIONS`; the runtime arena is now 28,946 bytes.
+Preparation and normal activation clear it. Generation zero identifies the
+initial epoch's occupant, if any; the future predictor must clear its own
+cached identities at the same lifecycle reset. A release/reallocation within
+one world interval gets a new stamp even if the allocation mask ends unchanged.
+The increment happens during allocation, before constructor initialization;
+rendering/prediction must observe it only after serialized world work completes.
+
+At FFFFFFFF the generation saturates and the slot's exhaustion bit is set.
+Further allocations leave that bit set until lifecycle reset. A future
+predictor must reject exhausted slots rather than compare the saturated value
+as if it certified identity. No generation silently wraps to a prior value.
+This hook does not yet certify eligibility transitions, impact morphs, the
+scripted object or ground-object lifetimes; those remain separate barriers.
+
+The tracking wrapper preserves native D0/D1 results and all other registers.
+After recording, SUBQ.W/ADDQ.W reconstruct the allocator's original final
+ADDQ flags, including X/Z/C when full. It does not read privileged SR or use
+a post-68000 CCR instruction. The native fallback executes the copied routine
+without this reconstruction.
+
+The ignored `test_actor_generation_c.py` passes 1,536 exact native
+register/CCR/mask comparisons across all 64 allocation masks, six ownership
+states and four incoming user/supervisor CCR combinations. It rejects each of
+44 corrupted signature bytes before copying/patching, checks CUSTOM1-off and
+invalid READY behavior, exercises twelve overflow/repeated-allocation cases,
+and verifies two allocations of the same released slot yield generation 2.
+It also executes each of the three actual constructor JSR sites through the
+patched entry on a fresh emulator, confirming each stamps its allocated slot.
+Invalid standalone results 0/7/FFFF/FFFFFFFF do not write generation state.
+
+The expanded lifecycle test verifies generation/exhaustion reset after valid
+activation, retains atomic rejection, and still passes 240 PAL/NTSC fields at
+two arena addresses. Ordinary, runtime, VERIFY/runtime and input/runtime builds
+assemble. These are assembled 68000 instruction checks; live cross-CPU hook
+validation and the prediction consumer are still open. No authoritative
+motion or allocation policy was changed, and native flight activation remains
+absent.

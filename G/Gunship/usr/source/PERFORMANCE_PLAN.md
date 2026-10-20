@@ -769,7 +769,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     interval from its spawn and update order. The native six-slot audit proves
     release/reallocation can leave the same mask, and impacts morph a slot in
     place. Generations must cover allocator +0BEA8's three constructor callers,
-    with separate eligibility/morph barriers; hooks and prediction remain open.
+    with separate eligibility/morph barriers. A CUSTOM1-gated allocator hook
+    now stamps all three callers, preserves native flags and resets on lifecycle
+    activation (1,536 native comparisons). Eligibility/morph handling, other
+    object families, live hook validation and prediction remain open.
   - C6c. Bound prediction at known impacts; snap at discontinuities. Never write predicted
     poses into world state or pass them to collision, damage or AI.
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon

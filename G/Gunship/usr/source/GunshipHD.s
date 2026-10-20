@@ -483,6 +483,7 @@ _verify_scene	dc.l	0
 	include "timing-live-target-view.i"
 	include "timing-live-gauges.i"
 	include "timing-live-map.i"
+	include "timing-live-actor-generation.i"
 	ENDC
 
 	IFD VERIFY

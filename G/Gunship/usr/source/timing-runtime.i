@@ -69,7 +69,8 @@ RT_GAUGE_SCRATCH equ RT_GAUGE_FIELD+4 ; 16-byte instruments + 12-byte camera
 RT_VIEW equ RT_GAUGE_SCRATCH+28
 RT_VIEW_SAVED equ RT_VIEW+TPV_SIZE
 RT_VIEW_PHASE equ RT_VIEW_SAVED+WT_STATE_SIZE ; 0 closed, 1 collecting, 2 drawing
-RT_ARENA_SIZE equ RT_VIEW_PHASE+2
+RT_ACTOR_GENERATIONS equ RT_VIEW_PHASE+2
+RT_ARENA_SIZE equ RT_ACTOR_GENERATIONS+AG_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.

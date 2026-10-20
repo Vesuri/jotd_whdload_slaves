@@ -68,6 +68,10 @@ timing_runtime_dispatch:
  bne .status
  movea.l timing_runtime_arena(pc),a0
  bsr timing_target_view_install
+ tst.l d0
+ bne .status
+ movea.l timing_runtime_arena(pc),a0
+ bsr timing_actor_generation_install
 .status:
  lea timing_runtime_status(pc),a0
  move.l d0,(a0)
