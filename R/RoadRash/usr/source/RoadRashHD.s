@@ -323,6 +323,9 @@ pl_messages_main
 pl_main
 	PL_START
 	PL_IFC2
+	IFD VERIFY_C_SEED_RNG
+	PL_PS $657C,step_seed_rng
+	ENDC
 	IFND C_STEP_BUILD
 	PL_PS	$7736,safe_swap
 	PL_PS	$6FA0,bound_delta
@@ -378,9 +381,6 @@ pl_main
 pl_c_simulation
 	PL_START
 	PL_IFC2
-	IFD VERIFY_C_SEED_RNG
-	PL_PS $657C,step_seed_rng
-	ENDC
 	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
@@ -436,6 +436,21 @@ pl_c_simulation
 	ENDC
 	PL_ENDIF
 	PL_END
+	ENDC
+
+	IFD VERIFY_C_SEED_RNG
+	IFND VERIFY
+	FAIL "Fixed RNG seed is diagnostic only"
+	ENDC
+; Shared by diagnostic B references and C. Seed before native actor creation,
+; so menu frame count cannot select different initial opponent randomness.
+step_seed_rng:
+	move.l d0,-(a7)
+	moveq #0,d0
+	jsr $90088
+	jsr $9011c
+	move.l (a7)+,d0
+	jmp $8685c
 	ENDC
 
 ; A one-field simulation has measurable integration/collision differences.

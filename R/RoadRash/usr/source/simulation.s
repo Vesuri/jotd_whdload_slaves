@@ -12,21 +12,6 @@
 ; completed-step counter for loss-checked host collection across ring wrap.
 ; Copies/hashes perturb timing: no FPS claims.
 
-	IFD VERIFY_C_SEED_RNG
-	IFND VERIFY
-	FAIL "Fixed RNG seed is diagnostic only"
-	ENDC
-; Menu rendering consumes all three RNG streams. Establish controlled initial
-; conditions before native race initialization, not after actors have spawned.
-step_seed_rng:
-	move.l d0,-(a7)
-	moveq #0,d0
-	jsr $90088
-	jsr $9011c
-	move.l (a7)+,d0
-	jmp $8685c
-	ENDC
-
 ; Select only if enabled, CPU >= 020, and the allocated public slave hunk is
 ; in a conventional Fast RAM window. Do not mistake Chip or $c00000 slow RAM
 ; for Fast RAM. Reject the whole reserved upper-24-bit window conservatively.

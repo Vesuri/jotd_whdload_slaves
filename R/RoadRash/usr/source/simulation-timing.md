@@ -1267,3 +1267,24 @@ now have a zero fractional remainder. The next race starts with reset counters.
 The normal binary remains byte-identical; this closes the observed candidate
 cleanup defect, not the outstanding B handling calibration or normal-runtime
 integration and acceptance checks.
+
+## Shared seeded B/C handling calibration
+
+`VERIFY_C_SEED_RNG` now installs its existing initializer through `pl_main`,
+still behind CUSTOM2 and still diagnostic-only. Its code is shared by B-style
+VERIFY builds and C, so a native timing reference can start from the same
+random state as the candidate. The normal slave remains byte-identical.
+
+`b-steering-seeded-lap`, `b-fourfield-seeded-lap` and
+`c-steering-seeded-lap` use cached real-speed 020, the established A1 tape and
+the same initializer. All three live-field-100 additive RNG snapshots
+(`$90000..$90087`) have SHA-256
+`c28968215eeea324c122f851f13d71f1658b9668d801360bef88d4c632bf3dec`.
+This controls the initial randomness; it does not equate their simulation
+boundaries or subsequent random consumption.
+
+The comparison identifies a candidate handling defect independent of that
+randomness: before steering begins at field 600, both B references retain
+player lateral position 160, whereas the candidate reaches 183. The
+unseeded replay showed the same effect. This is why the earlier full-race
+cross-cadence pass and better response time were insufficient for promotion.
