@@ -404,7 +404,10 @@ release limitations, not implied by these emulator checks.
 This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
 `simulation-and-presentation.md`.
 
-**Status: in progress; C1 is resolved: game time must match real time.** The C4d
+**Status: paused at the user's request; C1 is resolved: game time must match
+real time.** No C runtime changes have been implemented yet. Presentation must
+extrapolate forward from the latest completed state: the user rejects the
+333 ms visual delay of previous/current interpolation. The C4d
 baseline pricing gate supports the proposed original-A500 cadence. In the
 retained A2 68000 traces, contiguous intervals from the return of rendering
 (`+05836`) to the next render call (`+05830`) cost:
@@ -434,6 +437,13 @@ initial time-model notes suggested. The gauge routine `+0ADB6` keeps separate
 drawn heights for the two buffers; elapsed-time slew and per-buffer repaint
 must be treated separately.
 
+Rendering also produces a result consumed by the tick loop: `+05C28` clears
+`D3958`, the shape-facing routine writes it at `+0691C`, and `+0583C` tests it
+after rendering and can set the player's flight-end state. This dependency
+must be separated before skipping render calls for catch-up or using predicted
+poses. Its collision semantics and the cost of evaluating it without drawing
+remain to be validated.
+
 - **C1. Correct real-time clock: exactly 3 simulation ticks per second.**
   - The user's criterion is that the in-game clock runs at the correct speed.
     The original Elapsed Time display divides the unsigned tick counter
@@ -454,12 +464,20 @@ must be treated separately.
   - C2b. Between ticks, render as many frames as time allows.
   - C2c. Keep an owed-fields accumulator so speed stays exact over time.
   - C2d. Count only fields in which the game screen is active, as the VBL server already does.
-- **C3. Interpolation by elapsed time.**
-  - C3a. The interpolation code at `+0433C`–`+043E2` already blends 27 camera/effect words and
-    the instrument values with `frac = acc / period`.
-  - C3b. Feed it `frac = unconsumed clock units / display frequency` instead,
-    clamped to [0, 1].
-  - C3c. Render at least one frame per tick.
+- **C3. Forward extrapolation by elapsed time.**
+  - C3a. Replace the native previous/current blend at `+0433C`–`+043E2` with
+    presentation predicted from the latest completed simulation state. Derive
+    the next pose from native motion arithmetic where possible; audit each
+    object's update order before using a velocity or last-position difference.
+  - C3b. Use `frac = unconsumed clock units / display frequency`, clamped to
+    [0, 1], to predict within the next tick interval. At zero fraction, render
+    the latest completed pose exactly. Do not introduce a one-tick visual delay.
+  - C3c. Render between ticks, except during bounded catch-up. Keep predicted
+    poses separate from authoritative state; collision, damage and AI must not
+    consume them. Reset prediction on discontinuities and object replacement,
+    and bound projectile prediction at known impacts.
+  - C3d. Forward prediction does not increase the 3 Hz input/physics cadence.
+    Raising that cadence requires the per-quantity audit in G.
 - **C4. Catch-up on slow machines.**
   - C4a. When a frame takes longer than a tick period (the A500 in heavy scenes), run overdue ticks
     back to back without rendering, up to a bound.
@@ -468,12 +486,13 @@ must be treated separately.
   - C4d. Price this first. On the A500 one tick currently costs one or two frames of work.
     Measure the tick-only cost (`+0563A` minus `+04288`) to decide whether C1's rate is
     sustainable on the 68000. If it is not, keep the original behaviour there as an option.
-- **C5. Interpolate everything that moves.**
+- **C5. Predict everything that moves.**
   - C5a. Only the camera, the instruments and six effect objects are interpolated today.
   - C5b. List the world objects that move per tick: enemy vehicles and helicopters, missiles,
     rockets and the "special object" at `62(a5)`.
-  - C5c. Snapshot their previous and current positions at tick completion, and blend them in the
-    renderer.
+  - C5c. Snapshot authoritative poses and motion inputs at tick completion, then
+    predict presentation poses in the renderer. Track object identity so a reused
+    slot cannot inherit its previous occupant's trajectory.
   - C5d. At 3 ticks/s, any object left out visibly jumps three times per second.
 - **C6. Per-frame state to per-tick or per-field.**
   - C6a. Bar gauges `+0ADB6`: currently 1 pixel per frame. Make them per field, keeping the
@@ -482,7 +501,7 @@ must be treated separately.
     field.
   - C6c. Effect animation `+0BE5A`: check it, and make it per tick or per field.
   - C6d. Map re-check every 8 frames `+0468C`: make it per field.
-  - C6e. Key code 12 (`+04EF2`, `D1548` toggle): redefine it as the interpolation on/off switch,
+  - C6e. Key code 12 (`+04EF2`, `D1548` toggle): redefine it as the prediction on/off switch,
     with no effect on game speed, or retire it.
   - C6f. Leave the buffer-indexed dirty counters (2 frames = both buffers) as they are.
 - **C7. Input.** Controls are read once per tick, as now. Keep the joystick/mouse accumulation in
@@ -493,6 +512,10 @@ must be treated separately.
     same input on the same ticks.
   - C8b. Equal-elapsed-fields check: the same number of ticks per 500 fields on every CPU.
   - C8c. Durations in play: fuel, mission clock, weapon reload, lamp blink.
+  - C8d. Check zero-fraction poses against completed simulation state and predicted
+    endpoints against the next native update in free motion. Exercise spawn,
+    impact, slot reuse, teleport and pause/resume boundaries. Confirm extra
+    presentation frames cannot change authoritative state or gameplay RNG.
 - **C9. Option.** A CUSTOM bit that restores the original coupling, for comparison and for users
   who prefer it.
 
@@ -590,5 +613,6 @@ This means raising the tick rate and rescaling every per-tick quantity:
 - G2. Audit the flight model, AI, weapons, fuel and timers.
 - G3. Validate behaviour in play, not only the arithmetic.
 
-This is large and risky. It is not needed for smoothness, because interpolation provides
-smoothness at the original tick rate.
+This is large and risky. Forward prediction can provide visual smoothness at the
+original tick rate, but improving input response requires a higher simulation
+cadence or a separately validated input/presentation design.
