@@ -656,13 +656,15 @@ in the tested baseline and 25 fps crash scenarios.
 
 The current user-facing option is the boolean **Enhanced framerate** (`CUSTOM2`):
 omitted or `0` retains original timing; `1` enables the framerate enhancements.
-The normal beta currently enables B3 and B4 together. Diagnostic C builds select
-the independent simulation instead, without applying B's floor/clamp on top.
+The normal beta now selects C's independent simulation on 68020+ with Fast RAM,
+without B's floor/clamp. Unsupported hardware retains original timing. Diagnostic
+B builds retain the earlier timing safeguards for reference comparisons.
 The older bit-0/bit-1 options documented in B's historical results are superseded.
-Input/loading correctness fixes remain unconditional. Safe timing permits at most 25 fps and limits a delayed simulation
-step to eight fields. It does not make the game fixed-step or guarantee the same
-collision outcomes across frame rates. C–G remain open; no default timing or release
-packaging decision is made here.
+Input/loading correctness fixes remain unconditional. The historical B safeguard
+permits at most 25 fps and limits a delayed simulation step to eight fields; it
+does not guarantee equal collision outcomes across frame rates. C replaces that
+mitigation in the normal beta with consistent simulation steps. C remains open
+until its full regression and latency validation is complete; D–G remain open.
 
 Small-delta functional tests use the same 68020 configuration with fast execution,
 render skipping and field-based waits; they establish correctness limits, not real
@@ -671,8 +673,8 @@ hardware speed. Straight-line distance after 490 fields is 3,364,352 at delta 4,
 zero crashes, and one earlier crash respectively, with different opponent order.
 The protected fast run exactly matches the delta-2 final state, rank order and crash
 count. Full rendering at 25 fps also matches the render-skipped delta-2 final state.
-This is why the supported safety mode stops at 25 fps, rather than claiming 50 fps
-is safe or applying a guessed fractional correction to all simulation paths.
+This is why the earlier B safeguard stopped at 25 fps. Those results remain a
+reference for C's simulation changes, not a frame-rate limit in the current beta.
 
 B diagnostics are compile-time only: `VERIFY_B` counts gate/drain calls and simulation
 deltas; `VERIFY_SKIP_RENDER` omits `$afd60`; `VERIFY_FRAME_PERIOD=N` requests a minimum

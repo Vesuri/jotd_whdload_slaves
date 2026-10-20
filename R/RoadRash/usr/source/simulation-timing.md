@@ -1,7 +1,8 @@
 # Simulation/presentation separation audit
 
-C is in progress. This audit does not establish a working independent simulation.
-The production slave still uses B's timing. No frame limiter is being added.
+C is in progress. The normal beta now uses the shared independent simulation
+on supported hardware when Enhanced framerate is enabled. Runtime integration
+and remaining regression/latency checks are not yet a completion claim.
 Addresses follow performance-plan.md's absolute-address convention.
 
 ## Existing boundaries and ownership
@@ -873,3 +874,35 @@ This establishes actual finish-line and post-race restart coverage for this
 route. It does not cover every championship outcome or audible sound playback.
 The private evidence and recorded tape are under `tmp/dev/tmp/c-fullrace1` and
 `tmp/dev/tmp/c-fullracevar`.
+
+## Shared runtime integration
+
+`simulation.s` now contains the shared C implementation formerly in
+`verify_c_step.s`. Normal builds include it with `C_RUNTIME_ONLY`, omitting the
+large frozen snapshot, hash array and per-step hashing. They retain the small
+cursor/counter record used by scheduling and the input ring. `VERIFY` builds
+retain the earlier A/B path unless `VERIFY_C_STEP` selects the full C diagnostic;
+`C_SIMULATION` explicitly selects the lean runtime with optional generic
+instrumentation. None of these build switches is a user-facing frame-rate mode.
+
+The normal beta is 6,584 bytes and is byte-identical to the private runtime
+prototype used for steering/release and keyboard pause/resume checks
+(`c-runtime-prototype-input`). Pause freezes the active clock at field 161.
+The full C diagnostic built after extraction is byte-identical to
+`c-endcapture-disabled-build`, retaining the earlier regression implementation.
+
+`c-runtime-boundary` runs the actual normal slave with the attack/crash tape,
+then breaks immediately before returning from the completed simulation step.
+At cursor 1457, all actor records, stopwatch, simulation clock, camera,
+crash-camera offset and rank cells match the diagnostic capture in
+`c-finish-regression`. The runtime binary contains no capture instrumentation;
+the debugger reads the authoritative state at that boundary.
+
+`c-runtime-dispatch` verifies the actual normal slave in five configurations:
+toggle omitted, toggle explicitly off, enabled with 68020/Fast RAM, enabled on
+the 1 MB Chip 68000 setup, and enabled on a Chip-only 68020. Both off cases and
+both unsupported configurations retain the original preparation, simulation,
+delta, animation, swap, input and camera instructions. The supported machine
+installs C and advances one-field simulation steps. The normal Readme and build
+dependencies now describe this integration. Broader A2/A4, MMU, CD32 and latency
+validation remains required before declaring C complete.

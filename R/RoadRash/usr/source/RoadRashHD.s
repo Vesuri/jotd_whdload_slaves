@@ -3,9 +3,19 @@
 	INCLUDE	whdload.i
 	INCLUDE	whdmacros.i
 
+	IFD C_SIMULATION
+C_STEP_BUILD = 1
+C_RUNTIME_ONLY = 1
+STEP_NO_HASH = 1
+	ELSE
 	IFD VERIFY
 	IFD VERIFY_C_STEP
 C_STEP_BUILD = 1
+	ENDC
+	ELSE
+C_STEP_BUILD = 1
+C_RUNTIME_ONLY = 1
+STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
@@ -787,9 +797,14 @@ _tags
 _password		dc.l	0
 	dc.l	WHDLTAG_CUSTOM2_GET
 _enhanced_framerate	dc.l	0
+	IFD C_STEP_BUILD
+	dc.l WHDLTAG_ATTNFLAGS_GET
+verify_attn dc.l 0
+	ELSE
 	IFD VERIFY
-	dc.l	WHDLTAG_ATTNFLAGS_GET
-verify_attn	dc.l	0
+	dc.l WHDLTAG_ATTNFLAGS_GET
+verify_attn dc.l 0
+	ENDC
 	ENDC
 	dc.l	0
 	
@@ -807,10 +822,13 @@ expansion_memory:
 	ENDC
 	ENDC
 	
-	IFD VERIFY
-	IFD VERIFY_C_STEP
-	include	verify_c_step.s
+	IFD C_STEP_BUILD
+	IFND VERIFY
+verify_c_selection:
+	dc.b "RRCSEL01"
+	dc.l 0,0,0,0
 	ENDC
+	include simulation.s
 	ENDC
 	IFD DEBUG
 		dc.l	WHDLTAG_CUST_DISABLE,vposw

@@ -32,12 +32,12 @@
  - fixed idle joystick steering recentring and keyboard/CD32 pause handling
  - wait for screen DMA before loading files, fixing the uncached 68030 crash
  - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
- - enables field-timed roadside animation and safe timing together: currently
-   at most 25 frames per second, with steps limited to 8 fields after a delay
- - CUSTOM2=0 (or omitted) retains original timing
- - 50 fps simulation is not enabled by safe timing: small-step testing found
-   distance and collision differences. Faster rendering can still change collision
-   timing and opponent order; this is not a fixed-step simulation rewrite.
+ - on 68020+ with Fast RAM, advances simulation in 20 ms PAL steps and renders
+   completed frames as fast as possible while retaining vsync
+ - no added frame limiter or delayed interpolation; slow frames catch up the
+   required simulation steps before rendering
+ - CUSTOM2=0 (or omitted), 68000 and unsupported memory configurations retain
+   original timing and rendering
  - input and loading fixes remain active with Enhanced framerate disabled
 
  Version 2.0 (18.08.2019) done by JOTD:

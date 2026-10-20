@@ -1,10 +1,10 @@
-; Diagnostic C proof, enabled only by VERIFY + VERIFY_C_STEP.
-; Diagnostic experiments require CUSTOM2=1 (Enhanced framerate).
-; STEP_FIELDS=1 (50 Hz PAL) is the primary candidate. STEP_EXTRAPOLATE is
-; an optional experiment for larger diagnostic quanta, never a frame-rate mode.
-; Input history exhaustion aborts explicitly; no complete pause/transition/action
-; audit yet. See simulation-timing.md before extending.
-; All game addresses below are absolute. Normal builds contain none of this.
+; Shared C simulation, selected by CUSTOM2 and the CPU/Fast RAM check below.
+; Normal builds use C_RUNTIME_ONLY: no snapshot storage or per-step hashes.
+; VERIFY + VERIFY_C_STEP retains the diagnostic capture/replay instrumentation.
+; STEP_FIELDS=1 (50 Hz PAL) is the runtime timestep. Larger quanta and forward
+; extrapolation are diagnostic experiments, never user-selectable frame modes.
+; Input history exhaustion aborts explicitly. See simulation-timing.md for
+; validation results and remaining release checks. Game addresses are absolute.
 ;
 ; RRCSTEP1: cursor +8, count +12, captured field +16, quantum +20,
 ; frozen $a5900..$a873f at +24. RRCHASH2 follows with a longword slot count and actor
@@ -241,6 +241,7 @@ step_end:
 	ENDC
 .nohash:
 	ENDC
+	IFND C_RUNTIME_ONLY
 	lea step_stats(pc),a0
 	IFD STEP_CAPTURE_END
 	tst.w $a59d0
@@ -261,6 +262,7 @@ step_end:
 	ELSE
 	move.l #STEP_CAPTURE,16(a0)
 	ENDC
+	ENDC
 .done:
 	IFD VERIFY_C_LATENCY
 	bsr step_latency_simulated
@@ -270,6 +272,7 @@ step_end:
 step_stats:
 	dc.b 'RRCSTEP1'
 	dc.l 0,0,0,STEP_FIELDS
+	IFND C_RUNTIME_ONLY
 step_snapshot:
 	ds.b $a8740-$a5900
 
@@ -282,6 +285,8 @@ step_hashes:
 	dc.l STEP_HASH_SLOTS
 	ENDC
 	ds.l STEP_HASH_SLOTS
+
+	ENDC
 
 step_start_sprite:
 	move.w step_start_frame(pc),d0
