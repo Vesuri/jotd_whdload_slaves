@@ -1,3 +1,47 @@
+## Normal riding-pose relocation does not improve the current runtime
+
+The remaining native riding-pose selector $8a8aa..$8a92f is 134 bytes,
+including its saved-D3 restore and RTS. The previous mapped uncached profile
+attributes about 1.6% of flat costs to this path. A private candidate copies
+it after the enhanced patch list, preserving the absolute prediction call
+at $8a8e2, all internal relative branches, native tables and native result
+storage. Its entry replaces exactly the six-byte BCLR at $8a8aa. Other
+pose branches can still reach the untouched native epilogue at $8a92c.
+Initialization occurs inside the existing CUSTOM2/CPU/Fast gate and before
+the existing cache flush.
+
+`c-normal-pose-copy-probe` reads the initial candidate live at Fast address
+$9fad48 and verifies all 134 bytes against the patched native span (using
+the original first six bytes before the entry redirect). It includes the
+prediction call and the native epilogue. This is relocation-byte evidence,
+not a full gameplay-equivalence claim.
+
+Fresh normal `c-normal-pose-{fast,control}-matrix` results use 20,668-byte
+binaries differing only at enabled byte 20166. Both give 12.5 fps on Fast
+020, 8.3 uncached and 23.0 on 060. Candidate/control 040 rates are
+21.5/21.3 fps. Both Fast 020 distances are 3,311,794, below the current
+integrated 3,321,603; uncached distance remains 3,301,969.
+
+A follow-up appends the extension after existing code and replaces four
+initialization NOP bytes with its call. Every one of the 473 existing named
+assembler values retains its value; the binary grows exactly 256 bytes to
+20,736. This preserves relative layout, not a claim of equal absolute
+runtime placement. `c-normal-pose-aligned-{fast,control}-matrix` again gives
+12.5/8.3/23.0 fps on Fast 020/uncached 020/060, but 21.7/21.8 on 040.
+Distances are unchanged from the first pair. Candidate/control differ only
+at enabled byte 20524. The relocation is slower than this control and does
+not improve the distance gate, so it is not integrated. No full-race,
+response or cadence-equivalence acceptance is claimed for these candidates.
+
+All sixteen matrix cells pass their functional checks. All sessions are
+terminal. Build directories retain `source.patch`; appended builds also
+retain `normal_pose_fast.s`. Normal SHA-256 values:
+
+- Initial candidate: `cf77f22739ce3180b46a150be077ce0e931c106b932bf498296608eaa57f94f0`.
+- Initial control: `34eccdc4531a1329b337a65a97d31a17c36c011fd2c5488d8f7c9a682b54377c`.
+- Appended candidate: `aba899cc08e4ea457f85f660d65a25565400d858e4b1e96217cf5cad3feb882e`.
+- Appended control: `e6379430aa9bf5bec8e480d0d7219dee2abe2d6ee93c2b4efb749841e232841f`.
+
 ## Separating side-contact guard fails the handling regression
 
 `c-heading-exchange-probe` records native $8ef5c entry and $8efb6 exit
