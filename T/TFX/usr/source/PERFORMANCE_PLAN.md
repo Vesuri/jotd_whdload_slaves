@@ -316,6 +316,17 @@ emulator A/B results; Apollo hardware tuning remains dependent on step 14.
   `_greenpal`, `_colour_override`), bugs 30/67, fade routines.
 - Exit: root cause written down, fix verified with screenshots on both machines.
 
+Investigation started; exit not passed. See `tmp/dev/docs/palette-investigation.md`.
+The yellow symptom has not been reproduced in the captured enrolment, menus,
+training introduction, aircraft/loadout selection or sampled flight views.
+Eighteen stable flight samples on 040/020 match all 256 hardware palette entries
+to the game's live snapshot. Two complete traced 040 SetPal calls write all
+512 RGB entries to the correct banks/nibbles. These observations do not rule out
+an intermittent or hardware-only fault; not every requested 020 view was verified,
+and the mission-briefing route remains incomplete. No root cause or palette fix
+is claimed. The slave and both FPSPs remain byte-identical to step 11.
+A more specific trigger or hardware capture is needed to direct the next search.
+
 ### 13. Selection, options and regression
 
 - Auto-select `tfx.020` with the new path on 040 + FPU. Leave 020/030/060 selection and
