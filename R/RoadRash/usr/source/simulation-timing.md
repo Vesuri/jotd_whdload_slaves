@@ -1,3 +1,49 @@
+## Lane-target dispatch explains B's missing attack checks
+
+`attack_dispatch_c.py` observes the actual AI function dispatch, the return
+from native lane-target selection, and the selected follow-up function. The
+first site `$8d3d8` is mapped into C's relocated auxiliary copy; `$90422`,
+`$90494` and `$90646` remain native. All breakpoints restrict A1 to rival
+`$a6260`. The probe replays the unchanged lap inputs through live field 1200
+and observes until 1280, with no input transitions inside that interval.
+Raw actor/player records, registers and binary provenance are retained.
+
+`b-attack-dispatch` records 57 observations over 19 AI updates. All select
+`$903f2` initially. At cursors 1224, 1228, 1232, 1236, 1240, 1245, 1249 and
+1253, the lane lookup returns rider `$a61e0` and dispatch selects `$8d400`,
+which follows avoidance/acceleration rather than calling the attack test.
+At cursor 1257 the lookup returns -1 again and dispatch selects `$90570`,
+which calls `$90670`. This explains the gap in the preceding attack trace:
+B is handling another rider in the lane, not merely missing a timer deadline.
+
+`c-lane-motion-attack-dispatch` records 231 observations over 77 AI updates.
+All initial dispatches are also `$903f2`, but every lane lookup returns -1
+and every follow-up selects `$90570`. At cursor 1240 B's rival is in lane 3,
+world x=39, road-relative x=48, while the combined C candidate's rival is in
+lane 2, world x=-60, road-relative x=-33. At cursor 1253 those values are
+B lane 3 / x=17 / relative=24 and C lane 2 / x=-47 / relative=-21.
+The changed lane precedes the additional attack and explains why that attack
+path remains available in C. This is evidence of upstream trajectory divergence,
+not justification to suppress the native attack test or force a lane target.
+
+As a countercheck, `c-npc-lifecycle-attack-dispatch` runs the exact retained
+fractional-NPC candidate from `c-npc-lifecycle-lap/tested.slave` (SHA-256
+`46eddb8e9be08f869cbb6cacb11a82a87dcf265608f9f6e472c5f7f63e5493fb`).
+It records 243 observations over 81 AI updates: 76 lane misses and five targets
+at `$a63e0`; follow-up dispatch is `$90570` 57 times, `$90530` 19 times and
+`$8d400` five times. This older candidate is not an equal-layout comparison
+with the lane-scan runtime. Its retained lap samples show rival lane 5 at 1224
+and lane 4 at 1240, with attack active at 1240. It therefore does not restore
+B's lane-3 approach either; fractional conservation alone has not closed the
+handling requirement.
+
+Next validation should compare the rival's steering target, heading update,
+road-relative accumulation and fractional displacement before lane assignment
+first diverges. The target is the trajectory that feeds these decisions, not
+an attack cooldown selected to make the final crash field match. No runtime
+change or relaxation of C's handling acceptance follows from this audit.
+The probe passes Python compilation and all three emulator sessions exit cleanly.
+
 ## Native attack-selection audit and approach measurements
 
 The current combined candidate's live disassembly is retained in
