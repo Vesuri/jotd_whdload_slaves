@@ -2051,3 +2051,46 @@ and zero for the other outcomes. Write tracing reports no uninventoried
 writes. Fourteen cleanup signature corruptions and a wrong player binding
 reject without writes (531 assembled calls). Full world-loop integration and
 CUSTOM1-gated gameplay installation remain pending.
+
+### World fire flags and weapon-input audit
+
+Native +04DC6 detects rising edges against the previous sampled buttons;
++04DE0/+04DEC increment two counters at hunk 0 +04E26/+04E28. The foreground
+block +04E4C..+04E88 clears the two consumer flags at hunk 6 +04292/+04293,
+sets each byte to 1 if its counter is nonzero, then clears that counter.
+The flags are edge requests, not held-button levels. Preserve held state in
+history/scheduler for its own consumers, but do not OR it into these flags:
+that would introduce a repeated launch request on every tick while held.
+
+`timing-world-fire.i` builds these two bytes in a private output buffer from
+the scheduler's accumulated low two edge bits. `world_fire_prepare` takes
+scheduler/output in a0/a1 and returns 0, -1 upstream failure or -3 wrong phase.
+It requires world phase 2 and checks upstream health before and after packet
+construction. It preserves non-result registers and does not acknowledge the
+world, clear edges or touch native input latches. Discard the private packet
+on failure; execute weapon work once before `scheduler_world_done` clears the
+interval. Repeated preparation is not permission to repeat weapon execution.
+
+`tmp/dev/tools/test_world_fire_c.py` passes 144 comparisons with the native
+counter-collapse block (six values for each counter, four held masks),
+including signed/high counter values and unrelated edge bits. Eight scheduled
+runs cover 960 fields at 50/60 Hz, batches 1/25, a released brief press and a
+long-held press. Each produces one request at the first deadline and none at
+later deadlines, with identical results across batching. Three phase/fault
+rejections leave the private output untouched (4,179 assembled calls).
+
+The weapon block +0979C..+09B9A has a single direct RNG call at +099FA, to
+native default-bound +07A5C. Its consumer-flag operands are +097B2, +097FA,
++09832, +0995A, +09A92 and +09B7A for the first byte (some operations are words),
+and +0983C/+09854 for the second. The eventual extraction must redirect both
+reads and clears to the same private two-byte packet and redirect the RNG
+call, retaining native allocation, recoil and launch-pose arithmetic. Native
+actor work at +0BED4 runs before launch selection; it still needs full routing
+and state validation. No weapon clone or launch integration is installed yet.
+
+Outside that block, scripted +0817A..+08198 waits for live button release and
+a field-counter change, then clears the first edge counter and both consumer
+flags at +0819E. This is a lifecycle boundary requiring sampling/rebase policy,
+not ordinary deadline input. Replay also writes through the input block at
++05420..+05428. Those paths must be resolved before redirecting native weapon
+latches in gameplay. All eventual installation remains gated by CUSTOM1.
