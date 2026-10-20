@@ -1158,3 +1158,56 @@ Simply amplifying input or changing the simulation quantum would not establish
 correct behavior. Any correction needs fresh cross-cadence state/event replays,
 B handling comparisons and these visible-response checks. Existing identical
 C replay hashes prove determinism, not correct handling relative to B.
+
+## Diagnostic steering normalization candidate
+
+`VERIFY_C_STEERING` includes `verify_c_steering.s`, requires VERIFY and
+`STEP_FIELDS=1`, and installs its hooks only through the selected C patch list.
+It is not enabled in the normal build. The normal slave remains byte-identical
+to `a2eb36e` (6,804 bytes).
+
+The candidate separates two native uses of elapsed movement:
+
+- For a riding player, the initial heading/pose calculation uses speed times
+  the established four-field timing reference. Its second movement factor stays
+  one-field distance. Crashing players retain the native initial calculation.
+- For non-skidding ground movement, the two truncations `/256` and `*13/16`
+  become one signed rational calculation with denominator 4096. The residual
+  is carried to the next tick, with symmetric truncation toward zero.
+  Native skid scaling remains in place and clears the residual; crash handling
+  clears it too. The normalized heading still feeds the native grip test, so
+  retaining its code does not prove identical skid behavior.
+- Race preparation and active-race reset clear the residual. Airborne movement
+  bypasses this native ground path; landing and collision/reset interactions
+  still need explicit validation.
+
+On the field-300 real-speed cached-020 paired-image test,
+`c-steering-candidate-0/1`, the first differing viewport capture is field 311
+(220 ms capture-end estimate), versus field 318 (360 ms) in the current normal
+C binary. This is a diagnostic-build, single-phase observation, not a new
+normal-runtime latency claim. At live field 321, the candidate has player
+position 179, heading 25 and last lateral increment 2; the current normal C
+has position 160, heading 6 and increment 0. The earlier B three-field sample
+has position 174, heading 21 and increment 4.
+
+The controlled B-style four-field diagnostic
+`b-steering-fourfield-trace` ends at position 187, heading 30 and increment 10.
+It starts with speed 6480 and ends at 7104, whereas the candidate starts at
+6420 and ends at 6966. These live-field snapshots are not equal simulation
+boundaries and do not establish calibrated trajectory equivalence. They are a
+reason to continue the reference comparison, not to promote the candidate.
+
+The retained candidate RIGHT and LEFT traces each provide 20 ground-path
+returns. Every observed `$8b9a0` result matches an independent calculation of
+`trunc((13 * signed_product + previous_remainder) / 4096)`; final remainders
+are 3556 and -3345. The LEFT sample ends at position 138 and heading -28.
+The carry is symmetric, but the earlier native input/heading truncations and
+input history are not thereby proved symmetric.
+
+`c-steering-candidate-replay` and `c-steering-candidate-var` replay the attack
+tape with ordinary and varying presentation cadence. All 1,598 completed actor
+hashes, three sound requests, and tick-1457 actor/clock/spawn-timer/camera/rank
+ranges match between the two candidate runs. The candidate intentionally
+differs from the old C state; cross-cadence equality alone is not acceptance.
+Full-race, skid/crash/landing, pause/restart, curve/AI interactions, signed
+handling calibration and multi-phase visible-response checks remain required.
