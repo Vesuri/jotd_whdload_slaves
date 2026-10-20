@@ -1677,3 +1677,27 @@ The audit also identifies an algorithmic opportunity for later measurement:
 unchanged current actor's speed/direction 14,502 times. Hoisting invariant reads
 would reduce actual work rather than merely relocating it; register preservation
 and the interrupted-input ownership still need checking before implementation.
+
+## AI invariant-read experiment: no throughput improvement
+
+Two private implementations tested hoisting the current actor's signed speed
+out of `$8d966`'s scan. Neither the native loop nor its callees write that actor's
+speed/direction; the loop has no callees, and the per-field input path contains
+no speed/direction-field writes. D5 was saved and restored, with MOVEM on return
+to preserve the final native condition codes. All original comparisons, table
+selection, division, output registers and minimum-time updates were retained.
+
+The first version moved the scan into Fast RAM. `c-ai-invariant-cost` produces
+191 frames over fields 100–1000, versus the matching reference's 193. The second
+keeps the loop at its native addresses: an entry wrapper saves/derives D5, calls
+the original body, then restores D5. A MOVE/BRA replaces just the repeated
+speed/sign calculation. `c-ai-invariant-inline-cost` produces 192 frames.
+Both start with 29 frames. Their finish positions at arbitrary live checkpoints
+are not used as equal-boundary proof.
+
+Neither variant supplies evidence of a throughput gain, so both were removed
+without promotion or a claim of full gameplay equivalence. Exact helper sources,
+the final patch and tested binaries remain in their private build directories.
+The normal source and binary are unchanged. These results do not close C's
+performance requirement; further work should be guided by an explicit remaining-
+requirements audit, not continued small edits without measured benefit.
