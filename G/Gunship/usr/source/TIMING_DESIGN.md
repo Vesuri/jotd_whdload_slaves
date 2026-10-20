@@ -3095,3 +3095,41 @@ All normal and experimental build variants assemble for the 68000. Without
 TIMING_RUNTIME, ordinary/VERIFY/TIMING_INPUT binaries remain byte-for-byte
 unchanged. These are Unicorn and build checks; live interrupt capture and
 foreground ownership are not yet validated together.
+
+## Native FIFO retirement under runtime ownership
+
+The native keyboard producer at +03488 appends to a ten-word FIFO at
+`a4+$4c68`, whose longword count is at `a4+$4c7e`. The +034C8 hook runs
+after count increment and writes the accepted key into its appended slot.
+The native +034E8 consumer normally shifts this FIFO. Bypassing that consumer
+without retiring slots would eventually stop native key acceptance.
+
+`RT_CAPTURE_OWNER` uses the previously unused capture word at +38:
+zero keeps native ownership, one grants runtime ownership. Preparation
+clears it. Activation must set it only when the new foreground loop owns
+input; modal/pause transitions must restore native ownership with producer
+exclusion. The installed experimental path still leaves it zero.
+
+With runtime ownership, successful `commands_publish` and active, unfaulted
+field history, `timing_live_command` retires only the just-appended native
+entry while still inside its existing Disable/Enable critical section.
+It validates the saved slot offset (even, 0..18), native count (1..10),
+count/slot relationship and stored key before clearing the slot and
+decrementing the count. Earlier native entries remain intact. The private
+queue retains the key and sequence for both command readers.
+
+Failed private retention never retires the native key. Invalid native
+count/slot state latches both private queue/history faults and leaves the
+native entry intact; explicit recovery owns the already retained private
+record. Inactive history, native ownership or another owner value do not
+alter native FIFO handling. The wrapper still restores the displaced
+instructions' registers and CCR, including X.
+
+`test_timing_fifo_owner_c.py` passes 585 checks: all 32 flag combinations
+at each native FIFO depth (320 ABI cases), native/paused ownership, invalid
+count/slot relationships, private-queue overflow, and 256 accepted keys
+through the original +03488 producer with the runtime hook installed.
+Both private readers retire records during that stream; the native FIFO
+stays empty, while full key/modifier words and sequence numbers match.
+This verifies the transfer mechanism, not live activation or modal
+transitions. The private command consumers still own exactly-once effects.

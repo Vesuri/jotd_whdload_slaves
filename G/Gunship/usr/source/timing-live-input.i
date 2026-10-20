@@ -1,7 +1,7 @@
 ; Runtime-backed native capture for experimental TIMING_RUNTIME builds.
 ; Same displaced ABI as diagnostic input, without its $7f rearm behavior.
 ; Marker layout in RT_CAPTURE matches h0/h2/history/sample at +8..20,
-; sequence/raw deltas/edges at +24..36, sampler +40, command queue +44.
+; sequence/raw deltas/edges at +24..36, FIFO owner +38, sampler +40, queue +44.
 ; RT_SAMPLE is producer-private; RT_RECORD belongs only to the consumer.
 ;
 ; a0=prepared arena, a2=resload. Validate all sites before patching any.
@@ -153,6 +153,45 @@ timing_live_command:
 	movea.l 44(a2),a0
 	move.w d6,d1
 	bsr commands_publish
+	cmpi.l #1,d0
+	bne .recorded
+	; Retire only a successfully retained key under explicit flight ownership.
+	; Modal/native ownership leaves the original FIFO completely intact.
+	cmpi.w #1,38(a2)
+	bne .recorded
+	movea.l 16(a2),a0
+	tst.w TH_ACTIVE(a0)
+	beq .recorded
+	tst.w TH_FAULT(a0)
+	bne .recorded
+	; Saved native d0 is the appended slot's byte offset; saved a0 is
+	; the ten-word FIFO base. Native count is the longword at base+22.
+	; The saved X word precedes the MOVEM frame throughout this section.
+	move.l 2(sp),d1
+	cmpi.l #18,d1
+	bhi .fifo_bad
+	btst #0,d1
+	bne .fifo_bad
+	movea.l 10(sp),a1
+	move.l 22(a1),d0
+	tst.l d0
+	beq .fifo_bad
+	cmpi.l #10,d0
+	bhi .fifo_bad
+	subq.l #1,d0
+	add.l d0,d0
+	cmp.l d1,d0
+	bne .fifo_bad
+	cmp.w 0(a1,d1.l),d6
+	bne .fifo_bad
+	clr.w 0(a1,d1.l)
+	subq.l #1,22(a1)
+	bra .recorded
+.fifo_bad:
+	; No speculative repair or FIFO shift. Recovery owns the retained key.
+	move.w #1,TH_FAULT(a0)
+	movea.l 44(a2),a0
+	move.w #1,CQ_FAULT(a0)
 .recorded:
 	jsr _LVOEnable(a6)
 	move.w (sp)+,d0

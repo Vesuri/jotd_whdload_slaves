@@ -475,6 +475,9 @@ Experimental runtime builds now install arena-backed field/mouse/command/fire
 capture hooks with separate producer and consumer records. Sampling remains
 paused until foreground ownership is installed. The diagnostic rearm key is
 absent from this runtime path, and duplicate diagnostic patching is suppressed.
+The accepted-key hook can now retire the appended native FIFO slot after
+successful private retention under explicit runtime ownership. Ownership still
+defaults off; flight activation and modal ownership transitions remain pending.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
