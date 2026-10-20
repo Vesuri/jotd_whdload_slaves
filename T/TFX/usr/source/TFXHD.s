@@ -2434,6 +2434,31 @@ qsort:
         lea     2(a3),a0
         bra.b   qsort
 
+; tfx.020 keeps delta time at A4-$ba4, not the integer build's A4+500.
+skip_some_updates_new:
+        move.w  (-$ba4,a4),d0
+        ext.l   d0
+        bne.b   .done
+        addq.l  #4,(sp)
+.done:
+        rts
+
+skip_model_new:
+        tst.w   (-$ba4,a4)
+        bne.b   .update
+        ; Discard the patch call, then unwind @Model's actual FPU frame.
+        addq.l  #4,sp
+        move.l  (sp)+,d7
+        mc68040
+        fmovem.x (sp)+,fp2-fp4/fp7
+        mc68020
+        addq.l  #8,sp
+        rts
+.update:
+        move.b  (-$ba6,a4),d0
+        subq.b  #1,d0
+        rts
+
 skip_some_updates:
 	MOVE.W	(500,A4),D0		;01708: 302c01f4
 	EXT.L	D0			;0170c: 48c0
@@ -2798,6 +2823,17 @@ pl_fpu_new_render_040:
         ; Keep original ScanFillDown: the equivalent port measured slower on 040.
         PL_GA   $55bec,_texture_ptr_ptr
         PL_ENDIF
+        PL_IFC4X 5 ; Uncapped: skip simulation work when no vblank elapsed.
+        PL_W    $1abfe,$7000
+        PL_PS   $01830,skip_some_updates_new
+        PL_PS   $01850,skip_some_updates_new
+        PL_PSS  $1fec4,zoom_fix1,2
+        PL_PS   $1ec38,skip_model_new
+        PL_ENDIF
+        PL_IFC4X 6 ; One-frame takes precedence, as on the integer build.
+        PL_W    $1abfe,$7001
+        PL_PSS  $1fec4,zoom_fix1,2
+        PL_ENDIF
         PL_NEXT pl_fpu_new
 
 pl_fpu_new
@@ -2851,10 +2887,7 @@ pl_fpu_new
         PL_PSS  $016fe,enable_vsync_wait,2
         PL_ENDIF
 
-        ; Not supported as it's too slow anyway
-        ;PL_IFC4X        5 ; Uncapped frame rate
-        ;PL_W    $,$0000 ; Disable frame rate limit
-        ;PL_ENDIF
+        ; Additional 040 rendering/timestep patches are in pl_fpu_new_render_040.
 
         PL_GA   $3f99e,@ThreeScreenSwap_ptr
         PL_GA   $4ce00,_screen1_ptr
