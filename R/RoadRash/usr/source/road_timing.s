@@ -18,27 +18,30 @@ step_road_reference:
  move.w d6,(a0)
  muls.w d0,d1
  asr.l #8,d1
- muls.w #768,d1
- asr.l #8,d1
+; MULS.W #768 followed by ASR.L #8 is exactly three times the
+; sign-extended low word. Keep that truncation before the cheaper adds.
+ ext.l d1
+ move.l d1,d0
+ add.l d1,d1
+ add.l d0,d1
  lea step_road_fraction(pc),a0
  add.l (a0),d1
  move.l d1,d0
- bpl .positive
- neg.l d0
-.positive:
+ bpl .divide
+ addq.l #3,d0
+.divide:
+; Round signed quarters toward zero and retain the signed remainder.
+ asr.l #2,d0
  move.l d0,d2
- andi.l #3,d2
- lsr.l #2,d0
- tst.l d1
- bpl .store
- neg.l d0
- neg.l d2
-.store:
- move.l d2,(a0)
+ lsl.l #2,d2
+ sub.l d2,d1
+ move.l d1,(a0)
  move.l d0,d1
  add.w d1,$36(a1)
  movem.l (a7)+,d0/d2/a0
  jmp $8bad2
+; Preserve the measured placement of the later Fast RAM code copies.
+ ds.b 12
 
 ; Normalize native per-call NPC road-centre accumulation.
 step_actor_road:

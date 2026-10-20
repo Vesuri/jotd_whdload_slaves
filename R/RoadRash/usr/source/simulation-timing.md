@@ -486,6 +486,42 @@ candidate's simulation invariance across the requested short scheduling cases;
 it does not close its B handling, hardware performance, or remaining transition
 gates. No production source or default runtime behaviour changes in this check.
 
+### Road diagnostic arithmetic cost
+
+The player's reference arithmetic now replaces signed multiplication by 768
+followed by an eight-bit arithmetic shift with three times the sign-extended
+low word. Signed quarter division uses a negative-input bias of three before
+an arithmetic shift, then subtracts four times the quotient to retain the
+signed remainder. Exhaustive comparison of all 65,536 signed-word inputs with
+seven possible carries (-3 through +3), 458,752 combinations, matches the
+preceding expressions exactly.
+
+The unpadded change shortened the helper and shifted later code. Direct normal
+candidate measurements therefore included two layout controls:
+
+| Candidate | Cached 020 fps | NoCache 020 fps | 060 fps | NoCache distance |
+| --- | ---: | ---: | ---: | ---: |
+| Preceding lifecycle | 11.9 | 6.7 | 21.5 | 3,311,794 |
+| Shortened arithmetic | 11.8 | 6.7 | 21.8 | 3,321,603 |
+| 12-byte pad, selected | 11.9 | 6.7 | 21.7 | 3,321,603 |
+| 10-byte exact-address control | 11.9 | 6.7 | 21.8 | 3,292,128 |
+
+These are `c-road-lifecycle-cost`, `c-road-arithmetic-cost`,
+`c-road-arithmetic-pad-cost` and `c-road-arithmetic-pad10-cost`. The selected
+padding follows an unconditional jump and is not executed. It restores the
+later movement/AI code-copy locations; the immediate actor helper starts two
+bytes later than before. The exact-address control restores that helper too,
+but worsens the live-field NoCache sample. None closes the distance gate.
+The selected layout gives a small measured 060 improvement without the
+unpadded cached-020 regression; this is not a broad performance acceptance.
+
+`c-road-arithmetic-final` matches the preceding varying-cadence lifecycle run
+across 1,595 completed hashes, ten sound requests and all six field-1457
+regions. The measured enabled normal candidate is 19,076 bytes, SHA-256
+`f168ec601a55a63d127fdb220979641582e3d3e1c45009c38124297ee03a1cb8`.
+The tracked correction remains opt-in diagnostic code; the default normal
+binary still matches SHA-256 `4a6a5d667acaf0462ead705b5a342e5f6de8449e2fbe3dedb7bef638b82a966f`.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
