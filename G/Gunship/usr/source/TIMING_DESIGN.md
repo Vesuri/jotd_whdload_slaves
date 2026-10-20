@@ -2016,3 +2016,38 @@ Twenty-two patch-boundary corruptions reject without destination writes, and
 a mismatched player binding rejects without state writes (537 calls total).
 This remains standalone. Full world sequencing, lifecycle/audio behavior,
 map timer policy and CUSTOM1-gated installation are not yet validated.
+
+### Complete periodic tail, including flight-end cleanup
+
+`timing-world-tail.i` joins the reserve and periodic helpers and extracts native
+cleanup +058C6..+0590C. Cleanup loads object slot 5 into player scratch, clears
+its first coordinate word and stores it back, visits object entries 121 down
+through 6, calls +0B726 for entries whose flag byte has bits 3/4 set, clears
+hunk 0 +0BA08 and sets hunk 4 +01C6. The unchanged native removal call searches
+its ten-byte list at hunk 0 +0B92D; its argument is the masked flag byte, not
+the saved loop index. Preserve that native behavior.
+
+`world_cleanup_prepare` takes hunk 0, an even 70-byte clone and hunk 4 in
+a0/a1/a2. It validates loop boundaries, three relocated calls, two global
+stores and RTS before copying. `world_tail_step` takes native player,
+reserves clone, periodic clone and cleanup clone in a0/a1/a2/a3. It first
+checks the periodic clone's player binding before any mutation, then selects
+the native path. Returns are 0 (nonperiodic), 1 (periodic complete), 2 (flight
+ended) or -1 (bad binding). Non-result registers are preserved. No tick is
+advanced; the caller must already have completed opening, player motion,
+weapons, damage and scripts. On return 2 the lifecycle owner must stop active
+sampling and rebase before accepting another field. The adapter does not
+perform that transition or acknowledge the scheduler itself.
+
+`tmp/dev/tools/test_world_tail_c.py` passes 512 comparisons from native
++058AC through its actual return or loop-back boundary: 256 nonperiodic,
+128 normal periodic and 128 cleanup outcomes. The comparison covers complete
+player/object tables, reserves, mission/map/notification state, removal list,
+flight-end flag, RNG seed and ordered callback arguments across 31 paths.
+Native object helpers, list removal and map-coordinate work run; only the two
+audio endpoints remain stubbed. Deadline timestamps match the reference while
+live timestamps differ, with exactly one RNG draw for normal periodic work
+and zero for the other outcomes. Write tracing reports no uninventoried
+writes. Fourteen cleanup signature corruptions and a wrong player binding
+reject without writes (531 assembled calls). Full world-loop integration and
+CUSTOM1-gated gameplay installation remain pending.

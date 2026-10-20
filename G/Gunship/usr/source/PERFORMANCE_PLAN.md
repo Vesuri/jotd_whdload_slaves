@@ -421,7 +421,10 @@ effects. Bounded command drains now bind both retained readers to the
 scheduler phase and delivered cutoff in standalone integration tests.
 Its native main-loop installation, remaining command callbacks/lifecycle
 policies and complete player/world hand-off are still pending,
-so C2/C3 are not complete. The initial C4a/C4b inventory is
+so C2/C3 are not complete. Native world opening and the complete periodic
+reserve/housekeeping/flight-end tail are now extracted and tested separately;
+weapons, damage, scripts and lifecycle composition remain pending.
+The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate
 stick-attitude step is tested. A standalone continuous-motion coordinator
