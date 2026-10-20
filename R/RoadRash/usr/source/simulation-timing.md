@@ -1,3 +1,66 @@
+## Diagnostic Fast RAM lane scan for uncached 68020
+
+A fresh normal NoCache profile (`c-current-nocache-cost`) covers exactly 500
+vsyncs with CACR=0. Flat costs attribute 3.893% to `$8d966..$8d9e1`, entered
+3,551 times. Its 1,508 unmatched returns prevent inclusive-call attribution;
+the result identifies a local instruction-cost target, not a complete timing
+model.
+
+The new `VERIFY_C_LANE_SCAN` diagnostic preserves the native lane-scan algorithm.
+It reproduces the first two instructions, changes the PC-relative table LEA to
+an absolute LEA of the same mutable table `$8d012`, and copies the remaining
+114 bytes verbatim. All body branches and DBRA stay internal. Actor records,
+mutable tables, arithmetic, loop iteration and outputs remain native. The
+entry redirects only after the existing CUSTOM2/CPU/Fast gate, and cache flush
+occurs after initialization. `VERIFY_C_LANE_SCAN_CONTROL` retains native dispatch;
+the broader auxiliary-copy control also disables this redirect.
+
+Initial experiments show why the final selection is narrow:
+
+| Candidate / equal-layout native control | Cached 020 fps | NoCache 020 fps | 060 fps |
+|---|---:|---:|---:|
+| Copy inserted into existing initializer | 10.0 / 10.0 | 8.3 / 7.8 | 22.9 / 23.0 |
+| Appended initializer, existing symbol offsets retained | 10.0 / 11.4 | 8.3 / 7.6 | 23.0 / 23.0 |
+| Slave growth aligned to 256 bytes | 11.4 / 12.0 | 8.3 / 7.7 | not rerun |
+
+Keeping offsets alone does not keep loaded addresses fixed. Placement probes
+measure the production base at `$9f6b58` and the 256-byte-larger variant at
+`$9f6958`: the existing symbols move by $200 while retaining their low-byte
+cache indices. This establishes the placement change; it is not a universal
+allocator guarantee. Source offsets of all existing named symbols remain
+unchanged in the appended variants. Exact sources, controls, matrices and
+copy/placement probes remain under the `c-lane-scan-*` ignored directories.
+
+The retained diagnostic therefore selects the copy only on a 68020 with its
+instruction cache disabled. After the outer hardware gate, attention flags
+exclude 030/040/060 and MOVEC reads CACR; bit 0 must be clear. Other paths retain
+the native entry. No user-facing option is added. Padding keeps this diagnostic
+256 bytes larger than its counterpart; its normal private measurement binary
+is 19,296 bytes, SHA-256
+`6bbfd96a5f790f530af54e3f9ecf44fa0f01860a7e06de83a25589136b266d81`.
+
+`c-lane-scan-selective-matrix` passes five functional cells: default/Cache 020
+12.0 fps, NoCache 020 **8.3** (production 7.6), 030 16.6 and 060 23.0.
+Live-field distances are 3,318,164 for default 020/030/060 and 3,308,406 for
+Cache/NoCache 020. The cached sample regresses from production's 3,318,164;
+these values do not establish distance acceptance. There is no claim that a
+successful boot/race cell also passes the separate B distance comparison.
+
+`c-lane-scan-selective-default` and `-off` verify the original ten entry bytes
+with caches enabled and with CUSTOM2=0. `-nocache` verifies the Fast entry,
+12-byte reconstructed prefix and all 114 copied bytes at `$9fb412`. Earlier
+copy audits also pass. The direct-copy and selective NoCache snapshot runs each
+match the native control for 1,595 completed hashes, all three sound requests
+and all six captured regions at cursor 1457.
+
+Tracked lean/full diagnostics are byte-identical to their tested private
+counterparts. The auxiliary-control configuration also assembles. Every normal
+build remains byte-identical to the 19,040-byte production runtime: this
+optimization is deliberately not selected there. Remaining work includes the
+full hardware/MMU matrix, explicit excluded-CPU dispatch checks, long-race and
+cadence comparisons, controls/demos, latency and the changed distance sample.
+The NoCache gain is evidence to pursue those checks, not completion of C.
+
 ## Current normal runtime: completed ticks versus live distance sampling
 
 Fresh cycle-exact 020 traces `c-current-distance-default` and
