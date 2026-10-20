@@ -231,6 +231,27 @@ while 030 has a two-vblank clock-origin difference. No new state waiver is claim
 - Exit: zero FPSP entries during the fixed window; identical state at the window's end,
   or differences explained; fps measured.
 
+Completed: `ee06330` and `29a6c7e`; report `tmp/dev/docs/native-fpu.md`.
+All 146 FINTRZ and 93 FMOVECR sites are generated from guarded disassembly.
+Native 040 helpers replace the six hot transcendental sites; FPSP remains the
+safety net, CUSTOM5 still disables the patches, and the 060 list is unchanged.
+Two strict fixed-window runs have zero FPSP entries, versus 3,066 after step 8.
+Throughput remains 73 publications/250 vblanks (no measured emulator fps gain).
+
+Static helpers pass 2,294 value/status cases including all FPCR precision/rounding
+modes. Native maths passes 5,196 cases against an independent 80-digit oracle;
+maximum scaled per-call error is 2.54e-16. Five controlled screenshots match.
+Same-build enabled/disabled end states differ only in the intentional opcodes,
+four clock fields and 20 floating-point cells; maximum accumulated absolute
+numeric difference after 57 updates is 7.276e-12. All other game-hunk bytes match.
+These are explained arithmetic differences, not bit-identical replacements.
+
+Ordinary 020/030/060 replay images match; live 060 FPU patches equal step 8.
+The 040 MMU pair has a three-vblank clock-origin shift and a differing final
+checkpoint image; that repeatability gate remains failed, with no new waiver.
+The strict timing pair matches events/images but retains clock and in-progress
+sprite scratch differences. Hardware speed/accuracy still needs step 14.
+
 ### 10. Port paraj's rendering to `tfx.020`
 
 - Fills (`@GouraudFill`, `_TextureFill`, `ScanFillDown`), fast-RAM render buffer and
