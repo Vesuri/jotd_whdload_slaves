@@ -603,3 +603,31 @@ wait without redesigning that handoff would risk tearing. The next timing work
 must establish when completed buffers become visible and when each buffer can
 be reused, rather than treating a higher throughput sample as proof of uncapped
 presentation.
+
+## Vsync handoff trace: two-field cadence is rendering cost
+
+The follow-up trace resolves the concern above without changing the safe swap.
+In `c-handoff-full-trace`, a completed swap returns at field 301, beam line 250;
+record publication follows at line 253. The next frame starts in that same field
+at line 303, with its producer record already free. It reaches the swap at field
+302, line 299: the next SOFT tick at line 250 has already passed. Waiting for
+field 303 is therefore a missed deadline, not a two-field pacing condition or a
+wait for the previous completion record. The sampled swap fields are
+301,303,305,307,309,311,313,315.
+
+The existing `VERIFY_SKIP_RENDER` cost diagnostic omits `$afd60` while retaining
+simulation, geometry, publication and the original swap. In
+`c-handoff-skip-trace`, successive swaps complete at fields 301,302,303,304,305,
+306,307,308, always at beam line 250. The producer begins the next frame before
+the previous record is consumed, using the other free record. At every sampled
+render entry its ready flag is zero; front and back buffer pointers remain
+distinct and alternate at swaps. The previous consumer record is released at
+the next SOFT interrupt. These observations prove that the retained handoff can
+support one presentation per field without an artificial two-field floor.
+They do **not** prove full-render 50 fps: the diagnostic deliberately omits work.
+
+The trace uses breakpoints at `$875c8` (frame construction), `$87736` (swap entry),
+`$8773c` (swap return), `$871dc` (publication), and `$8713a` (consumer release),
+recording active field, beam, SOFT counter, both ready flags, pending drain counts
+and buffer/record pointers. Preserve the original blanking-safe swap; simply
+removing its wait would write the live copper list at unsafe beam positions.
