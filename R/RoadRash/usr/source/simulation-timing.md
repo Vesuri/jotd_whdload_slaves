@@ -1,3 +1,43 @@
+## Fused-runtime profile and projection register-save experiment
+
+`c-fused-current-profile` measures the actual integrated 19376-byte normal
+runtime on cycle-exact cached Fast 020 over live fields 100..600. The flat-PC
+rows total 18162107392 units; the header reports 18189063168 including a
+26955392-unit gap. These are emulator profiling units, not physical CPU-cycle
+claims. The native vsync poll at $aecf0 alone accounts for 7.318% of recorded
+flat cost; required hardware waits are not removable CPU calculations.
+
+The $b10d0..$b1baf raster region accounts for 22.806% of recorded units (including
+its waits), actor pose $8a83c..$8af75 for 2.416%, lane scan $8d966..$8d9e1 for
+1.545%, and sprite/blitter region $b3d00..$b3f3f for 8.038%. The largest individual
+sprite-region costs are blitter-status reads. The profile and explicit region
+bounds are retained in `remaining-regions.json`; no inclusive cost or guaranteed
+saving is inferred from these flat totals.
+
+The sprite projection routine $8a716..$8a83b accounts for 0.7094%, with 968
+entries. Its native save/restore covers D0-D7/A0-A6, but static inspection of
+the entire routine finds writes only to D0-D5/A2, no callees, and no internal
+stack-relative accesses. A private experiment changes only the MOVEM masks at
+$8a718/$8a838 to $fc20/$043f inside the selected C patch list. It retains the
+same arithmetic, branches, memory writes and final condition-code behavior.
+The matching control writes the original $fffe/$7fff masks in the same list;
+both normal binaries are 19388 bytes and differ in exactly those four bytes.
+
+`c-projection-registers-matrix` and `c-projection-registers-control-matrix`
+complete both functional cells: each measures 12.2 fps with Cache and 8.3 with
+NoCache. All four distance observations are 3308406. There is no demonstrated
+throughput improvement, so the mask reduction is not promoted and no broader
+semantic/release validation is claimed. The source patches, exact binaries and
+matrix provenance remain in the corresponding private build/run directories.
+The candidate SHA-256 is
+`6a05cd3195dc8a9e44d8c5da8129d90199d2b9c61004112b336fb9197bae5f00`;
+the control is
+`b267cc162ac499ccc9de0cc6503f24f8d5592755cd9d41c604980dc1e8e7c2a6`.
+
+The fresh profile points back to substantial raster/blitter work, rather than
+further isolated register-save changes, for meaningful throughput gains.
+Simulation/handling acceptance remains a separate open requirement.
+
 ## Player exposure decomposition and isolated displacement correction
 
 `player_exposure_c.py` decodes the player from the retained fresh NPC motion
