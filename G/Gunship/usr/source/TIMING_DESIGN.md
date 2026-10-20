@@ -1092,6 +1092,43 @@ signed-height overflow cases exercise the latter. Evidence:
 This confirms the intermediate ordering at h=1; field-rate contact
 history, fractional resets and actual notification UI remain outside it.
 
+## Combined player ground hand-off
+
+`timing-player-ground.i` connects native `ground_step` to the combined
+`PS_SIZE` fractional state. `player_ground_step` takes shadow a0, player a1,
+prepared native ground block a2 and the world-selected pre-height airborne
+flag in d0. It returns the native wrapper's 1/0/-1 status and preserves
+other registers. Native notification and timer writes remain real.
+
+On a ground reset it clears roll/pitch remainders, vertical response,
+both forward-speed fractions and fractional height, then acknowledges the
+pending height-crossing latch. The zero-height contact snaps sub-unit
+altitude to ground. It preserves previous stick input, heading/track,
+RPM, horizontal coordinate fractions and the last height-step airborne
+flag. Native ground code does not reset those quantities. An airborne
+result or invalid flag leaves all fractional state untouched.
+
+`test_player_ground_c.py` compares 10,000 native ground decisions with
+varied valid PAL/NTSC/h=1 shadow states: 6,666 resets and 1,903 notification
+cases agree with the native block. All bytes outside the reset ownership
+set remain unchanged, including airborne/invalid cases. Notification UI
+is stubbed while its argument/count and real timer write are compared.
+Evidence: `tmp/dev/tmp/c/player-ground-tests.json`.
+
+`test_player_ground_motion_c.py` places the hand-off at that boundary in
+4,096 complete h=1 staged motion comparisons, including 2,480 resets and
+241 notifications. Player results, notification count and timer match the
+whole native motion reference. Heading RNG is excluded in both paths and
+notification UI is stubbed. Evidence:
+`tmp/dev/tmp/c/player-ground-motion-tests.json`.
+
+The helper must run after height and before forward-speed/displacement/RPM,
+not after a complete `player_step`. The production coordinator still needs
+that split boundary, once-only world scheduling and a policy for a height
+crossing followed by departure before the next world deadline. This helper
+does not establish swept collision equivalence or C5b acceptance. It is
+not called by ordinary fields or installed into the game yet.
+
 ## World-owned motion impulse generation
 
 `timing-world-impulses.i` now supplies the native random-motion
