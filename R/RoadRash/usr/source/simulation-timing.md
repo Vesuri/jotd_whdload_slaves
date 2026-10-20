@@ -1,3 +1,47 @@
+## Native attack-selection audit and approach measurements
+
+The current combined candidate's live disassembly is retained in
+`c-lane-motion-attack-selection`. The native `$90670..$90784` routine does not
+roll a random attack probability: it checks the existing attack flag, absolute
+longitudinal separation against the rider's table word at +2, and lateral
+separation against the two collision half-widths plus 16. Equality does not
+start an attack. The close-range threshold uses half-widths plus 8. Its farther
+branch selects an animation variant from cursor parity. Countdown updates at
+`$903f4` and `$904c0` subtract the simulation delta; phase expiry reloads the
+next native duration. No timer-rate patch is justified by this disassembly.
+
+There is a random approach branch at `$9058a`: it calls the stateful generator
+`$900ce` and tests bit zero. To distinguish that possibility from the geometric
+approach, `attack_choice_c.py` observes its return at `$9058e` for rival `$a6260`
+over live fields 1140–1250. Both `b-approach-choice` and
+`c-lane-motion-approach-choice` record zero calls. That rules out this branch
+for this actor/window only, not randomness elsewhere or earlier in the race.
+
+`attack_approach_c.py` then observes entry to `$90670` over live fields
+1140–1320, retaining both actor records and the selected rider table before
+any predicate changes registers. It replays all preceding lap inputs; no input
+changes occur inside the observed interval. `b-attack-approach` records 11
+checks, six within longitudinal range while not already attacking. None also
+passes the lateral threshold. The closest is cursor 1257: separation 73,
+threshold 47, longitudinal gap 1,333 versus limit 16,384. B has no checks
+between cursors 1220 and 1257; this is more than merely four-field sampling.
+
+`c-lane-motion-attack-approach` records 152 checks (simulation cursors
+1137–1288; the initial live-field stop may leave a simulation backlog), including
+118 within longitudinal range while not already attacking. At cursor 1253,
+separation equals the threshold, 47, so it does not start. At cursor 1254,
+separation 41 is strictly below 47, longitudinal gap is 1,360, and attack is
+still clear on entry. The next check observes the flag set. This reproduces
+the previously captured native initialization at `$90728`.
+
+The evidence distinguishes changed approach/AI dispatch from a presumed random
+attack-rate or timer bug. It does not prove why B bypasses the geometric test
+through the intervening approach interval. The next useful trace is the native
+AI dispatch and lane-target selection in that interval, before changing attack
+probabilities, adding cooldowns or suppressing contact responses. No gameplay
+patch or baseline waiver follows from these observations. Both probes preserve
+binary/emulator provenance and pass Python compilation.
+
 ## Combined motion correction retest after lane-scan integration
 
 The private `c-lane-motion-source` rebuild starts from runtime commit `8938181`
