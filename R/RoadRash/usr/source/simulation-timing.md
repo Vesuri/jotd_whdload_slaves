@@ -218,6 +218,64 @@ actual integration instruction; these snapshots alone do not establish the
 operand-level cause. No motion correction or new runtime patch is promoted.
 The comparison is retained in `c-aux-road-lap/comparison.json`.
 
+### Curve integration operand audit
+
+`b-road-return-operands` and `c-road-return-operands-v2` trace the player
+integration after the original tape's field-600/620 right-steering input.
+The first C attempt targeted the native address and timed out; the corrected
+trace resolves the Fast RAM copy through the `$8b486` entry redirect.
+Every captured centre transition is checked against the preceding arithmetic.
+The native update is `3 * floor(floor(displacement/256) * d6 /256)`;
+`d6` is a change in the interpolated track curve, not an independent fixed
+curve coefficient. Thus both factors depend on the step length.
+
+B records 41 updates through cursor 783, curvature changes totalling 125,
+and centre movement +162. C records 162 updates through cursor 780,
+curvature changes totalling 114: 114 increments of one and 48 zeroes.
+Every C product rounds to zero. This proves the returning-curve loss at the
+integration instruction, not just from sampled player flags. The intervals
+and trajectories differ slightly, so their totals are not an exact aligned
+physics comparison.
+
+The private `c-road-reference-source` experiment evaluates displacement and
+curvature change at four times their unit-step values, runs the native signed
+rounding, then carries quarter-unit output into the road centre. It restores
+positive motion, but overcorrects: road centres at fields 600/800 are -78/+146
+versus B -105/+63; its crash occurs at 1330 versus B 1376. It is rejected for
+integration. Its normal binary is 18,692 bytes, SHA-256
+`e54e2b682149d0e95d1605dc48a9d7a491abb8da176132c716b695728c9c82ae`.
+Exact private source changes are retained in its build directory. Multiplying
+an already-rounded one-field curvature change is insufficient to reproduce
+the original reference calculation.
+
+The follow-up `c-road-window-source` substitutes the sum of the current and
+three preceding curvature changes for `4*d6`, retaining the four-field
+reference displacement and quarter-unit carry. History and carry reset with
+simulation state. It still executes every simulation field; there is no
+render wait or delayed presentation buffer. This is a private numerical
+integration experiment, not a change to the accepted runtime.
+
+`c-road-window-lap` brings road centres much closer to B:
+
+| Field | B centre | Candidate centre | B position | Candidate position |
+| --- | ---: | ---: | ---: | ---: |
+| 600 | -105 | -102 | 3,965,632 | 3,933,461 |
+| 800 | 63 | 54 | 5,761,316 | 5,730,305 |
+| 1000 | 0 | 10 | 8,005,924 | 7,936,097 |
+| 1200 | -183 | -184 | 10,124,359 | 10,087,294 |
+
+However, the later trajectory still fails: at field 1300 the player's lateral
+position is -427 versus B -172, with similar road centres (-158/-156).
+The sampled crash begins at 1324 rather than 1376 and final rank is 20 versus
+21. This isolates a remaining later handling difference after correcting
+most of the road-centre error; it does not establish a cause for that later
+difference. The next comparison should trace steering, skid/collision state
+and lateral increments around fields 1140–1324 with this candidate.
+The binary is 18,728 bytes, SHA-256
+`e3da1a13a4d0ea0ad15c6565700625e1b154f3ff290f8b01a7494bdb599f54d5`;
+its build directory retains the source patch. Neither cadence equivalence,
+full-race acceptance nor the hardware/performance matrix has been run for it.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
