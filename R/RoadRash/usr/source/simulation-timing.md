@@ -1332,3 +1332,36 @@ signed quarter-displacement calculation; final remainders are 2 and -2.
 standard window, versus seeded B's 3,374,076. The -1.657% difference fails A4a.
 This live-field comparison includes different simulation/render progress and
 does not by itself identify the cause. The normal 6,804-byte slave is unchanged.
+
+## Completed-step distance accounting
+
+`b-reference-distance-boundaries` and `c-reference-distance-boundaries` repeat
+seeded cached-020 throttle input at live field 100. They stop at every completed
+logic step (B's `$875b6`, C's final `step_end` RTS), recording live field,
+simulation cursor, position, speed and applied delta. Debugger stops do not
+advance emulated time. C records 501 completions through live field 600; B
+records 166 through live field 602. These are the same candidate/reference
+binaries used for the preceding distance comparison.
+
+At completed cursor 590, B's position is 3,898,364 and C's is 3,852,194.
+Relative to the initial 524,288, C remains 1.368% behind. C completes that tick
+at live field 593. Thus render debt explains only part of the earlier 1.657%
+live-field difference; it is not sufficient to explain away the A4 failure.
+
+The B trace also sums to 492 applied fields after the live-field-100 input,
+although its cursor advances to 590. Its first completed step, at cursor 101,
+already applies delta 3, reaching speed 102. C's cursor-101 step applies one
+field, reaching speed 34. B applies the sampled throttle to a whole native
+multi-field step. Its cursor labels alone do not measure the integrated time
+following this input; the native delta can also lag the current render interval.
+
+At C cursor 592 (492 applied throttle fields), position is 3,871,631: a 0.792%
+distance difference from B's 492-field result. This is a diagnostic time-aligned
+comparison, not a replacement for the A4 live-field acceptance window. Every B
+position increment in the measured window equals its end-of-step speed times
+its delta. Splitting those same B speed changes linearly into unit steps would
+remove 10,161 distance units of endpoint-integration bias; another 16,572 units
+remain relative to C. That calculation does not equate gear, terrain or other
+state-dependent decisions across the two paths. No compensating speed multiplier
+or extra simulation time has been introduced. Raw steps and the derived figures
+are retained in `c-reference-distance-boundaries/comparison.json`; C remains open.
