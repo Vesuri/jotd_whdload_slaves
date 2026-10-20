@@ -203,6 +203,23 @@ identical screenshots as its exit check; matching frame totals alone is insuffic
   Replace the `AllocMem` chip override for the new path.
 - Exit: identical screenshots in the fixed window; fps measured.
 
+Completed: `a539348`; report and reproduction in `tmp/dev/docs/chip-placement.md`.
+The new-rendering 040 path loads merged data/BSS into fast RAM and copies DMA
+objects into a 141,152-byte chip allocation, saving about 115 KiB of chip payload.
+All 62 relocation sites are verified; 156 CPU-only references, including palette
+snapshots and screen selectors, stay in fast RAM. Original rendering and
+020/030/060 retain their existing placement.
+
+Strict 040 throughput rises from 57 to 73 publications in the fixed 250-vblank
+window (+28.07%, nominal PAL 11.4 to 14.6 fps; emulator A/B, not hardware FPS).
+Two candidate runs match events, final image and all three hunk dumps. Five
+controlled baseline/candidate screenshots match with fixed simulation timesteps,
+synchronous resolved input and CPU-held capture after actual publication; all
+eight displayed bitplanes are validated. These fixtures are absent from normal
+builds and timing runs. Uncontrolled old/new final images differ with cadence.
+Normal replay pairs repeat images on all four CPUs; 020/040/060 match raw state,
+while 030 has a two-vblank clock-origin difference. No new state waiver is claimed.
+
 ### 9. Remove FPU traps from the hot path
 
 - Generate patches for all `FINTRZ` and `FMOVECR` sites from disassembly rather than
