@@ -330,6 +330,55 @@ Its build directory retains the source patch. The next gates are completed-tick
 cadence equivalence, carry lifecycle/reverse-path audit, and normal hardware
 throughput/distance checks before any runtime promotion.
 
+### Road correction cadence check and lifecycle audit
+
+The unmodified private actor-road candidate now passes the controlled-seed
+attack tape at requested period 4 versus varying/long rendering intervals:
+`c-road-actors-period4` and `c-road-actors-varying` match 1,595 conservatively
+completed actor hashes, ten sound requests and all six authoritative regions
+at capture field 1457. The actual frame histograms differ: the first run has
+280 frames with ordinary intervals mostly 4–8 fields; the varying run has
+170 frames and intervals reaching 20 fields. This verifies catch-up invariance
+under those measured schedules, not exact 1/2/3-field presentation coverage.
+The comparison is retained in the varying run's `comparison.json`.
+
+The new fractional state still needs lifecycle work. Native `$8bdc8` copies a
+complete actor record to its companion through the `$941ea` pointer table,
+but the candidate's external quarter-unit carry is not included. The native
+initialization clears actor road fields at `$87eb4` onward. The candidate does
+clear all carries during simulation reset, but has no actor-copy hook.
+The player's three prior curvature changes also survive a crash: the existing
+`step_steering_finish` clears only lateral steering carry. These omissions
+must be resolved and tested through crash/remount and race restart before
+runtime integration.
+
+The reverse routines at `$8be02` and `$8bf06` subtract the sum of crossed
+track segments from road centre (`$8bec6` / `$8bfb6`), rather than adding the
+forward routine's interpolated value every call. Applying the forward /4
+correction to these instructions would therefore change a spatial increment
+incorrectly. Reverse transitions still need lifecycle coverage for the new
+forward-history state.
+
+The candidate also completes all eleven normal hardware cells in
+`c-road-actors-020` and `c-road-actors-rest`. A500 and Chip-only 020 initial,
+field-590 and final hashes exactly match the preceding runtime. Throughput is:
+
+| Configuration | Candidate fps | Preceding runtime fps |
+| --- | ---: | ---: |
+| A500 | 8.5 | 8.5 |
+| Chip-only 020 | 12.5 | 12.5 |
+| Fast 020 default / Cache | 11.8 | 11.9 |
+| Fast 020 NoCache | 6.7 | 7.0 |
+| 030 default / Cache | 16.6 | 16.6 |
+| 040 default / Cache | 18.9 | 18.9 |
+| 060 default / Cache | 21.8 | 22.8 |
+
+Accelerated distance is 3,321,603 except 020 NoCache at 3,311,794. Against B,
+020 default differs by -1.271%, Cache by -0.785%, and NoCache by -1.562%.
+Thus the improved lap handling does not close the short-window distance or
+performance gates. No MMU, full-race transition, or visible-latency acceptance
+is claimed for this candidate. It remains private and unpromoted.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
