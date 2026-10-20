@@ -1,7 +1,7 @@
 # Road Rash: race trace analysis and plan for smooth play on faster CPUs
 
-Status: A1–A5 complete (2026-10-20); B–G remain open. Accepted A evidence and
-limitations are in §9. Sections 1–6 retain the original exploratory measurements;
+Status: A1–A5 and B1–B5 complete (2026-10-20); C–G remain open. Accepted A evidence
+and limitations are in §9; B results and the 25 fps safety limit are in §10. Sections 1–6 retain the original exploratory measurements;
 they are not the fixed-field A baseline. Slave baseline: shipped v2.0
 (`RoadRash.slave`, SHA-256 `9d2f2302…a563`), identical to this source except for the date
 string and two `PL_STR` lengths, which differ because the shipped slave was built with older
@@ -283,7 +283,7 @@ a slave option whose default reproduces the original timing until G1 decides the
     on 030/040/060, where the Barto trace is empty. The emulator does not model real
     040/060 instruction-cycle costs; do not interpret these as hardware cycle profiles.
 
-### B. Correctness fixes and risks (before any timing work)
+### B. Correctness fixes and risks — complete (2026-10-20; limits in §10)
 - **B1 Slave `test_for_pause` stack bug — complete (2026-10-20).** It saves `d0-d1/a0` (12 bytes) but restores
   `d0-d2/a0` (16 bytes). When the stick is idle, `$87298` returns from the slave to its
   caller's caller with `a0` corrupted, and the keyboard pause test and the rest of the
@@ -324,21 +324,37 @@ a slave option whose default reproduces the original timing until G1 decides the
     The 25 fps run uses a fast functional 68020 configuration, not a hardware speed
     claim. Evidence: `b3-animation-020`, `b3-animation-25-run`, `b3-normal-on`,
     `b3-retry`, and `b3-replay-on` under the ignored harness output directory.
-- **B4 Small deltas.**
+- **B4 Small deltas — complete with a two-field safety floor.**
   - B4a A VERIFY option that renders only every Nth frame, or skips `$afd60`, to force
     delta 1 and 2 on a 68020.
   - B4b Compare distance, AI outcomes and collisions with the A1b tape against delta 4.
   - B4c If rounding loss appears, add a fractional carry or clamp the minimum delta (for
     example run the logic twice at delta 2 instead of once at 4). Also add an upper delta
     clamp (for example 8) for load hiccups.
-- **B5 Unexplained paths.** Watch `$8aff0` (paced drain of `$a8722`) and the `$875bc` gate in
+  - Result: delta 1 fails the straight-distance tolerance (-1.083% versus delta 4);
+    delta 2 is within it (-0.908%). The collision tape changes outcomes at both
+    smaller steps, so cross-rate trajectory equivalence is not established.
+    `CUSTOM2` bit 1 enforces a real two-field minimum by waiting at the swap,
+    rather than artificially increasing the simulation delta, and caps long steps
+    at 8. A protected one-field-speed run exactly matches the delta-2 terminal
+    state. A 12-field-frame control uses delta 12; the option limits it to 8.
+    This implements the permitted minimum-delta mitigation; 50 fps is not approved.
+- **B5 Unexplained paths — complete.** Watch `$8aff0` (paced drain of `$a8722`) and the `$875bc` gate in
   a crash and at 25 fps. Confirm they can't throttle or stall at high frame rates.
+  - Result: zero closed gates and zero drain calls in the 020 crash replay (399
+    gate checks) and a full-render 25 fps crash/recovery run (1204 checks). The
+    latter needs a different input tape to actually crash. `$a8722` remains zero
+    in these scenarios. If populated, its producer caps the queue at 6400 and
+    `$8aff0` drains at most 3000 per field: at most three drain fields before the
+    following consumption. It is an intentional bounded delay, not an unbounded
+    wait. No gate/drain patch is needed for the supported 25 fps target.
 
 ### C. Frame pacing (smoothness)
 - **C1 Pacing hook.** Patch the race loop's `jsr $aecba` at `$87736` to a slave routine that
-  waits until `$aec0c` ≥ N fields since the last swap, then performs the original swap.
+  waits until `$aec0c` ≥ N−1 fields since the last swap, then performs the original
+  swap, which waits for the next field. Reuse B4's `safe_swap` two-field floor.
   Menus keep `$aecba`.
-- **C2 Modes** (new option, for example `CUSTOM2`):
+- **C2 Modes** (new mode field assigned in G1; preserve B's existing switches):
   - C2a 0 = original (uncapped).
   - C2b 1 = adaptive: choose N as the smallest number of fields that the last 8 frames fit
     in, step it up immediately and down only after 32 frames that fit (hysteresis).
@@ -484,8 +500,9 @@ a slave option whose default reproduces the original timing until G1 decides the
    caches on and `BLTPRI` off.
 3. E1–E4. Milestone: 030/50, 040 and 060 frames fit in 2 fields, and C fixed/adaptive gives
    a locked 25 fps.
-4. B4 and B5 before enabling any mode that reaches 50 fps. D3 and F after that. Milestone:
-   the stretch goal of 50 fps on the 060, and a 68000 A500 above 10 fps.
+4. B4/B5 are assessed. The safe mode caps frames at 25 fps; 50 fps remains a stretch
+   goal requiring new small-step equivalence evidence. D3 and F pursue that goal and
+   a 68000 A500 above 10 fps without bypassing the safety floor.
 5. G.
 
 ## 8. Open questions
@@ -494,7 +511,10 @@ a slave option whose default reproduces the original timing until G1 decides the
 - A3b resolved the register state: 040/060 CACR is `$80008000`, or `$00008000` with
   `Cache`; fps is unchanged. Actual data-cache emulation is disabled in these baseline
   configurations, so D1 still needs coherency and hardware validation.
-- Is the 030 crash (B2) a game race condition or emulator-specific?
+- B2 resolved the reproduced 030 crash as DMA overwriting a preloaded image.
+- Is 50 fps worth a further simulation/integration rewrite? B4 deliberately chooses
+  the two-field safety floor; faster collision sampling changes outcomes even at
+  delta 2, and delta 1 also fails the distance tolerance.
 - What is the free chip RAM in the race on 1 MB machines? It decides E3 and the queue
   buffers.
 - Could the frame pacing keep NTSC-correct timing as an option? Out of scope here; noted
@@ -535,7 +555,7 @@ The earlier §3 window differed, so its fps values are not directly comparable.
 | `a1200-fast` | 12.5 | 12.5 | 3,364,352 | 4: 124, 5: 1 |
 | `a1200-fast+cache` | 16.6 | 16.5 | 3,347,896 | 3: 159, 4: 6 |
 | `a1200-fast+nocache` | 12.5 | 12.5 | 3,364,352 | 4: 124, 5: 1 |
-| `030-50` | failed | failed | — | front-end exception; B2 remains open |
+| `030-50` | failed | failed | — | front-end exception at A baseline; fixed in B2 |
 | `030-50+cache` | 16.6 | 16.6 | 3,341,412 | 3: 166 |
 | `040-25` | 22.6 | 22.7 | 3,345,638 | 2: 179, 3: 48 |
 | `040-25+cache` | 22.6 | 22.7 | 3,345,638 | 2: 179, 3: 48 |
@@ -548,7 +568,8 @@ Diagnostic matrix: 12/13 passed. Normal matrix: 10/11 passed. Both correctly ret
 for uncached 030; it is not waived or counted as a pass. The validated no-MMU 030 uses the
 `68EC030` CPU selector. Its failure screenshot reports **Line 1111 Emulator ($2C) at $4**
 at the AmigaDOS prompt, distinct from the earlier Illegal Instruction at $68 report.
-B2 must investigate both; A does not establish a shared cause or implement a fix.
+A did not establish a shared cause or implement a fix. B2 later resolved the
+reproduced loader/DMA corruption; the historical $68 report remains unconfirmed.
 
 ### Acceptance boundaries and findings
 
@@ -584,3 +605,49 @@ B2 must investigate both; A does not establish a shared cause or implement a fix
   return counts prevent trustworthy inclusive call costs; 040/060 costs are instruction
   and chip-access approximations, not real hardware cycles. Use flat PCs for subsequent
   comparisons and preserve these limitations.
+
+
+## 10. B completion and supported timing (2026-10-20)
+
+B1 fixes the idle-stick stack imbalance and retains the correct keyboard comparison.
+B2 waits for screen DMA before file loading; uncached 030 now boots and races.
+B3 makes spectator/roadside phase field-based. B4 tests the small-step limit and
+provides an opt-in safety floor and ceiling. B5 finds no active gate/drain throttling
+in the tested baseline and 25 fps crash scenarios.
+
+Options in this beta: `CUSTOM2=0` retains original timing, `1` selects field-based
+animation, `2` selects safe timing, and `3` selects both. The input/loading fixes are
+unconditional. Safe timing permits at most 25 fps and limits a delayed simulation
+step to eight fields. It does not make the game fixed-step or guarantee the same
+collision outcomes across frame rates. C–G remain open; no default timing or release
+packaging decision is made here.
+
+Small-delta functional tests use the same 68020 configuration with fast execution,
+render skipping and field-based waits; they establish correctness limits, not real
+hardware speed. Straight-line distance after 490 fields is 3,364,352 at delta 4,
+3,333,820 at delta 2, and 3,327,906 at delta 1. The input tape produces one crash,
+zero crashes, and one earlier crash respectively, with different opponent order.
+The protected fast run exactly matches the delta-2 final state, rank order and crash
+count. Full rendering at 25 fps also matches the render-skipped delta-2 final state.
+This is why the supported safety mode stops at 25 fps, rather than claiming 50 fps
+is safe or applying a guessed fractional correction to all simulation paths.
+
+B diagnostics are compile-time only: `VERIFY_B` counts gate/drain calls and simulation
+deltas; `VERIFY_SKIP_RENDER` omits `$afd60`; `VERIFY_FRAME_PERIOD=N` requests a minimum
+N-field frame. The latter accounts for the original swap's next-field wait and still
+honours the safety floor when enabled. None is present in normal builds.
+
+Detailed inputs, binary hashes, comparisons and captures stay in the ignored harness:
+`tmp/dev/docs/b-correctness.md`; `b4-deltas`, `b4-guard-{straight,tape}`,
+`b4-upper-{control,clamp}`, `b5-020-replay`, and `b5-crash-search/run-0-False` under
+`tmp/dev/tmp`. Final matrix and replay evidence uses the `b-final-*` prefix. Original
+A evidence remains unchanged and available for comparison.
+
+
+Final B validation passes all 11 normal matrix cells and both 040/060 MMU cells.
+Same-cell normal distance stays within 1% of the B2 reference, and both option-off
+and option-on 020 tapes retain exact screenshots, final rank order and crash count.
+Keyboard/CD32 pause and recentering pass with safe timing both off and on. The
+normal build contains no diagnostic markers. Conditional patches require WHDLoad
+17.2; a 17.2 run with both options passes, as do the main 20.1 checks. The repeated
+020 Barto capture retains 12.5 fps and essentially the same DMA shares as A.

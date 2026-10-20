@@ -113,5 +113,9 @@ verify_stats:
 verify_pace:
 	cmpi.b	#VERIFY_FRAME_PERIOD-1,$aec0c
 	bcs.b	verify_pace
+	btst	#1,_timing+3(pc)
+	beq.b	.original
+	bra	safe_swap
+.original:
 	jmp	$aecba
 	ENDC

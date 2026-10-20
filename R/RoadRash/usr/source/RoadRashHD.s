@@ -21,7 +21,7 @@
 
 _base		SLAVE_HEADER			;ws_Security + ws_ID
 	IFND DEBUG
-		dc.w	17			;ws_Version
+		dc.w	17			;ws_Version (conditional patches need WHDLoad 17.2)
 	ELSE
 		dc.w	18			;ws_Version
 	ENDC
@@ -48,7 +48,7 @@ _expmem		dc.l	0			;ws_ExpMem
 	DOSCMD	"WDate  >T:date"
 	ENDC
 DECL_VERSION:MACRO
-	dc.b	"2.0"
+	dc.b	"2.1 beta"
 	IFD BARFLY
 		dc.b	" "
 		INCBIN	"T:date"
@@ -72,6 +72,7 @@ _config
 	dc.b	"PANDA 600,BANZAI 750,KAMIKAZE 750,SHURIKEN 1000,FERRUCI 850,PANDA 750,DIABLO 1000;"
 	
 	dc.b	"C2:X:Field-timed roadside animation:0;"
+	dc.b	"C2:X:Safe timing (25 fps maximum and bounded steps):1;"
 	dc.b	0
 	EVEN
 	include	ReadJoyPad.s
@@ -262,12 +263,23 @@ pl_messages_main
 	
 pl_main
 	PL_START
+	PL_IFC2X 1
+	PL_PS	$7736,safe_swap
+	PL_PS	$6FA0,bound_delta
+	PL_ENDIF
 	PL_IFC2X 0
 	PL_PS	$9D32,field_animation
 	PL_ENDIF
 	IFD VERIFY
 	PL_PS	$6FE0,verify_field
 	PL_PS	$71DC,verify_frame
+	IFD VERIFY_B
+	PL_PS	$75BC,verify_b_gate
+	PL_PS	$AFF0,verify_b_drain
+	ENDC
+	IFD VERIFY_SKIP_RENDER
+	PL_NOP	$7730,6
+	ENDC
 	IFD VERIFY_FRAME_PERIOD
 	PL_PS	$7736,verify_pace
 	ENDC
@@ -294,6 +306,22 @@ pl_main
 	PL_END
 	
 
+; A one-field simulation has measurable integration/collision differences.
+; Wait for one elapsed tick; the original swap waits for the following tick.
+safe_swap:
+	cmpi.b	#1,$aec0c
+	bcs.b	safe_swap
+	jmp	$aecba
+
+; Bound unusually long frames before both physics and rate calculations use d1.
+bound_delta:
+	cmpi.w	#8,d1
+	bls.b	.store
+	moveq	#8,d1
+.store:
+	move.w	d1,$a6f00
+	rts
+
 ; Four fields per phase, independent of rendered frame rate. The original
 ; ANDI.B #7 at $89d38 retains the wrap and the original condition codes.
 field_animation:
@@ -311,6 +339,8 @@ field_animation:
 	move.l	d0,12(a0)
 	movem.l	(a7)+,a0
 	ENDC
+	; Original ADDQ on a phase in 0..7 always clears X; ANDI preserves X.
+	andi	#$ef,ccr
 	move.l	(a7)+,d0
 	rts
 	IFD VERIFY
@@ -653,6 +683,8 @@ _resload	dc.l	0		;address of resident loader
 _tags
 		dc.l	WHDLTAG_CUSTOM1_GET
 _password		dc.l	0
+	dc.l	WHDLTAG_CUSTOM2_GET
+_timing	dc.l	0
 	IFD VERIFY
 	dc.l	WHDLTAG_ATTNFLAGS_GET
 verify_attn	dc.l	0
@@ -665,6 +697,9 @@ expansion_memory:
 	dc.l	$80000
 	IFD VERIFY
 	include	verify.s
+	IFD VERIFY_B
+	include	verify_b.s
+	ENDC
 	ENDC
 	
 	IFD DEBUG
