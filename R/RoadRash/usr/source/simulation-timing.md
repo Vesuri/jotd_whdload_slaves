@@ -1016,3 +1016,37 @@ Help quit key. Both inspected screenshots show return to AmigaDOS without an
 error. The 060 case uses Z3 RAM, with stack bottom `$407ed010`. These are bounded
 observations, not proof of a universal worst-case stack bound. Remaining
 throughput, A4 and latency validation stays open.
+
+## Reuse simulation-owned actor lean
+
+The actor pose loop at `$89e70..$89eec` repeated the lean calculation already
+performed by `step_derive_lean`, including a division and threshold-table walk.
+Its result was discarded: C suppresses the native actor `+$34` store, and the
+pose selectors read the stored simulation lean. The enhanced patch now enters
+`step_lean_end` directly from that presentation entry. The authoritative pass
+executes the displaced subtraction and enters the original calculation at
+`$89e76`. Native visibility tests, pose side effects and projection remain.
+The hook belongs to the same CUSTOM2-gated C patch list.
+
+Validation in the private harness:
+
+- `c-lean-attacks` matches all 1,598 common completed actor hashes and all sound
+  events against `c-finish-regression`. The entire tick-1457 snapshot and final
+  screenshot pixels match too.
+- `c-lean-fullrace` replays the recorded full race: all 14,023 hashes, 52 sound
+  events, finish and exit times match `c-fullrace1`. Final actor, clock,
+  spawn-timer, camera and rank ranges match. Presentation scratch data and the
+  asynchronous final image differ; this is not a full-snapshot equality claim.
+  The inspected finish and next-race images render correctly, and the next race
+  resets the capture and simulation counters.
+- `c-lean-armedvar` matches 1,597 common hashes, all sound requests and the same
+  authoritative snapshot ranges against the earlier varying-cadence armed
+  fixture, including secondary sound requests.
+- `c-lean-runtime-matrix`, using the explicit runtime binary, measures 7.1 fps
+  on cached A1200 Fast (previous Fast-stack C: 6.8) and 12.5 on cached 030/50
+  (unchanged), over the same 500-field window. This small improvement does not
+  resolve the remaining throughput regression or establish latency acceptance.
+- `c-lean-off` checks the actual normal slave with CUSTOM2=0: the new lean
+  entry and all previously checked timing, input and stack sites remain native.
+
+The normal slave is now 6,768 bytes. This change leaves C open.

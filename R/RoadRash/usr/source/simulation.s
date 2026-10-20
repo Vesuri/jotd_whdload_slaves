@@ -584,13 +584,21 @@ step_derive_lean:
 	cmpi.w #30,d0
 	bgt .next
 	move.l 4(a1),d2
-	jsr $89e70
+	bsr step_compute_lean
 	bra .next
 .done:
 	lea step_lean_busy(pc),a0
 	clr.b (a0)
 	move.w (a7)+,$a6ef6
 	rts
+; The simulation owns actor +$34. Pose selection reads that stored lean, so
+; neither the per-tick pose pass nor a render needs to derive it again.
+; Enter past the presentation hook only for the authoritative lean pass.
+step_compute_lean:
+	sub.l $a5d1e,d2
+	jmp $89e76
+step_pose_lean:
+	jmp $89ef0
 step_lean_end:
 	btst #0,step_lean_busy(pc)
 	bne .computed
