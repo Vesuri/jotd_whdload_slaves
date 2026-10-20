@@ -30,6 +30,17 @@ C_FAST_STACK = 1
 	ENDC
 	ENDC
 
+; Runtime projection executes from the already-verified Fast RAM slave hunk.
+; Full snapshot diagnostics opt in explicitly for reference comparisons.
+	IFD VERIFY_C_OBJECT_FAST
+C_OBJECT_FAST = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_OBJECT_FAST
+C_OBJECT_FAST = 1
+	ENDC
+	ENDC
+
 	IFD VERIFY_C_GEOMETRY_LUT
 	IFND C_STEP_BUILD
 	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
@@ -280,7 +291,7 @@ PatchLoader2:
 	lea	pl_c_simulation(pc),a0
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
-	IFD VERIFY_C_OBJECT_FAST
+	IFD C_OBJECT_FAST
 	bsr step_object_fast_init
 	ENDC
 .no_c:
@@ -407,7 +418,7 @@ pl_c_simulation
 	PL_P	$9E70,step_pose_lean
 	PL_P	$9EF0,step_lean_end
 	PL_P	$9F48,step_pose_project
-	IFD VERIFY_C_OBJECT_FAST
+	IFD C_OBJECT_FAST
 	PL_P $B02E,step_object_fast_code
 	ENDC
 	IFD VERIFY_C_OBJECT_WIDTH

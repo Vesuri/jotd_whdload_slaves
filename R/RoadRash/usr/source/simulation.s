@@ -631,10 +631,7 @@ step_scenery_cursor:
 
 ; Rebuild the world-object collision inputs for every step. The original
 ; collision code reads these projection records, not just world positions.
-	IFD VERIFY_C_OBJECT_FAST
-	IFND VERIFY
-	FAIL "Fast object projection experiment requires VERIFY"
-	ENDC
+	IFD C_OBJECT_FAST
 ; The selected C slave hunk is already verified to be in Fast RAM. All relative
 ; branches in $8b02e..$8b37d remain inside this block; data addresses are absolute.
 ; Copy after applying patches so optional width changes are preserved as well.

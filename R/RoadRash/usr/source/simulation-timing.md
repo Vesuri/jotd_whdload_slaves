@@ -1470,3 +1470,48 @@ quarter-steering reference, through wreck at field 11946 and restart. The
 Chip-only 020 test `c-object-fast-chip-fallback` retains the original entry even
 with CUSTOM2=1. Successful-finish coverage and normal-runtime integration remain
 separate outstanding work; this does not close C or the broader D3 audit.
+
+## Integrate Fast RAM projection in the enhanced runtime
+
+`C_OBJECT_FAST` now enables the tested copy/entry patch in normal and lean
+runtime builds. Full-snapshot diagnostics retain explicit
+`VERIFY_C_OBJECT_FAST` selection so historical references remain reproducible.
+The copy is still initialized only after CUSTOM2 and CPU/Fast-memory selection.
+Neither the steering candidate nor deferred-width experiment is enabled by this
+change. No additional public option is introduced.
+
+The actual normal slave in `c-object-runtime-matrix` measures:
+
+| Cached machine | Previous normal C | Fast projection normal C |
+| --- | ---: | ---: |
+| 020 | 8.7 fps | 10.0 fps |
+| 030/50 | 12.5 fps | 12.5 fps |
+| 040/25 | 16.6 fps | 16.6 fps |
+| 060/50 | 18.5 fps | 18.9 fps |
+
+These use the existing 500-field cycle-exact window. They remain below B's
+throughput and do not establish C completion. `c-object-runtime-off` and
+`c-object-runtime-chip` inspect all enhanced hook sites, including the new
+projection entry: both retain the original code. The integrated lean runtime's
+040/060 MMU probes verify all copied bytes and enabled TC translation; these
+functional results are not speed measurements.
+
+The normal slave is now 7,708 bytes, SHA-256
+`e7653f3f5964730115faf8a4c0971fb8b984bc46a518c5c1bfb2c8ee3aa6cd89`.
+The size increase reserves executable storage within the slave hunk; the
+optional expansion-memory stack reservation remains unchanged.
+
+`c-object-runtime-fullvar` uses the integrated projection with the original C
+steering and the recorded successful-finish tape, under varying render intervals.
+All 14,023 hashes and 52 sound requests match `c-fullrace1`, as do the terminal
+actor/clock/spawn-timer/camera/rank ranges, finish field 13835 and exit field
+14024. The next race resets capture state to `(93,92,0,1)`. Inspected finish and
+next-race screenshots render correctly. This validates successful finish/restart
+for this integration, not for the separate revised steering candidate.
+
+`c-object-runtime-pad` tests the actual normal binary: steering/release works,
+pause holds active field 161, resume reaches 172, and both stack guards remain
+intact (348 bytes observed high-water usage). `c-object-runtime-a500` retains
+8.5 fps, distance 3,425,028 and the exact final actor/clock/rank state hash of
+`b-final-normal-off`. C still needs further performance improvements and the
+remaining handling, latency and A4 acceptance work.
