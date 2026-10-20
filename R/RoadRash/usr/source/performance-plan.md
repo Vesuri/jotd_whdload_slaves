@@ -397,6 +397,13 @@ B comparison failures remain open. Retesting the private combined road/motion
 correction now passes Cache and NoCache short-distance tolerance, but default
 still fails (-1.1762%) and its crash onset remains 1538 versus B's 1376; that
 correction is not integrated.
+Lean derivation now shares the simulation pose traversal. The integrated binary
+is identical to the validated candidate: cached/default Fast 020 reaches 12.1
+fps and 040 reaches 19.6; other rates are unchanged. Full-race/restart, cadence,
+controls/demo, hardware/MMU and disabled-hook checks pass. All eight measured
+response phases now meet or beat B (170 ms median). This closes the current
+phase-303 latency regression in that test; handling/distance and overall
+throughput requirements remain open.
 The optional `VERIFY_C_ROAD_TIMING` diagnostic corrects player and opponent
 road integration and preserves its fractional state across copies and crashes.
 It matches completed simulation state across actual 1/2/3/4-field and varying

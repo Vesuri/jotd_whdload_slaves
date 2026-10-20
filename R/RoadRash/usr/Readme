@@ -38,6 +38,8 @@
  - movement, collision, AI and acceleration code runs from Fast RAM on the
    enhanced path
  - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path
+ - simulation derives rider lean during pose selection, avoiding a second
+   traversal of the actor list
  - collision checks skip road-width and edge drawing calculations; rendering
    still builds the complete road geometry
  - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the

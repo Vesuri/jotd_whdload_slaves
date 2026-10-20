@@ -19,6 +19,16 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
+; Derive lean in the simulation pose traversal, reusing its actor eligibility.
+	IFD VERIFY_C_FUSED_LEAN
+C_FUSED_LEAN = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_FUSED_LEAN
+C_FUSED_LEAN = 1
+	ENDC
+	ENDC
+
 ; Keep AI dispatch and its hot acceleration helpers in Fast RAM together.
 	IFD VERIFY_C_PHYSICS_AUX
 C_PHYSICS_AUX = 1
@@ -513,7 +523,7 @@ pl_main
 	IFD C_STEP_BUILD
 pl_c_simulation
 	PL_START
-	IFD VERIFY_C_FUSED_LEAN
+	IFD C_FUSED_LEAN
 	PL_PSS $9DE8,step_fused_lean,4
 	ENDC
 	PL_IFC2

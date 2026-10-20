@@ -66,11 +66,20 @@ field-sampled upper estimates, not physical input-to-photon measurements.
 demo fire exit, demo timeout and stack checks. `c-fused-lean-off` verifies the
 normal candidate retains all ten original bytes at $89de8 with CUSTOM2=0.
 
-The tracked normal binary remains byte-identical to production (19,296 bytes);
-only explicit diagnostics select fusion. Integration must preserve the tested
-normal layout: its helper is appended, while the full diagnostic places the
-helper near `step_compute_lean` to fit signed patch references. C's separate
-B handling/distance and overall performance requirements remain open.
+Fusion is now selected automatically by the normal runtime through
+`C_FUSED_LEAN`; reference diagnostics retain explicit `VERIFY_C_FUSED_LEAN`
+selection. The shared `lean_pose.s` helper is appended in the normal build and
+placed near `step_compute_lean` in full diagnostics to fit signed patch
+references. Both call sites include exactly the same helper source.
+
+`c-fused-lean-runtime-build/RoadRash.slave` is byte-identical to the tested
+19,376-byte private candidate (SHA-256
+`1ec1fb8226541302faf63542fdb0159a5bc0ea521762964e737991a28db7f3ab`). Its full
+snapshot diagnostic is also byte-identical to `c-fused-lean-retained-build`.
+Thus the completed normal, fallback, controls, latency and diagnostic replay
+checks apply to the integrated binaries. The hook is installed only after the
+master-toggle/CPU/Fast gate selects C. C's separate B handling/distance and
+overall performance requirements remain open.
 
 ## Exact Fast RAM lean copy does not improve measured throughput
 

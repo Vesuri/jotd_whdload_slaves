@@ -248,7 +248,7 @@ step_end:
 	bsr step_track_events
 	bsr step_actor_animations
 	bsr step_spark_events
-	IFD VERIFY_C_FUSED_LEAN
+	IFD C_FUSED_LEAN
 	nop
 	nop
 	ELSE
@@ -626,32 +626,11 @@ step_derive_lean:
 ; The simulation owns actor +$34. Pose selection reads that stored lean, so
 ; neither the per-tick pose pass nor a render needs to derive it again.
 ; Enter past the presentation hook only for the authoritative lean pass.
-	IFD VERIFY_C_FUSED_LEAN
-	IFND VERIFY
-	FAIL "Fused lean requires a diagnostic build"
+	IFD C_FUSED_LEAN
+	IFND C_RUNTIME_ONLY
+; Full snapshot diagnostics need the helper within signed patch reach.
+	include lean_pose.s
 	ENDC
-; Diagnostic fusion: derive lean at actor entry, before this actor's pose effects.
-step_fused_lean:
- btst #0,step_pose_busy(pc)
- beq .original
- movem.l d0-d2/a4,-(a7)
- move.w 4(a1),d0
- sub.w $a5d1e,d0
- bmi .restore
- cmpi.w #30,d0
- bgt .restore
- move.l 4(a1),d2
- lea step_lean_busy(pc),a4
- st.b (a4)
- bsr step_compute_lean
- lea step_lean_busy(pc),a4
- clr.b (a4)
-.restore:
- movem.l (a7)+,d0-d2/a4
-.original:
- clr.w 18(a0)
- cmpa.l #$a5de0,a1
- rts
 	ENDC
 step_compute_lean:
 	sub.l $a5d1e,d2
@@ -1141,4 +1120,11 @@ step_authoritative:
 
 	IFD C_PHYSICS_AUX
 	include physics_aux.s
+	ENDC
+
+	IFD C_FUSED_LEAN
+	IFD C_RUNTIME_ONLY
+; Preserve the measured normal-runtime layout independently of diagnostics.
+	include lean_pose.s
+	ENDC
 	ENDC
