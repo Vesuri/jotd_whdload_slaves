@@ -241,6 +241,9 @@ The hottest instructions are the BBUSY polls themselves:
 
 ### 1.6 Hazards on faster CPUs
 
+These are the original game's hazards. B1/B2 now fix the waits and pixel
+ordering; B3's data/code audit is in [CACHE_AUDIT.md](CACHE_AUDIT.md).
+
 - **BBUSY read too early.** Every BBUSY wait reads DMACONR once, one to three instructions after
   writing BLTSIZE: `+02D84`, `+02EFA`, `+030C6`, `+0319A`, `+031E6`, `+08626`, `+088D8`,
   `+08BD6`, `+08D3E`, `+08D7A`, `+09198`, `+09242`, `+092F6`, `+0933C`.
@@ -252,7 +255,8 @@ The hottest instructions are the BBUSY polls themselves:
   waiting for the blitter.
 - **Code, tables and caches.** Tables and vertex buffers live inside the code hunk (for example
   `+06ACA`–`+07592`, `+08D88`). They are written as data only, and no self-modifying code was
-  found in the reviewed routines. This still needs confirming for 68040/68060 copyback (item B3).
+  found. B3 confirms that the writable islands are data, not instructions;
+  chip DMA memory is non-cacheable and fast CPU-only data may use copyback.
 
 ## Part 2: plan
 
@@ -284,8 +288,8 @@ swap counts on 020+. Barto's omitted fields are explicitly accounted for.
 Build and acceptance commands, fixture details, hashes and raw evidence live in
 `tmp/dev/docs/measurement-a.md` and `tmp/dev/tmp/a-final/` (ignored harness).
 `tools/compare_states.py` supplies A4's regression gate; matching simulation state
-across CPUs remains an acceptance requirement for the future C changes. No B–G
-performance or game-time changes are included.
+across CPUs remains an acceptance requirement for the future C changes. A itself
+introduced no B–G performance or game-time changes.
 
 Measurement correction: the original multi-capture route advanced 524 VBLs, not
 500, because each emulator capture includes an unrecorded lead-in field. New
@@ -336,7 +340,9 @@ take-off. Its AI remains active, so the helicopter can leave the view.
 
 ### B. Correctness on fast CPUs
 
-**B1/B2 implemented.** `blitter.i` validates all 14 `BTST/BNE` loops (12 using
+**Status: complete (B1–B4).**
+
+**B1/B2 complete.** `blitter.i` validates all 14 `BTST/BNE` loops (12 using
 a0, one a1, one a6) and the unique pixel-write helper call before modifying the
 loaded game. It replaces each loop with `JSR/NOP` and wraps the pixel helper
 with the same double-read wait. Registers and the original wait's CCR effects
@@ -349,6 +355,35 @@ layouts are rejected without partial writes. Delayed-BBUSY and all 32 CCR
 combinations pass. PAL flight smoke checks pass on 68000 and 68060. The German
 dispatch path is exercised with relocated fixtures, but an original German
 binary has not yet been tested; its runtime signature checks remain mandatory.
+
+**B3 complete.** [CACHE_AUDIT.md](CACHE_AUDIT.md) inventories all writable hunk-0
+islands, including indirect stores. The audit accounts for 267 direct write
+sites at 138 destinations and finds no overlap with executable instructions.
+The existing `CACHE` policy is appropriate: non-cacheable chip/base memory,
+copyback fast/slave memory, and a flush after LoadSeg callbacks finish patching.
+No additional runtime flush or data relocation is needed. VERIFY records the
+load-time cache policy and exposes a completed-swap checkpoint with the tick
+in a CPU register, avoiding stale debugger reads of copyback data.
+
+**B4 complete.** All 21 completed-frame captures match byte-for-byte across
+40,000 displayed bitplane bytes and the 64-byte palette: nine A2 cycle-exact
+68020/68040/68060 samples at ticks 100/110/120, plus twelve cache-functional
+samples at ticks 300/310/320 (68020, full-MMU 68040/68060, and 68040 NOCACHE).
+The latter use CPU-observed ticks and buffer selection; physical RAM can lag
+copyback data. Cache-on policy is `0x3b3d`; the NOCACHE control reports zero.
+The full-MMU cache checks use immediate blits because the asynchronous-blitter
+emulator configuration reproduces cockpit corruption with both the pre-B slave
+and NOCACHE. They validate cache correctness, not blitter timing or performance;
+timing coverage comes from the cycle-exact runs and delayed-BBUSY tests.
+
+The 180 assembled blitter cases and 128 frame-hook cases pass, as does a
+SetCPU scratch-register preservation test. PAL 68000/68060 flight and 68060
+combat smoke checks pass. NTSC 68060 reaches flight with all 14 waits patched,
+using a live-pilot roster only in its disposable runtime copy. All 226 original
+PAL, installer and NTSC files remain unchanged. Evidence and reproducible commands
+are retained in the ignored harness (`docs/measurement-b.md`,
+`tmp/b/acceptance.json`). Original German and real-hardware coverage remain
+release limitations, not implied by these emulator checks.
 
 - **B1. Safe blitter waits.**
   - B1a. Replace the 14 BBUSY loops of §1.6 with a slave routine that does a dummy DMACONR read,
@@ -505,7 +540,9 @@ This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
   options.
 - **F4. Final check.** Run the full matrix (68000, 68020, 68030, 68040, 68060) on all windows of
   A3: fps, pacing jitter, ticks per second and state equality. Also play through a full mission
-  on the 68000 and the 68060.
+  on the 68000 and the 68060. Resolve or independently validate the full-MMU
+  asynchronous-blitter emulator limitation documented under B4. The reported
+  68060 T-74 copy-protection graphics issue remains deferred at the user’s request.
 
 ### G. Optional: a higher simulation rate
 

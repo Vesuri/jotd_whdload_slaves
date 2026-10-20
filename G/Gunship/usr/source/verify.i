@@ -35,6 +35,16 @@ verify_dispatch:
 	move.l a0,56(a3)
 	lea verify_frames(pc),a0
 	move.l a0,60(a3)
+	lea verify_frame_tick(pc),a0
+	move.l a0,76(a3)
+	; Query the current WHDLoad cache policy with an empty change mask.
+	; SetCPU also flushes caches: do this only at load time, where the
+	; normal LoadSeg callback already flushes before executing the game.
+	moveq #0,d0
+	moveq #0,d1
+	jsr resload_SetCPU(a2)
+	move.l d0,72(a3)
+	movea.l 8(a3),a1 ; SetCPU may destroy a0/a1
 	lea verify_game_patches(pc),a0
 	jsr resload_Patch(a2)
 	bra .done
@@ -139,7 +149,7 @@ verify_frame:
 	lea verify_marker(pc),a0
 	move.l 44(a0),d0
 	cmpi.l #VERIFY_FRAMES,d0
-	bhs .overflow
+	bhs verify_frame_overflow
 	movea.l d0,a1
 	adda.l a1,a1
 	adda.l a1,a1
@@ -148,18 +158,26 @@ verify_frame:
 	movea.l 16(a0),a0 ; hunk 2
 	move.l $1c(a0),(a1)+
 	movea.l verify_marker+32(pc),a0 ; hunk 6
-	move.w $3b94(a0),(a1)+
+	move.w $3b94(a0),d0
+	move.w d0,(a1)+
 	move.w $4bb0(a0),(a1)
+	swap d0
+	move.w (a1),d0
+	swap d0
+verify_frame_tick:
+	; D0 = back-buffer index : tick, both observed by the CPU.
+	; The displayed buffer is back-buffer XOR 1. This avoids stale
+	; copyback reads of both the tick and Intuition's changing BitMap.
 	lea verify_marker(pc),a0
 	movea.l 44(a0),a1
 	addq.l #1,a1
 	move.l a1,44(a0)
-	bra .restore
-.overflow:
+	bra verify_frame_restore
+verify_frame_overflow:
 	movea.l 52(a0),a1
 	addq.l #1,a1
 	move.l a1,52(a0)
-.restore:
+verify_frame_restore:
 	movea.l verify_marker+8(pc),a0
 	adda.l #$c757,a0
 	clr.b (a0) ; replay displaced instruction
@@ -178,5 +196,7 @@ verify_marker:
 	dc.l 0 ; +60: frame log address
 	dc.l VERIFY_FRAMES ; +64: capacity
 	dc.l 0 ; +68: combat fixture applied
+	dc.l 0 ; +72: WHDLoad cache policy at game load (SetCPU with mask=0)
+	dc.l 0 ; +76: completed-swap checkpoint, CPU tick in d0.w
 verify_frames:
 	ds.b VERIFY_FRAMES*8

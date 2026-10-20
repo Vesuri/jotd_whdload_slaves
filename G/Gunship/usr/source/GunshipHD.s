@@ -54,6 +54,8 @@ IOCACHE		= 10000
 ;SETPATCH
 ;STACKSIZE = 10000
 BOOTDOS
+; Chip DMA memory stays non-cacheable; CPU-only fast data may use copyback.
+; See CACHE_AUDIT.md. LoadSeg flushes after the callbacks patch instructions.
 CACHE
 CBDOSLOADSEG
 
