@@ -209,3 +209,90 @@ attitude_pitch_clamp:
 .done:
 	movem.l (sp)+,d1-d3
 	rts
+
+; Combined-player pre-clamp, a2=immutable control packet (signed y at +2).
+; Field steps must retain native held-input endpoints: native clamp followed
+; by delta=-(y+previous_y) can reach +22/-14. Clamping to +20/-12 every
+; field would instead converge to +20+2*h / -12-2*h.
+; Extend only the outward pre-clamp bound by delta*(1-h), h=3/rate.
+; The following scaled attitude step then reaches the native endpoint.
+; Release/reversal restores the corresponding original pre-clamp bound.
+; World impulses are applied later, unchanged. Whole-tick mode uses the
+; original byte/BMI clamp exactly. Return 0/-1; preserve other registers.
+attitude_pitch_clamp_control:
+	movem.l d1-d6,-(sp)
+	moveq #0,d2
+	move.w AT_RATE(a0),d2
+	cmpi.w #3,d2
+	beq .whole
+	cmpi.w #50,d2
+	beq .rate
+	cmpi.w #60,d2
+	bne .bad
+.rate:
+	move.w 2(a2),d3
+	cmpi.w #-1,d3
+	blt .bad
+	cmpi.w #1,d3
+	bgt .bad
+	move.w AT_PREVIOUS_Y(a0),d4
+	cmpi.w #-1,d4
+	blt .bad
+	cmpi.w #1,d4
+	bgt .bad
+	tst.w d3
+	beq .delta
+	add.w d4,d3
+	neg.w d3
+.delta:
+	move.l AT_PITCH_REMAINDER(a0),d1
+	cmp.l d2,d1
+	bge .bad
+	move.l d2,d4
+	neg.l d4
+	cmp.l d4,d1
+	ble .bad
+	moveq #0,d0
+	move.b $36(a1),d0
+	ext.w d0
+	muls.w d2,d0
+	add.l d1,d0
+	moveq #-12,d4
+	muls.w d2,d4
+	moveq #20,d5
+	muls.w d2,d5
+	move.w d2,d6
+	subq.w #3,d6
+	muls.w d3,d6
+	tst.w d3
+	bmi .lower
+	add.l d6,d5
+	bra .clamp
+.lower:
+	add.l d6,d4
+.clamp:
+	cmp.l d4,d0
+	blt .low
+	cmp.l d5,d0
+	ble .ok
+	move.l d5,d0
+	bra .store
+.low:
+	move.l d4,d0
+.store:
+	divs.w d2,d0
+	move.b d0,$36(a1)
+	swap d0
+	ext.l d0
+	move.l d0,AT_PITCH_REMAINDER(a0)
+.ok:
+	moveq #0,d0
+	bra .done
+.whole:
+	bsr attitude_pitch_clamp
+	bra .done
+.bad:
+	moveq #-1,d0
+.done:
+	movem.l (sp)+,d1-d6
+	rts

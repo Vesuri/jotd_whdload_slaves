@@ -449,7 +449,9 @@ flight-rate responses. A subsequent altitude-normalization fix removes
 the delayed integer-height boundary that selected a different vertical
 equilibrium. Combined whole-tick player/world comparisons now pass with
 native motion RNG, ground effects, opening and post-motion world work,
-including consecutive ticks. C4e is still not accepted: field-rate coupled
+including consecutive ticks. Moving-stick tests also exposed and corrected
+a field-clamp change to the native held pitch endpoints (-14/+22); temporal
+control-history and turning differences remain. C4e is still not accepted: field-rate coupled
 trajectory differences, moving controls and collision behavior still need
 explicit bounds and validation before installation.
 The camera/instrument builder is now extracted and native-equivalent in

@@ -2438,3 +2438,59 @@ world-deadline contact policy, missed-obstacle behavior, render-derived
 flight-end migration or cross-CPU runtime behavior. The order tested here
 is the native whole-tick order; choosing where opening and random impulses
 belong within a multi-field interval remains an installation requirement.
+
+
+### Field pitch saturation preserves native held endpoints
+
+Moving-stick measurement exposed a non-rounding handling change. Native
+pitch clamps to [-12,20] before subtracting current plus previous nonzero y,
+so sustained input reaches -14 or +22. Repeating the same pre-clamp every
+field instead limited the scaled path to about -12.1/+20.1 at 60 Hz. The
+resulting pitch error fed speed, turning and altitude calculations.
+
+`attitude_pitch_clamp_control` now supplies the combined player path's
+pre-clamp. It takes the existing attitude/player pointers and the immutable
+control packet in a2. For h=3/rate and delta=-(y+previous_y) when y is nonzero
+(or zero otherwise), its fractional pre-clamp limits are
+`-12 + min(delta,0)*(1-h)` and `20 + max(delta,0)*(1-h)`.
+Adding the subsequent scaled control increment then preserves the native
+outward endpoint. Only the outward limit is extended; inward movement does
+not jump to a shifted lower/upper limit. Release or reversal restores the
+corresponding native pre-clamp limit. World impulses remain unscaled and
+follow this clamp as before. This is a saturation correction, not a change
+to motion coefficients or displacement order.
+
+The helper compares exact pitch numerators with denominator rate and stores
+integer/remainder values only when it clamps. Whole-tick fixture rate 3
+still calls the original byte/BMI clamp, including its extreme-byte behavior.
+Both ordinary and split player entries use the new helper on their private
+candidate. Invalid state/control returns -1 before writes. The original
+standalone native clamp remains available for native-equivalence tests.
+
+Validation:
+
+- `test_pitch_control_clamp_c.py`: 13,824 exact integer-model field cases
+  (all pitch bytes, all current/previous directions, both field rates and
+  remainder extremes), plus 256 comparisons with the original whole-tick
+  clamp; 28,674 helper calls. Five additional malformed rate/control/fraction
+  cases reject without writes.
+- The combined native player/world gate still passes 512 cases with all
+  motion RNG paths and 191 ground resets. The split-player regression passes
+  4,096 native ground cases, 1,356 ordinary/split field comparisons and its
+  three rollback cases after the change.
+- `measure_stick_motion_c.py` compares nine held directions, reversal and
+  pulse tapes in both flight modes and at 50/60 Hz for ten seconds each,
+  sampling at exact whole seconds. It uses the previously native-equivalent
+  h=1 player path as reference, excludes world/contact effects and includes
+  retained fractions. All held-direction final pitch endpoints now match.
+
+Across these 44 trajectories, the largest measured height difference drops
+from 59.1 to 9.6 native units and speed difference from 19.9574 to 5.4055.
+These are observed maxima, not accepted global bounds. Reversal retains up
+to 1.9 pitch units of transient/history difference, and the pulse tape still
+shows roughly 37.04 track units of difference. The two-sample native control
+history now advances per field, which changes its temporal response; this
+and coupled turning require further analysis. Do not classify those effects
+as fixed-point rounding or declare C4e passed. Reports are the ignored
+`tmp/dev/tmp/c/stick-motion-before-pitch-fix.json` and
+`tmp/dev/tmp/c/stick-motion-measurement.json`. Production remains unchanged.

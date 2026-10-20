@@ -53,7 +53,8 @@ player_step:
 	dbf d0,.copy_player
 	lea PS_ATTITUDE(a4),a0
 	lea PS_PLAYER(a4),a1
-	bsr attitude_pitch_clamp
+	movea.l d5,a2
+	bsr attitude_pitch_clamp_control
 	tst.l d0
 	bne .bad
 	movea.l d5,a2
