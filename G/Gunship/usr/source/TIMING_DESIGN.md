@@ -2223,3 +2223,43 @@ acknowledges the native flag before each active field; arbitrary real swap-flag
 values do not affect it. Nineteen corrupted patch boundaries reject before
 writes (827 helper calls). Installation, graphics reconstruction and complete
 weapon/scheduler composition remain pending behind the CUSTOM1 gate.
+
+### Scheduler-bound guidance and actual launch/release composition
+
+`timing-scheduled-guidance.i` binds guidance evaluation to a delivered player
+phase. Its 16-byte context contains scheduler/clone pointers, last field,
+valid flag and per-call COMMITTED flag. Initialize metadata at epoch start.
+`scheduled_guidance_step` takes the context in a0, requires scheduler phase 1
+and healthy upstream owners, and rejects a second evaluation of the same
+field. Run it before that field's controls and motion, matching the native VBL
+ordering relative to new input. It does not acknowledge player/world work.
+Return 0/1 retains the guidance inactive/evaluated result; -3 rejects phase or
+duplicate use and -1 reports an upstream fault. All non-result registers are
+preserved. Explicit lifecycle rebase must also reset this context's metadata.
+
+After evaluation, field/valid/COMMITTED are recorded before the final upstream
+check. Thus a fault arriving during state changes returns -1 with COMMITTED=1;
+recovery must account for that field instead of reapplying it. Inactive
+successful evaluations also count, so later world activation cannot cause an
+extra guidance step in the same delivered field.
+
+`tmp/dev/tools/test_scheduled_guidance_c.py` passes 3,840 fields: 240 per run
+at 50/60 Hz, guided weapon types 1/3, and batches 1/3/10/25 (22,932 calls).
+It connects actual scheduler history, field guidance, world fire flags, native
+tick opening and native weapon/actor execution. Constructors now activate the
+guidance controller themselves; no synthetic state-5 release is supplied.
+The same complete world-memory snapshots and field guidance states result
+across batching, despite different live timestamps and screen-swap flags.
+PAL launches occur at fields 17/84/167 and releases at 24/91/174; NTSC launches
+at 20/100/180 and releases at 27/107/187. Each release is seven delivered fields
+after launch, retaining the controller's field-based phase progression.
+Every field also attempts a duplicate call and verifies no additional effect.
+
+`test_scheduled_guidance_fault_c.py` passes post-effect producer-fault injection,
+retry without reapplication, wrong ready/world phases and a pre-existing
+upstream fault (25 calls). These tests use fixed player motion, a slot-5 target
+fixture and the previously documented UI/audio stubs. Full player movement,
+remaining world damage/scripts, lifecycle rebasing, guidance graphics and live
+cross-CPU behavior are not covered. The bridge remains uninstalled; eventual
+native integration must exclude the original VBL guidance state owner and
+remain behind CUSTOM1 Enhanced framerate.
