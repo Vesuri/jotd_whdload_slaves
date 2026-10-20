@@ -1,3 +1,29 @@
+## Motion correction still fails B safeguards after lean fusion
+
+Private `c-fused-motion-source` applies the existing reference-endpoint motion
+formula and quarter-reference road correction to the integrated fused-lean
+runtime, without tuning coefficients. Build/source provenance is retained in
+`c-fused-motion-build`; its normal binary is 20,032 bytes, SHA-256
+`f11eef3a2d4ea68ea020dc55d2fabb81f787827ab14ad27a39a49b36396c1c3b`.
+
+`c-fused-motion-matrix` passes functional boot checks but does not pass B's
+same-cell distance safeguard:
+
+| Policy | fps | Distance at 490 fields | Difference from same-cell B |
+| --- | ---: | ---: | ---: |
+| Default | 12.3 | 3,324,779 | -1.1762% (fails) |
+| Cache | 12.3 | 3,324,779 | -0.2256% |
+| NoCache | 8.2 | 3,324,779 | -1.1762% (fails) |
+
+The unchanged lap tape in `c-fused-motion-lap` still produces sampled crash
+onset 1538, versus B's 1376, and ends in crash state 2 / displayed rank 15.
+This exactly retains the preceding combined candidate's sampled crash onset.
+The new traversal and layout therefore do not resolve the handling difference;
+the earlier NoCache distance pass also does not survive this build's live-field
+alignment. The correction remains private. Further work must address the
+simulation/trajectory discrepancy rather than treating a favorable rendering
+phase as a correction to game speed.
+
 ## Diagnostic fusion of lean derivation and actor pose traversal
 
 `VERIFY_C_FUSED_LEAN` removes the separate `step_derive_lean` traversal and

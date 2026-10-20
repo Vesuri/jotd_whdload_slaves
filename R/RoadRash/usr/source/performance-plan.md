@@ -416,8 +416,9 @@ performance and remaining control/hardware checks are open.
 The native rank audit found that the old full-order verifier sorts stale
 off-screen positions. Corrected rank observations still show nearby-rider
 passing differences from B; full-order equivalence remains unproven.
-Performance, remaining A4/handling review and latency work still
-prevent completion. See the visible-response audit in the dependency document.
+Performance and remaining A4/handling differences still prevent completion.
+The fused runtime passes the current eight-phase B visible-response comparison;
+future gameplay changes must retain that result. See the dependency document.
 
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
