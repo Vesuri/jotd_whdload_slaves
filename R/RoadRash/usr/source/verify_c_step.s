@@ -140,6 +140,23 @@ step_start_frame:
 
 ; Field producer: use existing control/pause handling, but keep the physics
 ; steering and throttle state owned by the simulation consumer.
+; Replace the whole native demo/player dispatch. A hook spanning $8710c..$87115
+; is unsafe: the native demo branches land at $87110 inside that replacement.
+step_field_input:
+	tst.w $a7204
+	beq step_queue_input
+	addq.w #1,$a7206
+	cmpi.w #3600,$a7206
+	bmi .poll
+	move.w #1,$a59d2
+	move.w #1,$a59d0
+	bra .done
+.poll:
+	jsr $87276
+.done:
+	tst.w $a59d2
+	rts
+
 step_queue_input:
 	movem.l d3-d6/a0-a1,-(a7)
 	move.b $a598c,d6
@@ -176,6 +193,9 @@ step_queue_input:
 	rts
 
 step_replay_inputs:
+; The demo drives its player through AI. Do not replay an unproduced human queue.
+	tst.w $a7204
+	bne .done
 	move.l step_stats+8(pc),d3
 	moveq #STEP_FIELDS-1,d4
 	lea step_replaying(pc),a0
@@ -197,6 +217,7 @@ step_replay_inputs:
 	dbf d4,.next
 	lea step_replaying(pc),a0
 	clr.b (a0)
+.done:
 	rts
 
 step_input_key:

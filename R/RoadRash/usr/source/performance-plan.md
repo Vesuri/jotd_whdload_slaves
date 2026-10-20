@@ -371,6 +371,8 @@ dictate the accelerated path's timestep.
     report A500 compatibility separately. Use elapsed active fields; preserve
     pause, the existing PAL clock rate and input timing. Do not equate one rendered
     frame with one simulation step.
+    Normalize per-call effects such as crash-camera decay against the original
+    timing reference; render-rate invariance alone does not prove correct speed.
   - C1c Specify ownership of actor state, collision/AI updates, animation, sound
     events and render buffers so extra renders neither advance gameplay nor
     duplicate side effects. Capture input at field boundaries for simulation use.
@@ -393,7 +395,8 @@ dictate the accelerated path's timestep.
     varying/longer intervals. Compare simulation state, distance, clock, opponent
     order, collisions, crashes and event counts at identical simulation boundaries.
   - C3b Run A2/A4, review deliberate presentation differences, and verify pause,
-    resume, race transitions, keyboard/CD32 controls and per-field input response.
+    resume, attract-mode demos and their exits, race transitions, keyboard/CD32
+    controls and per-field input response.
     Measure input-to-display latency explicitly. Retain original-behaviour
     comparisons; explain any intentional baseline change.
   - C3c Measure rendering throughput and simulation cost on the A500 through 060,

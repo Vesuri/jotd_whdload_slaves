@@ -273,7 +273,8 @@ pl_main
 	ENDC
 	PL_NOP	$76C6,6
 	PL_PSS	$A40E,step_start_sprite,2
-	PL_PSS	$710C,step_queue_input,4
+	PL_PS	$70DC,step_field_input
+	PL_S	$70E2,$7116-$70E2
 	PL_P	$73F4,step_input_key
 	PL_PSS	$9E0E,step_crash_sprite,2
 	PL_PS	$9E26,step_pose_clear

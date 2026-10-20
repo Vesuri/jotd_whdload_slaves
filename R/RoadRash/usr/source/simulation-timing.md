@@ -28,6 +28,11 @@ The camera writes `$a5d1e` and `$a7c02`. Physics and collisions read `$a5d1e`, i
 During a crash, `$89162` decays camera displacement once per call and `$89182`
 integrates it from actor movement. Calling the camera once per render would therefore
 preserve a gameplay dependency on rendering frequency.
+Moving this call to a 50 Hz simulation does not by itself preserve its decay rate:
+four calls leave approximately `(3/4)^4 = 31.6%` of the offset, whereas the
+four-field original reference leaves 75%. The movement integration reads the
+delta-scaled actor displacement, but the decay needs explicit elapsed-time
+normalization. This remains open; cross-render-rate hashes cannot detect it.
 
 `$8eff8`, called among rendering preparation at `$876c6`, consumes sound-event flags,
 decrements `$a5d5e` using delta, and clears `$a598a/$a598b`. It must consume each
@@ -338,3 +343,25 @@ consecutive actor hashes** at presentation intervals 1 and 12, with identical
 actor snapshots at field 1,901 (`c-50-late1/12`). The earlier 1,598-tick prefix
 is unchanged by this correction. The special actor is inactive in the captured
 snapshot, so a scenario with it active and visible is still required.
+
+## Demo and input dispatch correction
+
+The original demo exit branches at `$87104` and `$8710a` target `$87110`.
+The former diagnostic `PL_PSS $710c,...,4` overwrote that target inside its
+replacement instruction sequence. The field hook now replaces the complete
+demo/player dispatch at `$870dc..$87115`, returning the exit flag's condition
+codes to the existing branch at `$87116`. It preserves the 3,600-field demo
+timeout and native demo input polling. Demo simulation skips the human input
+queue, which has no producer while the AI drives the player.
+
+`c-demo-race-regression` matches all 1,598 recorded human-input actor hashes
+against `c-50-full1`. Keyboard and CD32 steering/release and pause/resume checks
+pass (`c-demo-keyboard`, `c-demo-cd32`); the active field clock remains 161
+through the paused interval. `c-demo-transition-intro` observes the demo advancing
+from field 163 to 463, exits it with fire, then reaches a normal race at field 100.
+The first unattended test stayed at a pre-race message; the successful harness
+first presses fire after 1,000 boot fields, then waits for the demo.
+`c-demo-timeout-verified` also exits without input at race field 3,598, matching
+the native 3,600-count limit with the observed initial two-count offset, then
+starts a normal race. Cleanup clears the demo timer, so the timeout check uses
+elapsed fields rather than expecting its post-exit value to remain 3,600.
