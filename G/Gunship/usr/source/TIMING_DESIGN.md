@@ -32,6 +32,8 @@ future step. It does not select field-specific equations or coefficients.
 approach responses using r^h field gains and exact native h=1 rounding.
 `timing-flight-rates.i` connects vertical, forward and RPM responses to
 the native stages, including additive slew/coasting and retained fractions.
+`timing-heading.i` replaces native stage 0's angle writes with coupled
+field-rate heading/track updates and explicit world heading impulses.
 `timing-motion-stages.i` exposes the native preview in ordered slices so
 scaled rates can feed later displacement rather than scaling only the
 final candidate pose. The slices themselves still use native increments.
@@ -419,6 +421,14 @@ state. Product truncation is below one fraction unit, not a whole native
 state unit. Each response quantity needs independent fractional storage
 and explicit lifecycle/impulse/saturation handling.
 
+`response_step_target` additionally accepts a target main fraction in d3,
+with the same denominator and bounds as the current fraction. Its numerator
+adds `trunc(P(target_fraction)/32767)` to T. Thus a track response can
+follow the newly integrated heading's fraction rather than only its byte.
+The ordinary `response_step` passes a zero target fraction. Whole-tick
+fixture mode requires both fractions to be zero. Smaller rate-conversion
+residues stay retained by the caller and are each below 1/32767 native unit.
+
 This is a scalar response component, not the complete field motion step.
 The caller still must apply native derived targets, update order, wrapping,
 slew, clamps and world effects. The complete player h=1/held-input gate
@@ -494,12 +504,66 @@ component cases match independent full-fraction models. Fifteen malformed
 state cases, including signed-long extremes, fail without writes.
 Evidence: `tmp/dev/tmp/c/flight-rates-tests.json`.
 
-Heading, height/coordinate displacement and wind are **not** field-scaled
-by these functions. Running the native stages every field without those
+Angles are handled by the separate component below. Height/coordinate
+displacement and wind are **not** field-scaled by these rate functions.
+Running the native stages every field without those
 remaining conversions would still accelerate movement. They remain
 standalone and must not be installed as a complete player step. World
 effects, full coupled-flight acceptance and CUSTOM1-gated native installation
 are still pending.
+
+## Coupled heading and track angles
+
+`timing-heading.i` owns 20 bytes: rate/reserved words, then heading main
+fraction, heading conversion remainder, track main fraction and track
+conversion remainder. Their units match the flight-rate shared fractions.
+`heading_init` initializes rate 50/60 or whole-tick fixture 3 and clears
+all fractions. `heading_step` takes state in a0, private player in a1,
+heading/track bytes saved **before native stage 0** in d0/d1, and a supplied
+world heading impulse (-2..2) in d2. It replaces stage 0's angle results
+after native power calculation. It returns d0=0/-1, preserves other
+registers, and validates state/inputs before writes.
+
+The yaw branch retains native byte doubling of the yaw control, scales
+that additive rate, then derives track from heading and the roll-sign
+offset. Track inherits heading's fractions because this is a derived
+angle, not a separate damped response. In the bank branch, the native
+arithmetic-shifted roll supplies an additive rate to both angles. Heading
+uses the sixteenth response toward track; track then uses the quarter
+response toward the **newly updated** heading, including its main fraction.
+The yaw control is cleared on the bank path as in native code.
+
+Native rounding biases wrap in byte width before the heading/track shifts.
+For the sixteenth response, the effective error is
+`sign_extend_byte(raw_difference + 8) - 8`; the quarter response uses +2/-2.
+Passing these word errors to the response core preserves the native h=1
+result even at the biased wrap thresholds. A generic shortest-angle
+subtraction would not reproduce those cases.
+
+The supplied damage-heading impulse is applied at full magnitude **after**
+the track update, matching native order. This helper does not draw RNG
+values or decide damage eligibility. Grounded state freezes angles and
+fractions and rejects a nonzero supplied impulse. Bank/yaw transitions
+preserve heading state and explicitly derive/reset track fractions on the
+yaw path. Mission initialization/rebase must initialize these fractions
+consistently with the native pose; the native lifecycle is not yet hooked.
+
+`tmp/dev/tools/test_heading_c.py` passes 102,400 h=1 comparisons against
+the original power/heading code, including every heading/track byte pair,
+yaw branches, roll signs, ground cases and all five captured native random
+impulses. Complete player records match and helper calls leave RNG unchanged.
+Twelve thousand PAL/NTSC cases with nonzero fractions match an independent
+coupled-angle model; four malformed state cases fail without writes.
+The existing response and flight-rate regression suites also pass.
+Evidence: `tmp/dev/tmp/c/heading-tests.json`.
+
+The combined `test_flight_heading_c.py` fixture interposes heading/track and
+vertical/forward/RPM components into the same native stage sequence.
+All 4,096 whole-tick candidate records still match the complete deterministic
+preview. Its retained linear-conversion and flight-rate checks also pass
+(79,270 calls total). This verifies their ordering together; displacement
+is still native whole-tick code in this fixture, and world effects remain
+excluded. Evidence: `tmp/dev/tmp/c/flight-heading-tests.json`.
 
 ## Field-rate deterministic attitude
 

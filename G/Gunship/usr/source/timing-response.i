@@ -10,7 +10,22 @@
 RS_DEN equ 32767
 
 response_step:
-	movem.l d2-d7/a1,-(sp)
+	move.l d3,-(sp)
+	moveq #0,d3
+	bsr response_step_target
+	move.l (sp)+,d3
+	rts
+
+; Same API, with d3.l = target's fraction (denominator 32767).
+; This supports a moving fractional target, e.g. track following heading.
+; The target's smaller rate-conversion residue, if any, remains caller-owned.
+response_step_target:
+	movem.l d2-d7/a1-a2,-(sp)
+	cmpi.l #-RS_DEN,d3
+	ble .bad
+	cmpi.l #RS_DEN,d3
+	bge .bad
+	movea.l d3,a2
 	move.w d0,d3
 	ext.l d3
 	cmp.l d0,d3
@@ -53,6 +68,11 @@ response_step:
 	divs.w #RS_DEN,d0
 	ext.l d0
 	move.l d0,d4
+	move.l a2,d0
+	bsr .gain_product
+	divs.w #RS_DEN,d0
+	ext.l d0
+	sub.l d0,d4
 	move.l d2,d0
 	bsr .gain_product
 	add.l (a0),d0
@@ -70,6 +90,9 @@ response_step:
 	; Preserve the native WORD add of rounding bias before arithmetic shift.
 	tst.l d4
 	bne .bad
+	move.l a2,d3
+	tst.l d3
+	bne .bad
 	moveq #1,d5
 	lsl.w d1,d5
 	lsr.w #1,d5
@@ -82,7 +105,7 @@ response_step:
 	moveq #0,d0
 	moveq #-1,d1
 .done:
-	movem.l (sp)+,d2-d7/a1
+	movem.l (sp)+,d2-d7/a1-a2
 	rts
 .gain_product:
 	; d0 signed word * (d5 unsigned high word + d6 unsigned fraction).
