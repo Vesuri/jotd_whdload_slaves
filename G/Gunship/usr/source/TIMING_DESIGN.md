@@ -3878,3 +3878,30 @@ cost measurements, world ownership and target publication/exclusion remain
 open. Candidate selection must not fall back to pixels from a previous or
 predicted displayed frame. All three experimental runtime variants assemble;
 ordinary builds do not include this helper.
+
+### Live visibility probe: debugger-write fixture rejected
+
+Two isolated headless 68020/PAL sessions reached the cockpit using the shared
+native FS-UAE and its checked mouse/input harness. Neither supplies a pixel
+comparison result. The first stopped on an incorrect workspace-discovery
+assumption: the loaded slave does not have a normal LoadSeg size header at
+the assumed position. The second located the diagnostic workspace but could
+not execute the intended redirected call.
+
+Inspection of the shared build's `barto_gdbserver.cpp` confirms read handlers
+for registers/memory (`g`, `p`, `m`) and no guest-write handlers (`G`, `P`,
+`M`, `X`). Thus debugger assignments and binary restores cannot establish the
+test state. This agrees with AmigaXDev's new-game playbook requirement to
+compile pixel-twin stimuli into the guest. GDB also names the status register
+`$ps`; `$sr` is not an appropriate control for this fixture. The ignored
+`live_visibility_c.py` prototype now rejects execution explicitly so it cannot
+accidentally be counted as validation. Both test-owned emulator sessions and
+their debuggers have exited; unrelated sessions were left alone.
+
+The next pixel test must use a compiled diagnostic slave: prepare workspaces
+before patching, retain the native drawing-buffer contents, run the original
+prefix and extracted pass from identical scene/buffer state, and publish
+candidate/pixel/bitmap comparisons for read-only debugger inspection. The
+native prefix remains the reference, with actual blitter DMA enabled. Do not
+enable runtime visibility ownership on the strength of the Unicorn checks or
+these unsuccessful live probes.
