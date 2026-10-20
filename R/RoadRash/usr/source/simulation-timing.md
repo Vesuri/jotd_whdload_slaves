@@ -1646,3 +1646,34 @@ this integration improves C but does not close the remaining response gap.
 All five standard-window normal configurations retain lateral position 160
 under neutral steering, including the accelerated paths. No delayed interpolation
 or extra presentation wait is added.
+
+## Broader AI relocation: external-call overhead experiment
+
+The next audit covered `$8d2c0..$8d8cf`: 1,552 bytes, 422 contiguous decoded
+instructions. There are no PC-relative data accesses inside this range, but 25
+word-sized relative transfers leave it for nine native targets. The following
+native code reads mutable PC-relative tables, so the experiment deliberately
+ends before that code and returns through an absolute jump at `$8d8d0`.
+
+A private diagnostic copied the block before patching its four public entries
+(`$8d2c0`, `$8d40a`, `$8d46e`, `$8d4e6`). External relative operands were adjusted
+to nearby absolute-JMP stubs; indirect dispatch pointers and all data remained
+native. `c-ai-fast-copy` checks every copied byte after accounting for the 25
+fixups, all four entry targets, each stub's destination, and the fallthrough
+jump. The exact candidate patch and helper source are retained with
+`c-ai-fast-build` for reproduction.
+
+The cycle-exact cached-020 cost result is worse: `c-ai-base-cost` renders 193
+frames over fields 100–1000, versus 187 in `c-ai-fast-cost` (10.722 versus
+10.389 fps). Each result subtracts its own initial frame count (29 and 28).
+The additional cross-block jumps are a plausible cost, but this experiment does
+not isolate their contribution from code layout/cache effects. No full gameplay
+regression acceptance is claimed from the copy audit or short cost run.
+
+The experimental source has been removed, leaving the normal runtime unchanged.
+This result argues against further partial AI copying with the same stub design.
+The audit also identifies an algorithmic opportunity for later measurement:
+`$8d966` executes 3,538 times in the current profile, while its loop reloads the
+unchanged current actor's speed/direction 14,502 times. Hoisting invariant reads
+would reduce actual work rather than merely relocating it; register preservation
+and the interrupted-input ownership still need checking before implementation.
