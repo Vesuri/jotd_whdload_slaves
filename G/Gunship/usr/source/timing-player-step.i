@@ -90,3 +90,38 @@ player_step:
 	adda.w #PS_SCRATCH,sp
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
+
+; Same pointers as player_step, plus d0=logical interval tick (0..65535).
+; Use the upcoming world interval's parity without advancing player+$0c.
+; The native world owner remains the sole writer of the authoritative clock.
+; Return d0=0/-1, other registers preserved. Foreground/serialized use only.
+player_step_interval:
+	cmpi.l #65535,d0
+	bhi .bad
+	movem.l d1-d2/a1/a5-a6,-(sp)
+	move.l d0,d2
+	movea.l a1,a6
+	suba.w #MP_RECORD_SIZE,sp
+	movea.l sp,a5
+	moveq #MP_RECORD_SIZE/2-1,d1
+.copy:
+	move.w (a1)+,(a5)+
+	dbf d1,.copy
+	movea.l sp,a1
+	move.w d2,$0c(a1)
+	bsr player_step
+	tst.l d0
+	bne .done
+	movea.l sp,a5
+	move.w $0c(a6),$0c(a5)
+	moveq #MP_RECORD_SIZE/2-1,d1
+.commit:
+	move.w (a5)+,(a6)+
+	dbf d1,.commit
+.done:
+	adda.w #MP_RECORD_SIZE,sp
+	movem.l (sp)+,d1-d2/a1/a5-a6
+	rts
+.bad:
+	moveq #-1,d0
+	rts

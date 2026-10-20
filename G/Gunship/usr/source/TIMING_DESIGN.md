@@ -864,6 +864,16 @@ pitch clamp, or perform world contact/weapon effects. The caller must
 schedule those operations and supply the logical tick parity. The
 native adapter and CUSTOM1-gated installation remain pending.
 
+`player_step_interval` accepts the same pointers plus d0 = the logical
+interval tick (0..65535). It substitutes that value only in a private
+86-byte player copy so native vertical rounding sees the upcoming
+interval's parity. On success it restores the original tick word before
+publishing the result. Thus field-rate motion cannot advance the displayed
+world clock; the native world owner still increments that counter once
+per deadline. Invalid interval values and rejected player steps leave the
+record and shadow state unchanged. This entry adds another player-record
+copy to the C4f stack/cost accounting.
+
 The assembled step passes 4,096 complete player-record comparisons
 against original deterministic attitude followed by the native motion
 preview at h=1. The fixture suppresses random attitude eligibility with
@@ -877,6 +887,32 @@ register/stack/input-packet checks pass. Evidence:
 `tmp/dev/tmp/c/player-step-tests.json` (16,285 calls).
 This proves composition; the fractional camera adapter is tested
 separately above, while measured input-to-screen latency remains open.
+
+## Composed field-path verification
+
+The composed field-path fixture now runs actual history publication,
+scheduler delivery, control decoding, `player_step_interval`,
+acknowledgement and fractional camera code together. For each of PAL and
+NTSC it consumes the same 240-field changing-control/button tape in
+batches of 1, 3, 10 and 25. Every per-field player/shadow state, every
+world-boundary observation and the final camera angles are identical
+across batch sizes. The scheduler refuses another delivery while either
+player or world completion is pending. Button edges accumulate only until
+their corresponding world observation.
+
+The native counter begins at 65532: all PAL runs finish at 10 after
+14 world observations; all NTSC runs finish at 8 after 12. Every player
+step is checked to leave the authoritative tick unchanged. The world
+test callback increments it explicitly. This callback is an observer,
+**not native AI/weapon/contact execution**; keyboard commands and live
+interrupt interleavings are also outside this fixture. Native installation
+and those ownership boundaries remain open.
+
+Direct comparisons of `player_step_interval` with `player_step` on an
+explicitly substituted private tick cover both parity values, 65535,
+three original counters and rates 3/50/60. Evidence:
+`tmp/dev/tools/test_field_pipeline_c.py`,
+`tmp/dev/tmp/c/field-pipeline-tests.json`.
 
 ## Coupled held-control measurement: C4e not accepted
 
