@@ -47,6 +47,9 @@ verify_dispatch:
 	movea.l 8(a3),a1 ; SetCPU may destroy a0/a1
 	lea verify_game_patches(pc),a0
 	jsr resload_Patch(a2)
+	IFD TIMING_INPUT
+	bsr timing_input_install
+	ENDC
 	bra .done
 .menu:
 	lea verify_menu_base(pc),a3

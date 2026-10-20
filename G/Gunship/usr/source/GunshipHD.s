@@ -464,6 +464,9 @@ _verify_scene	dc.l	0
 	include "blitter.i"
 
 	IFD VERIFY
+	IFD TIMING_INPUT
+	include "timing-input.i"
+	ENDC
 	include "verify.i"
 	ENDC
 

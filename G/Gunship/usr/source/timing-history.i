@@ -4,8 +4,8 @@
 ; The adapter must preserve the interrupted CCR/registers around this API.
 ; init/pause/rebase require producer exclusion (Exec Disable/Enable).
 ;
-; Not yet connected to native input. Record layout and adapter obligations
-; are documented in TIMING_DESIGN.md; payload comes from native sampling.
+; Native diagnostic producer: timing-input.i. Record layout and remaining
+; foreground adapter obligations are documented in TIMING_DESIGN.md.
 
 TH_WRITE      = 0               ; monotonic unsigned word cursors
 TH_READ       = 2

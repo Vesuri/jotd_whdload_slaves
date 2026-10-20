@@ -7,10 +7,13 @@ No field-rate integrator has been written.
 
 ## Implementation status
 
-`timing-clock.i` and `timing-history.i` are standalone 68000-compatible
-cores, not yet included in the slave. They do not change game behaviour.
-C2 and C3 remain incomplete until the native adapters and lifecycle handling
-are installed and tested.
+`timing-clock.i` and `timing-history.i` are 68000-compatible cores.
+The clock is still standalone. The history now has native producer hooks in
+`timing-input.i`, installed only in builds with both VERIFY and TIMING_INPUT
+defined and CUSTOM2 nonzero, for the 0658 executable. Normal and existing
+verification builds are byte-identical to their preceding versions.
+C2 and C3 remain incomplete: the foreground player/world consumer, retained
+command payloads, and lifecycle handling are not installed.
 
 The clock consumes consecutive unsigned field stamps. Each accepted field
 adds three units; a world deadline consumes 50 or 60 units. PAL deadlines
@@ -30,8 +33,10 @@ can interrupt after the consumer's final fault check.
 
 Record fields are declared in `timing-history.i`. They retain native filtered
 direction, held buttons, relative accumulators, raw relative deltas, edge
-mask, mode and a private command sequence. This is a storage contract; native
-sampling, delta accumulation and command-sequence production are not installed.
+mask, mode and a private command sequence. Diagnostic native hooks now supply
+these values: raw deltas are accumulated before native scaling, filtered
+directions are copied after the native sampler, and the command counter
+advances only on accepted native FIFO insertions.
 Lifecycle calls require producer exclusion. The interrupt adapter must preserve
 the interrupted registers and CCR; these cores return their result in d0/CCR.
 
@@ -60,6 +65,32 @@ Offsets below refer to the relocated original code hunk, not host addresses.
 * The tick's recording/replay path at +05462 is separate from this FIFO.
   Native replay semantics need their own adapter test.
 
+## Native producer diagnostics
+
+The installer validates all four displaced instruction sites before patching
+any of them: the VBL sampler call at +00FA0, raw mouse read at +00FC6,
+accepted command insertion at +034C8, and fire sampler at +04DC6.
+The normal sampler, native FIFO and native fire latches continue to operate.
+No game consumer reads the new history yet.
+
+The diagnostic marker `GSIH0001` publishes the code/input hunk addresses,
+history and scratch-record addresses, accepted-command sequence, raw-delta
+accumulators, fire edges, arm request and native sampler address.
+Unused raw key 7F hex requests a fresh capture at the next active VBL.
+This diagnostic-only trigger avoids debugger memory writes. The VBL resets
+the ring with its current field minus one as the epoch, then publishes the
+current field. This is a test fixture, not the production modal/rebase policy.
+
+Raw deltas accumulate in signed longs. A value that cannot fit the record's
+signed word faults the active history instead of publishing a truncated
+delta. Fire edges intentionally describe the preceding field's held state;
+the record's held buttons describe the newly sampled state. This matches
+the original callback-before-sampler order.
+
+Keyboard sequence stamping alone does not retain command payloads after the
+native FIFO consumes them. A bounded command history and deadline cut-off
+are still required before C3c can use these records for world decisions.
+
 ## Verification
 
 The ignored development harness assembles both includes into a standalone
@@ -79,7 +110,25 @@ overwrite of unread data. Two full-ring interleavings return a valid copied
 record alongside a newly latched fault, confirming that the coordinator
 must not treat a successful pop as proof of an unfaulted interval.
 
-These are assembled-core tests, not live flight evidence. Native hooks,
-command retention, actual display-rate
-detection, bounded catch-up, modal boundaries and CPU timing remain to test.
+`tmp/dev/tools/test_timing_input.py` passes 454 assembled adapter cases.
+It compares mouse, keyboard and fire hook register/CCR results with their
+displaced native instructions, checks sampler-result preservation, complete
+record payloads, signed-delta overflow, and diagnostic arm/recovery.
+
+Live FS-UAE captures on 68000, 68020 and 68060 each published 47 consecutive
+active-field records with no loss/fault. All retained the injected raw delta
+sum (8, -12), accepted-command sequences 4..6, directional changes, held fire
+and its rising edge. The edge appeared one field after the held-button rise,
+as in the native code. Retained evidence is under `tmp/dev/tmp/c/input-live-*`.
+The first 68000 attempt did not reach the instrumented game screen; after
+reported mouse interference, its retry passed.
+
+Native relative smoothing alternates zero and minus one at rest because its
+zero-decay case forces a subtraction of one. Captures starting on opposite
+field parity therefore differ in those accumulators and can differ by one
+field at a directional threshold. These captures verify faithful sampling;
+they are not identical-initial-state world or integrator comparisons.
+
+Command retention, actual display-rate detection, bounded catch-up, modal
+boundaries, input replay and CPU cost remain to test.
 The player inventory is recorded separately in PLAYER_STATE_INVENTORY.md.

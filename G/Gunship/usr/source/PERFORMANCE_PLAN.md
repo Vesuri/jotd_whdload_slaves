@@ -406,11 +406,13 @@ This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
 the world kept its intended 10 Hz and the player's own motion became responsive (that
 project's `docs/timing-design.md`, design D, and its phase-9 gate in `docs/internals.md`).
 
-**Status: design selected by the user; no C runtime changes yet.**
+**Status: design selected; production timing unchanged, native input diagnostics tested.**
 
 Implementation checkpoint: standalone clock/history cores are committed and
-tested, including instruction-boundary producer interruption. Native adapters
-are still pending, so C2/C3 are not complete. The initial C4a/C4b inventory is
+tested, including instruction-boundary producer interruption. Diagnostic native
+input producers now capture real fields on 68000/020/060; the foreground
+scheduler, command retention and player/world hand-off are still pending,
+so C2/C3 are not complete. The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. The field-rate integrator is not written.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
