@@ -2094,3 +2094,45 @@ flags at +0819E. This is a lifecycle boundary requiring sampling/rebase policy,
 not ordinary deadline input. Replay also writes through the input block at
 +05420..+05428. Those paths must be resolved before redirecting native weapon
 latches in gameplay. All eventual installation remains gated by CUSTOM1.
+
+### Native weapon block with private world inputs
+
+`timing-world-weapons.i` extracts +0979C..+09B9A. It redirects all eight
+consumer-flag operands inventoried above to one private two-byte packet,
+including word reads/clears, and redirects +099FA to the deadline RNG's
+default-bound entry. Native launch selection, ammunition checks, allocation,
+pose arithmetic and recoil stay unchanged. The native +0BED4 actor call and
+all other callbacks are retained; this extraction does not certify their
+complete call trees for private RNG/state ownership.
+
+`world_weapons_prepare` takes hunk 0, an even clone, deadline RNG base, private
+fire packet and hunk 6 in a0/a1/a2/a3/a4. It validates entry/actor/RNG/return
+boundaries and the opcode/address of each fire access before writing.
+`WW_SIZE` is 1,026 bytes: 1,022 bytes of code including RTS, followed by the
+native player binding. The caller owns stable nonoverlapping buffers and
+flushes instruction caches. `world_weapons_step` takes native player/clone in
+a0/a1, rejects another player pointer, preserves non-result registers and
+returns 0/-1. Invoke once after committed motion and world command dispatch;
+it applies real world effects and consumes only the private fire packet.
+No scheduler acknowledgement, retry or rollback is performed here.
+
+`tmp/dev/tools/test_world_weapons_c.py` passes 256 native comparisons with
+four weapon selections, both RNG modes, all fire-bit combinations, varied
+heading/pitch/altitude, empty ammunition, full allocation masks and an occupied
+launch slot. Tests compare the full native memory interval 97EE00..99FFFF,
+normalizing only timestamp and live-fire input storage, plus the remaining
+fire packet and ordered callbacks. The clone leaves unrelated live fire bytes
+77/88 untouched and uses the recorded timestamp despite different live input.
+Eight callback paths include 24 default-bound RNG draws and 24 launch calls.
+Native allocation, resources, launch arithmetic and recoil run. UI drawing
+from ammunition exhaustion also runs: ordered blitter-register writes match,
+but Unicorn does not validate rendered pixels. Write tracing permits native
+memory, stack, the private fire packet and those blitter registers only.
+
+The target lookup is a slot-5 fixture; notification/indicator/audio endpoints
++0A150/+0AF36/+0B4E4/+0B57C are stubbed. Actor update entry executes, but fixtures
+have no active pre-existing projectiles in its update mask. Active-actor
+motion/collision, nested RNG callers and actual target selection still need
+separate validation. Twenty-three corrupted patch sites and a wrong player
+binding reject without writes (282 assembled calls). This is not full C5/C9
+acceptance, and no native main-loop installation has been added.
