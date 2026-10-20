@@ -426,8 +426,9 @@ reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are
 now tested, and damage has a deadline-input extraction with native comparisons.
-Scripts, remaining field/world ownership and full lifecycle composition
-remain pending.
+Scripts now have a nonblocking extraction and explicit boundary before the
+native modal interpreter. Remaining field/world ownership, full world
+composition and lifecycle continuation remain pending.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
 the HUD's authoritative pitch clamp. A standalone deterministic field-rate

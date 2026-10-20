@@ -2307,3 +2307,50 @@ The scan fixture supplies nearby threats and a zero-result visibility predicate
 This validates damage arithmetic/order/private inputs, not actual terrain
 visibility or rendered UI. Full world composition, countdown migration and
 CUSTOM1-gated installation remain pending.
+
+### Nonblocking script work with an explicit modal boundary
+
+`timing-world-script.i` splits native +09F74..+0A14C around its +09FAA call
+to +08050. The prefix retains location-triggered script activation and the
+native write to player 2C. Ordinary script countdown behavior stays native:
+nonpositive signed state 53 does nothing; positive state decrements byte 54,
+including zero wrapping to FF. A positive state with countdown 1 instead
+returns boundary status 2 before decrement or interpreter entry. The prefix
+may already have armed state/countdown 1; those writes are authoritative.
+
+This boundary is necessary because +08050 can enter the blocking challenge
+screen/input flow and then wait for button release and a new field. States
+2/4/5 also lead to the release wait when their countdown expires. The caller
+must not acknowledge the world tick or retry its prefix on status 2. A future
+lifecycle owner must suspend sampling, run the native interpreter, rebase
+elapsed history and deliberately resume/abandon the pending world. The T-74
+68060 graphics issue remains deferred; this extraction does not alter the
+screen or bypass its behavior.
+
+`world_script_prepare` takes hunk 0, even clone, deadline RNG, hit-clone base
+and hunk 6 in a0..a4. It validates the removed call, native countdown entry,
+changed RNG/hit calls and copy boundaries before writing. `SC_SIZE` is 472
+bytes: prefix plus appended RTS, the native object-update body and player
+binding. The body's +0A0EA RNG and +0A0FE hit calls use the same deadline RNG
+and nested hit extraction as damage. `world_script_step` takes player/clone
+in a0/a1 and returns 0 completed, 2 boundary or -1 wrong binding, preserving
+other registers. `world_script_resume` executes only the remaining body after
+the owner completed native +08050, without repeating activation/countdown.
+Both are authoritative work, not previews. Lifetimes/cache flushing and
+once-only scheduling remain caller responsibilities.
+
+`tmp/dev/tools/test_world_script_c.py` passes 1,024 native comparisons: 768
+normal-entry cases (148 stop exactly at native +08050 entry) and 256 direct
+body continuations. Inputs cover inactive/positive/negative states, countdown
+0/1/2/15/255, location-triggered activation, both RNG modes and varied tracking
+angles/tick parity. Full native state, callback arguments and RNG order match
+with differing live timestamps; fixtures exercise zero or three draws.
+Native location detection, object-table loads/stores, heading and movement
+arithmetic run. Visibility is a zero-result fixture and notification/resource
+UI callbacks are stubbed, as in the damage tests. Write tracing permits only
+native memory and stack. Fourteen corrupted boundaries and both entry points'
+wrong-player checks reject without writes (1,043 helper calls).
+
+The native blocking interpreter is not exercised by this suite, and no
+scheduler/modal continuation owner or gameplay installation has been added.
+Those remain necessary before this split is usable in the CUSTOM1 path.
