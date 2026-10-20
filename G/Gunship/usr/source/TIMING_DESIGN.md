@@ -3905,3 +3905,59 @@ candidate/pixel/bitmap comparisons for read-only debugger inspection. The
 native prefix remains the reference, with actual blitter DMA enabled. Do not
 enable runtime visibility ownership on the strength of the Unicorn checks or
 these unsuccessful live probes.
+
+### Compiled visibility twin: PAL pixels pass on 68000/020/060
+
+The ignored harness now supplies `tools/visibility_probe_c.i`,
+`tools/build_visibility_probe_c.sh` and `tools/run_visibility_probe_c.py`.
+The builder derives a diagnostic slave from the current source; it does not
+change the distributed slave. Preparation runs before patching, captures an
+independent exact copy of the native +05C04..+05C78 prefix, and installs a
+diagnostic entry at the panel boundary. A 132,000-byte allocation holds the
+two packed bitmap snapshots and per-view records. The test owns its session
+until termination: interrupts are disabled, DMA continues, and no native
+gameplay resumes after the result loop. All stimuli execute in the guest;
+debugger access only reads memory and advances emulated fields.
+
+Each view starts with an explicit camera/object vector, zero candidate count
+and a valid descriptor layout. The native prefix and extracted pass receive
+the same initial bitmap contents, restored between executions. The probe
+compares all 168 candidate bytes, six indexed sample bytes including unused
+zeros, and every byte of all five 8,000-byte bitplanes. It retains the native
+output and records; the host independently decodes the final view's sampled
+colors from the saved plane bits. The native reference uses the existing
+CUSTOM1-enabled blitter fixes, as does the extracted pass.
+
+Fixtures use camera XY `$7FFF/$7FFF`, player-equivalent height 512 (camera
+height 536), eight headings spaced by 32 native angle units, six nearby
+object positions and the nearby special object. Each heading runs in both
+palette modes. All 16 views passed on each of:
+
+- `a500-fast`: 68000, PAL;
+- `a1200-fast`: 68EC020, PAL;
+- `a1200-060`: 68060-NOMMU at 50 MHz, PAL, data cache enabled.
+
+Each CPU produced ten nonempty views, with candidate counts 0..4. Counts and
+sampled colors agree across CPUs. The guest comparisons cover 640,000 bitmap
+bytes per CPU, 1,920,000 in total. A separate `VP_SABOTAGE=1` 68020 run flips
+one saved reference byte; it stops with bitmap-mismatch status -7 before
+completing any view. Thus a mismatching plane does not accidentally pass.
+
+Results are retained under `tmp/dev/tmp/c/visibility-probe-a500-fast-complete`,
+`visibility-probe-a1200-fast-modes`, `visibility-probe-a1200-060-modes` and
+`visibility-probe-sabotage`. An earlier eight-view 020 probe also passed.
+The first 000 driver incorrectly treated the route's duration as the test's
+duration and exited while the guest was still working after eight views.
+The corrected driver polls the same live session until an explicit success
+or failure, and its replacement run completed all 16. Register diagnostics
+flush GDB's cache after monitor-driven execution. The reproducible normal
+probe slave SHA-256 is
+`481b5ed3945414b3970f7cb72ddb8f5a75a5ccdc52da3de1743d735a29e9a8c4`.
+
+This proves the raster extraction and pixel acquisition in these authored
+PAL fixtures, not full world-state equality, live player responsiveness or
+production lifecycle behavior. It does not price the extra world-tick drawing
+pass: snapshot copying and comparisons dominate parts of the probe, so its
+overall duration is not a renderer benchmark. Cost measurements, NTSC/wider
+scene coverage, world ownership, selection/publication and exclusion of
+native render target writes remain open. Runtime activation is unchanged.

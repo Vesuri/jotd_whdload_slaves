@@ -571,8 +571,10 @@ actual frame-render handoff still need integration.
 An experimental committed-view raster extraction now collects candidates and
 their native pixel samples before overlays, restoring native target state
 after collection. Its CPU behavior matches the original drawing prefix over
-48 views; real blitter pixels, drawing cost, world ownership and lock
-publication/exclusion remain unvalidated. It is not called by the runtime.
+48 views. A compiled guest probe also matches real blitter output, candidates
+and sampled colors in 16 PAL views on each of the 68000, 68020 and 68060.
+Drawing cost, world ownership and lock publication/exclusion remain open.
+It is not called by the runtime.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:
@@ -725,9 +727,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     now accepts explicit per-candidate pixel colors and changes only its own
     target snapshot. A private full-projection/collector path now matches
     native pre-overlay candidate state in 48 drawing-omitted views; filtering/capacity
-    checks add 1,536 native comparisons. Committed-view pixel acquisition,
-    world publication and exclusion of native render target writes remain open;
-    these helpers are not yet connected to the runtime.
+    checks add 1,536 native comparisons. Committed-view raster/pixel acquisition
+    now matches native output in compiled guest tests on 68000/020/060 (16 PAL
+    views each, both palette modes). Its cost, world publication and exclusion
+    of native render target writes remain open; these helpers are not yet
+    connected to the runtime.
 - **C6. Presentation of world objects.**
   - C6a. Enemy vehicles, helicopters, missiles, rockets and the special object at `62(a5)`
     keep their world-tick motion. Draw them predicted from the latest completed state, at
