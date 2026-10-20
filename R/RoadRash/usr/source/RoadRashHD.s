@@ -280,6 +280,9 @@ PatchLoader2:
 	lea	pl_c_simulation(pc),a0
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
+	IFD VERIFY_C_OBJECT_FAST
+	bsr step_object_fast_init
+	ENDC
 .no_c:
 	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
@@ -404,6 +407,9 @@ pl_c_simulation
 	PL_P	$9E70,step_pose_lean
 	PL_P	$9EF0,step_lean_end
 	PL_P	$9F48,step_pose_project
+	IFD VERIFY_C_OBJECT_FAST
+	PL_P $B02E,step_object_fast_code
+	ENDC
 	IFD VERIFY_C_OBJECT_WIDTH
 ; Width is not consumed by rejection tests. Defer the divide until the
 ; object's depth/lateral checks have accepted it.

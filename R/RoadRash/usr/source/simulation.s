@@ -631,6 +631,32 @@ step_scenery_cursor:
 
 ; Rebuild the world-object collision inputs for every step. The original
 ; collision code reads these projection records, not just world positions.
+	IFD VERIFY_C_OBJECT_FAST
+	IFND VERIFY
+	FAIL "Fast object projection experiment requires VERIFY"
+	ENDC
+; The selected C slave hunk is already verified to be in Fast RAM. All relative
+; branches in $8b02e..$8b37d remain inside this block; data addresses are absolute.
+; Copy after applying patches so optional width changes are preserved as well.
+; Restore the eight-byte entry instruction overwritten by the entry JMP.
+; Called once per main-game load, before any native game code resumes.
+step_object_fast_init:
+	lea step_object_fast_code(pc),a0
+	move.l #$33fcffff,(a0)+
+	move.l #$000a59e4,(a0)+
+	lea $8b036,a1
+	move.w #($8b37e-$8b036)/4-1,d0
+.copy:
+	move.l (a1)+,(a0)+
+	dbf d0,.copy
+	move.l _resload(pc),a2
+	jsr (resload_FlushCache,a2)
+	rts
+	cnop 0,4
+step_object_fast_code:
+	ds.b $8b37e-$8b02e
+	ENDC
+
 step_collision_objects:
 	jsr $8970e
 	clr.w $a8734

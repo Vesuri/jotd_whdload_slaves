@@ -1429,3 +1429,44 @@ requests against `c-steering-quarter-fullrace` while replaying its tape under
 varying render intervals. The terminal actor, clock/spawn-timer, camera and rank
 ranges match, as do exit field 11946 and restart capture `(99,98,0,1)`. This
 extends the experiment's equivalence evidence through crashes, wreck and restart.
+
+## Fast RAM world-object projection experiment
+
+`VERIFY_C_OBJECT_FAST` copies `$8b02e..$8b37d` (848 bytes) into reserved space
+inside the selected C slave hunk. `step_select_path` already proves that hunk
+is in Fast RAM; no separate allocation or DMA storage is moved. The instruction
+audit covers 263 instructions and 36 relative branches/calls, all targeting
+within the copied block. There are no PC-relative data accesses. Absolute data
+references continue to address the one authoritative native state.
+
+The C patch list redirects `$8b02e` to the copy. Immediately after applying the
+patch list, before native main-game execution resumes, initialization copies the
+body and restores the original eight-byte entry instruction in the copy. The
+body is copied after patching so other selected patches are retained. A
+`resload_FlushCache` follows all writes. Both simulation and rendering calls
+through the native entry use the relocated code. Nothing runs this initializer
+or installs the entry jump when the master toggle/hardware selection rejects C.
+
+`c-object-fast-copy` confirms the actual entry target `$9fd83c` and byte equality
+for all 848 bytes against the patched native body plus its original entry.
+`c-object-fast-off` confirms CUSTOM2=0 retains the original entry.
+`c-object-fast-040-mmu` and `c-object-fast-060-mmu` reach the race, verify the
+copy at `$9fbb20`, and confirm enabled TC translation. These are functional
+cache/MMU checks, not cycle-accurate performance measurements.
+
+`c-object-fast-replay` matches all 1,598 common completed hashes, sound events
+and the entire tick-1457 snapshot against `c-steering-reference-replay`.
+The cached cycle-exact 020 cost window (fields 100–1000) improves from 177 to
+193 renders, 9.833 to 10.722 fps, about 9.04%. Initialization and live checkpoint
+phases differ, so this frame count is not a claim of equal state at arbitrary
+live fields; the completed-step replay supplies that equivalence evidence.
+This experiment is independent of deferred width division and remains disabled
+in the normal slave, whose SHA-256 remains
+`fc07ed239f111fb376dc0101fabffee2dd42bd779190df73c87b1a8cdc16e7cf`.
+
+`c-object-fast-fullvar` matches all 11,945 hashes, 120 sound requests and the
+recorded terminal actor/clock/spawn-timer/camera/rank ranges against the unchanged
+quarter-steering reference, through wreck at field 11946 and restart. The
+Chip-only 020 test `c-object-fast-chip-fallback` retains the original entry even
+with CUSTOM2=1. Successful-finish coverage and normal-runtime integration remain
+separate outstanding work; this does not close C or the broader D3 audit.
