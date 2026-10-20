@@ -147,6 +147,56 @@ The diagnostic's fixed three-field prediction horizon is an experiment for
 the measured 020 render interval; it is not a calibrated policy for every
 CPU. C's throughput and A4 gates remain open.
 
+### Prediction cadence coverage and measured horizon
+
+The fixed-horizon diagnostic now also passes `c-pose-predict-varying`.
+Its observed non-startup intervals include 2/3/4/12/16 fields. All 1,596
+completed actor hashes, three sound requests, and six authoritative regions
+at simulation field 1,457 match `c-audit-period-4`.
+`c-pose-predict-finish` matches `c-cache-finish` across all 12,822 actor hashes,
+24 sound requests and terminal authoritative regions: finish at field 12,634,
+exit at 12,823, followed by fresh capture `[99,98,0,1]` in the next race.
+The finish diagnostics use the established full-snapshot configuration
+without the optional Fast RAM stack; the varying replay includes that stack.
+
+`POSE_PREDICT_MEASURED` adds an alternative diagnostic horizon. It observes
+the live-field interval from render entry `$875c8` through return from the
+native display handoff at `$8773c`, then uses that interval for the next
+frame's rider-heading prediction. Race initialization clears the estimate.
+It caps extrapolation at four fields after a long frame, with no waiting or
+change to the original vsync handshake. This variant rejects simultaneous
+whole-view extrapolation or the diagnostic latency hook at assembly time,
+since those experiments share patch sites.
+
+Direct player-pose probes in `c-pose-predict-measured-020` and
+`c-pose-predict-measured-060` pass simulation isolation and release/reversal
+checks. The cached 020 sample uses three fields on all ten observed renders.
+The 060 sample uses three fields on five renders and two on eighteen.
+Those are measurements of these emulator scenes, not assumed CPU constants
+or a claim of cycle-accurate 060 hardware timing.
+
+The measured lean diagnostic is 8,828 bytes, SHA-256
+`2c6399c3d25d58f21fb222635498892250d76844455defac1f05ee6b124846ff`.
+`c-pose-predict-measured-visible` repeats all eight response phases and
+reproduces 160/140/220/200/180/160/140/220 ms, median 170 ms. The remaining
+20 ms deficits at phases 302 and 303 against B are unchanged.
+`c-pose-predict-measured-bounded` observes horizons 2/3/4 over long-frame
+testing and passes the release/reversal and simulation-isolation assertions.
+
+`c-pose-predict-measured-varying` matches the same 1,596 hashes, three sound
+requests and six authoritative snapshot regions as the fixed-horizon
+experiment; its observed cadence again includes 2/3/4/12/16 fields.
+`c-pose-predict-measured-finish` matches all 12,822 hashes, 24 events,
+finish/exit fields, terminal regions and fresh-race capture against
+`c-cache-finish`. Live checkpoints can land on different in-flight simulation
+ticks; these claims use completed-tick hashes and the captured boundaries.
+
+Both prediction variants remain diagnostic-only. All normal binaries built
+alongside this work retain the current 7,940-byte runtime hash. These checks
+do not yet cover prediction in the normal hardware matrix, demo transitions,
+MMU configurations, or the complete arrest/wreck replays, and they do not
+close C's existing throughput or A4 differences from B.
+
 ## C completion audit against the preceding integrated steering runtime
 
 This audit applies to the normal 7,920-byte runtime with SHA-256

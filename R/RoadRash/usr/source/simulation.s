@@ -137,6 +137,11 @@ POSE_PREDICT_FIELDS = 3
 .poseclear:
 	clr.w (a1)+
 	dbf d0,.poseclear
+	IFD POSE_PREDICT_MEASURED
+	lea step_pose_render_start(pc),a1
+	clr.l (a1)+
+	clr.w (a1)
+	ENDC
 	move.l (a7)+,d0
 	ENDC
 	IFD C_STEERING
@@ -1003,7 +1008,11 @@ step_predict_pose:
 	tst.w d1
 	bge .restore
 .predict:
+	IFD POSE_PREDICT_MEASURED
+	muls.w step_pose_render_fields(pc),d2
+	ELSE
 	muls.w #POSE_PREDICT_FIELDS,d2
+	ENDC
 	asr.l #2,d2
 	add.w d2,d1
 .restore:
@@ -1013,6 +1022,33 @@ step_predict_pose:
 	rts
 step_pose_headings:
 	ds.w 5
+	IFD POSE_PREDICT_MEASURED
+; Observe drawing plus the native vsync handoff. Start conservatively at zero
+; after each reset and bound extrapolation to four fields even after a stall.
+; These hooks neither delay presentation nor alter its original handshake.
+step_predict_render_begin:
+	move.l a0,-(a7)
+	lea step_pose_render_start(pc),a0
+	move.l $a5d4c,(a0)
+	move.l (a7)+,a0
+	jmp $8970e
+step_predict_render_end:
+	movem.l d0/a0,-(a7)
+	move.l $a5d4c,d0
+	sub.l step_pose_render_start(pc),d0
+	cmpi.l #4,d0
+	bls .store
+	moveq #4,d0
+.store:
+	lea step_pose_render_fields(pc),a0
+	move.w d0,(a0)
+	movem.l (a7)+,d0/a0
+	jmp $b2b2c
+step_pose_render_start:
+	dc.l 0
+step_pose_render_fields:
+	dc.w 0
+	ENDC
 	ENDC
 
 	IFD C_STEERING

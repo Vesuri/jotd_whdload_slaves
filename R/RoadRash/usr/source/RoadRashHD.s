@@ -470,6 +470,16 @@ pl_c_simulation
 	ENDC
 	IFD VERIFY_C_POSE_PREDICT
 	PL_PSS $A8E2,step_predict_pose,4
+	IFD POSE_PREDICT_MEASURED
+	IFD STEP_EXTRAPOLATE
+	FAIL "Measured pose prediction conflicts with whole-view extrapolation"
+	ENDC
+	IFD VERIFY_C_LATENCY
+	FAIL "Measured pose prediction conflicts with the latency probe"
+	ENDC
+	PL_PS $75C8,step_predict_render_begin
+	PL_PS $773C,step_predict_render_end
+	ENDC
 	ENDC
 	PL_S	$AECC,$AEE2-$AECC
 	PL_NOP	$6FA0,6
