@@ -1142,6 +1142,47 @@ seed and stack; player/control bytes remain unchanged. Evidence:
 `tmp/dev/tmp/c/world-impulses-tests.json`. Live deadline sampling and
 once-only scheduling remain integration gates.
 
+## World RNG bound to a deadline
+
+`timing-world-rng.i` prepares a 108-byte copy of native 0658
++07A5C..+07AC6. It redirects only the two input timestamp operands to
+`TR_RNG_MICROS`/`TR_RNG_SECONDS` in a stable private field record. The
+native seed, replay-mode flag, authoritative tick, branches and arithmetic
+remain unchanged. Its entry at +0 supplies bound 256; +10 retains the
+native stack-bound entry. No temporary writes to live input memory are
+needed, so a new input event cannot be lost through save/restore.
+
+`world_rng_prepare` takes the validated native RNG address in a0, separate
+even code storage in a1, the private record address in a2 and the native
+input hunk in a3. It checks both input operands and entry/return boundaries
+before writing anything, returns 0/-1 and preserves other registers.
+The caller must validate the game version, provide non-overlapping storage
+and flush instruction caches after preparation. The record address stays
+fixed; its contents change only between world updates. Calls retain the
+native RNG ABI and still mutate the authoritative seed.
+
+`test_world_rng_c.py` passes 1,920 comparisons across both native entries,
+zero/nonzero replay-mode values, varied seeds/ticks/timestamps and bounds
+1, 3, 256, 32767 and 65535. The reference uses the deadline timestamp in
+live input; the clone uses the same timestamp privately while live input
+contains unrelated bytes. Result registers and seed agree, and write
+tracing permits only the seed and stack. Nine corrupted patch-boundary
+cases reject without touching destination storage. Evidence is
+`tmp/dev/tmp/c/world-rng-tests.json`.
+
+The composed `GS_TEST_DEADLINE_RNG=1 test_world_impulses_c.py` fixture
+also passes all 3,840 native impulse comparisons with unrelated live input.
+Roll/pitch/heading impulses, draw counts and final seeds match; the private
+record and live input remain unchanged. Evidence is
+`tmp/dev/tmp/c/world-impulses-deadline-tests.json`.
+
+This is not installed gameplay: all native world RNG callers still need
+routing through the prepared entry in their original order, with the
+scheduler's private deadline record held stable. Renderer effects must
+be separated before redirecting shared native RNG entry points. Replay
+setup, lifecycle, cache handling and CUSTOM1-gated installation remain
+integration obligations.
+
 ## Field-rate deterministic attitude
 
 `timing-attitude.i` implements the continuous portion of native
