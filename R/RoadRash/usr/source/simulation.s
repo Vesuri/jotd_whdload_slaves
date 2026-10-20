@@ -124,6 +124,21 @@ step_prepare:
 
 ; d0 is the initial simulation cursor; the queue follows the live field.
 step_reset_history:
+	IFD VERIFY_C_POSE_PREDICT
+	IFNE STEP_FIELDS-1
+	FAIL "Presentation heading prediction requires one-field simulation"
+	ENDC
+	IFND POSE_PREDICT_FIELDS
+POSE_PREDICT_FIELDS = 3
+	ENDC
+	lea step_pose_headings(pc),a1
+	move.l d0,-(a7)
+	moveq #4,d0
+.poseclear:
+	clr.w (a1)+
+	dbf d0,.poseclear
+	move.l (a7)+,d0
+	ENDC
 	IFD C_STEERING
 	lea step_steering_fraction(pc),a1
 	clr.l (a1)
@@ -209,6 +224,9 @@ step_seed_finish:
 	ENDC
 ; Run stateful presentation helpers exactly once per simulation step.
 step_end:
+	IFD VERIFY_C_POSE_PREDICT
+	bsr step_predict_history
+	ENDC
 	jsr $89138
 	bsr step_track_events
 	bsr step_actor_animations
@@ -941,6 +959,61 @@ step_pose_project:
 step_pose_busy:
 	dc.b 0
 	even
+
+	IFD VERIFY_C_POSE_PREDICT
+; Diagnostic only: estimate three fields of presentation heading from the
+; last four authoritative increments. Never write the predicted value to an
+; actor or use it in the simulation-owned pose/event pass.
+step_predict_history:
+	movem.l d0-d2/a0,-(a7)
+	move.l step_stats+8(pc),d0
+	andi.w #3,d0
+	add.w d0,d0
+	lea step_pose_headings(pc),a0
+	move.w $a5d6c,d1
+	move.w d1,d2
+	sub.w (a0,d0.w),d2
+	move.w d1,(a0,d0.w)
+	move.w d2,8(a0)
+	movem.l (a7)+,d0-d2/a0
+	rts
+step_predict_pose:
+	move.w $c(a1),d1
+	cmpa.l #$a5d60,a1
+	bne .done
+	btst #0,step_pose_busy(pc)
+	bne .done
+	movem.l d0/d2,-(a7)
+	move.w step_pose_headings+8(pc),d2
+	move.b $a598c,d0
+	andi.b #12,d0
+	tst.w d2
+	beq .restore
+	bmi .left
+	cmpi.b #8,d0
+	bne .restore
+	tst.w d1
+	bmi .restore
+	bra .predict
+.left:
+	cmpi.b #4,d0
+	bne .restore
+; The native mirror bit was already chosen from the authoritative heading.
+; At zero it uses the positive orientation; do not predict across that sign.
+	tst.w d1
+	bge .restore
+.predict:
+	muls.w #POSE_PREDICT_FIELDS,d2
+	asr.l #2,d2
+	add.w d2,d1
+.restore:
+	movem.l (a7)+,d0/d2
+.done:
+	cmpa.l #$a5d60,a1
+	rts
+step_pose_headings:
+	ds.w 5
+	ENDC
 
 	IFD C_STEERING
 	include steering.s

@@ -89,6 +89,64 @@ It must still pass phase-swept visible response, release/reversal behavior,
 and authoritative replay checks. No prediction is enabled by this audit;
 the throughput, A4, and response gates remain open.
 
+### Diagnostic presentation-heading prediction
+
+`VERIFY_C_POSE_PREDICT` adds a presentation-only experiment behind the existing
+enhanced-path selection and CUSTOM2 conditional patch list. It retains the
+last four authoritative player headings, estimates three fields of further
+heading change, and supplies that estimate only to the player's ordinary
+rider-sprite selector at `$8a8e2`. It never stores prediction in the actor.
+The simulation-owned pose/event pass always receives the authoritative
+heading. `POSE_PREDICT_FIELDS=0` builds a control with identical code layout.
+The experiment requires one-field simulation and is not selected by normal
+or ordinary lean runtime builds.
+
+Prediction requires held steering in the same direction as the observed
+heading change. Release, opposed heading, and reversal through zero suppress
+it. The zero-heading guard matters because native code has already chosen
+the sprite mirror bit before this hook; predicting negative heading from
+zero would otherwise use the wrong orientation. Crash/attack sprite branches
+that bypass this ordinary pose selector are unaffected.
+
+The initial cached-020 eight-phase run, `c-pose-heading-predict-visible`,
+measures 160/140/220/200/180/160/140/220 ms, median 170 ms.
+`c-pose-heading-control-visible` measures
+260/240/220/200/180/260/240/220 ms, median 230 ms. Those diagnostic binaries
+differ in one immediate byte (prediction horizon 3 versus 0).
+The first changed image at phase 300 contains only the rider, as intended.
+This improves the aggregate response measure, but phases 302 and 303 remain
+20 ms behind B. It is not proof that every input phase now matches B.
+
+The corrected mirror-guard build is `c-pose-heading-predict-v2-build`:
+8,740-byte diagnostic SHA-256
+`d686121d8a98a95d69817bb96a5ab4a3c33f5413a0232e4f610890dfcd681273`.
+Its complete repeat in `c-pose-heading-predict-v2-visible` reproduces all eight
+response measurements above, including the 170 ms median.
+`c-pose-heading-predict-v2-release` probes 60 player pose calls through release
+at live field 311 and opposite input at 321. Simulation calls remain exact;
+render headings 11 and 7 remain unpredicted after release, zero remains zero
+on reversal, and negative prediction resumes only after heading becomes
+negative. This checks the values entering sprite selection, not just input
+flags.
+
+`c-pose-heading-predict-v2-replay` matches `c-audit-period-4` on all 1,596
+completed actor hashes, all three sound requests and the six authoritative
+snapshot regions listed above at field 1,457. Stack guards remain intact
+(228 bytes observed). This is a four-field rendered-cadence replay, not yet
+full cadence, full-race, or hardware coverage for prediction.
+
+`c-pose-heading-{predict,control}-v2-cost` both render 192 frames between
+fields 100 and 1,000 (10.667 fps), with identical recorded cursors and player
+positions. The two binaries differ only in the horizon immediate byte.
+This isolates prediction versus zero prediction in this straight-line
+diagnostic; it does not establish zero overhead versus the uninstrumented
+normal runtime.
+
+Normal binaries remain byte-identical to the current 7,940-byte runtime.
+The diagnostic's fixed three-field prediction horizon is an experiment for
+the measured 020 render interval; it is not a calibrated policy for every
+CPU. C's throughput and A4 gates remain open.
+
 ## C completion audit against the preceding integrated steering runtime
 
 This audit applies to the normal 7,920-byte runtime with SHA-256

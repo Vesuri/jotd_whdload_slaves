@@ -468,6 +468,9 @@ pl_c_simulation
 	PL_P	$B97A,step_steering_motion
 	PL_P	$B9A0,step_steering_store
 	ENDC
+	IFD VERIFY_C_POSE_PREDICT
+	PL_PSS $A8E2,step_predict_pose,4
+	ENDC
 	PL_S	$AECC,$AEE2-$AECC
 	PL_NOP	$6FA0,6
 	PL_R	$6FE6
