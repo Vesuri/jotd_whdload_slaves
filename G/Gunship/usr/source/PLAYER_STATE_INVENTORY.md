@@ -1038,3 +1038,36 @@ them from cache. The full native state window, including RNG state, remains
 byte-identical across that restoration. World/camera batch comparisons,
 19/17 nonzero disturbance deadlines, weapon/actor counts and geometry cleanup
 continue to pass. Production lifecycle installation remains pending.
+
+#### Changed-input landing map-edge correction
+
+The first 128 actual PAL/NTSC intervals with reversing controls at map edges
+showed no escape. A broader search then found one in trial 62: start XY
+`D7FF/1800`, speed 82, heading/track B4, pitch 1, roll 17, height 2 and
+vertical rate -28; apply `(x,y)=(1,1)` for eight PAL fields, then `(1,0)`
+for nine. The 17 assembled field steps reproduce the constructed endpoint
+byte for byte. The old ground-tail correction then produced integer XY
+`D803/17FF` with residues 160/640 (denominator 1360), outside both map bounds.
+Both native tails were individually clamped; their difference added to a
+changed-input endpoint was not necessarily bounded.
+
+`endpoint_ground_resolve` now applies native unsigned `1800..D800` coordinate
+bounds after replacing the grounded displacement contribution. Ground has
+no wind offset, so these are the final bounds. An actual clamp discards that
+coordinate's fractional debt; at D800 a positive residue is also discarded.
+An inward residue at the lower edge remains valid.
+
+`test_endpoint_ground_edge_regression_c.py` replays the captured case through
+all actual PAL and NTSC field steps. Both land at `D800/1800` with zero XY
+residues. The original failing input and output remain in ignored
+`tmp/dev/tmp/c/endpoint-ground-edge-failure.json`. This fixes ground
+correction; airborne disturbance correction and broader contact acceptance
+remain separate gates.
+
+After the fix, the deterministic 2,048-interval native-derived search finds
+no coordinate/residue violations among 1,979 contacts. These intervals use
+exact weighted native candidates; the captured regression above separately
+verifies the full assembled field path. The 512 original native-tick
+comparisons still pass (310 resets, 31 notifications), as do all 128 disturbed
+PAL/NTSC landing intervals (2,336 fields, 77 resets), including fractional
+reset and rejection checks. Held-input native endpoints remain unchanged.

@@ -89,6 +89,15 @@ endpoint_ground_resolve:
 	move.w ER_GROUND+2(a6),d0
 	sub.w ER_FREE+2(a6),d0
 	add.w d0,2(a1)
+	; Replacing the tail on a changed-input trajectory can cross a map
+	; bound even though both native preview tails were individually clamped.
+	; Ground has no wind displacement, so enforce the native bounds here.
+	movea.l d2,a0
+	bsr .clamp_xy
+	addq.l #4,a0
+	addq.l #2,a1
+	bsr .clamp_xy
+	movea.l d3,a1
 	; Engine coast uses the new coarse speed at native +09778, so ground
 	; can also change RPM even though it does not reset the RPM byte.
 	move.b ER_GROUND+$1b(a6),d0
@@ -116,6 +125,22 @@ endpoint_ground_resolve:
 	moveq #-1,d0
 .restore:
 	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+; a0=nonnegative fractional residue, a1=coordinate word.
+.clamp_xy:
+	move.w (a1),d0
+	cmpi.w #$1800,d0
+	blo .xy_low
+	cmpi.w #$d800,d0
+	blo .xy_done
+	move.w #$d800,(a1)
+	clr.l (a0)
+	rts
+.xy_low:
+	move.w #$1800,(a1)
+	clr.l (a0)
+.xy_done:
 	rts
 
 ; a0=one private record. Raw immutable native stages 3..6 keep the original
