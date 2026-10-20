@@ -1,3 +1,48 @@
+## Player exposure decomposition and isolated displacement correction
+
+`player_exposure_c.py` decodes the player from the retained fresh NPC motion
+traces, stopping at cursor 500 and asserting normal riding flags. It counts
+actual applied throttle deltas rather than treating a native cursor stamp as
+elapsed throttle time. At cursor 102, B has already applied four fields of
+throttle (speed 136), while C has applied two (68). C reaches speed 136 at
+cursor 104. B applies the newly read input across its whole preceding delta;
+C consumes historical field inputs and first applies throttle at cursor 101.
+The first-shift samples are B cursor 262, speed 5544; C cursor 260, speed 5432.
+
+At the first NPC dispatch threshold, cursor 322, B/C player speeds are
+7104/7044 with 224/222 applied throttle fields. Matching exposure at C cursor
+324 gives speed 7096: 52 of the 60-unit same-cursor gap is the two-field input
+exposure difference, and eight units remain from discrete gear selection.
+At 400 applied throttle fields B/C speeds are 10384/10373. The corresponding
+positions differ by 17387 units, versus 38117 at common cursor 498.
+`player-exposure.json` beside the C trace retains all paired observations.
+Equal exposure is a causal comparison, not a replacement for the live-field
+acceptance gate. No retroactive throttle or additional input delay is added.
+
+A private `c-player-motion-source` experiment isolates the previously tested
+four-field endpoint displacement correction to the player. It retains the
+road-only correction and all fused-runtime optimizations; NPCs use ordinary
+new-speed-times-delta displacement. The helper checks A1 against $a5d60 before
+applying `max(0, new_speed + floor(3*new_speed/2) - floor(3*old_speed/2))`.
+There are no acceleration, gear-threshold or AI changes. The normal binary is
+20044 bytes, SHA-256
+`ced019f287d919dc3a3604a75b9deeaf5c4858ec500c548b51c3efb25653da58`;
+`c-player-motion-build/source.patch` preserves the complete source difference.
+
+`c-player-motion-arithmetic` validates 402 adjacent intervals through cursor
+500 for each of player/$a61e0/$a6260. Player displacement matches the endpoint
+formula; both NPC displacements match speed times delta. All three position
+increments match their stored displacement. This confirms the intended scope
+of the experiment rather than relying only on the source guard.
+
+The complete unchanged input tape in `c-player-motion-lap` crashes at field
+1572, compared with 1376 in both B and the road-only candidate. It ends at
+displayed rank 15 with one crash, but clearly fails the handling comparison.
+Thus the earlier all-actor endpoint candidate's failure was not solely caused
+by applying that correction to NPCs. This isolated candidate is rejected and
+remains private; no broad performance/cadence matrix or runtime promotion is
+justified. C's handling, distance and performance requirements remain open.
+
 ## First NPC braking difference follows the player-speed dispatch threshold
 
 `b-npc-brake-branch` and `c-road-npc-brake-branch` retain the same binaries,
