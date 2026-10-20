@@ -550,6 +550,11 @@ A read-only fractional camera adapter now exposes the first field's
 attitude changes in camera angle words; whole-tick camera arithmetic is
 preserved, while enhanced pitch removes the integer half-angle staircase.
 Live input-to-screen latency remains unmeasured.
+The runtime now publishes native single-frame scene/instrument inputs directly
+from the latest player state and fractional camera, with no old render-count
+loop. Native endpoint comparisons and write-range checks pass. Other objects
+remain committed poses in this publisher; prediction, gauge slew and the
+actual frame-render handoff still need integration.
 See `TIMING_DESIGN.md` for tested scope and remaining integration obligations.
 
 **Design.** The game has two timing owners:

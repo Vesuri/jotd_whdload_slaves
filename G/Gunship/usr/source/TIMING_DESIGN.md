@@ -3504,3 +3504,43 @@ Slave setup still passes 15 calls.
 
 The native flight-loop hook and live lifecycle behavior remain unvalidated;
 these are assembled runtime/harness results, not installed production timing.
+
+## Direct native single-frame input publication
+
+`timing_runtime_present_state(a0=arena)` builds the inputs consumed by native
++05C04 without invoking the +04288 render-count/interpolation loop. It requires
+an active, healthy runtime with a drained batch, no pending field/world and
+no retained UI boundary. It returns 0, -3 for invalid admission or -1 for
+invalid camera fractions, preserving non-result registers.
+
+It seeds a private 16-byte instrument buffer to retain the native holes and
+externally owned bytes, runs the existing read-only camera/instrument builder,
+then applies endpoint fractional camera angles. A private 54-byte scene vector
+combines that camera, the six committed object coordinates and the special
+object's split coordinate bytes. No native destination is published until
+camera validation succeeds. The extra scratch makes the arena 27,324 bytes.
+
+Publication updates hunk 6's render context at +3904, the native scene endpoint
+and previous-endpoint buffers, hunk 5's camera-position copy, and the current
+instrument/gauge buffers. Instrument copies use bytes because the native
+block starts at odd address +157D. Current/previous caches are synchronized
+to the published state for subsequent native UI use. The caller must
+serialize foreground state and presentation readers during publication.
+
+The entry performs no graphics calls, gameplay updates or RNG draws. It does
+not clamp authoritative pitch, advance guidance, acknowledge a tick, clear
+the object-change mask or interpolate world objects. Repeated publication is
+idempotent. Its fractional camera uses the latest field, not a previous tick.
+
+`test_runtime_present_c.py` passes 256 comparisons against native instrument
+building and the actual +04288..+0444A endpoint instructions (drawing stubbed),
+plus 256 independently calculated fractional-angle cases. Native write hooks
+allow only the listed presentation buffers; player/world state and endpoint
+fractions remain unchanged. Invalid admission is atomic, and invalid camera
+fractions never publish native inputs. A runtime first-field input changes
+the published camera before the first world tick. All experimental variants
+assemble.
+
+This establishes native frame inputs, not the frame call or displayed latency.
+World-object prediction, elapsed-time instrument slew, render side-effect
+isolation and the installed native-loop/frame handoff remain open.
