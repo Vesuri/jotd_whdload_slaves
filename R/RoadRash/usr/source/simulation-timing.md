@@ -1,3 +1,36 @@
+## Road correction: complete arrest replay and reactivation reset
+
+`c-raster-road-fixed-fullrace` and `c-raster-road-vary-fullrace` finish the
+unchanged `c-steering-finish-lane` tape with the corrected road model. Both
+now end in arrest, confirmed by the native BUSTED screen, with damage 6,
+finish flag zero, terminal crash state 3 and exit field 7085. They are not
+successful-finish coverage merely because the input tape previously finished
+under the uncorrected model.
+
+The strict full comparison passes all 7,084 completed hashes, 24 sound
+requests, six terminal regions and capture/timing fields. Both restart with
+cleared capture state: fixed (97,96,0,1), varying (95,94,0,1). Different
+live restart cursors reflect cadence; the captured previous-race marker is
+zero in both. This establishes arrest/restart invariance for the corrected
+model, while original-behaviour differences remain explicitly unresolved.
+
+`c-raster-road-reactivation` checks the actual normal road candidate. One
+natural actor reactivation carries a nonzero prior road remainder. The
+helper clears it, preserves every checked register and SR except native A4
+replacement, and resumes with A4=$a851a. No memory injection is used.
+
+Successful-finish coverage requires a tape appropriate to this corrected
+motion. `c-raster-road-driven-race` has started a joystick-only driver with
+10-field decisions, lane target 0, dead zone 24, one-sample trend prediction,
+full throttle and no attacks. Its input tape will be retained and replayed
+without adaptive decisions under varying cadence. No course, actor state,
+finish flag or timer is altered. The run also requests direct inspection of
+player/history and all 35 actor road carries after restart. Its outcome and
+that reset check are not yet claimed. The original B tape and comparison
+remain unchanged; this new tape supplies transition coverage, not a substitute
+for A4. Full normal response phases and natural carry-copy checks are also
+running. Production physics remains unchanged.
+
 ## Current fixed-cadence checks and road-correction validation
 
 Fresh `c-raster-period{1,2,3,4}-state` replays use the integrated raster
