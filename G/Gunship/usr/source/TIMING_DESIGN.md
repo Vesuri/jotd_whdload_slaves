@@ -767,6 +767,48 @@ fraction resets on lifecycle transitions and the native scheduler adapter
 remain integration obligations. It is not included in the slave yet;
 installation must use the CUSTOM1 Enhanced framerate gate.
 
+## Combined continuous player step
+
+The standalone `timing-player-step.i` now provides a common continuous
+player entry point above attitude and kinematics. Its 76-byte state
+concatenates the 12-byte attitude state and 64-byte kinematics state.
+`player_step_init(a0, d0=rate, d1=previous_y)` initializes both components
+or rejects invalid input without writes. `player_step` takes state,
+player, prepared native stages, sine helper and an immutable 10-byte
+input packet in a0..a4. The packet contains signed words for x/y direction
+and supplied roll/pitch/heading impulses. Both entry points return d0=0/-1
+and preserve other registers.
+
+The step applies attitude before flight arithmetic, which reads the newly
+updated integer attitude. Retained attitude fractions are not substituted
+into native table inputs. It checks matching rates, operates on
+stack copies and publishes the player and both shadow states only after
+success. A late flight/heading rejection therefore cannot consume the
+previous-y input or partially apply an attitude change. This outer
+transaction adds 162 scratch bytes and saved registers on top of the
+nested kinematics transaction; stack high-water and CPU cost still need
+the C4f check.
+
+This entry point does not decode the native history records or keyboard
+commands, decide world-impulse eligibility, apply the authoritative HUD
+pitch clamp, or perform world contact/weapon effects. The caller must
+schedule those operations and supply the logical tick parity. The
+native adapter and CUSTOM1-gated installation remain pending.
+
+The assembled step passes 4,096 complete player-record comparisons
+against original deterministic attitude followed by the native motion
+preview at h=1. The fixture suppresses random attitude eligibility with
+airborne/no-damage input; motion-preview world omissions still apply.
+Another 1,320 fields exercise holds, reversals, neutral controls and
+supplied impulses at PAL/NTSC, comparing every player and shadow byte
+with the separate components. Ten early/late failures leave state and
+player unchanged, three invalid initializations preserve state, and
+register/stack/input-packet checks pass. Evidence:
+`tmp/dev/tools/test_player_step_c.py`,
+`tmp/dev/tmp/c/player-step-tests.json` (16,285 calls).
+This proves composition; fractional camera presentation and measured
+input-to-screen latency remain open.
+
 ## Coupled held-control measurement: C4e not accepted
 
 `tmp/dev/tools/measure_held_motion_c.py` runs 32 ten-second comparisons:

@@ -422,6 +422,10 @@ the HUD's authoritative pitch clamp. A standalone deterministic field-rate
 stick-attitude step is tested. A standalone continuous-motion coordinator
 now connects scaled heading, flight rates, displacement and wind in native
 order; its control/world hand-off and production installation remain pending.
+A combined continuous player entry point now applies decoded stick attitude
+before that motion step, with rollback across both components. Native
+input decoding, command ordering, pitch-clamp scheduling and the world
+boundary remain caller responsibilities and are not yet installed.
 The initial coupled held-control measurement exposes changed response
 equilibria: fractional exponential response continues inside the native
 integer zero-increment range. Those stopping ranges are now retained for
