@@ -1,5 +1,5 @@
 ; Standalone native camera/instrument builder. Not installed yet.
-; a0 = player record, a1 = hunk-6 instrument block +157d (16 bytes),
+; a0 = player record, a1 = 16-byte instrument block (either alignment),
 ; a2 = camera vector (12 bytes), a3 = native interpolation table hunk4+1c8.
 ; All registers preserved, CCR unspecified. Player state is read-only.
 ; Pitch clamping belongs to the player update, not repeated rendering.
@@ -54,7 +54,11 @@ presentation_build:
 	move.w d0,d1
 	lsr.w #2,d1
 	add.w d1,d0
-	move.w d0,7(a1)
+	; Native +157d is odd, but the private presentation buffer is even.
+	; Store the big-endian height bytes without an unaligned word on 68000.
+	move.b d0,8(a1)
+	lsr.w #8,d0
+	move.b d0,7(a1)
 	move.b $3e(a0),d0
 	lsl.w #8,d0
 	asr.w #1,d0

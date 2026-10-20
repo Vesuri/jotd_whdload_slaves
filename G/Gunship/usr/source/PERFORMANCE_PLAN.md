@@ -423,8 +423,8 @@ Its native main-loop installation, remaining command callbacks/lifecycle
 policies and complete player/world hand-off are still pending,
 so C2/C3 are not complete. A guarded single-frame handoff now publishes the
 current pose and calls native drawing once; it defers fields arriving during
-drawing to the next batch (forty assembled handoff cases). It has no native
-flight-loop caller yet. A foreground loop owner now composes bounded batches,
+drawing to the next batch (forty assembled handoff cases). The experimental native
+flight-loop caller now uses it. A foreground loop owner now composes bounded batches,
 draws, retained commands, modal continuation, excess-time rebase and flight
 exit, with PAL/NTSC comparisons against explicit dispatch. Its native entry
 hook and Exec interrupt-exclusion adapters are now installed in experimental
@@ -437,7 +437,13 @@ starts with stale private table data (176 signature rejections still pass).
 The corrected headless 68020 run reached 1,060 fields and 63 world ticks,
 with no lost/discarded history, scheduler fault or unexpected flight exit
 (`tmp/dev/tmp/c/live-loop-020-refresh`). This is initial loop activation
-evidence, not full C9 gameplay/CPU acceptance. Native world opening and the complete periodic
+evidence, not full C9 gameplay/CPU acceptance. A corresponding 68060 run
+reached 1,139 fields and 68 world ticks without history loss or faults.
+A separate 68000 address error in the private instrument height word store
+is fixed with byte stores; 65,536 native comparisons cover both buffer
+alignments. Its live loop now advances, but discarded 148 fields through
+bounded excess recovery in the sampled run: C9 real-time rate still fails
+on that configuration. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

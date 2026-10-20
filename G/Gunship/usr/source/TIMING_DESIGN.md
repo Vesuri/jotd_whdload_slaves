@@ -5176,3 +5176,39 @@ The post-return native plane flag is zero, but that observation alone does not
 prove its value before cleanup; compare the committed raster and private
 geometry at the decision boundary next. Do not treat this as evidence of
 whole-game collision equality or successful C activation.
+
+### Live geometry initialization and 68000 instrument alignment
+
+A compiled guest probe now captures the native plane flag immediately before
+`world_scene_check`, plus the private result and committed player record.
+The failed scene has native flag zero and private result one before cleanup.
+Replaying its captured RAM shows different model traversal: the private
+coordinate table was copied during loader preparation, before native flight
+initialization populated its transform ranges. Refreshing h6+18DC..+1993
+before each private scene rebuild restores the same model sequence and plane
+results. Committed actor coordinates are rebuilt after that refresh; the
+private transforms still cannot mutate native scratch. The native comparison
+now deliberately clears the private coordinate table after preparation and
+passes all 96 scenes, repeated calls and 176 signature rejections.
+
+The corrected installed loop advances on the 68020 (1,060 fields, 63 world
+ticks) and 68060 (1,139 fields, 68 world ticks), without lost/discarded input
+or scheduler faults in the sampled idle-flight route. Evidence is under
+`tmp/dev/tmp/c/live-loop-{020,060}-refresh`. These are activation checks,
+not matched-input world equality, measured display latency or full gameplay
+acceptance.
+
+The initial 68000 activation instead raised an address error on the first
+instrument publication: `presentation_build` used a word write at buffer+7.
+That is aligned for native h6+157D but odd in the even private buffer. Height
+now uses two big-endian byte stores. The differential fixture alternates odd
+and even instrument destinations across 65,536 native comparisons, preserves
+registers/output guards and rejects unaligned instrument writes. The runtime
+publication fixture also passes 256 native endpoints and 256 fractional cases.
+
+With this fix, `tmp/dev/tmp/c/live-loop-000-alignment` advances 647 fields and
+37 completed worlds (38 deadlines), with no scheduler fault or history
+overflow. It nevertheless discards 148 unread fields through bounded excess
+recovery and retains a backlog: this workload cannot sustain real-time rate
+on that 68000 configuration. This is explicitly not a C9 rate acceptance.
+All four slave build variants assemble; the ordinary build is unchanged.
