@@ -556,3 +556,50 @@ Evidence: `c-stack-final-replay`, `c-stack-final-cost-a1200-fast+cache-q1`,
 `c-stack-060-z3-mmu-quit`, `c-stack-final-off`, and `c-stack-disabled-build`.
 The final full-width header-address correction is checked again by
 `c-stack-ready-replay` and `c-stack-ready-latency-a1200-fast+cache`.
+
+## Exact road-width lookup experiment
+
+`VERIFY_C_GEOMETRY_LUT` requires the selected C path and
+`VERIFY_C_FAST_STACK`. It increases optional ExpMem from 20 to 40 KiB and places
+an 8,193-word table at allocation + `$5000`. Entries 1..8192 are the exact
+unsigned quotients `7168 / depth`; entry zero is unused. The original geometry
+loop's divisor is `256 - fraction + 256*row`, with fraction 0..255 and row 0..31,
+so every possible divisor is covered without approximation.
+
+After initialization, the experiment replaces `$8984e..$89859` with a 68020
+full-extension indexed `MOVE.W (table.l,ZA0,D6.W*2),$64(A3)` and a NOP. This
+avoids 32 constant-numerator divisions per geometry call without changing the
+other projected coordinates or collision calculations. The next native
+instruction clears D2, so its former division result is not live. The original
+store's condition flags are preserved. `resload_FlushCache` follows code writes
+before the game resumes. No code is changed unless C was selected and optional
+ExpMem has a verified Fast address. The master-off and Chip-only fallback keep
+the original division instruction. Disabling this experiment reproduces the
+stack-only diagnostic binary exactly; normal builds remain unchanged.
+
+A subroutine lookup was rejected: its entry/register-save overhead reduced the
+A1200 Fast + Cache interval to 148 frames (8.22 fps), against 153 (8.50 fps) for
+the stack-only candidate. The direct indexed version produces 156 (8.67 fps)
+over the same fields 100–1000. This is only a 2% additional gain in this workload.
+The final build's RIGHT-at-300 sample returns from swap at 160 ms, still too slow
+to establish the response target. Earlier binary layouts yielded 120 or 140 ms
+single samples; those phase-sensitive results are not latency distributions.
+
+The host verifies every table entry against independent integer division and
+checks the actual patched instruction/address. Fast-render replay matches all
+1,598 actor hashes; the 12-field rendering experiment matches all 1,596 completed
+steps against the same reference. 040/MMU and 060/MMU with 32-bit Fast memory
+pass table checks, preserve stack guards and quit through Help to AmigaDOS.
+The extrapolation combination also assembles. Evidence: `c-width-lut-cost-*`,
+`c-width-inline-replay`, `c-width-ready12-replay`, `c-width-ready-cost-*`,
+`c-width-ready-latency-*`, `c-width-040-mmu`, `c-width-060-z3-mmu`, `c-width-off`,
+`c-width-chip-fallback`, `c-width-disabled-build`, and `c-width-extrap-build`.
+
+The remaining two-field cadence in fast functional execution still needs a
+handoff audit before claiming C2c's uncapped rendering requirement. The native
+swap waits for a new SOFT tick at `$aecea`, then changes the live copper pointers
+at `$aec78`; completion records are published later at `$871dc`. Removing the
+wait without redesigning that handoff would risk tearing. The next timing work
+must establish when completed buffers become visible and when each buffer can
+be reused, rather than treating a higher throughput sample as proof of uncapped
+presentation.

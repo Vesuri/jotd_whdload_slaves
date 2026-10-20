@@ -9,6 +9,15 @@ C_STEP_BUILD = 1
 	ENDC
 	ENDC
 
+	IFD VERIFY_C_GEOMETRY_LUT
+	IFND C_STEP_BUILD
+	FAIL "Geometry lookup requires VERIFY and VERIFY_C_STEP"
+	ENDC
+	IFND VERIFY_C_FAST_STACK
+	FAIL "Geometry lookup requires the optional expansion allocation"
+	ENDC
+	ENDC
+
 	IFD BARFLY
 	OUTPUT	"RoadRash.Slave"
 	BOPT	O+				;enable optimizing
@@ -42,7 +51,11 @@ _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
 	IFD C_STEP_BUILD
 	IFD VERIFY_C_FAST_STACK
+	IFD VERIFY_C_GEOMETRY_LUT
+	dc.l -$a000 ; stack plus exact road-width quotient table
+	ELSE
 	dc.l -$5000 ; optional WHDLoad-managed stack and guards
+	ENDC
 	ELSE
 	dc.l 0
 	ENDC
