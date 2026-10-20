@@ -1,3 +1,38 @@
+## Fixed-clock opponent AI also fails the handling comparison
+
+The private `c-npc-ai-clock-source` experiment starts from the retained
+NPC-lifecycle candidate. A hook at `$8d2e4` preserves every-field player and
+crashed-actor dispatch, but runs normal-riding opponents only when the simulation
+cursor is divisible by four. During those NPC AI calls it sets the delta to four
+so action timers consume four elapsed fields. A return hook at `$8d3da` restores
+delta one before the next actor. Movement and collision simulation retain their
+one-field schedule. This is an isolated diagnostic, not a user option or a
+production change; first-update and actor-transition timing would require
+additional lifecycle validation before any possible integration.
+
+`c-npc-ai-clock-dispatch` verifies 20 measured rival AI dispatches, all at
+cursor modulo four equal to zero and all with delta four. Of the 20 lane
+lookups, 18 return no target and two return `$a63e0`. It does not restore B's
+intervening `$a61e0` target. Independently, `c-npc-ai-clock-boundaries` records
+502 completed simulation boundaries: every recorded delta is one, and all 501
+adjacent cursor increments are one. The temporary AI delta does not leak into
+those completed updates.
+
+The unchanged lap replay in `c-npc-ai-clock-lap` still fails: sampled crash onset
+is 1542 versus B's 1376, and final displayed rank is 15. Rival `$a6260` is in
+lane 5 at field 1200, and lane 4 with attack active at field 1240. Its road
+centre at field 800 is 53 versus B's 73. At field 500, world x=100 and centre=-47
+match B, so this experiment still diverges later despite the fixed AI cadence.
+The result rejects this isolated decision-rate change as a sufficient fix;
+no reduced AI update rate is integrated and no crash-window tolerance changes.
+
+The normal binary is 20,172 bytes, SHA-256
+`987db7bc0f2bdb17705fc0d84d8a395c7205b0604630f67fbe2688882b0a22c2`.
+Its build directory retains the exact source patch; the replay, dispatch and
+boundary traces retain tested binaries and provenance. All three sessions
+completed successfully. Performance and release matrices were not run for a
+candidate that already fails the required handling comparison.
+
 ## NPC heading rate limit already scales with elapsed fields
 
 A read-only watchpoint on rival `$a6260`'s heading word at `$a6268` identifies
