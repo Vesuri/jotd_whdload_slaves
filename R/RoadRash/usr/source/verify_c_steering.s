@@ -68,6 +68,19 @@ step_steering_motion:
 	btst #5,$68(a1)
 	jmp $8b984
 
+; Airborne crash states bypass the ground-motion hook altogether. Clear at
+; the completed simulation boundary too, before any later remount can reuse
+; a residual from the pre-crash trajectory.
+step_steering_finish:
+	tst.b $a5dce
+	bmi .done
+	move.l a0,-(a7)
+	lea step_steering_fraction(pc),a0
+	clr.l (a0)
+	move.l (a7)+,a0
+.done:
+	rts
+
 	cnop 0,4
 step_steering_fraction:
 	dc.l 0

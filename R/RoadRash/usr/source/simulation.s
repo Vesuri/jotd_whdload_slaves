@@ -235,6 +235,9 @@ step_end:
 	lea step_start_frame(pc),a0
 	move.w d0,(a0)
 	jsr $8eff8
+	IFD VERIFY_C_STEERING
+	bsr step_steering_finish
+	ENDC
 	IFND STEP_NO_HASH
 	moveq #0,d0
 	lea $a5d60,a0

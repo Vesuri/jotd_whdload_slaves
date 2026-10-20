@@ -1211,3 +1211,59 @@ ranges match between the two candidate runs. The candidate intentionally
 differs from the old C state; cross-cadence equality alone is not acceptance.
 Full-race, skid/crash/landing, pause/restart, curve/AI interactions, signed
 handling calibration and multi-phase visible-response checks remain required.
+
+## Steering candidate: full-race and phase coverage
+
+`c-steering-fullrace` drives a complete race using ordinary controls and records
+the input tape. `c-steering-fullvar` replays it with varying render intervals.
+All 11,990 completed actor hashes, 35 sound events, finish tick 11802, end tick
+11991 and terminal actor/clock/spawn-timer/camera/rank ranges match. Both start
+another race with reset simulation/capture state. Finish and next-race images
+were inspected. This compares the candidate against itself across presentation
+cadences, not against the previous C race with different controls.
+
+The variable replay samples player state every 20 fields: 595 samples include
+15 with the skid flag, 12 airborne, and crash states 0, 1, 2, 3 and 4 followed
+by riding again. Remainders stay between -4056 and 4080. The samples expose a
+cleanup hole: airborne crash states bypass the ground-motion hook, retaining
+remainders such as 2434 through fields 2200–2260. The candidate now calls
+`step_steering_finish` at the completed simulation boundary, clearing residual
+ground movement whenever the player is crashing. Native ground-path clearing
+alone was insufficient.
+
+Before that cleanup, `c-steering-visible-phases` completed the same eight
+paired visible-response scenarios as the B/normal-C audit:
+
+| Input field | Candidate first-visible estimate (ms) |
+|---:|---:|
+| 300 | 220 |
+| 301 | 200 |
+| 302 | 180 |
+| 303 | 260 |
+| 304 | 240 |
+| 305 | 220 |
+| 306 | 200 |
+| 307 | 180 |
+
+The median is 210 ms, compared with B's 200 and uncorrected normal C's 370.
+The same one-field capture-boundary uncertainty applies. These remain
+diagnostic-build measurements in one low-speed scenario, not a general latency
+pass for the normal runtime or for the subsequent cleanup build.
+
+`c-steering-candidate-pad` passes steering/release and CD32 pause/resume on
+real-speed cached 020, with the clock frozen at field 161 while paused.
+Fast-stack guards remain intact, with 332 bytes of observed use.
+
+The native input routine itself explains one source of left/right asymmetry:
+`$872d2..$872e0` gives LEFT a reversal increment when starting from zero,
+whereas `$87310..$8731e` omits it for RIGHT at zero. The candidate preserves
+that existing behavior; symmetric fractional carry does not make the entire
+control response symmetric.
+
+`c-steering-reset-fullvar` validates the boundary cleanup on the full recorded
+tape: all 11,990 hashes, 35 sound events, finish/exit boundaries and authoritative
+terminal ranges still match `c-steering-fullrace`. All 38 sampled crash states
+now have a zero fractional remainder. The next race starts with reset counters.
+The normal binary remains byte-identical; this closes the observed candidate
+cleanup defect, not the outstanding B handling calibration or normal-runtime
+integration and acceptance checks.
