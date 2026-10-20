@@ -9,10 +9,10 @@ calculation's scratch registers, then replays the displaced display-record
 clear and cop comparison. Render-only calls bypass the calculation. This
 remains inside the existing Enhanced framerate/hardware patch gate.
 
-The key unresolved ordering issue is that all actors' lean values were formerly
+The principal ordering risk is that all actors' lean values were formerly
 computed before any pose side effects. The fused pass interleaves those operations
 by actor. Full crash/recovery, slot-copy, special-actor and cadence comparisons
-are therefore required; passing one short tape is insufficient for promotion.
+are therefore necessary; the short and long comparisons below address this risk.
 
 `c-fused-lean-state-v2` matches `c-lane-scan-selective-state` for all 1,595
 common completed hashes, all sound requests and all six authoritative snapshot
@@ -22,13 +22,55 @@ reference range; placing it beside `step_compute_lean` fixes that limit. The
 failed run is retained separately as `c-fused-lean-state`. The corrected tracked
 full diagnostic is byte-identical to the tested private v2 full binary.
 
-The private normal candidate in `c-fused-lean-matrix` measures 12.1 fps cached
-and 8.3 uncached on Fast 020, versus current production 12.0 / 8.3. These small
-differences are not yet isolated from layout effects by a matched control.
+`c-fused-lean-period1`, `-period2` and `-period3` each match the fixed-four-field
+`c-fused-lean-state-v2` reference for 1,595 common completed hashes, all sound
+requests and all six authoritative snapshot ranges at cursor 1457. Histograms
+confirm 1,600 one-field, 799 two-field and 533 three-field intervals respectively,
+plus startup intervals. One-field coverage skips drawing to reach that cadence;
+two- and three-field runs render normally. These are functional-speed replays.
+
+Full varying-cadence replays now match the preceding lane-scan runtime:
+
+| Outcome | Completed hashes | Sound events | Exit cursor |
+| --- | ---: | ---: | ---: |
+| Finish | 12,822 | 24 | 12,823 |
+| Arrest | 8,377 | 241 | 8,378 |
+| Wreck | 11,945 | 120 | 11,946 |
+
+`c-fused-lean-finish`, `-arrest` and `-wreck` match their corresponding
+`c-lane-scan-*` references in every collected hash, event, finish/exit timestamp
+and all six authoritative terminal snapshot ranges. All restart successfully;
+terminal and next-race screenshots were inspected. This provides long-tape
+ordering evidence, including crashes and race transitions.
+
+The 19,376-byte private normal candidate in `c-fused-lean-matrix` measures
+12.1 fps cached and 8.3 uncached on Fast 020. The equal-size
+`c-fused-lean-control-matrix` retains separate traversal and the same pose hook,
+but bypasses the fused calculation: 12.0 / 8.3 fps. Thus the small cached gain
+survives this layout control. Both build directories retain their source delta.
+
+`c-fused-lean-remaining-matrix` completes the other nine normal cells: A500 8.5,
+Chip-only 020 12.5, default Fast 020 12.1, 030 16.6, 040 19.6 and 060 23.0 fps.
+Explicit Cache and default agree on 030/040/060. The prior runtime measures
+19.3 on 040; remaining CPU rates are unchanged. A500 and Chip-only 020 retain
+their reference distances. `c-fused-lean-mmu` passes both 040/060 functional
+checks with TC enabled and CACR $80008000; these are not throughput results.
+
+`c-fused-lean-visible` measures [140,200,180,160,140,200,180,160] ms at input
+phases 300..307, median 170 ms. Every phase is no slower than B's corresponding
+[180,220,200,180,220,200,180,220] ms. Some phases are slower than the preceding
+C binary, whose phase alignment differs; its median was also 170 ms. These are
+field-sampled upper estimates, not physical input-to-photon measurements.
+
+`c-fused-lean-smoke` passes keyboard/CD32 steering release, pause/resume,
+demo fire exit, demo timeout and stack checks. `c-fused-lean-off` verifies the
+normal candidate retains all ten original bytes at $89de8 with CUSTOM2=0.
+
 The tracked normal binary remains byte-identical to production (19,296 bytes);
-only explicit diagnostics select fusion. Next checks are fixed/varying cadence,
-long finish/arrest/wreck and restart equivalence, then matched performance and
-remaining hardware/latency validation if the state comparisons hold.
+only explicit diagnostics select fusion. Integration must preserve the tested
+normal layout: its helper is appended, while the full diagnostic places the
+helper near `step_compute_lean` to fit signed patch references. C's separate
+B handling/distance and overall performance requirements remain open.
 
 ## Exact Fast RAM lean copy does not improve measured throughput
 
