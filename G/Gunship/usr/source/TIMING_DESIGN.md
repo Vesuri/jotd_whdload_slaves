@@ -2696,3 +2696,43 @@ observations (28,335 calls). The delayed bridge's 12 rejection cases and
 post-publication fault regression still pass. This fixture has a world
 observer; connecting native opening, motion impulses and the complete
 post-motion world body remains necessary before gameplay installation.
+
+
+### Scheduled player plus extracted world integration
+
+`tmp/dev/tools/test_scheduled_world_c.py` replaces the scheduler fixture's
+world observer with the extracted native world path. Each delivered field
+runs scheduled guidance, decoded controls and command drains, delayed split
+player motion and completion. At a due deadline, opening runs before command
+drains, then eligible motion impulses run before the final field's motion.
+The candidate reaches the ground boundary before publication; deferred ground
+effects follow successful motion. Fire preparation, weapons/actors, damage,
+scripts and periodic reserves/cleanup then execute before world acknowledgement.
+
+This fixture advances the authoritative tick at the deadline opening and
+supplies the upcoming interval parity to earlier fields. It initializes tick
+65532 to exercise wrap and periodic boundaries. The private effect heading
+is the committed player heading shifted by eight; acceptance of that source
+for the relocated render-side effect invocation is still separate. A fixture
+caller performs each opening once; a production phase owner must retain that
+fact across faults/modal boundaries rather than retrying opening after partial
+work. This test does not supply that recovery owner.
+
+Eight runs pass: PAL/NTSC with batches 1/3/10/25, 360 fields per run (2,880
+fields and 46,301 helper calls). Every PAL run produces 21 world deadlines,
+six launches, 90 active-actor visits and two periodic guard evaluations;
+every NTSC run produces 18 deadlines, six launches, 72 actor visits and one
+periodic evaluation. Guided release and impact code execute as part of the
+composition. Per-field player/shadow/delay states and the complete native
+state window at every world deadline match across batch sizes, as do actor
+traces and final camera angles. The only normalized native bytes are the
+deliberately varied live timestamp and screen-swap flag; private deadline
+RNG and guidance acknowledgement remain deterministic.
+
+The fixture retains visibility/target-selection and UI/audio stubs from the
+individual native-world tests. It stays airborne and no script modal boundary
+is reached. Ground evaluation therefore exercises the airborne path, not
+C5's terrain/contact acceptance. VBL countdown ownership, navigation-bearing
+display work, actual rendering, modal recovery, cross-CPU runtime and native
+main-loop installation remain outstanding. This demonstrates combined
+scheduled extraction and batch invariance, not complete C or C4e acceptance.
