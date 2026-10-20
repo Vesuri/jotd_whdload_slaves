@@ -62,6 +62,80 @@ Cache 020 and all 030/040/060 cells are within 1%. Handling/rank/crash
 equivalence remains unresolved. Throughput is closer to B but still below
 it in several configurations. These improvements do not complete C.
 
+### Current distance accounting and reference-integration candidate
+
+`c-aux-distance-dynamics` traces completed ticks in the current normal runtime
+with default cache policy. `b-default-distance-dynamics` runs the preserved
+B normal binary with CUSTOM2=3 and its original default cache policy. Both
+receive throttle at live field 100. Every B step in this window uses delta 4.
+
+At completed cursor 590, B is at 3,888,640 and C at 3,852,194. The actual
+live-field C checkpoint still contains cursor 589, position 3,842,452.
+The 46,188-unit live-field gap can be decomposed without changing either run:
+
+| Component | Distance units |
+| --- | ---: |
+| C cursor 589 to completed cursor 590 | 9,742 |
+| C cursor 590 to 592, equalizing applied throttle fields | 19,437 |
+| B four-field end-speed integration versus unit interpolation | 14,568 |
+| Remaining aligned difference | 2,441 |
+
+B has applied 492 throttle fields by cursor 590, starting with speed 136
+and displacement 544 at cursor 102. C first moves at cursor 101, speed 34
+and displacement 34. Its cursor-592 position is 3,871,631. For each
+four-field B step, using its end speed over the whole step exceeds unit
+linear velocity integration by `3/2 * (end_speed - start_speed)`. Summed
+over this window, that is `3/2 * 9712 = 14568`. This is an accounting
+counterfactual over B's recorded steps, not proof that intermediate gear
+or terrain states would remain identical. The raw live-field acceptance
+failure remains; the aligned comparison does not replace it.
+
+A private `REFERENCE_MOTION` experiment tests preserving the four-field
+endpoint convention while continuing to advance one tick per active field.
+In the primary movement loop it captures velocity before the native update
+and sets displacement to:
+
+`max(0, new_speed + floor(3*new_speed/2) - floor(3*old_speed/2))`.
+
+For constant acceleration without clamping, four such updates sum to the
+native four-field end-speed displacement. Differencing the rounded offsets
+preserves half units without persistent per-actor fractional state. The helper
+does not write velocity or change tick count or input sampling; altered
+positions can affect later terrain and velocity decisions. Other paths that
+override this displacement, including special crash paths, have not been
+normalized by this prototype. This is a gameplay change, unlike code copying;
+old authoritative trajectory hashes are not expected to remain equal.
+
+`c-reference-motion-dynamics` checks 500 completed primary updates against
+the formula and their resulting position increments. Completed-cursor-590
+distance is 0.707% below B, versus the current runtime's 1.083%.
+The actual normal-candidate live-field measurements in
+`c-reference-motion-runtime-020` are:
+
+| Fast 020 policy | Distance | Difference from B | fps |
+| --- | ---: | ---: | ---: |
+| Default | 3,330,871 | -0.995% | 12.0 |
+| Cache | 3,330,871 | -0.509% | 12.0 |
+| NoCache | 3,321,166 | -1.284% | 6.8 |
+
+The first two pass the distance gate, narrowly in the default case. NoCache
+still fails and loses 0.2 fps against the integrated runtime. The prototype
+is therefore not promoted. Its normal binary is 18,696 bytes, SHA-256
+`f12150a0710da2b9aaa07f605975bafb891d011f11d84748d580c5d459cec2c0`.
+
+The first full diagnostics failed before entering the game because their
+new PL_P targets exceeded WHDLoad's signed patch-target reach. The retained
+v2 builds use nearby register-preserving bridges to the same motion helper.
+`c-reference-motion-period4-v2` and `c-reference-motion-varying-v2` match
+1,595 conservatively completed hashes (excluding the last counted tick),
+three sound requests and all six authoritative field-1,457 regions. This
+proves the sampled cadence independence of the candidate, not B-equivalent
+handling or full-race acceptance. The source deltas are retained in
+`c-reference-motion-build/source.patch` and
+`c-reference-motion-period4-v2-build/source.patch`; normal source is unchanged.
+Further work must reduce the candidate's cost and cover the remaining
+movement paths, full-race outcomes and response phases before integration.
+
 ## Preceding runtime: Fast RAM movement and collision code
 
 Normal and lean runtime builds now select `C_PHYSICS_FAST`; full diagnostics
