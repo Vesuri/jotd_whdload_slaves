@@ -1365,3 +1365,36 @@ remain relative to C. That calculation does not equate gear, terrain or other
 state-dependent decisions across the two paths. No compensating speed multiplier
 or extra simulation time has been introduced. Raw steps and the derived figures
 are retained in `c-reference-distance-boundaries/comparison.json`; C remains open.
+
+## Revised steering: visible response and race-exit replay
+
+`c-steering-reference-visible-phases` measures the revised quarter-displacement
+candidate, using fresh neutral/RIGHT pairs for all eight injection fields 300–307.
+Within each pair the initial snapshots match exactly. First changed race-view
+captures give upper estimates of 260, 240, 220, 200, 180, 260, 240 and 220 ms,
+median 230 ms. The field-300 difference image includes the rider and road view.
+These remain capture-end estimates with one-field uncertainty, not hardware
+input-to-monitor latency. The corresponding retained B median is 200 ms and
+uncorrected C median is 370 ms. The new candidate substantially improves response
+but does not eliminate the regression against B. Its predecessor's 210 ms
+median does not describe this revised model.
+
+`c-steering-quarter-fullrace` drives the current model using ordinary adaptive
+controls, recording the resulting input tape. It publishes 11,945 completed
+step hashes, then exits at simulation field 11946 after bike damage; `finish=0`.
+This is a wreck/exit test, not proof of successful race completion. It records
+120 sound requests and starts another race with capture state `(99,98,0,1)`.
+Of 593 samples, three have skid flags and 19 are airborne; all five crash states
+occur, with zero residual in all 97 sampled crash states. Every sampled steering
+residual stays strictly between -4 and 4. Sampling every 20 fields does not
+prove every intermediate state. The normal slave remains unchanged, SHA-256
+`fc07ed239f111fb376dc0101fabffee2dd42bd779190df73c87b1a8cdc16e7cf`.
+
+`c-steering-quarter-fullvar` replays that exact tape with the existing
+2/3/4/12/16-field render pattern. All 11,945 hashes and all 120 sound requests
+match, as do terminal capture fields and the actor, clock/spawn-timer, camera
+and rank ranges recorded in its `comparison.json`. Both runs restart with the
+same cleared capture state. This establishes render-cadence independence for
+the revised model through the tested wreck and restart; successful finish-line
+coverage for this model, remaining A4 differences and the latency/performance
+regressions are still open.
