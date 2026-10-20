@@ -2263,3 +2263,47 @@ remaining world damage/scripts, lifecycle rebasing, guidance graphics and live
 cross-CPU behavior are not covered. The bridge remains uninstalled; eventual
 native integration must exclude the original VBL guidance state owner and
 remain behind CUSTOM1 Enhanced framerate.
+
+### Native damage scan and nested hit routine
+
+`timing-world-damage.i` extracts the native +09C5C..+09F72 scan. It redirects
+the scan's direct +09E30 RNG call, both +09E2A/+09E56 effect-constructor calls,
+and +09E42's nested hit call to prepared deadline-owned routines. The nested
+hit extraction contains +07D8A..+07EC8, including the eight-byte table before
+its entry: +07DAE indexes this table PC-relatively. Both nested RNG calls
+(+07D98/+07DC6) use the same deadline RNG. The native branch order, variable
+draw count, resource damage, indicator changes and effects remain intact.
+
+`world_hit_prepare` takes hunk 0, an even clone and deadline RNG in a0/a1/a2.
+The clone is 318 bytes; its callable native-ABI entry is `WH_ENTRY` (8), with
+a5 pointing to the authoritative player and d0 holding the notification code.
+It retains native register clobbers. `world_damage_prepare` takes hunk 0,
+clone, deadline RNG, effect clone, hit-clone base and hunk 6 in a0..a5. The
+scan clone occupies 794 bytes including its native player binding.
+`world_damage_step` takes player/clone in a0/a1, preserves non-result registers
+and returns 0/-1. Wrong player binding rejects before effects. Preparation
+validates all changed call sites before copying; callers own nonoverlapping
+buffers, stable deadline inputs and instruction-cache flushing.
+
+Execute this scan once after world weapons/actors and before scripts and the
+periodic tail. The effect constructor must receive committed world heading
+through its existing private input. The scan still writes native effect-flash
+countdown values 64/128; its field-rate countdown ownership and ordering remain
+an integration obligation. No damage, allocation or UI work is rolled back.
+
+`tmp/dev/tools/test_world_damage_c.py` passes 1,024 nested-hit and 128 full-scan
+comparisons in both RNG modes, with different live timestamps and renderer
+heading but identical private deadline inputs. Complete native-memory state,
+ordered callback arguments and blitter writes match. The nested hit draws once
+or twice; scans exercise 0/3/4/5/6/16/20/24 draws as paths and effect-pool capacity
+vary. Native effect allocation, object bookkeeping, damage-bit selection and
+resource updates run. Write tracing allows only native memory, stack and
+blitter registers; no unexpected writes occur. Twenty corrupted boundaries
+and a mismatched player binding reject without writes (153 helper calls,
+plus raw native/clone hit executions).
+
+The scan fixture supplies nearby threats and a zero-result visibility predicate
+(+07FA4), with target-marking, notification, digit/indicator and audio UI stubs.
+This validates damage arithmetic/order/private inputs, not actual terrain
+visibility or rendered UI. Full world composition, countdown migration and
+CUSTOM1-gated installation remain pending.

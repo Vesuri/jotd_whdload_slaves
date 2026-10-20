@@ -424,7 +424,9 @@ policies and complete player/world hand-off are still pending,
 so C2/C3 are not complete. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
-comparisons. Active-actor paths, damage, scripts and lifecycle composition
+comparisons. Active-actor sequences and scheduler-bound guided release are
+now tested, and damage has a deadline-input extraction with native comparisons.
+Scripts, remaining field/world ownership and full lifecycle composition
 remain pending.
 The initial C4a/C4b inventory is
 in `PLAYER_STATE_INVENTORY.md`; it includes camera/instrument destinations and
