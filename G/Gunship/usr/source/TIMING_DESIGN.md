@@ -2736,3 +2736,39 @@ C5's terrain/contact acceptance. VBL countdown ownership, navigation-bearing
 display work, actual rendering, modal recovery, cross-CPU runtime and native
 main-loop installation remain outstanding. This demonstrates combined
 scheduled extraction and batch invariance, not complete C or C4e acceptance.
+
+
+### Once-only scheduled world opening
+
+`timing-scheduled-world-start.i` binds the extracted opening to a delivered
+world deadline. Its 20-byte context contains scheduler/player/opening pointers,
+last applied field and valid/committed words. Initialize metadata to zero at
+a new lifecycle epoch. `scheduled_world_start(a0=context)` requires player
+phase and `TS_DUE=1`, checks upstream health, rejects a duplicate field, then
+runs the native opening before commands and motion. It does not acknowledge
+player/world completion or attempt to roll back clock/cooldown writes.
+
+After successful opening, FIELD/VALID and the per-call COMMITTED flag are
+written before the final upstream check. A fault there returns -1 while
+retaining applied-work evidence. A retry cannot advance clock or cooldowns
+again, including after the test clears upstream fault flags. Binding failure
+leaves opening unapplied. COMMITTED describes only the current call; persistent
+FIELD/VALID must be consulted when recovering after a failed retry. Production
+recovery must account for applied opening before explicitly rebasing metadata.
+This guard does not itself implement modal recovery or complete a world tick.
+
+`test_scheduled_world_start_c.py` passes 960 delivered fields over PAL/NTSC,
+batches 1/25 and ordinary/wrapping 32-bit field epochs. It also crosses the
+native 16-bit game tick wrap and checks exact cooldown decrements, with seven
+PAL or six NTSC deadlines per 120 fields. Wrong phase, nondeadline, upstream
+fault and wrong player binding reject without native writes. An injected
+fault on the second scheduler check proves retained opening effects, no
+scheduler completion count, and rejection of duplicate opening after fault
+recovery (5,010 calls).
+
+The combined scheduled player/world fixture now calls this guard in place of
+the bare opening helper. A focused rerun passes 1,440 fields at both rates
+with batches 1/25 (23,815 calls), retaining the same six launches per run,
+90/72 PAL/NTSC actor visits, 21/18 world deadlines and 2/1 periodic checks.
+State and traces still match across batch sizes. Other world phases and
+lifecycle recovery remain the caller's responsibility.
