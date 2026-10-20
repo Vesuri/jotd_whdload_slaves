@@ -326,6 +326,10 @@ an intermittent or hardware-only fault; not every requested 020 view was verifie
 and the mission-briefing route remains incomplete. No root cause or palette fix
 is claimed. The slave and both FPSPs remain byte-identical to step 11.
 A more specific trigger or hardware capture is needed to direct the next search.
+The user also could not reproduce it and reported that a debug executable may
+have been in use (2026-10-20). The affected executable is unknown; this is a
+possible explanation, not a confirmed cause. Retain the current palette code
+unless a reproducible faulty build or hardware capture becomes available.
 
 ### 13. Selection, options and regression
 
