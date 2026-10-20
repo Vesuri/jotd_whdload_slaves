@@ -1,3 +1,49 @@
+## Attack damage does not explain the heading reversals
+
+Read-only entry/exit probes at native $8ee46/$8eece now isolate health
+subtraction from the preceding $8ef5c heading exchange. In
+`c-attack-damage-probe`, player contacts at simulation cursors
+1255–1259 have damage payloads 18, 8, 6, 4 and 15. Each loses payload times
+16 health with delta 1: 2560→2272, 2273→2145, 2146→2050,
+2051→1987 and 1988→1748. The one-point recovery between calls is real:
+$90198 adds delta to player health; $8d318 does the same for opponents.
+The later cursor-1316 contact has zero damage. These traces use the current
+20,480-byte normal binary, SHA-256
+`edc24f08aba85e634156fc920cb5f62dd45b220e3c92951c9523788c17b87a8b`.
+
+Native attack reach ($8ce1e/$8ce32) is a spatial constant. Pair overlap
+writes +$52, attack strength scales that payload, and $8ee52/$8ee90
+multiply the resulting health impulse by the coefficient at $8e0f0.
+There is no elapsed-time factor in this subtraction. This establishes
+per-contact behavior, not by itself that damage must be quartered:
+contact geometry and blocking also change whether damage is published.
+In `b-attack-damage-probe`, all four contacts at cursors
+1253/1265/1286/1302 have zero published player-damage impulse with delta 4,
+including the last contact with nonzero attack reach. An attack payload in
+an actor record alone therefore does not prove health damage occurred.
+
+A private diagnostic changes the initialization immediate at $86df0 from
+16 to 4 inside the enhanced patch list. `c-attack-quarter-probe` confirms
+the coefficient and quarter-sized losses. All twelve paired entry/exit
+records for both actors match the current runtime byte-for-byte outside
+health (+$5c): positions, headings and contact times are unchanged. This
+rules out health subtraction as the cause of these heading reversals.
+
+Fresh normal `c-attack-{control,quarter,layout-control}-lap` replays use
+the original lap tape and two-field samples. All crash at field 1374 and
+finish the tape at position 13,138,349, lateral -901. The equal-layout
+candidate/control are 20,488 bytes and differ only at file byte 1455
+(value 4 versus 16). Intermediate live-field snapshots can differ; no
+full-state equivalence or performance improvement is claimed. The change
+does not close the B handling gate and is not integrated. The next handling
+investigation should isolate the heading exchange/contact geometry itself;
+quartering health damage cannot substitute for that work.
+
+Private builds retain `source.patch`. Candidate SHA-256:
+`a696214280d66ddc1e839bce1edd559cd0c059db9e9405d9e50adcaac9b7d120`;
+equal-layout control:
+`37f9fefb93556d1d2f688f161868bd729a2e312d5ffd85be8f5052e34aae6a6e`.
+
 ## Reject conditional direction-bit updates
 
 A private extension tests actor A1 +$69 bit 0 before the native pair-distance
