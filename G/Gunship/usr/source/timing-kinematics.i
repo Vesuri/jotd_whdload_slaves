@@ -5,14 +5,15 @@ KN_FLIGHT equ 0
 KN_HEADING equ KN_FLIGHT+FR_SIZE
 KN_MOVEMENT equ KN_HEADING+HG_SIZE
 KN_SIZE equ KN_MOVEMENT+MV_SIZE
-; Transaction scratch on stack: shadows, player, native terms, old angles/RPM.
+; Private transaction candidate: shadows, player, native terms, old angles/RPM.
 KN_PLAYER equ KN_SIZE
 KN_TERMS equ KN_PLAYER+MP_RECORD_SIZE
 KN_OLD_H equ KN_TERMS+MS_TERMS_SIZE
 KN_OLD_T equ KN_OLD_H+2
 KN_OLD_RPM equ KN_OLD_T+2
 KN_IMPULSE equ KN_OLD_RPM+2
-KN_SCRATCH equ KN_IMPULSE+4
+KN_PHASE equ KN_IMPULSE+4     ; 0 empty/consumed, 1 height boundary ready
+KN_SCRATCH equ KN_PHASE+2
 
 ; a0=KN_SIZE state, d0=50/60 (3 only for whole-tick fixtures).
 ; d0=0/-1; preserves all other registers. Invalid rate leaves state unchanged.
@@ -48,9 +49,26 @@ kinematics_init:
 ; Returns d0=0/-1; preserves all other registers. On failure neither player
 ; nor shadow state is committed. No RNG, commands, contact or clock updates.
 kinematics_step:
-	movem.l d1-d7/a0-a6,-(sp)
+	move.l a4,-(sp)
 	suba.w #KN_SCRATCH,sp
 	movea.l sp,a4
+	bsr kinematics_prepare
+	tst.l d0
+	bne .done
+	bsr kinematics_complete
+.done:
+	adda.w #KN_SCRATCH,sp
+	movea.l (sp)+,a4
+	rts
+
+; Same pointers/impulse as step, plus a4=separate KN_SCRATCH-byte candidate.
+; Prepare copies state/player and advances only through height. No original
+; state is changed. Return 0 makes KN_PHASE=1, failure leaves phase 0.
+; Candidate layout includes KN_SIZE shadow followed by the player record at
+; KN_PLAYER. The caller owns serialized use and non-overlapping buffers.
+kinematics_prepare:
+	movem.l d1-d7/a0-a6,-(sp)
+	clr.w KN_PHASE(a4)
 	movea.l a0,a5
 	movea.l a1,a6
 	move.l a2,d6
@@ -80,7 +98,7 @@ kinematics_step:
 	move.b KN_PLAYER+$3d(a4),d0
 	move.w d0,KN_OLD_T(a4)
 	moveq #0,d0
-	bsr .stage
+	bsr kinematics_stage
 	lea KN_HEADING(a4),a0
 	lea KN_PLAYER(a4),a1
 	moveq #0,d0
@@ -92,7 +110,7 @@ kinematics_step:
 	tst.l d0
 	bne .bad
 	moveq #1,d0
-	bsr .stage
+	bsr kinematics_stage
 	lea KN_FLIGHT(a4),a0
 	lea KN_PLAYER(a4),a1
 	lea KN_TERMS(a4),a2
@@ -103,8 +121,31 @@ kinematics_step:
 	bsr movement_height
 	tst.l d0
 	bne .bad
+	move.w #1,KN_PHASE(a4)
+	moveq #0,d0
+	bra .done
+.bad:
+	moveq #-1,d0
+.done:
+	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+; Same pointers as prepare; d0 input ignored. Consume a ready candidate once.
+; Caller may apply an explicit contact decision to the private candidate
+; between calls. Failed completion never publishes state/player, but cannot
+; undo external side effects the caller chose to perform at the boundary.
+; Keep world notifications deferred until successful completion.
+kinematics_complete:
+	movem.l d1-d7/a0-a6,-(sp)
+	cmpi.w #1,KN_PHASE(a4)
+	bne .bad
+	clr.w KN_PHASE(a4)
+	movea.l a0,a5
+	movea.l a1,a6
+	move.l a2,d6
+	move.l a3,d7
 	moveq #3,d0
-	bsr .stage
+	bsr kinematics_stage
 	lea KN_FLIGHT(a4),a0
 	lea KN_PLAYER(a4),a1
 	lea KN_TERMS(a4),a2
@@ -120,7 +161,7 @@ kinematics_step:
 	move.b KN_PLAYER+$1b(a4),d0
 	move.w d0,KN_OLD_RPM(a4)
 	moveq #6,d0
-	bsr .stage
+	bsr kinematics_stage
 	lea KN_FLIGHT(a4),a0
 	lea KN_PLAYER(a4),a1
 	moveq #0,d0
@@ -143,10 +184,9 @@ kinematics_step:
 .bad:
 	moveq #-1,d0
 .done:
-	adda.w #KN_SCRATCH,sp
 	movem.l (sp)+,d1-d7/a0-a6
 	rts
-.stage:
+kinematics_stage:
 	lea KN_PLAYER(a4),a0
 	movea.l d6,a1
 	lea KN_TERMS(a4),a2

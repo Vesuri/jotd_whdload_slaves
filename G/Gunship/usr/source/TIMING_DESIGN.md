@@ -771,9 +771,37 @@ logical tick parity and validated, cache-flushed native code.
 The routine computes on stack copies of the player record and shadows.
 Only a successful complete step copies both back; an invalid late component
 cannot leave earlier motion partially applied. This is foreground error
-rollback, not an interrupt-atomic publication protocol. Scratch is 172 bytes,
+rollback, not an interrupt-atomic publication protocol. Scratch is 174 bytes,
 plus the saved registers and nested callees' stack use; C4f must price the
 copies and nested calls as well as the arithmetic.
+
+The coordinator also exposes `kinematics_prepare` and
+`kinematics_complete`, with the same a0..a3 pointers and a separate
+174-byte candidate in a4. Prepare advances through height without changing
+the original player/shadow. The candidate holds its 64-byte shadow at +0,
+player at `KN_PLAYER=64`, intermediate terms and a phase word at
+`KN_PHASE=172`. Successful preparation sets phase 1. Completion requires
+phase 1 and consumes it before running forward/displacement/RPM; it publishes
+only after those stages succeed. Repeated completion is rejected. A failed
+prepare leaves phase 0; a late completion failure cannot publish or be
+retried. Callers must keep the original state stable while a candidate is
+outstanding and serialize its use. `kinematics_step` wraps these same two
+operations with a private stack candidate.
+
+This exposes the exact ground boundary to the world adapter. A test places
+12 bytes of attitude state immediately before the candidate so
+`player_ground_step` can apply its combined reset to the candidate shadow
+and candidate player. In 4,096 h=1 comparisons, including 2,480 ground
+resets and 241 notifications, completing that candidate matches native
+motion. Repeated completion and invalid preparation/late fractional-state
+failure leave authoritative state unchanged. Evidence:
+`tmp/dev/tmp/c/split-ground-motion-tests.json`.
+
+The split does not make external side effects transactional. Native ground
+notifications and timers must be deferred until completion succeeds in the
+production adapter; the fixture compares successful paths with notification
+UI stubbed. Choosing contact eligibility, integrating attitude at this split,
+and routing the actual world deadline remain pending.
 
 The assembled coordinator passes 4,096 complete-record comparisons with
 the native deterministic whole-tick preview. Twenty-four two-second
@@ -1123,8 +1151,8 @@ notification UI is stubbed. Evidence:
 `tmp/dev/tmp/c/player-ground-motion-tests.json`.
 
 The helper must run after height and before forward-speed/displacement/RPM,
-not after a complete `player_step`. The production coordinator still needs
-that split boundary, once-only world scheduling and a policy for a height
+not after a complete `player_step`. The split kinematics boundary now exists; the production coordinator still
+needs to route it through the combined player path, with once-only world scheduling and a policy for a height
 crossing followed by departure before the next world deadline. This helper
 does not establish swept collision equivalence or C5b acceptance. It is
 not called by ordinary fields or installed into the game yet.
