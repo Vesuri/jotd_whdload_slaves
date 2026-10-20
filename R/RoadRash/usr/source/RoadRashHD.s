@@ -462,6 +462,12 @@ password_data_end
 ; > D1: filesize (not returning that leads to strange bugs...)
 
 ReadSomeFile:
+	; Preloaded files can arrive before the previous screen blit finishes.
+	; Finish DMA before overwriting its destination (notably DASH2.LBM).
+	tst.b	$dff002
+.wait_blitter
+	btst	#6,$dff002
+	bne.b	.wait_blitter
 	movem.l	a0-a2,-(sp)
 
 	cmp.b	#':',3(A0)	; does the name mention xxx: ??

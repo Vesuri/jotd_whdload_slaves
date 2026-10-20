@@ -300,12 +300,21 @@ a slave option whose default reproduces the original timing until G1 decides the
     pass and stay within 1% of their A distance; the twelve diagnostic/functional
     cells pass. Uncached 030 remains B2. Accepted B1 evidence: ignored
     `tmp/dev/tmp/b1-{input-run2,pad6,replay-run,matrix-run,normal}`.
-- **B2 030/50 uncached crash** ("Illegal Instruction ($10) at $68" in the front end).
+- **B2 030/50 uncached crash — complete (2026-10-20)** ("Illegal Instruction ($10) at $68" in the front end).
   - B2a Reproduce it, and find the boot field and the screen it happens on.
   - B2b Break on the exception. Find the code that jumps into the vector table: likely a
     timing race (blitter or beam) or a CPU-speed delay.
   - B2c Fix it in the slave, or document it if it is emulator-only (cross-check on the
     x86_64 FS-UAE).
+  - Result: the previous screen blit overwrote the preloaded dashboard image before
+    its CPU copy completed. Wait for DMA before loading files. Before the fix, 2300
+    bytes of `DASH2.LBM` were corrupted; afterward all 7824 bytes match the asset.
+    The bad RLE stream overwrote code and led to the reproduced Line 1111 exception
+    at $4. The historical $68 report was not reproduced. The failure occurred during
+    dashboard preparation, around monitored boot fields 2400–2440. This is a game/
+    preload synchronization fix, not an emulator-only exception. Evidence: ignored
+    `tmp/dev/tmp/b2-{load,copy,rle,fixed-copy,matrix,normal,replay}` and
+    `tmp/dev/docs/b-correctness.md`.
 - **B3 Frame-tied animation `$a5990`.** Patch `$89d32` to derive the phase from the race
   field counter (`($a5d4c >> 2) & 7`) so that it matches today's 4-fields-per-frame look at
   any rate. Check it visually at 12.5 and 25 fps.
