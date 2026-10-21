@@ -6560,3 +6560,47 @@ prediction contents. This is committed/forecast-state evidence, not rendered
 scanout continuity. Active impact animation, other projectile/guidance types,
 slot-reuse across pause, death/landing and the remaining lifecycle matrix
 remain open.
+
+### Active impact animation across pause/resume
+
+`anchor-effect-pause-pal-020` and `anchor-effect-pause-ntsc-060` use the
+current runtime plus the existing controlled collision event: ground target
+23 moves into the launched rocket's path immediately before world 25.
+Native collision converts slot 5 to type 9; no projectile, damage, lifetime
+or animation instruction is replaced. This remains a controlled impact,
+not a natural aiming/destruction claim. The fixture was rebuilt from the
+current core, retaining hash-checked binary/listing provenance.
+
+Tab pause starts with life/frame/countdown 64/0/3 in PAL and 64/0/8 in NTSC,
+after 426/504 consumed fields. Both remain in native pause for 120 emulator
+fields. The entire 194-byte actor block, player, masks, sampled timer bytes,
+both prediction caches and generation metadata remain unchanged. The active
+effect's nonzero countdown therefore demonstrably freezes; this extends the
+prior rocket-only case. An independent saved-state audit also confirms the
+whole actor block is unchanged at the first resumed batch, with no extra
+consumed field. No timer decrement is hidden in the model's initial state.
+
+Resume resets phase and invalidates the release cache; the recaptured actor
+cache keeps slot 5 ineligible while it is an effect. The exact discarded
+pre-pause phase is 28 PAL / 12 NTSC rational units (three per field), and no
+further clock phase is discarded after resume. No history loss or scheduler
+fault occurs through world 32.
+
+An independent integer replay starts from the unchanged resumed actor bytes.
+For each delivered field it wraps the countdown decrement, advances/reset
+frames only for an animated type, clamps frame 6 and sets life to one. At
+each observed world deadline it applies the native lifetime decrement and
+release. All life/type/frame/countdown bytes match at worlds 26..32 on both
+setups, including the wrapping countdown after release. The observed rows
+are retained in `effect-pause-result.json`; `effect-resume-audit.json` proves
+the model was not seeded after an unaccounted resume update.
+
+Both effects release at world 28: consumed field 476 PAL and 564 NTSC. The
+PAL unpaused fixture released at world 29/field 484; the NTSC unpaused fixture
+released at world 28/field 560. Resetting clock phase changes which subsequent
+world deadline first follows animation completion, so equality of release
+world labels is not the field-duration contract across pause. These releases
+match the independently replayed native field animation and rebased world
+schedule. No paused time advances animation. This is state/timing coverage,
+not pixel/scanout continuity, active reload timers, natural destructive hits,
+other effect types or full lifecycle acceptance.

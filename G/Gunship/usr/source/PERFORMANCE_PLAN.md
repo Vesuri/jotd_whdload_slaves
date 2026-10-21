@@ -1027,8 +1027,15 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     actor/player/mask/cache state freezes for 120 fields; resume recaptures
     the committed actor data at phase zero with fresh generation metadata.
     All 38 eligible subsequent forecasts match native updates, and expiry
-    remains world 64. This does not yet cover active impact effects, guided
-    types, slot reuse across pause, other lifecycle exits or scanout continuity.
+    remains world 64. Guided types, slot reuse across pause, other lifecycle
+    exits and scanout continuity remain open.
+    A controlled type-9 impact effect now also freezes its nonzero animation
+    countdown during pause on PAL 68020/NTSC 68060. Actor bytes remain
+    unchanged through resume; independent field-animation replay matches
+    life/type/frame/countdown through release and later world 32. Prediction
+    stays ineligible. Release follows the rebased world schedule; identical
+    world labels across a phase reset are not assumed. Pixels, other effects
+    and the broader lifecycle matrix remain open.
 - **C10. Option.** `CUSTOM1=1`, exposed as the boolean **Enhanced framerate**,
   is the master opt-in for all framerate enhancements. Omitted/zero retains
   original timing and rendering paths. All future C/D/E optimizations must
