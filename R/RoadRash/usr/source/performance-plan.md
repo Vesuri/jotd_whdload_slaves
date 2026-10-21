@@ -394,8 +394,9 @@ the reproduced committed B build. Default 030 also fails: extra debugger
 ranking reads perturbed B's timing; a matched direct-RAM-read debugger pair
 restores the reference and gives C -1.181%. Six other cells passed the earlier
 distance comparison. The passive-read debugger now passes all eleven normal
-matrix pairs and preserves the replay's handling outcome, but transient C state
-hashes differ across emulator builds; MMU/diagnostic adoption remains unvalidated. See the reference/observer audits in simulation-timing.md;
+matrix pairs, both MMU checks and all five diagnostic cadence comparisons.
+It preserves the replay's handling outcome, though transient C state hashes
+differ across emulator builds; future passive runs must record that distinction. See the reference/observer audits in simulation-timing.md;
 do not mix pre-fix and committed B binaries or different observation schedules.
 Opponent trajectories/order still differ. C remains incomplete.
 

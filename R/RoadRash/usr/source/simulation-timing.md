@@ -1,3 +1,45 @@
+## Passive debugger: MMU and diagnostic capture validation
+
+The direct-read emulator `e0b2532a...` now also passes the retained C diagnostic
+checks. `c-passive-040-mmu` and `c-passive-060-mmu` use the unchanged
+`c-geometry-reuse-mmu-build` slave. Both prove enabled TC translation (`$8000`)
+and the diagnostic MMU flag, with initial/590/600 state hashes identical to their
+pinned-emulator references. Data-cache emulation remains disabled in these
+functional MMU configurations; no hardware throughput claim follows from them.
+`passive-mmu-comparison.json` records these checks.
+
+The exact-period diagnostic builds and the existing varying-period build run
+the same attack tape with passive reads. Each compares its hashes at identical
+simulation tick numbers, complete sound-request records, and six captured
+simulation regions against its retained reference:
+
+| Render interval | Common tick hashes | Sound events / six regions |
+|---|---:|---|
+| 1 field (diagnostic draw skipped) | 1598 | identical |
+| 2 fields | 1597 | identical |
+| 3 fields | 1598 | identical |
+| 4 fields | 1595 | identical |
+| Varying | 1596 | identical |
+
+Evidence is `c-passive-period{1..4}-state`, `c-passive-vary-state`, and
+`passive-diagnostic-comparison.json`. The comparator excludes the terminal
+in-progress slot and compares only common completed ticks; different live
+observation cursors are not claimed equal. The field-1457 capture and all sound
+records match exactly. This validates reading the Fast-memory diagnostic buffers
+as well as the gameplay state in Chip RAM.
+
+The private harness now recognizes this exact emulator hash alongside the
+original pinned hash for the older fields/input protocol. Other emulator builds
+still require capability discovery. Selection remains explicit through `FSUAE`;
+the default emulator and all original evidence are retained. This removes the
+need for a blanket capability-check bypass in future passive-read runs.
+`c-passive-off` also passes through the normal harness entry point: CUSTOM2=0
+leaves all 22 checked hooks, 14 scratch operands and the collision-flag tail
+native. The earlier 16 transient C replay hash differences between emulator builds remain
+documented; diagnostic tick-boundary equivalence does not erase that distinction.
+No simulation code or acceptance tolerance changes. Five normal-matrix distance
+failures and the native opponent-order failure still prevent C completion.
+
 ## Passive debugger: full normal matrix and handling replay
 
 `b-passive-matrix` and `c-passive-matrix` each run all eleven normal hardware
