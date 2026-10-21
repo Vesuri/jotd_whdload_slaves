@@ -1,3 +1,52 @@
+## Displacement candidate: remaining hardware, controls and fallback checks
+
+The unchanged private displacement candidate completes its eleven normal
+hardware cells. The five additional cells in `c-approved-motion-remaining-matrix`
+are A500 8.5 fps, Chip-only 020 12.5, Cache 030 16.7, Cache 040 22.8 and Cache
+060 23.3. Combining these with the earlier six cells leaves exactly two
+live-field distance failures: default Fast 020 (-1.1762%) and NoCache Fast 020
+(-1.4668%). `c-approved-motion-complete-distance-gates.json` retains all eleven;
+functional matrix success is not acceptance of these two failures.
+
+Both unsupported-machine fallbacks match corrected B exactly at initial,
+field-590 and field-600 state hashes, every sampled native delta, distance and
+fps. The explicit normal CUSTOM2=0 run also preserves the original displacement
+instructions at $8b4a4/$8b4d2, both D4 lane operands, all 22 previously checked
+hooks, 14 scratch operands and the collision tail. Evidence:
+`c-approved-motion-fallback-comparison.json` and `c-approved-motion-off`.
+
+The 040/060 MMU functional cells both pass with TC=$8000, verification flags=1
+and CACR=$80008000. These use the full candidate diagnostic with VERIFY_MMU;
+`c-approved-motion-mmu-cells/build.json` records the exact defines and copied
+binary SHA. The normal companion remains byte-identical to the measured
+20616-byte candidate. Data-cache emulation is disabled in these MMU cells;
+there is no MMU throughput claim or physical-hardware timing claim.
+
+Keyboard and CD32 steering/release/pause/resume, fire-button demo exit and
+natural demo timeout all pass on normal 040 in
+`c-approved-motion-{keyboard,cd32,demo-fire,demo-timeout}`. The stack probes retain
+intact guards. All eight paired 040 visible-response samples pass initial-state
+equality and B limits: 140/120 ms repeated four times, median 130 ms. The first
+response image inspected shows rider/bike pixels. One-field capture uncertainty
+still applies. Evidence: `c-approved-motion-visible-040`.
+
+A delayed natural-crash driver stays on the ordinary race-driving path until
+field 10000, then seeks left-roadside collisions. It avoids the earlier arrest
+outcome but reaches FINISHED at exit tick 18045, with 18044 completed hashes and
+75 sound events, followed by a clean restart. This is another successful race
+exit, **not** terminal-wreck coverage. `c-approved-motion-late-wreck` retains the
+input recording and outcome despite its intended fixture name.
+
+A further ordinary-input run adds periodic attack-button input while retaining
+the center-lane driver. `c-approved-motion-combat-race` also finishes at 16042
+and exits at 16231, with the same 72 sound events as the no-fire recording.
+Its simulation hashes differ transiently (see `no-fire-comparison.json`), so the
+additional input is not claimed to be a no-op; no terminal wreck results.
+Neither intended fixture name is evidence of its actual terminal state.
+
+Production is unchanged. The A4a proposal still awaits approval and the private
+candidate's terminal-wreck validation remains open. These checks do not close C.
+
 ## Displacement candidate: response, finish and arrest validation
 
 The private 20616-byte displacement candidate remains unchanged (SHA-256
