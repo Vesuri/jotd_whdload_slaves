@@ -1,3 +1,38 @@
+## Explicit lane width: matched NPC control and crash origin
+
+`c-lane-width-npc-control-build` retains the same NPC fractional-lateral
+fixture as `c-lane-width-npc-build` but restores the original D4 lane operands.
+Both binaries are 20856 bytes and differ only at file offsets `$44bd` and
+`$44c3` (operand low byte `$42` versus `$44`). This isolates the lane-width
+choice without changing code layout. The normal Fast-020 lap control crashes
+at 1546, ending at position 13279366 and lateral -924. The explicit-width
+fixture crashes at 1320, ending at 12281000 and -188. Both display rank 15,
+but their native ahead order differs from B. Neither passes the handling gate.
+
+`c-lane-width-npc-crash-origin` stops before the first player crash write:
+native `$8ee6c`, live field 1319, simulation cursor 1316, with rival `$a61e0`
+in A2 and damage D0=192. This is the health-depletion branch in the attack
+response, not B's first roadside crash. Two-field replay sampling reports the
+transition at field 1320; the values are different observation boundaries.
+
+A further matched diagnostic pair sets the attack coefficient initialization
+to 4 or 16 while retaining explicit lane width and NPC rounding. The binaries
+are both 20860 bytes and differ only at `$5af`. The normal replay outcomes are:
+
+| Fixture | Sampled crash onset | Final position | Lateral | Displayed rank |
+|---|---:|---:|---:|---:|
+| `c-lane-npc-damage16-lap` | 1320 | 12281000 | -188 | 15 |
+| `c-lane-npc-damage4-lap` | none through 1600 | 13738954 | -1003 | 14 |
+| B reference | 1376 | 13031078 | -931 | 15 |
+
+Quartering damage prevents this fixture's premature health-depletion crash,
+but does not recover B's contact sequence or roadside crash. Native attack
+damage is a per-contact impulse, so this sensitivity test alone does not
+establish a legitimate elapsed-time scaling rule. Do not promote the coefficient
+change or use it to tune the replay outcome. All fixtures remain private;
+production is unchanged. The contact/approach trajectory remains the relevant
+handling issue, separate from the open fixed-field distance gate.
+
 ## Lane-input origin and explicit-width interaction experiment
 
 `b-lane-d4-origin` traces normal B across rendering and the next simulation
