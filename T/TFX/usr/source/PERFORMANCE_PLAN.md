@@ -1149,3 +1149,22 @@ Balanced 2,000-field pair, for information:
 - The 20 fps action plan's code steps are now complete or rejected. What remains is
   step 1's default and the Apollo validation of step 10, both waiting for hardware.
 - Evidence: `tmp/dev/tmp/sqrt9/` (twins, gates, scenes, `sqrt-ab.json`).
+
+Step 3c re-assessed after steps 4-9 (copy units under the panel): not implemented.
+- Probe data (`tmp/dev/tmp/step3/probe-copy/copy-analysis.json`, four frames): of 1,960
+  units in rows 97-145, 968 lie entirely under opaque panel pixels, and about 805 per
+  frame are also not written after the panel call.
+- That rule is not sound on its own: 1-2 of those units per frame still differ from the
+  chip buffer's shadow (two publications back). A unit written after the panel in the
+  shadow's frame (an instrument or symbol since removed) holds stale data. A correct skip
+  needs complete tracking of every post-panel writer in both frames, plus the panel
+  selection check from 3b. Missing any writer (for example the map and radar plots)
+  leaves stale pixels on screen.
+- Payoff after step 6: an unchanged unit costs about 4.25 instructions, about 10
+  est-040 or emulator cycles. Skipping 805 units saves at most about 8.0k est-040
+  (0.47%) and 8.7k emulator cycles (0.40%) per frame. Splitting the 32-byte-line loop
+  into skip spans for 49 rows x 8 planes costs back roughly 3-4k. The net gain of about
+  0.25% is below what a frame pair can resolve, and its correctness risk is high.
+- Real hardware might gain somewhat more from about 13 KB per frame of fast-RAM reads
+  avoided, but that is unmeasured. Reconsider only if the Apollo shows the copy loop to
+  be bandwidth-bound.
