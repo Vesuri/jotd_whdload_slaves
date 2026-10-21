@@ -362,3 +362,78 @@ both stack guards on the native 68000 path (284/312 observed bytes used).
 `d-native-main-finish-{fixed,vary}` also preserves all accepted enhanced-path
 16,230 hashes, 72 sound events, six terminal regions, finish/exit fields and
 restart, so broadening the memory gate does not alter C's selected behavior.
+
+
+## D3 image description tables
+
+`public_assets.s` separates CPU image descriptions from the image pixels used
+by the blitter. The optional public reservation is now 368 KiB: the preceding
+320 KiB layout is unchanged, followed by twelve 2 KiB slots for the typed
+owners at `$432..$45e` and three 8 KiB slots for fixed-address image sets.
+A slot holds its original load address and the descriptor array; pixels are
+not copied and their pointers continue to address Chip RAM. Old Chip storage
+is retained, including the sprite alias described below.
+
+The native `$afd9c` relocation runs first with its original register/CCR
+results. A complete bounded descriptor copy is then published through the
+known owner. A reload using that public owner is translated back to its
+original Chip destination before native size/depack logic runs. For the
+fixed level-object/opponent-bike/player-bike sets, twelve audited renderer
+LEA operands are updated only after the copy, then caches are flushed.
+Loader/depacker operands stay native. No per-frame pointer wrapper is added.
+If a later fixed-address asset exceeds its slot, its readers are restored to
+the native table rather than retaining a previous public copy.
+
+The native depacker was used to unpack all 67 assets in an isolated harness
+copy (`d-unpack-assets-v2`); every resulting size was checked against the Ice
+header or original uncompressed size. WHDLoad's generic decrunch API alone
+left these Ice files packed, so the earlier `d-unpack-assets` capture is not
+used as unpacked evidence. The descriptor audit (`d-image-format-audit.json`)
+covers 22 sets and confirms every pixel offset is beyond its descriptor array.
+
+| Set owner/family | Images | Descriptor bytes |
+|---|---:|---:|
+| Flag / common player / common opponents | 27 / 106 / 106 | 380 / 1,486 / 1,486 |
+| Police / car 1 / car 2 | 45 / 54 / 18 | 632 / 758 / 254 |
+| Mirror 1 / mirror 2 | 63 / 27 | 884 / 380 |
+| Player crash / opponent crash | 98 / 63 | 1,374 / 884 |
+| Player/opponent wheel replacements | 49 each | 688 each |
+| Level objects 1–5 | 369 / 315 / 333 / 324 / 450 | 5,168 / 4,412 / 4,664 / 4,538 / 6,302 |
+| Opponent bikes / player bikes | 497 / 115 | 6,960 / 1,612 |
+| Level-finish / small pictures / bike-shop set | 15 / 5 / 3 | 212 / 72 / 44 |
+
+The ordinary owner slots fit 145 descriptors and the fixed slots fit 584,
+above the audited maxima 106 and 497 respectively. Size arithmetic is 32-bit
+before the capacity comparison. The first two car-table words at `$467c` and
+`$467e` also serve as native blank-sprite control words. They remain in the
+original Chip copy. The CPU table's corresponding words are unchanged by
+its consumers; recoloring changes pixel data, not these two words.
+`d-public-assets-v3-dma-alias` traces 99 fields: only those two original
+sprite words are read by DMA; no public header is DMA-addressed. All 15
+copied tables' pixel pointers remain in Chip RAM. This is a sampled DMA
+check backed by the format/consumer audit, not exhaustive execution coverage.
+
+The 26,360-byte normal build SHA-256 is
+`5d8d0885f674aecd3d9f27ecfff3f6a0e97c7f0a8dc06f3233e9a789c5bb0852`.
+`d-public-assets-promote-build` is byte-identical to `d-public-assets-v4-build`.
+`d-public-assets-v4-finish-{fixed,vary}` retains the accepted 16,230 hashes,
+72 sound events, six terminal regions, finish 16042, exit 16231 and clean
+restart. The prior direct-address build also produces identical final and
+restart PNGs. `d-public-assets-native-race-public` matches all 178 controlled
+native-68000 checkpoints and restart. `d-assets-capacity` explicitly exercises
+restoration of native readers after a public copy has already been published.
+The functional matrix passes controls, demo transitions and 040/060 MMU
+policy; `d-public-assets-v3-dcache-*` also enables data-cache emulation.
+
+The ordinary machine rates remain 8.5/12.5/16.7/16.6/25.0/25.2 through the
+A500, Chip 020, Fast 020, NoCache 020, 030 and 040 cells respectively. The
+060 measures 28.3 fps versus 28.6 before this split. Equal-layout on/off
+measurements confirm the small regression; direct operands and several
+alignments do not recover it. This is recorded as a tradeoff of the broad D3
+memory move, not described as a framerate gain. Real-hardware measurement
+remains pending.
+
+The final normal matrix is recorded in `d-public-assets-v4-matrix` plus
+`d-public-assets-v4-matrix-tail`. The initial 040 Cache probe detected race
+entry late; its retry and both 060 cells pass. The harness now validates the
+public entry instruction before accepting a trampoline destination.

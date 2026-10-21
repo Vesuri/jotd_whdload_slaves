@@ -292,7 +292,7 @@ _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
  IFD C_PUBLIC_MAIN
- dc.l -$50000 ; optional public main image, stack and reserved headroom
+ dc.l -$5c000 ; optional runtime plus CPU-only image headers
  ELSE
  IFD C_STEP_BUILD
  IFD C_FAST_STACK
@@ -1022,9 +1022,13 @@ enhanced_decrunch_done:
  IFD C_PUBLIC_MAIN
  include public_loader.s
  include public_boot.s
+ include public_assets.s
  ENDC
 
 ReadSomeFile:
+ IFD C_PUBLIC_MAIN
+ bsr public_asset_load_destination
+ ENDC
 	; Preloaded files can arrive before the previous screen blit finishes.
 	; Finish DMA before overwriting its destination (notably DASH2.LBM).
 	tst.b	$dff002

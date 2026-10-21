@@ -77,6 +77,16 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ lea public_asset_pool(pc),a0
+ move.l a5,d0
+ addi.l #$4b000,d0
+ move.l d0,(a0)
+ bsr public_asset_init
+ move.l a5,a1
+ adda.l #$2fd9c,a1
+ lea public_asset_relocate(pc),a0
+ move.w #$4ef9,(a1)
+ move.l a0,2(a1)
  IFD C_FAST_STACK
  ; Also install the guarded stack for a relocated native main image.
  move.l a5,a1
