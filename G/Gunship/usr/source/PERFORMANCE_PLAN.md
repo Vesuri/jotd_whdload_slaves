@@ -967,6 +967,15 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     repeat measures 11/13/11/7..8 fields on 68020 and 4/5/5/4 on 68060,
     again retaining all pulses without lost/discarded input or scheduler
     faults. Heavy-scene acceptance remains open.
+    A current controlled NTSC draw probe now covers all five CPUs. Selected
+    state matches at 61 world boundaries, without time/input loss. 020/030/
+    040/060 complete about 7.20/11.58/12.84/12.85 fps and show 83/171/196/196
+    same-world camera changes; completed-frame age is 6..8/4..6/4..5/4..5
+    fields. These are completion measurements, not input-to-scanout delays.
+    The 000 completes only 0.75 fps (one draw per four worlds), with frame
+    age 28..46 fields. Replacing its drawing with a field wait narrows world
+    completion lag from 24..43 to 10..11 fields while preserving selected
+    state. Its responsiveness gate still fails despite near-3-Hz throughput.
   - C9d. **Player path:** C4e's equivalence on every CPU, over all input combinations at
     several initial rates.
   - C9e. **Durations in play:** fuel, mission clock, weapon reload, lamp blink and effect

@@ -6374,3 +6374,60 @@ Actual worlds 20..80 span 1,201 native fields (2.99750 Hz). Completion lag
 remains 24..43 fields (400..717 ms), with ten-world rolling rates ranging
 2.81690..3.15789 Hz. Near-target average throughput does not close C9c,
 prove display latency, or accept broader scene/CPU timing gates.
+
+### Separate drawing pressure from completion lag; NTSC five-CPU probe
+
+The current anchor-copy build now has a controlled NTSC draw probe on the
+68000/020/030/040/060, retaining the same field-stamped rocket workload.
+Diagnostics record the latest consumed field, completed world count, camera,
+and actual native fields before and after native drawing. Captures live in
+`anchor-draw-probe-ntsc-{000,020,030,040,060}`. All use headless shared FS-UAE,
+host mouse disabled and hash-checked slave/listing provenance. The 030/040/060
+are the existing 50/25/50 MHz no-MMU harness configurations, not claims about
+full-MMU operation or real hardware.
+
+All five runs match selected authoritative state at worlds 20..80 against
+the cached NTSC 68020 reference, release the rocket at world 64, and match
+43 eligible next-pose forecasts. None lose/discard history or rebase after
+activation. Common consumed controls match across 1,449/1,445/1,444/1,443/1,444
+fields respectively. Raw inputs match for 020/030; 000/040/060 differ only
+in unused TR_RELATIVE, whose failing raw comparisons remain recorded.
+Actor exceptions remain inactive animation countdowns and C732 draw scratch.
+
+| CPU | Actual world Hz | World completion lag, fields | Draw completion fps | Completed-frame age, fields | Same-world camera changes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 68000 | 2.99750 | 24..43 | 0.75 | 28..46 | 0 |
+| 68020 | 3.01003 | 4..10 | 7.20 | 6..8 | 83 |
+| 68030 | 3.00000 | 2..6 | 11.58 | 4..6 | 171 |
+| 68040 | 3.00250 | 2..6 | 12.84 | 4..5 | 196 |
+| 68060 | 3.00501 | 2..5 | 12.85 | 4..5 | 196 |
+
+World rates use native timestamps across 60 complete world intervals.
+Frame statistics use completed draws with world counts 20..79; fps uses
+elapsed native fields between first/last completion and excludes the first
+frame from its numerator. Age is completion minus the latest consumed field,
+not trigger-to-response latency or DMA scanout. Camera changes prove temporal
+updates in this controlled view; they do not cover all inputs or heavy scenes.
+Probe overhead is included. These finite windows are not worst-case bounds.
+
+The 68000 produces just 15 frames in the selected window, always four worlds
+apart. Native drawing alone costs 11..15 fields, with a further 16..32 fields
+of pre-draw state age; completed frames are 28..46 fields old (467..767 ms).
+Its near-3-Hz average therefore conceals a clear responsiveness failure.
+Increasing the existing four-world catch-up allowance would not solve it.
+
+The matched `anchor-no-draw-ntsc-000` build replaces native drawing with a
+one-field wait and otherwise retains presentation preparation and world
+work. It matches all 61 selected states and consumed controls, with no loss
+or rebase; worlds 20..80 take 1,199 native fields (3.00250 Hz) and completion
+lag narrows to 10..11 fields. This isolates drawing pressure as a substantial
+contributor, but does not make world work instantaneous or establish latency
+without a renderer. The normal 000 probe reproduces the uninstrumented
+1,201-field window and 24..43-field completion-lag range.
+
+On 020/030/040/060, pre-draw state age is 0..1/0/0/0 fields and native drawing
+costs 6..8/4..6/4..5/4..5 fields. Same-world camera changes remain present;
+the new 030/040 evidence fills this workload's CPU gaps. The broader PAL,
+input/collision, lifecycle, duration and heavy-scene matrices remain open,
+as does 68000 responsiveness. Existing pulse-to-scanout evidence remains
+separate; these completion probes do not replace it.
