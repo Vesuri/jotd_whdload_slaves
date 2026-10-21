@@ -1,13 +1,17 @@
-include ../../options.mk
+AMIGA_SHARE ?= $(HOME)/.local/share/amiga
+VASM ?= $(HOME)/.local/vasmm68k_mot
+VASMFLAGS = -quiet -devpac -nosym -Fhunkexe -pic -I"$(AMIGA_SHARE)/WHDLoad/Include" -I"$(AMIGA_SHARE)/WHDLoad/Src" -I"$(AMIGA_SHARE)/ndk/Include_I" -I.
+ORIGINAL ?= ../../../../tmp/dev/tmp/archives/RoadRash.lha
+OUT ?= ../../../../tmp/dev/tmp/release-3.0b
 
-PROGNAME = RoadRash
+.PHONY: all dist clean
+all: RoadRash.slave
 
+RoadRash.slave: $(wildcard *.s)
+	"$(VASM)" $(VASMFLAGS) -o "$@" RoadRashHD.s
 
-WHDLOADER = $(PROGNAME).slave
-SOURCE = $(PROGNAME)HD.s
+dist:
+	AMIGA_SHARE="$(AMIGA_SHARE)" VASM="$(VASM)" python3 package_release.py --original "$(ORIGINAL)" --output "$(OUT)"
 
-all :  $(WHDLOADER)
-
-$(WHDLOADER) : $(SOURCE) ReadJoypad.s verify.s verify_b.s verify_c_audit.s simulation.s verify_c_events.s verify_c_latency.s steering.s runtime_stack.s physics_fast.s physics_aux.s road_timing.s collision_geometry.s lean_pose.s raster_edge.s reference_motion.s bus_priority.s public_main.s blitter_queue.s bob_masks.s dirty_sky.s cpu_bobs.s public_refs.s public_loader.s public_boot.s public_boot_tables.s public_assets.s public_audio.s public_recolor.s public_menu.s public_intro_index.s public_iff.s
-	$(WDATE)
-	$(VASM) -o $(WHDLOADER) $(SOURCE)
+clean:
+	rm -f RoadRash.slave

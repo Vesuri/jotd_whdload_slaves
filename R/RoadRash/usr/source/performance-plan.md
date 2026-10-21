@@ -1,8 +1,9 @@
 # Road Rash: race trace analysis and plan for smooth play on faster CPUs
 
-Status: A–C complete; D, E and F1–F5 complete under the agreed emulator scope
-(2026-10-21). D1d real-hardware coherency, F6a–F6d future relocation work, and G
-remain open. Accepted A evidence
+Status: A–C and G complete; D, E and F1–F5 complete under the agreed emulator
+scope. Release: 3.0b (22.10.2026). D1d real-hardware coherency and F6a–F6d
+future fixed-address relocation work remain open. G validation is recorded in
+[release.md](release.md). Accepted A evidence
 and limitations are in §9; B results and the 25 fps safety limit are in §10. Sections 1–6 retain the original exploratory measurements;
 they are not the fixed-field A baseline. Slave baseline: shipped v2.0
 (`RoadRash.slave`, SHA-256 `9d2f2302…a563`), identical to this source except for the date
@@ -679,22 +680,27 @@ explicit agreement; physical cache/coherency validation remains D1d.
     speed, vsync and latency safeguards, plus native 68000, option-off and
     Chip-only fallback paths. Keep DMA storage in Chip RAM.
 
-### G. Integration and release
+### G. Integration and release — complete (3.0b, 22.10.2026)
 - **G1 Options and defaults.**
   - G1a Keep every framerate enhancement behind the single `CUSTOM2` boolean
     "Enhanced framerate": simulation timing (C), caches (D1), `BLTPRI` (D2),
     public-RAM relocation (D3), queue (E2), and CPU optimizations (F).
     Off retains original timing/rendering; CUSTOM1 stays the password.
     Hardware selection occurs within the enabled path, not as extra user toggles.
-  - G1b Pick per-CPU defaults from the A2 matrix: no change on the 68000 unless it is
-    faster.
+  - G1b Completed: CUSTOM2 remains off by default on every CPU. When enabled,
+    Chip-only 68000 retains native rendering; 68000 with Fast RAM uses the
+    measured faster renderer with native simulation. 020+ Fast uses the
+    accelerated simulation/rendering path and its internal CPU-specific choices.
 - **G2 Verification set.** One pass per change: A4 equivalence, an A2 matrix row, the B1
   pause/steering check, an MMU functional boot on 040/060, and a 1 MB chip A500 boot to the
   race.
 - **G3 Documentation.**
-  - G3a ReadMe: options, the measured fps table, the original-timing switch.
+  - G3a Completed: template-based ReadMe documents options, the measured fps
+    table, original timing, controls/passwords and the preserved release history.
   - G3b Update this plan's status and measurements.
-- **G4 Release.** Bump the slave version, build the installer archive, and commit.
+- **G4 Release.** Completed: 3.0b (22.10.2026), fixed build metadata, template-based
+  installer, reproducible `make dist`, independently extracted installer archive
+  with current sources, and a coherent release commit. See [release.md](release.md).
 
 ### Order and milestones
 1. A1–A4, then B1–B3: harness and fixes. Milestone: verified references.

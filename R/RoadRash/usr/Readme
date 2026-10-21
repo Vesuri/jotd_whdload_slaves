@@ -1,4 +1,4 @@
- 
+
  THIS PACKAGE COMES WITH ABSOLUTELY NO WARRANTY OF ANY KIND, EITHER EXPRESS OR
  IMPLIED, STATUTORY OR OTHERWISE. THE ENTIRE RISK AS TO USE, RESULTS AND
  PERFORMANCE OF THE PACKAGE IS ASSUMED BY YOU AND IF THE PACKAGE SHOULD PROVE
@@ -8,104 +8,60 @@
  CAUSED IN ANY USUAL, SPECIAL, OR ACCIDENTAL WAY, ALSO IF THE OWNER OR A THIRD
  PARTY HAS BEEN POINTED AT SUCH POSSIBILITIES OF DAMAGE.
 
- This install applies to "Road Rash" © 1992 Electronic Arts - 2 disks.
+ This install applies to "Road Rash" (c) 1992 Electronic Arts - 2 disks.
 
- This install requires WHDLoad 17.2 or newer to be in the path. It can be found in the
- WHDLoad package.
+ Requirements:
+ -------------
+ WHDLoad 17.2 or newer must be installed in the path.
+ The installed program requires 1 MB ChipMem and memory for WHDLoad and the
+ slave. Enhanced framerate uses an optional 564 KB OtherMem allocation;
+ Fast RAM and a 68020 or faster are recommended. PRELOAD needs additional
+ memory for the game files. No Kickstart image is required by this slave.
+ Quit with Help (changeable with the WHDLoad QuitKey tooltype).
 
- The installed program requires 1 MB ChipMem and 1 MB OtherMem.
- It can be quit by pressing num '*' (key can be changed with Tooltype "QuitKey=").
+ Features:
+ ---------
+ Runs from hard disk, with disk protection removed. Supports joystick,
+ keyboard arrows and CD32 joypad, including name and password entry.
+ The original manual and a choice of five icons are included.
 
- If you have problems with this installation please try and get a newer
- version of this package from the WHDLoad WWW-Page. If that doesn't help try
- some Tooltypes like NOCACHE, NOAUTOVEC, NOVBRMOVE, NOMMU, PAL or NTSC. If
- that also fails, please inform the author via the Bug-Report-Form which
- can be accessed on the WHDLoad WWW-Page or create a mantis issue directly
- at http://mantis.whdload.de
+ Options:
+ --------
+ CUSTOM1 selects one of the preset passwords in the WHDLoad startup options.
+ CUSTOM accepts a user-defined password; see the format and examples below.
+ CUSTOM2=1 enables "Enhanced framerate". It is off by default; omit CUSTOM2
+ or use CUSTOM2=0 for original timing and rendering.
 
- For the full WHDLoad package, other installs and updates refer to:
-	http://www.whdload.de/
- or	aminet:dev/misc/whdload#?
- and	aminet:game/patch/
+ With Enhanced framerate, 68020+ machines with suitable Fast RAM render as
+ fast as they can while retaining vsync. The simulation advances in fixed
+ 20 ms PAL steps and catches up when rendering takes longer. There is no
+ added frame limiter or delayed interpolation. Rider heading is predicted
+ for display to reduce visible steering lag. Opponent paths and collision
+ outcomes can differ because lane occupancy now uses actor widths.
 
- Version 2.1 beta (21.10.2026):
- - fixed idle joystick steering recentring and keyboard/CD32 pause handling
- - wait for screen DMA before loading files, fixing the uncached 68030 crash
- - enable ECSENA and BRDRBLNK during play on ECS/AGA to blank the border
- - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
- - on 68020+ with Fast RAM, advances simulation in 20 ms PAL steps and renders
-   completed frames as fast as possible while retaining vsync
- - enhanced path enables CPU caches automatically unless NoCache is specified
- - enhanced path relocates the loader, title, intro, main program, menus and
-   CPU data into optional public RAM, using Fast RAM when available; reserves
-   564 KB including stacks, image descriptions, music, scratch and image caches
- - enhanced rendering overlaps background blits with road drawing, caches bob
-   masks and skips untouched sky; 68040/68060 also draw cached bobs with the CPU
- - enhanced intro waits for screen clears before decoding pictures and credits
- - movement, collision, AI and acceleration code runs from Fast RAM on the
-   enhanced path
- - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path
- - enhanced lane occupancy uses actor widths instead of leftover rendering
-   values; opponent paths and collision outcomes can differ from the original
- - raster edge generation runs from Fast RAM on the enhanced path
- - shared collision/pose scratch words use Fast RAM on the enhanced path
- - collision checks avoid redundant writes to already-clear actor flags
- - simulation derives rider lean during pose selection, avoiding a second
-   traversal of the actor list
- - calibrates one-field displacement to the original four-field movement
-   convention without changing acceleration or backdating controller input
- - normalizes road movement for 50 Hz simulation, retaining fractional
-   motion and resetting it across crashes, actor reuse and new races
- - collision checks skip road-width and edge drawing calculations; rendering
-   still builds the complete road geometry
- - 68040/68060 reuse rendered road geometry for the next simulation tick
-   on the enhanced path, avoiding a redundant rebuild
- - enhanced public-RAM path reduces road, HUD, dispatch and depth-sort CPU work
- - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the
-   original stack if the optional allocation is unavailable or unsuitable
- - predicts the displayed rider heading through the measured render interval
-   to reduce visible steering lag without changing simulation or collisions
- - heading prediction follows recent motion, retaining a short average when
-   integer heading repeats during a continuing turn
- - no added frame limiter or delayed interpolation; slow frames catch up the
-   required simulation steps before rendering
- - CUSTOM2=0 (or omitted), 68000 and unsupported memory configurations retain
-   original timing and rendering
- - input and loading fixes remain active with Enhanced framerate disabled
+ Caches are enabled automatically on the enhanced accelerated path unless
+ NoCache is specified. A 68000 with suitable Fast RAM can benefit from faster
+ rendering while retaining the original simulation. Chip-only machines and
+ unavailable/unsuitable optional memory use the original path. Input,
+ loading and ECS/AGA border fixes also apply when CUSTOM2 is off.
 
- Version 2.0 (18.08.2019) done by JOTD:
- - adapted to whdload v17
- - joypad support (issue #0003626)
- - when joypad is detected, game control text is adapted. Function
-   keys become joypad buttons in the game messages.
- - ability to enter some preset passwords at startup
- - ability to enter user defined password with CUSTOM tooltype   
- - arrows mapped to joystick directions (issue #0002670)
- - enter names/passwords with joypad (no need for keyboard anymore)
- - source code included
- 
- Version 1.3 (2002):
- - reworked install script. Files are now in the "data" directory,
- - manual included
- - added a ton of icons
-  
- Version 1.2:
- - fixed remaining disk access
- 
- Version 1.1:
- - fixed delay to see the map
-
- Version 1.0 (1997):
- 
- - Full run from HD using WHDLoad
- - Memory patch to avoid to use 32 bit fast memory
- - Password protection removed (no more protection screen)
- 
+ Performance (emulated PAL, first race, 500 fields of full throttle):
+ -----------------------------------------------------------------
+ MACHINE                                    ENHANCED 3.0b (fps)
+ 68000, Chip/Slow RAM (original path)                      8.5
+ 68000 with Fast RAM                                      9.4
+ 68020, Chip RAM only (original path)                     12.5
+ 68020 with Fast RAM                                     18.6
+ 68030/50 with Fast RAM                                  39.4
+ 68040/25 with Fast RAM                                  49.6
+ 68060/50 with Fast RAM                                  49.6
+ These are scene-specific emulator measurements, not minimum frame rates or
+ real-hardware guarantees. Physical 68040/68060 cache testing remains pending.
 
 CD32 controls - menu:
 
 F1 - RW/reverse:
-F2 - FF/forward: 
+F2 - FF/forward:
 F3 - Blue: enter password / select bike
 F4 - Green: control method 1
 F5 - Yellow: control method 2
@@ -146,9 +102,61 @@ Some level codes (thanx to Abaddon and SweetCheater). Those are already built in
 
 View ending sequence:
 Press [F3] at the track select screen to display the password screen. Enter 11111 02881 RNLKC 5FJ7K as a password, then start the race.
-Press [F10] to quit, then press Fire at the repair cost screen to view the ending sequence. After that, the game will restart at level 1 with the Diablo 1000 bike. 
+Press [F10] to quit, then press Fire at the repair cost screen to view the ending sequence. After that, the game will restart at level 1 with the Diablo 1000 bike.
 
 Start with Diablo:
-Enter 00000 REDC0 QNGM5 172SU as a password to start at level 1 with the Diablo 1000 and a large amount of money. 
+Enter 00000 REDC0 QNGM5 172SU as a password to start at level 1 with the Diablo 1000 and a large amount of money.
 
-Source: GameWinners.com ,  http://www.gamewinners.com 
+Source: GameWinners.com ,  http://www.gamewinners.com
+
+ History:
+ --------
+ Version 3.0b (22.10.2026):
+ - optional Enhanced framerate for smoother, vsynced play on Fast RAM Amigas
+ - consistent simulation speed on the accelerated path, with reduced visible
+   steering lag and corrected opponent lane occupancy
+ - fixed joystick steering recentring and keyboard/CD32 pause handling
+ - fixed a loading crash on uncached 68030 machines
+ - blanked the border during play on ECS/AGA machines
+ - updated installer; cancelling replacement preserves an existing installation
+
+ Version 2.0 (18.08.2019) done by JOTD:
+ - adapted to whdload v17
+ - joypad support (issue #0003626)
+ - when joypad is detected, game control text is adapted. Function
+   keys become joypad buttons in the game messages.
+ - ability to enter some preset passwords at startup
+ - ability to enter user defined password with CUSTOM tooltype
+ - arrows mapped to joystick directions (issue #0002670)
+ - enter names/passwords with joypad (no need for keyboard anymore)
+ - source code included
+
+ Version 1.3 (2002):
+ - reworked install script. Files are now in the "data" directory,
+ - manual included
+ - added a ton of icons
+
+ Version 1.2:
+ - fixed remaining disk access
+
+ Version 1.1:
+ - fixed delay to see the map
+
+ Version 1.0 (1997):
+
+ - Full run from HD using WHDLoad
+ - Memory patch to avoid to use 32 bit fast memory
+ - Password protection removed (no more protection screen)
+
+ Contact:
+ --------
+ If you have problems with this installation please try and get a newer
+ version of this package from the WHDLoad WWW-Page. If that doesn't help try
+ some Tooltypes like NOCACHE, NOAUTOVEC, EXPCHIP, NOMMU, PAL or NTSC. If
+ that also fails, please inform the author via the Bug-Report-Form which
+ can be accessed on the WHDLoad WWW-Page.
+
+ For the full WHDLoad package, other installs and updates refer to:
+	http://www.whdload.de/
+ or	aminet:dev/misc/whdload#?
+ and	aminet:game/patch/

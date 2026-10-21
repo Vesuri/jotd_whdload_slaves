@@ -324,19 +324,8 @@ _expmem
 
 ;============================================================================
 
-	IFD BARFLY
-	DOSCMD	"WDate  >T:date"
-	ENDC
 DECL_VERSION:MACRO
-	dc.b	"2.1 beta"
-	IFD BARFLY
-		dc.b	" "
-		INCBIN	"T:date"
-	ENDC
-	IFD	DATETIME
-		dc.b	" "
-		incbin	datetime
-	ENDC
+	dc.b	"3.0b (22.10.2026)"
 	ENDM
 
 _name		dc.b	"Road Rash",0
@@ -354,7 +343,7 @@ _config
 	dc.b	"C2:B:Enhanced framerate;"
 	dc.b	0
 	EVEN
-	include	ReadJoyPad.s
+	include	ReadJoypad.s
 	
 ;======================================================================
 Start	;	A0 = resident loader
@@ -1287,3 +1276,9 @@ verify_c_selection:
  include public_boot_tables.s
  include public_intro_index.s
  ENDC
+
+; Amiga Version and release tooling use the same fixed version/date as WHDLoad.
+ dc.b "$VER: RoadRash "
+ DECL_VERSION
+ dc.b 0
+ EVEN
