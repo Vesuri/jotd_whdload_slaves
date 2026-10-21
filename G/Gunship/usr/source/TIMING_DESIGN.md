@@ -5968,3 +5968,41 @@ register preservation. The runtime gauge test passes 800 PAL/NTSC fields,
 296 draws and 296 repeated draws across batches 1/3/10/25. Ordinary, runtime,
 VERIFY/runtime, input/runtime and the larger diagnostic probe assemble. The
 ordinary slave remains 6,088 bytes; the runtime variants grow by 12 bytes.
+
+### Exact-input motion-preview cache prototype
+
+The non-skipping `preview-key` diagnostic compares all 184 preview-input
+bytes: the 86-byte candidate, 76-byte initialized step state, ten-byte control
+packet, logical tick and both native code pointers. It still executes every
+preview. On the engine-start/takeoff route, 1,375 of 1,587 calls on 68020 and
+971 of 1,116 calls on 68000 repeat the previous full key (86.64% and 87.01%).
+The 68020 run has no history loss/discard; the instrumented 68000 finishes
+with 227 discarded records. These runs measure reuse opportunity, not cache
+speed or comparable overload cost: the byte-by-byte probe adds work. The
+probe's assembled test passes 200 calls with 132 matches, preserving inputs,
+registers and X while mutations rotate through all three input buffers.
+
+`timing-player-cache.i` is a standalone, uninstalled wrapper around
+player_step_interval. Its caller-owned 348-byte cache stores the full key and
+both outputs; exact matches restore the native result, while a mismatch calls
+the original calculation. A null pointer bypasses caching. Failed calculations
+leave the old cache and caller state unchanged. The immutable native stages
+and sine helper/table remain a precondition; callers must clear validity on
+lifecycle/reset or before modifying code at an existing address. No input bits
+are masked and no control/command response is approximated.
+
+The assembled prototype matches the uncached output in 640 comparisons over
+160 scenarios, including direction changes and roll/pitch/heading impulses:
+160 misses and 480 confirmed hits. Entry interception separately verifies a
+miss for changes to every one of the 172 player/state/packet bytes, and for
+changed tick and stage/sine pointers. Invalid tick and invalid step state
+preserve cache/player/state; null bypass and explicit reset execute the
+original routine. Register preservation and adjacent buffer guards pass.
+The diagnostic runtime slave assembles for 68000 (108,826 bytes).
+
+This wrapper is not included in timing-core and changes no shipped binary.
+Next: connect an optional cache to the experimental endpoint path, keep its
+storage out of the per-field transactional state copies, reset it with the
+runtime lifecycle, and compare live rate and authoritative state. Any runtime
+use remains behind the default-off CUSTOM1 Enhanced framerate toggle. The
+87% reuse observation alone does not close C4f or C9.
