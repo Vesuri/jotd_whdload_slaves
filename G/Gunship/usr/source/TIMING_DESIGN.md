@@ -5520,3 +5520,41 @@ still reports relocation, clock and presentation differences; no blanket
 mask makes those comparisons pass. Active field-stamped input, airborne and
 combat state, full object allocations, 68000 and drawing-replaced-by-wait
 comparisons remain required.
+
+
+### C9a active-flight and field-wait comparisons
+
+`capture_active_equality_c.py` synchronizes injected controls to the native
+input producer using conditional breakpoints and checks the exact field at
+every injection. Fields are relative to the runtime activation epoch. Engines
+start at fields 600/650/700, ten collective increases start at 800..890, and
+seven-field left/right pulses occupy 1100..1106 and 1200..1206. The same seeded
+PAL route runs on 68020 and 68060. Snapshots remain at completed native world
+boundaries 100..102, before scheduler acknowledgement.
+
+`analyze_active_equality_c.py` compares all retained control bytes, including
+command cutoffs, relative input and edge flags. It excludes timestamp entropy
+only because the seeded verifier explicitly removes that entropy from RNG
+execution. The 816 common retained input fields agree across CPUs, including
+both complete joystick pulses. All three boundaries match the full 86-byte
+player block, gameplay RNG, $94-byte mission payload and 256 alive flags.
+The player is airborne at altitude 24 with collective 40 and RPM value 153;
+XY advances from B026/403E to B027/4043 and B028/4048. This extends the previous
+grounded comparison to actual motion and field-stamped controls.
+
+A second compiled diagnostic replaces the native main draw call in
+`timing_runtime_draw` with a wait for the next native field. Presentation
+publication and world-owned target/visibility work remain in place. The same
+68020 route still matches the rendered run at all three world boundaries,
+with 817 common retained control records agreeing. Native input records place
+both joystick pulses at the same fields in all three runs. No history or
+command loss/discards and no scheduler fault occur.
+
+Evidence: `tmp/dev/tmp/c/world-active-{020,060,nodraw-020}`, the initial
+`world-active-comparison.json` and `world-active-nodraw-020/active-comparison.json`.
+The field-wait source/listing is `tmp/dev/tmp/build/no-draw.{s,slave.lst}`.
+Full raw native hunks and fast RAM are retained. The history ring captures
+only subsets of the full elapsed interval; the reported counts are common
+retained fields, not a claim that every field was archived. These comparisons
+cover selected authoritative state, not all pointer-backed objects. Combat,
+68000, the broader no-draw matrix and full C9a acceptance remain open.

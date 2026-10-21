@@ -885,8 +885,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     replaced by a field wait. The initial neutral PAL 68020/060 comparison
     exposed and fixed a verifier seed-policy omission in the private RNG.
     Worlds 100..102 now match player/RNG/mission-payload/alive state with
-    neutral controls; active input, full object state, 68000 and no-draw
-    comparisons remain open.
+    neutral controls. An airborne route with field-scheduled engines,
+    collective and joystick pulses now matches the same selected state on
+    68020/060 and on 68020 with main drawing replaced by a field wait.
+    Retained input records also agree. Full object state, combat, 68000 and
+    the broader no-draw matrix remain open.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
