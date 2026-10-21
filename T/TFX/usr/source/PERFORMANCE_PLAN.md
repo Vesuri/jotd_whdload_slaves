@@ -742,3 +742,44 @@ Balanced 2,000-field pair (both boot CUSTOM1 clear; the candidate selects projec
 - Harness pitfall: the seed disk bakes the WHDLoad command line at enrolment. A run that reuses a seed boots with that seed's CUSTOM arguments, so a CUSTOM option cannot be A/B'd on a shared seed. Three earlier "integer" runs did this, silently ran the FPU path, and are discarded.
 - Decision pending: run calib040 and both settings on the Apollo, then set the default and record it here.
 - Evidence: `tmp/dev/tmp/prof20/intproj-*`, `intproj-ab.json`.
+
+Step 3 measured and rejected (cockpit-aware work avoidance):
+
+3a, measurement (cockpit probe, controlled flight):
+- The panel image (game:$3816) is drawn after the 3D view and overwrites rows 97-145 almost entirely, with sloped edges. The 3D view stops at about row 145.
+- 28.7% of ScanFillDown pixels, about 30% of its lines and 214 of 640 calls per frame lie entirely under opaque panel pixels.
+- External views draw no panel.
+
+3b, two implementations, both slower:
+- Shared parts:
+  - Each row's largest opaque panel run is derived by running the panel's own code over $00- and $ff-filled scratch frames.
+  - The panel is predicted from last frame's view index and scroll, and the panel call verifies the prediction.
+- Checks for both: identical displayed buffers and PNGs in the cockpit and views scenes, with 401 verified predictions and no misses. Native twins pass with negative controls (160 cases for the per-line version, 208 for the whole-call skip). The CPU/option gates pass.
+- Per-line clipping: the clipped loop plots only the visible pieces of each line.
+- Whole-call skip: a call is skipped only if every line lies inside its row's opaque run. Every other call runs the original code unchanged.
+
+Balanced 2,000-field pairs:
+
+| | Control | Per-line clip | Whole-call skip |
+|---|---:|---:|---:|
+| Publications | 671 | 650 (-3.1%) | 663 (-1.2%) |
+| Emulator cycles/frame | 2,409,545 | +3.2% | +1.2% |
+| Estimated 040 cycles/frame | 1,922,536 / 1,923,236 | +2.3% | +0.3% |
+
+The control column shows the two control runs' estimated-040 values; each candidate's change is against its own control.
+
+- **Why both lose:**
+  - The game plots each line through an unrolled store table, so hidden pixels are cheap. The cost is per line and per call.
+  - Per-line clipping adds about 204k estimated cycles per frame and saves 153k.
+  - The fully hidden calls are small: skipping them saves 36k of the 376k fill cost (1.9% of the frame), against 49k for the test.
+  - Even a much cheaper test would gain about 1% at most, and it would carry a one-frame risk whenever the panel changes after the first fill of a frame.
+- **3c (copy units under the panel):**
+  - Band 97-145 holds 1,960 of 8,000 copy units, but only about 300 change per frame.
+  - The units that are provably unchanged still change 1-2 times per frame.
+  - The ceiling is about 2% and needs complete write tracking. Not implemented.
+- **3d (instrument redraw):** only about 40% of 2D image calls repeat their arguments (_MaskSprite 6 of 17). Not implemented.
+- The slave is unchanged. Step 6 is next.
+
+Harness pitfall: balanced-pair startup mismatches came from the boot's 1-4 vblank jitter. Only the vblank clock (_vblank_clock $4d884) and four copies differ. `CLOCK_NORMALIZE=1` writes the same fixed values on both sides before the entry comparison, which stays exact.
+
+Evidence: `tmp/dev/tmp/step3/` (probe, `clip-ab.json`, `skip-ab.json`, the rejected sources and diff).
