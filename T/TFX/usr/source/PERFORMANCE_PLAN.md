@@ -439,3 +439,32 @@ Exceptional inputs outside the bounded native range may still use FPSP.
 Final 040/CUSTOM5/060 gates pass; all 246 inspected 060 FPU sites remain
 unchanged. Normal and CHIP_ONLY builds have no relocation records, the normal
 build matches the tested bytes, and both shipped FPSP files remain unchanged.
+
+
+Next retained improvement: native 040 projection division. The new-renderer 040
+Project replacement uses extended round-to-zero FPU division for all but the
+final point of an array, preserving the original final packed remainder registers.
+It retains signed clipping/saturation and saves/restores FP0, FPCR, FPSR and FPIAR.
+CUSTOM5 and original rendering retain the original routine; 060 is unchanged.
+
+A read-only operand trace records 827,603 points from the prior baseline. Observer
+invariance is established within each of two exactly matching startup-state pairs;
+initial clock/cadence variation must not be mistaken for a code change. The final
+same-build timing pair explicitly matches all three starting hunks except the
+six-byte Project switch before accepting measurement. It improves 563 to 598
+publications/2,000 PAL fields (+6.22%, 14.075 to 14.95 nominal fps). Its 250-field
+prefix is 76 to 80 (15.2 to 16.0). The earlier committed build's 578/2,000 is a
+separate historical result, not this feature's matched control. Both final paths
+record zero FPSP entries and cache flushes. Hardware speed remains unmeasured.
+
+Verification: 275 native original/replacement complete-array, GPR/CCR and FPU-state
+comparisons, including recorded operands, clipping, quotient boundaries, signed
+extremes and wrapping translations; an independent integer oracle and four
+negative controls. A 400-update controlled flight produces seven identical full
+64,000-byte displayed buffers and PNGs, with next-field DMA validation. Whole-game
+end state is not bit-identical: clocks, the interrupt-updated audio period, and an
+inactive sound-queue record differ. Both sound queues are empty and requested
+periods agree; all other hunk bytes match apart from the intended patch. This is
+not a new general state-equivalence waiver. CPU/option gates, normal/CHIP_ONLY
+builds, unchanged FPSP files and all 246 inspected 060 FPU sites pass. Evidence,
+limitations and reproduction tools remain in `tmp/dev/docs/optimization-20fps.md`.

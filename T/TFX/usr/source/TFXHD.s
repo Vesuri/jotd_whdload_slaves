@@ -3009,10 +3009,124 @@ pl_fpu
         PL_END
 
 ; The new fills are enabled only for the target 040, with an off path.
+; Exact signed projection using native 040 division, with extended/RZ FPCR.
+; For |numerator| <= 2^31 and denominator >= 17, rounding error is far
+; below the minimum noninteger distance 1/32767: integer truncation is exact.
+; Keep the final point's original DIVS path for its packed return registers.
+; Save FPU state once per array; preserve integer clipping and saturation.
+        mc68040
+project_fpu_040:
+        move.l a0,-(sp)
+        fmovem.x fp0,-(sp)
+        fmovem.l fpcr/fpsr/fpiar,-(sp)
+        fmove.l #$10,fpcr
+        move.l project_parameters_ptr(pc),a0
+        subq.w #1,d7
+        movem.l (a0),a2-a4
+        moveq #16,d6
+        move.w 12(a0),d5
+        move.w 14(a0),d4
+        movea.w 16(a0),a5
+        movea.w 18(a0),a6
+        moveq #0,d3
+.loop:
+        movem.l 20(a1),d0-d2
+        add.l a2,d0
+        add.l a3,d1
+        add.l a4,d2
+        movem.l d0-d2,(a1)
+        swap d2
+        cmp.w d6,d2
+        ble .clipped
+        clr.w 12(a1)
+        asr.l d5,d0
+        asr.l d4,d1
+        tst.w d7
+        beq .integer
+        fmove.l d0,fp0
+        fdiv.w d2,fp0
+        fmove.l fp0,d0
+        cmp.l #32767,d0
+        bgt .xhigh
+        cmp.l #-32768,d0
+        blt .xlow
+        add.w a5,d0
+        bra .y
+.xhigh:
+        move.w #32767,d0
+        bra .y
+.xlow:
+        move.w #-32768,d0
+.y:
+        fmove.l d1,fp0
+        fdiv.w d2,fp0
+        fmove.l fp0,d1
+        cmp.l #32767,d1
+        bgt .yhigh
+        cmp.l #-32768,d1
+        blt .ylow
+        add.w a6,d1
+        bra .store
+.yhigh:
+        move.w #32767,d1
+        bra .store
+.ylow:
+        move.w #-32768,d1
+        bra .store
+.integer:
+        divs.w d2,d0
+        bvs .overflowx
+        add.w a5,d0
+.integer_y:
+        divs.w d2,d1
+        bvs .overflowy
+        add.w a6,d1
+.store:
+        movem.w d0-d1,16(a1)
+        lea 36(a1),a1
+        dbf d7,.loop
+.finish:
+        tst.w d3
+        beq .return
+        movem.l $10a(a0),d0-d2
+        movem.l d0-d2,$f2(a0)
+.return:
+        fmovem.l (sp)+,fpcr/fpsr/fpiar
+        fmovem.x (sp)+,fp0
+        movea.l (sp)+,a0
+        rts
+.clipped:
+        addq.w #1,d3
+        move.w #-1,12(a1)
+        lea 36(a1),a1
+        dbf d7,.loop
+        bra .finish
+.overflowx:
+        ext.l d2
+        eor.l d2,d0
+        add.l d0,d0
+        subx.w d0,d0
+        eori.w #32767,d0
+        bra .integer_y
+.overflowy:
+        ext.l d2
+        eor.l d2,d1
+        add.l d1,d1
+        subx.w d1,d1
+        eori.w #32767,d1
+        bra .store
+project_parameters_ptr: dc.l 0
+        mc68020
+
 pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
         PL_ELSE
+        PL_IFC5
+        PL_ELSE
+        PL_P    $55e32,project_fpu_040
+        PL_GA   $55bf4,project_parameters_ptr
+        PL_ENDIF
         PL_P    $016de,reset_copy_shadows
         PL_GA   $016e4,play_level_body_ptr
         PL_P    $4dba0,box_new
