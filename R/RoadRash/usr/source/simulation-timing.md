@@ -1,3 +1,19 @@
+## Approved separation of speed and latency checks — 2026-10-21
+
+The user selected “Separate speed and latency checks” in response to the
+explicit A4a proposal. The plan now applies the unchanged ±1% speed tolerance
+at completed simulation boundaries after equal applied input durations.
+Original fixed-live-field results remain reported diagnostics. Input is not
+backdated; the visible-response safeguards, 50 Hz elapsed-time accounting,
+no-dropped-time rule and cross-cadence simulation comparisons remain required.
+This supersedes the pending-approval status in earlier entries, not their data.
+
+The default-020 exposure trace and candidate validation below do not by
+themselves establish every hardware cell's speed calibration. Those comparisons
+must be completed before promoting the displacement candidate. The approval
+also does not erase the distinction between controlled wreck-boundary coverage
+and an unmodified natural wreck. Production is unchanged; C remains open.
+
 ## Displacement candidate: controlled wreck-boundary coverage
 
 A VERIFY-only fixture sets damage to 31 at simulation cursor 1000, one point

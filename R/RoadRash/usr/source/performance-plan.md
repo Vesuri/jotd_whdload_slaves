@@ -275,7 +275,14 @@ a slave option whose default reproduces the original timing until G1 decides the
   - A3d A game-state hash (player and actor records, ranks, clock) at fixed race fields,
     for A/B equivalence.
 - **A4 Equivalence check.**
-  - A4a Distance at fixed race fields within ±1% of the reference cell.
+  - A4a Speed calibration: compare distance at completed simulation boundaries
+    after identical applied input durations, within ±1% of the reference cell.
+    Document start/end boundaries and preserve actual input timing. The user
+    approved separating this from input/display latency (2026-10-21): retain
+    the original fixed-live-field measurements as reported diagnostics, and
+    independently require the existing visible-response safeguards, 50 Hz
+    elapsed-time accounting, no dropped time and cadence-invariant outcomes.
+    This approval does not automatically accept an experimental candidate.
   - A4b A1b tape: compare native rank order and crash count against B. For C,
     the user approved intentional differences caused by documented corrections
     to render-dependent logic (2026-10-21). Establish and review the corrected
