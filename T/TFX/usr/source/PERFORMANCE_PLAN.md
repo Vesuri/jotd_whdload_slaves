@@ -1168,3 +1168,30 @@ Step 3c re-assessed after steps 4-9 (copy units under the panel): not implemente
 - Real hardware might gain somewhat more from about 13 KB per frame of fast-RAM reads
   avoided, but that is unmeasured. Reconsider only if the Apollo shows the copy loop to
   be bandwidth-bound.
+
+Step 3d re-assessed (instrument redraw): not implemented.
+- New probe: the cockpit probe with each blit's size and destination
+  (`PROBE_SIZES=1`), over 3 frames at update 30 and 8 frames at update 150.
+- 5,240 _MaskSprite word-planes per frame:
+  - Drawn before the panel, onto the 3D view (redrawn every frame): 600-640.
+  - Drawn after the panel: the rest. Rows 97-145 under them are repainted by the panel
+    every frame, so only rows 146-199 are persistent.
+- All 60 _DrawSpriteImage calls and nearly all lines are drawn before the panel, so they
+  can never be skipped.
+- The six post-panel _MaskSprite calls kept identical arguments in all eight frames.
+  About 20 of the 67 post-panel calls change per frame (digits, compass strip).
+- An exact skip may only leave out the sprite rows (or words) in rows 146-199 that no
+  other call wrote between the sprite's previous draw and this one. Digits and boxes
+  drawn over the sprites, and the overlapping sprite at rows 133-167, must still be
+  redrawn underneath.
+  - Measured with conservative call rectangles: 960 word-planes per frame by whole
+    rows, 1,264 by 16-pixel words (18-24% of the mask work).
+  - That is about 12-16k est-040 and 22-29k emulator cycles per frame.
+- Costs against it:
+  - Every 2D writer must record a rectangle: about 140 calls per frame, about 3k
+    instructions (about 7k est-040).
+  - The sprite blit needs a row/word-clipped variant.
+  - Writers outside the probe's hook list (map and radar plots, text, horizon images)
+    must be found and tracked, or stale pixels stay on screen.
+- Net about 0.3-0.6% est-040, below what a frame pair resolves, with a stale-pixel risk.
+- Evidence: `tmp/dev/tmp/step3d/`.
