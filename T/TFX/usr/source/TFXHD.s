@@ -3365,6 +3365,130 @@ MASKPLANE MACRO
 .dmod:  dc.w 0
 mask_params_ptr: dc.l 0
 
+; @AltFadeColsMiss ($249a) blends RGB triples towards a target palette: per
+; component, dest = (B + (A-B)*f/50) & $ff, skipping entries where B is magenta
+; ($ff,$00,$ff). In flight the game calls it twice per palette change: with
+; f = 50, which makes it a byte copy of A (the MULS.L/DIVSL.L pair cancels
+; exactly), then in place with a lighting factor below 50. For 0 <= f < 50 the
+; division by 50 is an exact reciprocal multiply: |n| / 50 = |n| * 5243 >> 18
+; for |n| <= 255 * 50 (checked exhaustively). Other factors, and index ranges
+; that would wrap, run the original.
+; Entry: D0.w = f, D1.w = count, A0 = A, A1 = B, 4(sp) = dest, 10(sp) = first
+; index. Leaves D0/D1, CCR, memory and the stack frame as the original.
+fade_cols_040:
+        subq.w  #4,sp                   ; the six bytes the patch replaced
+        movem.l d2-d7/a2-a3/a5,-(sp)
+        move.w  d0,d6
+        cmp.w   #50,d6
+        bhi.w   .original               ; negative or above 50
+        move.w  50(sp),d5               ; first index
+        moveq   #0,d3
+        move.w  d1,d3                   ; count
+        beq.w   .empty
+        move.w  d5,d2
+        ext.l   d2
+        add.l   d3,d2                   ; index after the loop
+        cmp.l   #$8000,d2
+        bgt.w   .original               ; the word index would wrap
+        move.w  d5,d0
+        ext.l   d0
+        move.l  d0,d1
+        add.l   d1,d1
+        add.l   d0,d1                   ; 3 * first index
+        move.l  44(sp),a2
+        adda.l  d1,a2
+        lea     (a1,d1.l),a3
+        lea     (a0,d1.l),a5
+        subq.w  #1,d3
+        ; Byte order as the original: the magenta test reads B before the
+        ; entry's writes, then each component is read and written in turn.
+        cmp.w   #50,d6
+        bne.b   .blend
+.entry:
+        cmp.b   #$ff,(a3)
+        bne.b   .copy
+        tst.b   1(a3)
+        bne.b   .copy
+        cmp.b   #$ff,2(a3)
+        beq.b   .skip
+.copy:
+        move.b  (a5)+,(a2)+
+        move.b  (a5)+,(a2)+
+        move.b  (a5)+,(a2)+
+        addq.l  #3,a3
+        dbf     d3,.entry
+        bra.w   .blended
+.skip:
+        addq.l  #3,a3
+        addq.l  #3,a5
+        addq.l  #3,a2
+        dbf     d3,.entry
+        bra.w   .skipped
+.blend:
+        mulu.w  #5243,d6
+        moveq   #18,d7
+.bentry:
+        cmp.b   #$ff,(a3)
+        bne.b   .bcopy
+        tst.b   1(a3)
+        bne.b   .bcopy
+        cmp.b   #$ff,2(a3)
+        beq.b   .bskip
+.bcopy:
+FADE_COMPONENT MACRO
+        moveq   #0,d0
+        move.b  (a5)+,d0
+        moveq   #0,d1
+        move.b  (a3)+,d1
+        sub.l   d1,d0                   ; A - B
+        bpl.b   .pos\@
+        neg.l   d0
+        mulu.l  d6,d0
+        lsr.l   d7,d0
+        neg.b   d0
+        bra.b   .add\@
+.pos\@:
+        mulu.l  d6,d0
+        lsr.l   d7,d0
+.add\@:
+        add.b   d0,d1
+        move.b  d1,(a2)+
+        ENDM
+        FADE_COMPONENT
+        FADE_COMPONENT
+        FADE_COMPONENT
+        dbf     d3,.bentry
+        bra.b   .blended
+.bskip:
+        addq.l  #3,a3
+        addq.l  #3,a5
+        addq.l  #3,a2
+        dbf     d3,.bentry
+        bra.b   .skipped
+.blended:
+        moveq   #0,d0
+        move.b  -1(a2),d0               ; last entry blended: its blue result
+        bra.b   .last
+.skipped:
+        move.l  d2,d0
+        subq.l  #1,d0                   ; last entry skipped: its index
+.last:
+        move.l  d2,d1
+        subq.l  #1,d1
+        move.l  d1,d3
+        add.l   d1,d1
+        add.l   d3,d1                   ; 3 * last index
+        move.w  d2,38(sp)
+        andi.b  #$ef,ccr                ; X = 0 after the original SUBQ.W
+        jmp     ([fade_cols_exit,pc])   ; flag $8020(a4), restore, RTS
+.empty:
+        move.w  d5,38(sp)
+        jmp     ([fade_cols_exit,pc])
+.original:
+        jmp     ([fade_cols_body,pc])
+fade_cols_body: dc.l 0                  ; $24a0
+fade_cols_exit: dc.l 0                  ; $258c
+
 pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
@@ -3382,6 +3506,9 @@ pl_fpu_new_render_040:
         PL_GA   $016e4,play_level_body_ptr
         PL_P    $4e400,mask_sprite8_040 ; all eight planes per mask word
         PL_GA   $4e518,mask_params_ptr
+        PL_P    $0249a,fade_cols_040    ; @AltFadeColsMiss, factor 50 as a copy
+        PL_GA   $024a0,fade_cols_body
+        PL_GA   $0258c,fade_cols_exit
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new

@@ -817,3 +817,61 @@ Balanced 2,000-field pair (the control runs the production 90-byte loop zero-pad
 - Harness pitfall: monitor writes longer than about 90 bytes time out, so the tools split the 150-byte slot into equal chunks, the same calls on both sides.
 - Hardware speed is unmeasured.
 - Evidence: `tmp/dev/tmp/copy6/` (`copy-ab.json`, the scenes, twins, gates and the rejected version).
+
+Step 7 done (palette blend, fade_cols_040):
+- @AltFadeColsMiss ($249a) blends 256 RGB triples per call: per component,
+  dest = (B + (A-B)*f/50) & $ff, skipping entries whose B is magenta ($ff,$00,$ff).
+  Each component costs a MULS.L and a DIVSL.L.
+- In flight there are two calls per palette change. $2ad0 passes f = 50, which is
+  exactly a byte copy of A. $3244 then blends the result in place towards the palette
+  at $b608 with a lighting factor of 2-48.
+- The 040 new-renderer patch list jumps from $249a to fade_cols_040:
+  - f = 50 copies the non-magenta entries byte by byte.
+  - 0 <= f < 50 replaces the division with an exact reciprocal: |n|/50 = |n|*5243 >> 18
+    for |n| <= 255*50, checked exhaustively for every factor and difference. One
+    MULU.L replaces MULS.L + DIVSL.L.
+  - Any other factor, and index ranges that would wrap the word index, run the
+    original code.
+- Reads and writes happen in the original byte order, so aliased destinations (the
+  in-place call) behave identically. D0/D1, CCR (including X), the flag at $8020(a4),
+  the stack frame and memory match the original.
+- Like step 2, it is an integer change outside the CUSTOM5 block. Original rendering,
+  030 and 060 keep the original bytes.
+
+Why it is accepted by cycle count rather than by the frame A/B:
+- For every call with count >= 1 and 0 <= f <= 50, the new code executes fewer
+  instructions and no division, so it is faster under both the 040 table and the
+  emulator's flat charge. Both in-flight call sites are in that class (256 entries
+  from index 0).
+- Only count 0, factors outside 0-50 and wrapping ranges cost about 10 cycles more
+  per call (entry jump and range checks), and no in-flight call takes those paths.
+- The first, copy-only version measured 699 vs 686 publications (est-040 +0.9%):
+  - The routine itself saved 26k est-040 cycles per frame (1.4%).
+  - The faster timing changed which frames the replay drew. The candidate had about
+    4% more ScanFillDown calls per frame (850 vs 818) for the same polygon count, so
+    the fill, copy and plot code all rose.
+  - The frame total is dominated by this scene variation, which went the other way
+    in step 6. The user accepted the change on its cycle-count guarantee.
+
+Verification:
+- **Native twins:** 216 cases pass, against a verbatim copy of the original routine
+  on the same memory image. The guest compares the whole 4 KB region, the flag and
+  the stack frame; the host compares D0-D7/A0-A6 and CCR.
+  - The cases cover the copy path (58), the reciprocal path (78), fallback factors
+    and wrapping index ranges (60) and empty calls (20).
+  - They include magenta and partial-magenta entries, a skipped last entry, and six
+    aliasing layouts.
+  - An independent model of the original agrees.
+  - Five negative controls are rejected: a wrong byte, a wrong register, a wrong X
+    flag, a copy that ignores magenta, and an off-by-one quotient.
+- **Controlled scenes:** cockpit (400 updates) and views pairs against the original
+  routine give 7 and 5 identical complete displayed buffers and PNGs.
+  - The end states differ only in the patch, the clocks, data-hunk byte +$244 (both
+    scenes; step 2 saw it as an interrupt-phase difference) and hunk-0 $4d692-$4d693
+    (cockpit).
+  - These depend on the different emulated speed and are not claimed as equal.
+- **Gates:** 040 and 040 CUSTOM5 jump to fade_cols_040; 040 original, 030 and 060
+  keep $594f48e73f34.
+- **Builds:** normal and CHIP_ONLY builds have no relocations, and the normal build
+  reproduces. FPSP files are unchanged.
+- Evidence: `tmp/dev/tmp/fade7/` (the copy-only run in `copy-only/`).
