@@ -597,8 +597,11 @@ for final placement, measurements, validation and the complete 67-file inventory
   - E4a Skip clearing lines that the opaque mountain/hill copies overwrite anyway: 1–2%.
   - E4b Clear only the sky regions dirtied by last frame's bobs in this buffer (dirty
     rectangles from the bob clip results): 2–4%.
-  - E4c Drop the fill/clear before the full-mask copy in `$b4c8e` (dials) after checking
-    that the copy covers the rectangle: 0.55%.
+  - **E4c complete — retain the dial fills.** The coverage audit disproved the
+    proposed redundancy: `$b4da4` advances BLTDPT by the rectangle height before
+    `$b4dc4` copies without resetting it. The other three planes repeat this
+    pattern. The fill and copy cover adjacent rectangles, so removing the fill
+    would leave stale pixels. The estimated 0.55% saving is withdrawn.
 - **E5 040/060 CPU cookie-cut** (stretch). With sources and masks in fast RAM, draw bobs
   with the CPU instead of the blitter on 040/060. Keep the blitter path elsewhere.
 
