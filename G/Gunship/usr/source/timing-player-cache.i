@@ -21,45 +21,99 @@ player_step_cached_interval:
 	movem.l d0-d7/a0-a6,-(sp)
 	lea -PC_KEY_SIZE(sp),sp
 	movea.l a5,a6
-	movea.l sp,a5
-	moveq #MP_RECORD_SIZE/2-1,d1
-.key_player:
-	move.w (a1)+,(a5)+
-	dbf d1,.key_player
-	moveq #PS_SIZE/2-1,d1
-.key_state:
-	move.w (a0)+,(a5)+
-	dbf d1,.key_state
-	moveq #PS_INPUT_SIZE/2-1,d1
-.key_packet:
-	move.w (a4)+,(a5)+
-	dbf d1,.key_packet
-	move.l d0,(a5)+
-	move.l a2,(a5)+
-	move.l a3,(a5)+
+	; Compare in place on the common hit path. Build a preserved key only
+	; for a miss, before the native routine changes the input buffers.
 	cmpi.w #1,PC_VALID(a6)
-	bne .miss
-	movea.l sp,a0
-	lea PC_KEY(a6),a1
-	moveq #PC_KEY_SIZE/4-1,d1
-.compare:
-	cmpm.l (a0)+,(a1)+
-	bne .miss
-	dbf d1,.compare
+	bne .prepare_miss
+	cmp.l PC_KEY+MP_RECORD_SIZE+PS_SIZE+PS_INPUT_SIZE(a6),d0
+	bne .prepare_miss
+	cmpa.l PC_KEY+MP_RECORD_SIZE+PS_SIZE+PS_INPUT_SIZE+4(a6),a2
+	bne .prepare_miss
+	cmpa.l PC_KEY+MP_RECORD_SIZE+PS_SIZE+PS_INPUT_SIZE+8(a6),a3
+	bne .prepare_miss
+	lea PC_KEY(a6),a5
+	moveq #MP_RECORD_SIZE/4-1,d1
+.compare_player:
+	cmpm.l (a1)+,(a5)+
+	bne .prepare_miss
+	dbf d1,.compare_player
+	IFNE MP_RECORD_SIZE&2
+	cmpm.w (a1)+,(a5)+
+	bne .prepare_miss
+	ENDC
+	moveq #PS_SIZE/4-1,d1
+.compare_state:
+	cmpm.l (a0)+,(a5)+
+	bne .prepare_miss
+	dbf d1,.compare_state
+	IFNE PS_SIZE&2
+	cmpm.w (a0)+,(a5)+
+	bne .prepare_miss
+	ENDC
+	REPT PS_INPUT_SIZE/4
+	cmpm.l (a4)+,(a5)+
+	bne .prepare_miss
+	ENDR
+	IFNE PS_INPUT_SIZE&2
+	cmpm.w (a4)+,(a5)+
+	bne .prepare_miss
+	ENDC
 	; Reload caller destinations from the saved register frame.
 	movea.l PC_KEY_SIZE+32(sp),a0
 	movea.l PC_KEY_SIZE+36(sp),a1
 	lea PC_STATE(a6),a2
-	moveq #PS_SIZE/2-1,d1
+	moveq #PS_SIZE/16-1,d1
 .hit_state:
-	move.w (a2)+,(a0)+
+	REPT 4
+	move.l (a2)+,(a0)+
+	ENDR
 	dbf d1,.hit_state
-	moveq #MP_RECORD_SIZE/2-1,d1
+	REPT PS_SIZE/4-(PS_SIZE/16)*4
+	move.l (a2)+,(a0)+
+	ENDR
+	IFNE PS_SIZE&2
+	move.w (a2)+,(a0)+
+	ENDC
+	moveq #MP_RECORD_SIZE/16-1,d1
 .hit_player:
-	move.w (a2)+,(a1)+
+	REPT 4
+	move.l (a2)+,(a1)+
+	ENDR
 	dbf d1,.hit_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a2)+,(a1)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a2)+,(a1)+
+	ENDC
 	moveq #0,d0
 	bra .done
+.prepare_miss:
+	movem.l PC_KEY_SIZE(sp),d0-d7/a0-a6
+	movea.l sp,a5
+	moveq #MP_RECORD_SIZE/4-1,d1
+.key_player:
+	move.l (a1)+,(a5)+
+	dbf d1,.key_player
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a5)+
+	ENDC
+	moveq #PS_SIZE/4-1,d1
+.key_state:
+	move.l (a0)+,(a5)+
+	dbf d1,.key_state
+	IFNE PS_SIZE&2
+	move.w (a0)+,(a5)+
+	ENDC
+	REPT PS_INPUT_SIZE/4
+	move.l (a4)+,(a5)+
+	ENDR
+	IFNE PS_INPUT_SIZE&2
+	move.w (a4)+,(a5)+
+	ENDC
+	move.l d0,(a5)+
+	move.l a2,(a5)+
+	move.l a3,(a5)+
 .miss:
 	movem.l PC_KEY_SIZE(sp),d0-d7/a0-a6
 	bsr player_step_interval
@@ -72,14 +126,30 @@ player_step_cached_interval:
 .save_key:
 	move.l (a2)+,(a3)+
 	dbf d1,.save_key
-	moveq #PS_SIZE/2-1,d1
+	moveq #PS_SIZE/16-1,d1
 .save_state:
-	move.w (a0)+,(a3)+
+	REPT 4
+	move.l (a0)+,(a3)+
+	ENDR
 	dbf d1,.save_state
-	moveq #MP_RECORD_SIZE/2-1,d1
+	REPT PS_SIZE/4-(PS_SIZE/16)*4
+	move.l (a0)+,(a3)+
+	ENDR
+	IFNE PS_SIZE&2
+	move.w (a0)+,(a3)+
+	ENDC
+	moveq #MP_RECORD_SIZE/16-1,d1
 .save_player:
-	move.w (a1)+,(a3)+
+	REPT 4
+	move.l (a1)+,(a3)+
+	ENDR
 	dbf d1,.save_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1)+,(a3)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a3)+
+	ENDC
 	move.w #1,PC_VALID(a6)
 .done:
 	lea PC_KEY_SIZE+4(sp),sp

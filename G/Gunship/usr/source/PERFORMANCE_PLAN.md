@@ -926,7 +926,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     records, nine discarded phase units). A diagnostic 128-field limit only
     postpones failure until the history ring fills after world 42; the normal
     64-field limit remains unchanged. Profiling confirms cache reuse but
-    identifies remaining field-owner, copy, distribution and raster cost.
+    identifies remaining field-owner, copy, distribution and raster cost. Direct key comparisons and
+    grouped output copies now reduce sampled cache cycles/request by about
+    46%, but only postpone the 68000 NTSC overload to world 30. Selected
+    state agrees through world 29; this remains an unaccepted rate case.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL

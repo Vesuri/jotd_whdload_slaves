@@ -6163,3 +6163,39 @@ This is live coverage for ordinary pause/release on those CPU/video pairs,
 including cache, delayed input and interval resets. It does not establish
 Escape during pause, every boundary command, death/landing/reload, or the
 remaining CPU/video lifecycle matrix.
+
+### Cheaper exact-input cache hits
+
+player_step_cached_interval now compares its full inputs directly against the
+saved key before copying a temporary key. The same stack space remains
+reserved, but a key is copied there only on a miss, before the native call
+can change its inputs. Tick and both code pointers are checked first, then
+every player/state/packet byte. Output copies use 16-byte longword groups and
+exact tails, avoiding reads beyond the 86-byte player record. Cache format,
+reset policy, complete-key semantics and failure atomicity are unchanged.
+
+The 640 native-output comparisons, every-byte invalidation checks, 1,760-field
+cached/uncached endpoint comparison (including impulses and mid-interval
+changes), lifecycle reset, 1,200 batch fields and loop-ownership tests pass.
+All build variants assemble; ordinary remains 6,088 bytes, runtime is 42,674
+bytes and VERIFY/input runtime variants are 109,004 bytes. Runtime code grows
+108 bytes; the arena size is unchanged.
+
+The same 100-field NTSC 68000 profile (`fast-cache-cost-ntsc-000`) attributes
+323,842 self cycles to 98 cache requests, averaging 3,304.5 cycles/request,
+versus 591,630/97 = 6,099.3 before this change. This is about 46% less average
+cache overhead in these samples; their miss mixes are nine versus ten native
+calls, so it is not a fixed per-hit timing guarantee. Cache self share drops
+from 4.94% to 2.71%. The new sample contains four world completions, four target
+passes and one main draw, with no discarded history in that window.
+
+The longer `fast-cache-world-fire-ntsc-000` run still overloads at world 30:
+71 history records are discarded and nine phase units are dropped. The old
+cache first rebased at world 27. This is an improvement, not acceptance.
+Before the new rebase, worlds 20..29 match the previously captured NTSC 68020
+selected player/object/projectile/RNG/mission state, with exact clock deadlines
+and no lost history. The explicit actor audit permits only inactive countdowns
+and drawing scratch. All 427 common consumed-control records match; the raw
+comparison differs only in TR_RELATIVE and stays recorded as failed. This
+partial comparison does not cover expiry or any world after the rebase.
+Further 68000 NTSC cost reduction is still required.
