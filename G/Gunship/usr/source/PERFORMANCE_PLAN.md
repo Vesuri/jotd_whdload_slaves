@@ -896,7 +896,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     is already written by the preceding world weapons update. Forecasting
     collection with a provisional native player endpoint now matches ordered
     candidate identities in 27/27 captured intervals without gameplay writes
-    (current camera: 26/27). Actual endpoint-owner state, visibility and
+    (current camera: 26/27). Retained endpoint-owner/ground replay also
+    matches all 27 lists; supplying recorded next-tick impulses reproduces
+    all 27 cameras exactly, while zero future impulses leave nine camera
+    differences. Future-impulse uncertainty, runtime cost, visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.
 - **C7. Per-frame work that is not presentation.**

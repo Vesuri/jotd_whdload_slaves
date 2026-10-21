@@ -7430,3 +7430,42 @@ field-rate projectile behavior is implemented.
 
 Raw results are `tmp/dev/tmp/c/homing-candidate-forecast.json`, including all
 player-byte differences and each camera, count and identity comparison.
+
+
+### Retained player-owner forecast and impulse boundary (C6d)
+
+`forecast_homing_owner_c.py` replaces the fresh rate-3 step in the preceding
+experiment with a copied live `EP_SIZE` owner. It preserves motion fractions,
+delayed Y samples and field stamp, begins the next interval from the captured
+player, derives its 16/17-field span from clock phase, and executes the real
+endpoint owner at every consecutive field. Current X/Y inputs are held; all
+27 intervals in this tape have neutral X/Y. At the deadline it evaluates the
+existing private `endpoint_ground_resolve`, retaining any event privately
+without committing notifications, timers or gameplay effects.
+
+The predictive lane supplies zero future impulses. A separate diagnostic
+oracle supplies only the recorded next tick's three impulse words on the
+last field. Neither lane borrows the future player pose for integration.
+The oracle camera now equals the camera built from the actual next player
+record, byte for byte, in all 27 intervals. Omitting ground resolution left
+world 34→35 unequal even with the correct impulses; including it resolves
+that difference. This verifies the retained-owner replay, not foreknowledge
+of the future impulse packet.
+
+Both lanes still reproduce the ordered next candidate identities in all
+27 intervals. Without future impulses, cameras differ at worlds
+20/25/27/30/32/33/35/36/37. Thus matching candidate identities here does not
+certify a general camera or visibility forecast. The earlier fresh-rate
+preview's mismatches were not evidence that fractions could be discarded;
+the retained-owner, deadline-impulse and ground boundaries all matter.
+
+All 108 private candidate views, both endpoint integration lanes and their
+ground resolutions pass guest write checks allowing only their private
+workspaces/event and stack. Native hunks remain unchanged. The result file
+`homing-owner-candidate-forecast.json` preserves player-byte differences,
+held inputs, spans, oracle impulses and every camera/candidate comparison.
+No full player-record equality is claimed: the captured next record also
+includes its native world updates. Runtime cost and visibility certification
+remain open; replaying an entire interval is an offline reference, not yet
+a suitable field-rate runtime implementation. The next steering policy must
+handle future-impulse uncertainty without delaying presentation a world tick.
