@@ -365,6 +365,17 @@ Palette code remains unchanged; step 12 is still unreproduced.
 
 ## Further optimization: 20 fps target
 
+Benchmark audit: the earlier debugger-switched A/B controls below used a code
+write on the disabled side only. The private debugger's `tfxmem` implementation
+writes back/invalidates CPU caches, so matching game-hunk bytes did not establish
+matching cache state. Those counts remain historical observations; their precise
+attribution to each optimization requires remeasurement with symmetric setup.
+Native arithmetic/buffer tests and displayed-image comparisons are unaffected.
+The corrected profiler writes the selected instructions at the same address and
+length on BOTH sides before timing, and checks startup registers as well as game
+hunks. Revalidation is in progress; do not treat the earlier percentages as
+cache-balanced results or as hardware speed measurements.
+
 Target a sustained average of 20 presented frames/s on the Apollo 1240/40 with
 vsync retained and no reduction in scene detail or simulation work. Hardware
 validation is required; emulator throughput is an A/B development measure.
