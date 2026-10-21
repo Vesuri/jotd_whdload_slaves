@@ -893,7 +893,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     pulses per CPU press/release entirely between world deadlines. A neutral
     control confirms the roll response. Input-to-frame-completion spans are
     100..260/60..140 ms; first changed scanout is not yet measured, so this
-    is partial C9c evidence, not display-latency acceptance.
+    is partial C9c evidence, not display-latency acceptance. NTSC repeats
+    retain all eight pulses on both CPUs, with 27/66 same-world camera
+    changes and completion delays 117..217/67..83 ms, without lost input.
+    Scanout and heavy-scene acceptance remain open.
   - C9d. **Player path:** C4e's equivalence on every CPU, over all input combinations at
     several initial rates.
   - C9e. **Durations in play:** fuel, mission clock, weapon reload, lamp blink and effect

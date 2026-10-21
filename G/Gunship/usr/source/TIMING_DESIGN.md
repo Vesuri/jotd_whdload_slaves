@@ -5404,3 +5404,21 @@ observed input-to-completed-frame intervals are 100..260 ms on the 68020 and
 swap routine, but this probe does not observe the first changed scanline on
 the display. Do not promote these numbers to end-to-end input/display latency
 or accept all of C9c: scanout, NTSC, heavy scenes and the overloaded 68000 remain.
+
+The same compiled responsiveness probe also passes on NTSC, with runtime
+rate 60 and twenty fields per world interval. Evidence:
+`tmp/dev/tmp/c/frame-probe-{020,060}-ntsc`.
+
+| NTSC configuration | Completed frames | End-to-end field span | Same-world adjacent camera changes | Draw duration | Pulse-to-changed-roll completion (fields) |
+| --- | ---: | ---: | ---: | --- | --- |
+| 68020 | 47 | 379 | 27 | 5..7 | 11, 13, 11, 8, 10, 11, 7, 9 |
+| 68060 | 89 | 382 | 66 | 3..5 | 4, 5, 5, 4, 4, 4, 5, 5 |
+
+All eight seven-field pulses contribute on both CPUs. Five 68020 pulses and
+four 68060 pulses include their preceding/following neutral fields entirely
+within one world interval. No history loss, discards or scheduler fault occurs.
+The completion-delay ranges are 116.7..216.7 ms and 66.7..83.3 ms respectively,
+at nominal 60-Hz field resolution. These retain the same limitation as the
+PAL probe: completion after native swap is observed, first changed scanout is
+not. They extend the field-rate input/motion evidence to NTSC without closing
+the display-latency or heavy-scene acceptance gates.
