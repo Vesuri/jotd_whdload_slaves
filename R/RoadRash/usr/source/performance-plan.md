@@ -2,7 +2,8 @@
 
 Status: A–C and G complete; D, E and F1–F5 complete under the agreed emulator
 scope. Release: 3.0b (22.10.2026). D1d real-hardware coherency and F6a–F6d
-future fixed-address relocation work remain open. G validation is recorded in
+future fixed-address relocation work remain open, along with H1a–H1c track-height
+projection investigation. G validation is recorded in
 [release.md](release.md). Accepted A evidence
 and limitations are in §9; B results and the 25 fps safety limit are in §10. Sections 1–6 retain the original exploratory measurements;
 they are not the fixed-field A baseline. Slave baseline: shipped v2.0
@@ -701,6 +702,27 @@ explicit agreement; physical cache/coherency validation remains D1d.
 - **G4 Release.** Completed: 3.0b (22.10.2026), fixed build metadata, template-based
   installer, reproducible `make dist`, independently extracted installer archive
   with current sources, and a coherent release commit. See [release.md](release.md).
+
+### H. Post-release visual investigations — open
+
+- **H1 Investigate track-height projection discontinuities.** The recording
+  `Screen Recording 2026-10-21 at 23.14.20.mov` shows the player bike and road
+  rising smoothly, then jumping down repeatedly around 1:04. Inspection of 50
+  consecutive recording frames (64.012–64.987 s) found jumps roughly every 5–6
+  frames, including a 79-recording-pixel drop between frames 10 and 11. Smaller
+  similar jumps also occur in an untouched v2.0 hill capture; this does not yet
+  establish the cause or whether the enhancements amplify it. Track-segment
+  boundaries are a hypothesis. Current extrapolation affects rider heading only.
+  - H1a Reproduce and measure the discontinuity on a matched hill with v2.0,
+    CUSTOM2 off and CUSTOM2 on; correlate consecutive rendered images with camera
+    position, track segment/fraction and projected road/player height.
+  - H1b Trace the camera/track-height projection calculations and segment-boundary
+    transitions to isolate the cause and determine whether enhanced timing or
+    rendering changes its magnitude or frequency.
+  - H1c Record the diagnosis and evaluate a correction with consecutive-frame
+    evidence. Preserve consistent simulation speed, vsync and input latency;
+    do not introduce delayed interpolation. Validate any adopted correction
+    against native paths and the existing timing/latency acceptance checks.
 
 ### Order and milestones
 1. A1–A4, then B1–B3: harness and fixes. Milestone: verified references.
