@@ -20,6 +20,13 @@ _checkpoint_post:
  beq.s .bounds
  movea.l -$50d6(a4),a1
 .bounds:
+ ; A native section search that finds no candidate ($de92) stores its
+ ; uninitialised local, for example below the road; the next search wraps it.
+ cmpa.l -$6720(a4),a0
+ blo .done
+ move.l a0,d0
+ btst #0,d0
+ bne .done
  lea 40(a0),a2
  cmpa.l a1,a2
  bhi .done
