@@ -244,4 +244,86 @@ or a measurement of host-display latency. Evidence: `d-public-visible-020`.
 
 This closes the main-image implementation only. D3 still needs the remaining
 bootstrap/low-memory and mixed-asset audit, broader CPU/memory selection and
-DMA coverage, and remeasurement of priority after this workload change.
+DMA coverage. The priority remeasurement below retains the current policy.
+
+
+## D3 bootstrap code and stack
+
+The loader, title and intro now also use the optional public allocation when
+Enhanced framerate is enabled and WHDLoad supplies actual Fast RAM. This
+bootstrap path uses 68000 instructions and does not require the later 020+
+simulation selection. The disabled toggle and unsuitable/missing allocation
+retain the native boot path. No additional memory is requested.
+
+| Allocation offset | Lifetime/use |
+|---|---|
+| `$00000..$04fff` | Existing main supervisor stack, guards and spacing |
+| `$05000..$413eb` | Title, then intro, then the complete main image |
+| `$42000..$48fcf` | 28,592-byte loader image and four external-call stubs |
+| `$49000..$4d01f` | Separate 16 KiB boot supervisor stack with guards |
+| `$4d020..$4ffff` | Remaining headroom |
+
+The loader must survive both title and intro, so its copy does not share their
+buffer. Its original stack is replaced with the separate guarded boot stack;
+the main stack initializer can then fill its own guard region without
+overwriting active startup frames. The observed boot high-water use is 220
+bytes in the complete intro-to-race test, with both guards intact. This is a
+measured run, not a proof that every possible interrupt nesting fits.
+
+`public_loader.s`, `public_boot.s` and `public_boot_tables.s` describe typed
+relocations for `lomain.ami`, `TITLE.AMI` and `INTRO.AMI`. The audit followed
+1,781/1,203/1,297 decoded instructions respectively, with explicit interrupt
+and dispatch roots. It also accounts for title palette pointers and intro
+palette, dispatch and callback pointers stored in data. These tables are not
+a numeric pointer scan. Every rewritten absolute operand and PC-relative
+instruction is checked against its native value before copying or publishing;
+a mismatch retains the original module. Each published copy flushes caches.
+
+Copper remains at its original Chip addresses: title `$86c8..$878b` and
+`$128a8..$1294b`, intro `$8904..$8a67`, loader `$4cc4..$4d5f`.
+The title/intro temporary startup lists matter even though they disappear
+from steady-state traces. PC-relative copper LEAs use appended stubs;
+loader PC-relative calls to the separately loaded `$8000` module use stubs
+that preserve the return address. The shared loader address `$4c98` and low
+fixed control cells remain authoritative in Chip and are still part of the
+broader low-memory audit. The original `$400` entry is not overwritten: a
+six-byte jump would corrupt the adjacent fixed control cell at `$404`.
+
+The 25,680-byte normal build SHA-256 is
+`ee6801d40db40b8e49c5830314b8f939264d07e49b88e55941f851cb0ee65f4d`.
+`d-public-boot-promote-build` is byte-identical to `d-public-boot-layout-build`.
+The all-11-cell `d-public-boot-layout-matrix` retains the preceding main-image
+rates exactly. `d-public-boot-layout-functional-*` passes 040/060 MMU policy,
+main stack guards, keyboard/CD32 and demo transitions.
+`d-public-boot-extra-{off-020,off-040,000-fast}` also passes toggle-off and
+native-68000-with-Fast short-race checks.
+`d-public-boot-layout-finish-{fixed,vary}` matches the accepted 16,230 hashes,
+72 sound events, six terminal regions, finish 16042 and exit 16231, and
+restarts cleanly. No simulation acceptance rule changed.
+
+`d-public-loader-sequence-layout-v2` captures title, intro, seven later intro
+stages and entry into a race. Title and intro screenshots have the exact
+native PNG hashes; DMA traces retain the Chip copper lists. The boot guards
+are intact. `d-public-boot-negative` deliberately mismatches the first check
+for all three modules: title/intro retain their native entries, the complete
+intro still runs, and the independently validated main image still relocates. Earlier entry polling sometimes missed the title and reached the
+intro; those failed probes are retained and are not positive evidence.
+An earlier private validation-table generator also modified the copy loop
+twice; it was discarded. Full diagnostics require the tables after runtime
+code so WHDLoad's signed-word patch-target offsets stay in range.
+
+## D2 remeasurement after the main-image move
+
+`d-public-priority-matrix` compares equal-layout builds differing only in the
+priority-selection immediate. Priority on/off rates are 16.7/16.6 on Fast
+020, 16.6/16.2 with NoCache, 25.0/25.0 on 030, 25.0/25.2 on 040 and
+25.1/26.8 on 060. Cache variants give the same decision. Keep native priority
+on 000/020/030 and clear it on enhanced 040/060. These diagnostic-layout
+rates are not interchangeable with the normal-build 060 rate of 28.6.
+The main-image normal build also passes the 030 Zorro III Fast-only short
+race (`d-public-z3`, 25.0 fps).
+
+D3 remains open for the low fixed-address data, other mixed CPU/DMA asset
+consumers, and the broader native-68000 main-code/stack path. Real-hardware
+040/060 cache coherency remains pending by agreement; the evidence above is
+emulator validation.

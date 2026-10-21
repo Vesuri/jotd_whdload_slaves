@@ -517,8 +517,9 @@ dictate the accelerated path's timestep.
     246,764-byte main code/data image into an optional 320 KiB public allocation,
     retaining DMA heaps in Chip. Main-image relocation, full-race equivalence,
     fallback, MMU, controls and visible-response checks pass in emulation. This
-    does not close the bootstrap/low-memory, mixed-asset or broader-selection
-    audit below. See memory-performance.md for exact evidence and limitations.
+    does not close the low-memory, mixed-asset or broader-selection
+    audit below. Loader/title/intro CPU code/data and a separate guarded
+    boot stack now also use public RAM; their Chip copper lists stay in place. See memory-performance.md for exact evidence and limitations.
   - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
     interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,
     references and relocation constraints. Account for every region; document why any

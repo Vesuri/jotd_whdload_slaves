@@ -383,6 +383,9 @@ Start	;	A0 = resident loader
 		sub.l	a1,a1
 		jsr	(resload_Patch,a2)
 		
+ IFD C_PUBLIC_MAIN
+		bsr public_loader_init
+ ENDC
 		move.l	expansion_memory(pc),A0	; expansion start
 		move.l	A0,D0	; and size
 
@@ -415,6 +418,9 @@ PatchIntro1:
 	sub.l	a1,a1
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
+ IFD C_PUBLIC_MAIN
+	bsr public_boot_title
+ ENDC
 	movem.l	(a7)+,d0-d1/a1-a2
 
 	move.l	$4C98.W,A0
@@ -431,6 +437,9 @@ PatchIntro2:
 	sub.l	a1,a1
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
+ IFD C_PUBLIC_MAIN
+	bsr public_boot_intro
+ ENDC
 	movem.l	(a7)+,d0-d1/a1-a2
 	
 	move.l	$4C98.W,A0
@@ -1009,6 +1018,11 @@ enhanced_decrunch_done:
 	include public_main.s
 	ENDC
 
+ IFD C_PUBLIC_MAIN
+ include public_loader.s
+ include public_boot.s
+ ENDC
+
 ReadSomeFile:
 	; Preloaded files can arrive before the previous screen blit finishes.
 	; Finish DMA before overwriting its destination (notably DASH2.LBM).
@@ -1223,3 +1237,7 @@ verify_c_selection:
 	IFD C_PUBLIC_MAIN
 	include public_refs.s
 	ENDC
+
+ IFD C_PUBLIC_MAIN
+ include public_boot_tables.s
+ ENDC
