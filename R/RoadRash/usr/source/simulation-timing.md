@@ -1,3 +1,34 @@
+## Displacement candidate: controlled wreck-boundary coverage
+
+A VERIFY-only fixture sets damage to 31 at simulation cursor 1000, one point
+below the native threshold of 32. It preserves D0 and changes no input, actor
+position, collision flag, race clock, exit flag or countdown. The ordinary
+recorded finish tape then drives a native collision, increasing damage to 33.
+The game displays WRECKED, exits at tick 2464 and restarts cleanly.
+This is controlled low-health coverage, not an unmodified natural wreck run.
+
+`c-approved-motion-wreck-boundary-{fixed,vary}` match all 2463 completed actor
+hashes, all three sound events, six terminal capture regions and end time.
+Both resets clear capture and road-fraction state. The terminal WRECKED image
+was inspected. Direct snapshot inspection confirms damage 33; observations at
+fields 1500/2000 show 31. All 2463 actor hashes also match the unseeded finish
+recording's prefix, including the 999 pre-seed hashes. Actor hashing excludes
+the global damage counter, so this prefix agreement is not itself evidence
+that damage is unchanged; direct reads are required and retained.
+
+The fixture and exact defines are retained in
+`c-approved-motion-wreck-boundary-source/fixture.patch` and each diagnostic
+build's `fixture.json`. Both normal companion builds remain byte-identical to
+the private displacement candidate. No fixture code enters production.
+Natural crash/recovery, successful finish and arrest coverage remains as
+recorded below; natural progression from undamaged bike to terminal wreck has
+not been demonstrated for this candidate.
+
+The original live-field distance gate remains unchanged and still fails two
+candidate configurations. Its proposed clarification awaits the user's
+answer. This additional transition coverage does not approve that proposal,
+promote the candidate, or complete C.
+
 ## Displacement candidate: remaining hardware, controls and fallback checks
 
 The unchanged private displacement candidate completes its eleven normal
