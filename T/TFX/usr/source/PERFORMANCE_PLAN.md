@@ -1317,7 +1317,7 @@ with pl_020. Status per change:
 |---|---|---|
 | Gouraud runs (11, 11b) | done | done (11c) |
 | Delta copy and its cache-line compare (step 6) | done | done on 030/060 (and TFX on 040); not on the 020 (no data cache, slower) |
-| mask_sprite8_040 (2) | done | TFX _MaskSprite unported: profile first |
+| mask_sprite8_040 (2) | done | done on every CPU (TFX's _MaskSprite is identical) |
 | fade_cols_040 (7) | done | unported: profile first |
 | rot_delta2_040 (8) | done | unported: profile first |
 | isqrt_040 (9) | done | unported: profile first |
@@ -1355,3 +1355,19 @@ Delta copy for plain TFX:
   5.2%; the 060 keeps the shadow. Confirm on hardware.
 - Placement: the 020 allocates no shadow, the 030 does.
 - Evidence: `tmp/dev/tmp/delta/`.
+
+mask_sprite8_040 for plain TFX:
+- TFX's _MaskSprite is byte-identical to tfx.020's, $1ba8 lower (all 32 relocations
+  correspond), and the routine reaches the game only relative to the parameter block.
+  pl_020 hooks $4c858 with the block at $4c970 (tfx.020: $4e400, $4e518).
+- Twins (`tools/opt20_mask8_test.py`, EXE=TFX): 192 cases pass on the 020, 030 and 060.
+- Same-seed action A/B, entry restored at run time against kept (delta copy in both):
+
+  | CPU | original loop | mask_sprite8 | change |
+  |---|---|---|---|
+  | 68020 14 MHz | 124 | 129 | +4.0% |
+  | 68030 50 MHz | 889 | 894 | +0.6% |
+  | 68040 core, TFX | 468 | 490 | +4.7% |
+  | 68060 50 MHz | 469 | 502 | +7.0% |
+
+- Evidence: `tmp/dev/tmp/mask/`.

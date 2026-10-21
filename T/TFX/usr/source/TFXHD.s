@@ -2801,6 +2801,8 @@ pl_020
         PL_PS   $4cb10,draw_mono_image_setup
 
         PL_NOP  $4c800,4                ; Never use blitter in _MaskSprite
+        PL_P    $4c858,mask_sprite8_040 ; all eight planes per mask word
+        PL_GA   $4c970,mask_params_ptr
         PL_P    $4bed8,box              ; _ClipBox
         PL_P    $4bf00,box              ; _Box
         PL_P    $4c138,draw_line_normal ; _DrawLine
@@ -3274,6 +3276,7 @@ project_int_040:
 ; D6 = size (h<<6|w), A0 = data plane 0, A1 = mask, A3 = destination plane 0,
 ; A4 = data plane stride. Leaves D0/D1/A0/A1, CCR, memory and the parameter
 ; block as the original loop does; the caller restores the other registers.
+; TFX's _MaskSprite is byte-identical $1ba8 lower: entry $4c858, block $4c970.
 mask_sprite8_040:
         move.l  mask_params_ptr(pc),a6
         move.w  d6,d2
