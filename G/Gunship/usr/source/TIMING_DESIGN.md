@@ -6963,7 +6963,7 @@ The older `test_runtime_actor_release_c.py` fails before launch, with no
 occupied guided slot or release event. The same event trace fails against
 an independently assembled pre-change core (`selector-before.hunk`), so it
 is retained as a pre-existing fixture failure, not counted as passing guided
-release coverage. Repairing that fixture remains open.
+release coverage at that checkpoint. The fixture repair below restores it.
 
 `selector-final-hellfire-pal-020` matches all 71 selected authoritative world
 states and all 1,395 common input records from the pre-change Hellfire run,
@@ -6972,3 +6972,27 @@ AC selector equals the corresponding committed selector. The unconditional
 next-pose mismatches still occur at worlds 27 and 45; those records remain
 explicit in the dependency audit. Future retargeting continuity, screen-space
 error and broader weapon/CPU/video acceptance remain open.
+
+
+### Restore guided-release fixture admission
+
+The empty synthetic scene makes deadline target selection call native map-panel
+fallback `h0+$46de`. That changes `h4+$1c5`, causing the native weapon routine
+to consume the fire edge as a panel action before weapon admission. The old
+fixture assumed its initial zero panel state would survive until launch.
+
+`test_runtime_actor_release_c.py` now explicitly stubs this panel transition
+with RTS, alongside its existing clear-terrain stub. Target selection, fire
+edge delivery, native weapon admission/allocation/launch, guided release and
+actor prediction remain active. No production code changed. This is isolated
+release coverage, not proof of target acquisition or panel behavior.
+
+Both the current core and independently assembled pre-selector-guard core
+pass the repaired test: 1,056 fields, weapons 1 and 3, PAL/NTSC, batches 1/3/10,
+and four identity-loss barriers. Release occurs at field 24 PAL / 27 NTSC;
+all twelve runs contain moving predicted views. Authoritative state and event
+traces agree across batch sizes, and release does not restart the independent
+actor's world-anchored fraction. Reports are retained in the ignored harness:
+`tmp/dev/tmp/c/selector-release-test.json` and
+`tmp/dev/tmp/c/selector-before-release-repaired-test.json`.
+The future Hellfire retargeting discrepancy remains unchanged and open.
