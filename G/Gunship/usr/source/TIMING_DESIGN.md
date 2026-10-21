@@ -6130,3 +6130,36 @@ backlog on this route, not a reason to raise the production threshold. The
 normal 64-field limit is unchanged. Failure captures and both diagnostic
 binaries/listings remain in the ignored harness; no overload is hidden or
 accepted by these experiments.
+
+### Live cached-runtime pause and resume
+
+`cache-pause-phase-020` (PAL 68020) and `cache-pause-phase-ntsc-060`
+(NTSC 68060) run the actual native Tab pause handler in the controlled
+cached-runtime fixture. Both runs are headless with host mouse disabled and
+verified effective binaries. The runner breaks at boundary execution after
+sampling is suspended, releases Tab, lets 120 native fields elapse inside
+pause, then releases pause with a key. It inspects the first runtime batch
+before any resumed field is consumed, followed by another 120 native fields.
+
+During pause, the player clock, accepted-field/deadline counters, scheduler
+world/step counts and history cursors remain unchanged; sampling and runtime
+ownership remain disabled. On resume, ownership returns, the clock epoch is
+rebased once to the current native field, phase is zero, the player preview
+cache is invalid, all motion fractions/interval-anchor state are cleared,
+and the delayed-control ring is reset with the correct PAL/NTSC length and
+neutral sample. The subsequent samples advance six/five completed worlds,
+respectively, without faults or further phase discard. There is no attempt
+to simulate the 120 paused fields as catch-up work.
+
+The first pause runner assertion incorrectly required TC_DROPPED to remain
+unchanged. Its correct contract counts the discarded pre-pause phase:
+35 PAL / six NTSC phase units in these runs. These are rational clock units
+(three per field), not whole fields or an overload during pause. The corrected
+runner verifies that exact increment and no later increment; the initial
+failed assertion/capture is retained. Earlier profile prose that labeled
+TC_DROPPED values as fields has also been corrected.
+
+This is live coverage for ordinary pause/release on those CPU/video pairs,
+including cache, delayed input and interval resets. It does not establish
+Escape during pause, every boundary command, death/landing/reload, or the
+remaining CPU/video lifecycle matrix.

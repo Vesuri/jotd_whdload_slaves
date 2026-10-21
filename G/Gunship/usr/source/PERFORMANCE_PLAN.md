@@ -883,7 +883,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C8b. Drop and report excess time. Exhausting the world allowance now
     yields to rendering with unread input and clock phase retained; only
     oversized field snapshots enter excess-time recovery. Pause, the map, menus and disk loads disable sampling,
-    discard unread active history, and rebase, so they create no catch-up debt.
+    discard unread active history, and rebase, so they create no catch-up debt. Live Tab
+    pause/release now freezes player/world/input-history state for 120 fields
+    on PAL 68020 and NTSC 68060. Resume resets phase, motion fractions,
+    delayed input, interval anchor and preview cache, then advances without
+    simulating paused time. Other lifecycle cases remain open.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
 - **C9. Validate.**
