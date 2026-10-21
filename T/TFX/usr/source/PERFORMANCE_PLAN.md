@@ -518,5 +518,26 @@ normal/CHIP_ONLY builds. FPSP files and all code outside the copy loop are uncha
 Evidence: `balanced-eight-off/on`, `delta-eight-*` under `tmp/dev/tmp/opt20/`.
 The earlier 4-byte candidate remains discarded; it passed native correctness but
 its performance needs symmetric remeasurement before any hardware recommendation.
-Revalidation of the earlier retained edge/projection margins is still pending.
+The edge margin is reconfirmed below; projection revalidation remains pending.
 The hardware target remains unverified.
+
+
+Pause checkpoint (2026-10-21): the corrected edge recheck uses the frozen
+3fafdb93 build and exactly one same-address 12-byte write on each side. All three
+starting game hunks (masking only the tested instructions) and reported CPU
+registers match; slave/emulator/seed/executable hashes agree. It reconfirms
+598 -> 601 publications/2,000 fields (+0.50%, 14.95 -> 15.025 nominal fps), with
+80/250 on both short prefixes and zero measured FPSP entries/cache flushes.
+Evidence: recheck-edge-off, recheck-edge-on-2 and recheck-edge-summary.json.
+The first enabled startup was rejected before timing and remains preserved.
+
+The corrected projection control records 563/2,000; its enabled attempt was
+rejected before timing because two starting hunks differ. No corrected projection
+speedup is claimed from this incomplete pair. Resume with that recheck before new
+optimization. Earlier asymmetric comparisons retain the audit caveat above.
+
+Work pauses at the user's request with production code at e0cd1fe7 and its
+verified 8-byte-copy build intact. The best corrected extended result remains
+607/2,000 (15.175 nominal fps), with 81/250 (16.2) in the short prefix. The 20 fps
+objective is unfinished; Apollo hardware measurements remain postponed. Local
+handoff, frozen builds and evidence remain under ignored tmp/dev/.
