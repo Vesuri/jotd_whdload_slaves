@@ -1,4 +1,4 @@
-; Native 040 arithmetic for the six hot transcendental instructions.
+; Native 040 arithmetic for observed transcendental instructions.
 ; Range reduction uses a split pi/2; atan uses two half-angle reductions.
 ; FPSP remains available for exceptional arguments / non-default FPCR.
 ; Trig fast range: |x| <= 2^20. Sine degree 17, cosine degree 18.
@@ -453,4 +453,127 @@ math_atan13: dc.l $bfa2f684,$bda12f68
 math_atan14: dc.l $3fa1a7b9,$611a7b96
 math_atan15: dc.l $bfa08421,$08421084
 math_pio2: dc.l $3fff0000,$c90fdaa2,$2168c235
+        mc68020
+
+; Bounded exp(x): |x| <= 64, FPCR=0; otherwise retain original FPSP.
+; Reduce x = k*ln(2)+r, evaluate degree-17 exp(r), multiply by exact 2^k.
+        mc68040
+native_exp:
+        move.w ccr,-(sp)
+        movem.l d0-d2/a0,-(sp)
+        fmovem.x fp0-fp7,-(sp)
+        fmove.l fpcr,-(sp)
+        fmove.x fp7,fp0
+        tst.l (sp)
+        bne .fallback
+        fmove.x fp0,-(sp)
+        move.w (sp),d0
+        lea 12(sp),sp
+        and.w #$7fff,d0
+        cmp.w #$7fff,d0
+        beq .fallback
+        fabs.x fp0,fp1
+        fcmp.s #64,fp1
+        fbgt .fallback
+        ftst.x fp0
+        fbeq .zero
+        bsr math_exp
+        fmove.x fp0,4(sp)
+        fmove.l fpsr,d0
+        or.l #$208,d0
+        fmove.l d0,fpsr
+        bra .restore
+.zero:
+        fmove.s #1,fp0
+        fmove.x fp0,4(sp)
+.restore:
+        fmove.l (sp)+,fpcr
+        fmovem.x (sp)+,fp0-fp7
+        movem.l (sp)+,d0-d2/a0
+        move.w (sp)+,ccr
+        rts
+.fallback:
+        fmove.l (sp)+,fpcr
+        fmovem.x (sp)+,fp0-fp7
+        movem.l (sp)+,d0-d2/a0
+        move.w (sp)+,ccr
+        dc.w $f200,$1c10 ; original fetox.x fp7,fp0
+        rts
+math_exp:
+        fmove.x fp0,fp1
+        fmul.d math_exp_invln2(pc),fp1
+        fmove.l fp1,d0
+        fmove.l d0,fp1
+        fmove.x fp1,fp2
+        fmul.d math_exp_ln2_hi(pc),fp2
+        fsub.x fp2,fp0
+        fmove.x fp1,fp2
+        fmul.d math_exp_ln2_lo(pc),fp2
+        fsub.x fp2,fp0
+        fmul.d math_exp_ln2_tail(pc),fp1
+        fsub.x fp1,fp0
+        fmove.d math_exp_c17(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c16(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c15(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c14(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c13(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c12(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c11(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c10(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c9(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c8(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c7(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c6(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c5(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c4(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c3(pc),fp1
+        fmul.x fp0,fp1
+        fadd.d math_exp_c2(pc),fp1
+        fmul.x fp0,fp1
+        fadd.s #1,fp1
+        fmul.x fp1,fp0
+        fadd.s #1,fp0
+        suba.w #12,sp
+        add.w #16383,d0
+        move.w d0,(sp)
+        clr.w 2(sp)
+        move.l #$80000000,4(sp)
+        clr.l 8(sp)
+        fmove.x (sp)+,fp1
+        fmul.x fp1,fp0
+        rts
+math_exp_invln2: dc.l $3ff71547,$652b82fe
+math_exp_ln2_hi: dc.l $3fe62e42,$00000000
+math_exp_ln2_lo: dc.l $3e9fdf47,$3de6af28
+math_exp_ln2_tail: dc.l $bb3c4c67,$fc0d0951
+math_exp_c2: dc.l $3fe00000,$00000000
+math_exp_c3: dc.l $3fc55555,$55555555
+math_exp_c4: dc.l $3fa55555,$55555555
+math_exp_c5: dc.l $3f811111,$11111111
+math_exp_c6: dc.l $3f56c16c,$16c16c17
+math_exp_c7: dc.l $3f2a01a0,$1a01a01a
+math_exp_c8: dc.l $3efa01a0,$1a01a01a
+math_exp_c9: dc.l $3ec71de3,$a556c734
+math_exp_c10: dc.l $3e927e4f,$b7789f5c
+math_exp_c11: dc.l $3e5ae645,$67f544e4
+math_exp_c12: dc.l $3e21eed8,$eff8d898
+math_exp_c13: dc.l $3de61246,$13a86d09
+math_exp_c14: dc.l $3da93974,$a8c07c9d
+math_exp_c15: dc.l $3d6ae7f3,$e733b81f
+math_exp_c16: dc.l $3d2ae7f3,$e733b81f
+math_exp_c17: dc.l $3ce952c7,$7030ad4a
         mc68020

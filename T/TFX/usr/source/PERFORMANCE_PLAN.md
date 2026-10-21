@@ -416,3 +416,26 @@ The longer window newly reaches FETOX at tfx.020:$51682 (204 FPSP entries disabl
 Investigate this additional site separately. Hardware measurement is postponed
 because the user does not currently have the Amiga available; optimization remains
 in progress and the 20 fps hardware goal is unverified.
+
+Native exponential follow-up: the extended flight's FETOX at $51682 now uses
+040 arithmetic for finite |x| <= 64 with FPCR=0. Other arguments and modes retain
+the original instruction/FPSP. This follows a recorded operand baseline; the
+read-only observer reproduces the prior build's complete non-math capture.
+
+Verification: 1,248 cases against an independent 80-digit exponential oracle
+(maximum relative error 1.539e-16), 726 exact non-default-mode comparisons, and
+four checker negative controls. A controlled 400-update flight executes 440
+exponentials, with identical input sequences and seven identical complete
+64,000-byte displayed buffers and PNGs. Two double-precision state cells differ
+by rounding; five existing clock values differ by two fields. All remaining
+hunk bytes match apart from the intentional instruction patch. This is not a
+bit-identical simulation-state claim or a new clock-equivalence waiver.
+
+The same-build 2,000-field timing pair remains 578 frames (14.45 nominal fps)
+with the helper off or on, while FPSP entries fall from 142 to zero. Retain this
+change for native 040 maths, without claiming an additional emulator speed gain.
+Exceptional inputs outside the bounded native range may still use FPSP.
+
+Final 040/CUSTOM5/060 gates pass; all 246 inspected 060 FPU sites remain
+unchanged. Normal and CHIP_ONLY builds have no relocation records, the normal
+build matches the tested bytes, and both shipped FPSP files remain unchanged.

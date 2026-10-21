@@ -249,6 +249,7 @@ native_fpu_patches:
         PL_L $517a4,$4eb80000+$20e ; native atan2
         PL_L $517f2,$4eb80000+$214 ; native atan
         PL_L $5183c,$4eb80000+$21a ; native asin
+        PL_L $51682,$4eb80000+$220 ; native exp
         PL_ENDIF
         PL_END
 
@@ -290,6 +291,7 @@ install_native_fpu:
         patch $20e,native_atan2
         patch $214,native_atan
         patch $21a,native_asin
+        patch $220,native_exp
         rts
 
         mc68040
