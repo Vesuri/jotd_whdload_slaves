@@ -469,6 +469,9 @@ dictate the accelerated path's timestep.
 
 ### D. Caches, bus priority and memory
 - **D1 Enable caches from the slave.**
+  - Emulator implementation and cache-state/page-policy checks are complete;
+    real-hardware coherency validation remains pending by agreement. See
+    [memory-performance.md](memory-performance.md) for the audit and evidence.
   - D1a Call `resload_SetCPU` on the selected enhanced path: instruction cache on
     (and data cache on 030 and later). Respect `NoCache`; use the single
     "Enhanced framerate" master toggle, with no additional user-facing cache option.
@@ -478,12 +481,19 @@ dictate the accelerated path's timestep.
     full-finish/restart and MMU page-policy checks pass.
   - D1b Call `resload_FlushCache` after every file load and decrunch (`ReadSomeFile`, the
     loader patches `$496A`/`$4DCA`/`$4800`/`$4844`/`$8E58`) and after `resload_Patch`.
+    The WHDLoad load/decrunch/patch APIs already flush on return. The native Ice!
+    depacker now has its own gated return-path flush; code-copy initializers flush too.
   - D1c Read `CACR` back (A3b) on 020/030/040/060. Find out why `Cache` had no effect on
     040/060 without an MMU (caches already on, or ignored).
+    Immediate post-SetCPU snapshots now pass across 16 configurations. Default
+    040/060 CACR already enables both caches; page policy and hardware cache-inhibit
+    signals remain distinct from the register, and emulator timing is not board timing.
   - D1d Coherency: chip buffers that the CPU writes and the blitter or copper reads (screens,
     copper list `$147e`, sprite data, bob masks) must not sit in a copyback cache. Verify on
     040/060 with WHDLoad's chip-memory cache mode, and with the `MMU` option functional
     boot.
+    All user/supervisor BaseMem pages are verified write-through on 040/060,
+    with data-cache emulation both disabled and enabled; Fast code/stack use copyback.
   - **Expected:** 020 12.5 → 16.7 fps, 030/50 → 16.8 fps (measured with WHDLoad `Cache`).
 - **D2 Turn off blitter priority in the race.**
   - D2a Find who sets `BLTPRI`: DMACON writes are `$a879a #$8280`, `$a882e #$8220`,

@@ -27,6 +27,18 @@ verify_cacr:
 .done:
 	rts
 
+; SetCPU returns the previous WHDLoad policy in d0; record it alongside the
+; actual post-call CACR. A separate sidecar preserves the A-series ABI.
+verify_cpu_set:
+	movem.l d0/a0,-(a7)
+	lea verify_cpu_setup(pc),a0
+	move.l d0,8(a0)
+	bsr verify_cacr
+	move.l d0,12(a0)
+	addq.l #1,16(a0)
+	movem.l (a7)+,d0/a0
+	rts
+
 verify_field:
 	addq.l	#1,$a5d4c          ; displaced instruction, including its CCR
 	move.w	sr,-(a7)
@@ -133,6 +145,9 @@ verify_mmu_policy:
 	dc.b "RRCMMU01"
 	dc.l 0,0,0,0,0,0       ; SRP, URP, ITT0/1, DTT0/1
 	ENDC
+verify_cpu_setup:
+	dc.b "RRDCPU01"
+	dc.l -1,-1,0 ; previous SetCPU policy, post-call CACR, calls
 	IFD C_STEP_BUILD
 verify_c_selection:
 	dc.b	"RRCSEL01"

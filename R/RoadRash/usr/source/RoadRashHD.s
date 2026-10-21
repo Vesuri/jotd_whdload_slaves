@@ -446,6 +446,9 @@ PatchLoader2:
 	move.l #WCPUF_Base|WCPUF_IC|WCPUF_DC,d1
 	move.l _resload(pc),a2
 	jsr (resload_SetCPU,a2)
+	IFD VERIFY
+	bsr verify_cpu_set
+	ENDC
 	ENDC
 	move.l	expansion_memory(pc),a1
 	lea	pl_c_simulation(pc),a0
@@ -579,6 +582,9 @@ pl_c_simulation
 	PL_PSS $9DE8,step_fused_lean,4
 	ENDC
 	PL_IFC2
+	IFD C_CACHE
+	PL_P $3284E,enhanced_decrunch_done
+	ENDC
 	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main
 	PL_P	$75B6,step_end
@@ -903,6 +909,22 @@ password_data_end
 ; < A1: destination address
 ; > D0: 0 (ok)
 ; > D1: filesize (not returning that leads to strange bugs...)
+
+	IFD C_CACHE
+; Native Ice! depacker exit, including its non-packed-input path. Unlike
+; resload_LoadFile[Decrunch] and resload_Patch, this game routine does not
+; flush caches itself. Restore its saved registers before calling WHDLoad;
+; FlushCache preserves registers, and the wrapper preserves CCR and a2.
+enhanced_decrunch_done:
+	movem.l (a7)+,d0-d7/a0-a1
+	move.w sr,-(a7)
+	move.l a2,-(a7)
+	move.l _resload(pc),a2
+	jsr (resload_FlushCache,a2)
+	move.l (a7)+,a2
+	move.w (a7)+,ccr
+	rts
+	ENDC
 
 ReadSomeFile:
 	; Preloaded files can arrive before the previous screen blit finishes.
