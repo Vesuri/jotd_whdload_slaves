@@ -899,7 +899,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     (current camera: 26/27). Retained endpoint-owner/ground replay also
     matches all 27 lists; supplying recorded next-tick impulses reproduces
     all 27 cameras exactly, while zero future impulses leave nine camera
-    differences. Future-impulse uncertainty, runtime cost, visibility and
+    differences. All 65 natively admitted impulse branches retain the same
+    candidate identities on this tape (6,912 RNG-adapter checks); this does
+    not certify visibility or selection. Broader input uncertainty, runtime cost, visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.
 - **C7. Per-frame work that is not presentation.**

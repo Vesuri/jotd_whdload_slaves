@@ -7469,3 +7469,41 @@ includes its native world updates. Runtime cost and visibility certification
 remain open; replaying an entire interval is an offline reference, not yet
 a suitable field-rate runtime implementation. The next steering policy must
 handle future-impulse uncertainty without delaying presentation a world tick.
+
+
+### Candidate identity envelope over admitted motion impulses (C6d)
+
+The captured route's next-tick camera uncertainty now has a bounded candidate
+check. `forecast_homing_impulse_envelope_c.py` replays each retained endpoint
+owner through the penultimate field, then evaluates every impulse packet
+admitted by native eligibility on that pre-deadline player. Each branch runs
+the final endpoint field, private ground resolver, camera and private target
+collector. Only private workspaces/event/stack writes are permitted; native
+hunks remain unchanged. Future controls, commands and world state remain
+outside this envelope and must not be inferred from it.
+
+Nineteen of the 27 intervals admit pitch -1/0/+1, and eight admit only zero;
+none of these captured states admits roll or heading disturbances. All 65
+branches preserve the same ordered candidate identities within their interval,
+and every result matches the recorded next collection. Both problematic
+retarget intervals 27→28 and 45→46 remain stable across their admitted
+impulses. The earlier nine camera differences therefore do not produce
+candidate-identity uncertainty on this particular neutral-control route.
+
+`audit_homing_impulse_eligibility_c.py` independently executes the assembled
+`world_motion_impulses` adapter for all 256 RNG byte values at each captured
+pre-deadline player (6,912 calls). Its output packet sets exactly equal the
+65 enumerated branches; the player remains unchanged. Immutable, distinct
+RNG return stubs avoid emulator translation-cache reuse during this audit.
+The initial unrestricted 45-packet sweep included combinations that native
+eligibility forbids at ground contact and was rejected by the endpoint
+preview; it is not an accepted envelope or a production failure.
+
+Raw evidence: `homing-impulse-envelope.json` and
+`homing-impulse-eligibility-audit.json` in the ignored harness. This exhausts
+only motion-impulse possibilities for the recorded pre-deadline states.
+Candidate pixel positions and visibility can still vary even when identities
+are stable; selection, projectile steering and near-view continuity are not
+certified. Runtime feasibility and broader controls/damage states remain
+open. The next gate is visibility/selection across this same admitted envelope,
+not publishing a selector merely because the candidate identities agree.
