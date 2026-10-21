@@ -393,8 +393,9 @@ uncached 020 distance, and both 040 cells, fail the one-percent gate against
 the reproduced committed B build. Default 030 also fails: extra debugger
 ranking reads perturbed B's timing; a matched direct-RAM-read debugger pair
 restores the reference and gives C -1.181%. Six other cells passed the earlier
-distance comparison, but the passive-read debugger still needs full-matrix
-and replay validation. See the reference/observer audits in simulation-timing.md;
+distance comparison. The passive-read debugger now passes all eleven normal
+matrix pairs and preserves the replay's handling outcome, but transient C state
+hashes differ across emulator builds; MMU/diagnostic adoption remains unvalidated. See the reference/observer audits in simulation-timing.md;
 do not mix pre-fix and committed B binaries or different observation schedules.
 Opponent trajectories/order still differ. C remains incomplete.
 

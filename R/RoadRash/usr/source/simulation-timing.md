@@ -1,3 +1,63 @@
+## Passive debugger: full normal matrix and handling replay
+
+`b-passive-matrix` and `c-passive-matrix` each run all eleven normal hardware
+cells twice, with and without the extra native-ranking reads: 44 runs total.
+Every pair matches distance, all 250 sampled native deltas, rotation count,
+and state hashes at fields 100, 590 and 600. These are normal binaries, with
+corrected B `6892f327...` and unchanged production C `85250ab3...`, using the
+private direct-read emulator `e0b2532a...` identified below. MMU functional
+runs are not included in this normal-matrix result.
+
+| Cell | B distance | C distance | Change | B / C fps |
+|---|---:|---:|---:|---:|
+| a500-1m | 3425028 | 3425028 | +0.000% | 8.5 / 8.5 |
+| a1200 | 3337152 | 3337152 | +0.000% | 12.5 / 12.5 |
+| a1200-fast | 3364352 | 3321603 | -1.271% | 12.5 / 12.5 |
+| a1200-fast+cache | 3332298 | 3321603 | -0.321% | 16.5 / 12.5 |
+| a1200-fast+nocache | 3364352 | 3301969 | -1.854% | 12.5 / 8.3 |
+| 030-50 | 3351364 | 3311794 | -1.181% | 13.3 / 16.7 |
+| 030-50+cache | 3341412 | 3311794 | -0.886% | 16.6 / 16.7 |
+| 040-25 | 3361313 | 3321603 | -1.181% | 22.5 / 22.9 |
+| 040-25+cache | 3361313 | 3321603 | -1.181% | 22.5 / 22.9 |
+| 060-50 | 3335434 | 3321603 | -0.415% | 23.1 / 23.1 |
+| 060-50+cache | 3335434 | 3321603 | -0.415% | 23.1 / 23.1 |
+
+`passive-distance-gates.json` records six passing and five failing A4a cells.
+The failures are default/NoCache 020, default 030 and both 040 cells. The matrix
+agreement verifies invariance to these additional ranking reads, not all
+possible debugger interventions or correctness of C's gameplay.
+
+The normal default-Fast-020 lap is also repeated. `b-passive-lap` matches all
+752 samples of `b-corrected-provenance-lap` exactly: crash onset 1376, final
+position 13031078, lateral -931 and native ahead-list tail
+`$a6360/$a62e0/$a63e0`. C's passive lap has one crash at 1374, final position
+13138349, lateral -901 and tail `$a63e0/$a62e0/$a6360`. Both finish at displayed
+rank 15; C still fails the native-order requirement.
+
+C replay observation needs a more precise qualification. Compared with the
+pinned emulator (`c-pinned-observer-lap`), the rebuilt callback control
+(`c-callback-control-lap`) differs in 16 intermediate state hashes and in the
+player flags at field 1288 (`4202` versus `4203`). All other reported gameplay
+fields, crash count and the complete final sample agree. The callback control
+and passive build (`c-passive-lap`) match every sample exactly. Omitting ranking
+reads under the passive build (`c-passive-legacy-lap`) also matches every shared
+sample field, including hashes. Thus those transient differences arise across
+emulator builds, not from the passive-read patch. Do not report full equivalence
+to the pinned C replay or silently overwrite its evidence.
+`passive-replay-comparison.json` retains the exact differing field numbers.
+
+A source audit recovered the original harness patch from AmigaXDev commit
+`013f0ee9865670dbb4ecb40498ff35682de33ca1`; the shared current patch has a
+different hash. Applying the six patches whose hashes are recorded for the
+pinned emulator to base `b70b1180` reconstructs all six modified source files
+byte for byte with the rebuilt callback control's source. Evidence is
+`pinned-emulator-source-audit/comparison.json`. Therefore the newer shared
+harness patch is not the cause of the control's transient C replay differences.
+The exact binary/build-level reason remains unproven. The original binary and
+shared checkout are unchanged. The passive debugger is still a private candidate;
+its broader normal matrix is validated, but MMU and diagnostic capture use need
+separate checks before general adoption. Production C remains unchanged.
+
 ## 030 reference discrepancy isolated to debugger memory reads
 
 The preceding reference audit's unresolved default-030 measurement is now
