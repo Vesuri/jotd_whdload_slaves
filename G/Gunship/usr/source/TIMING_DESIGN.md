@@ -7124,3 +7124,40 @@ frequency alone cannot remove that dependency or prove native endpoint
 agreement. The next implementation gate must test target transitions as
 well as held-target motion; no authoritative projectile changes have been
 made based on this camera stress fixture.
+
+
+### Per-slot decoy-contact prediction barrier
+
+`actor_preview_step` no longer rejects every candidate when native aggregate
+C754 reports a decoy contact. Native contact at +0C3BE jumps directly to
++0C514, bypassing the normal lifetime decrement at +0C456. This remains
+observable even when allocation and type are unchanged. Each accepted slot
+now requires its preview lifetime to be exactly the original lifetime minus
+one, in addition to existing allocation, eligibility, type, expiry and
+terrain checks. A contacted slot is rejected; unrelated completed free-flight
+steps retain their forward predictions. This supersedes the provisional
+whole-set decoy rejection described earlier.
+
+No native code, collision policy, lifetime, or actor endpoint is changed;
+only the candidate mask becomes more precise. The private context and
+runtime arena remain 2,950 and 34,082 bytes. Runtime payload grows by four
+bytes to 43,786; ordinary slave remains 6,088 bytes. All four build variants
+assemble. CUSTOM1 ownership and the experimental TIMING_RUNTIME gate remain
+unchanged.
+
+`test_actor_preview_c.py` passes 1,200 native step comparisons (7,200 slot
+inputs), repeats accepted endpoints against native terrain return -1, and
+checks write isolation and 122 rejected signatures. Explicit native decoy
+fixtures cover each of six individual contacts, all fifteen two-contact
+combinations, and six simultaneous contacts. All 22 candidate masks reject
+exactly the contacted slots and retain 90 unrelated slot predictions;
+private actor results match the real native routine and native memory is
+unchanged. The existing unchanged-type single-decoy case remains rejected.
+
+Presentation regression passes 1,072 fractions/repeats, 133 slot barriers
+and 72 selector barriers. Runtime checks pass 600 fields with 288 views
+across PAL/NTSC and batch sizes 1/3/10, plus the 1,056-field guided-release
+suite. Results are retained under ignored `tmp/dev/tmp/c/decoy-slot-*.json`.
+This removes an unrelated-projectile freeze in the private prediction path;
+live decoy visuals and the separate near-view homing/retarget gate remain
+open.

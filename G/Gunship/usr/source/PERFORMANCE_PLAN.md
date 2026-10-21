@@ -848,7 +848,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     poses into world state or pass them to collision, damage or AI. A standalone
     private six-slot native preview now matches 1,200 steps and rejects release,
     type changes, expiry, decoy hits and uncertain terrain contacts without
-    world writes. The experimental runtime now captures after world completion
+    world writes. Decoy-contact rejection is now per slot: the native skipped
+    lifetime decrement identifies contact without freezing unrelated actors
+    (22 native contact fixtures retain 90 unrelated predictions).
+    The experimental runtime now captures after world completion
     and publishes certified forward fractions into renderer-only scene inputs
     (600 PAL/NTSC fields, 288 publications, invariant across batch sizes).
     A separate field-stamped cache now covers guided first-release intervals

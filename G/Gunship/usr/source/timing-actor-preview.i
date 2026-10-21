@@ -120,11 +120,9 @@ actor_preview_step:
  lea AP_PLAYER(a6),a5
  lea AP_CODE(a6),a0
  jsr (a0)
- ; A hit on a decoy can leave type/allocation unchanged. Its aggregate
- ; counter does not identify the slot: conservatively reject this whole set.
+ ; Certify each slot separately below; an aggregate decoy count must not
+ ; freeze unrelated actors whose native step completes normally.
  moveq #0,d0
- tst.b AP_ACTORS+$c754-$c6a0(a6)
- bne .done
  movea.l AP_H0(a6),a0
  adda.l #$ba08,a0
  move.w (a0),d0
@@ -144,8 +142,15 @@ actor_preview_step:
  bne .reject
  cmp.b 6(a1,d1.w),d2
  bne .reject
- cmpi.b #1,0(a0,d1.w)
+ move.b 0(a0,d1.w),d2
+ cmpi.b #1,d2
  bls .reject
+ ; Native decoy contact at C3BE branches to C514 without the ordinary
+ ; lifetime decrement at C456, even when type/allocation remain unchanged.
+ ; Requiring exactly one decrement identifies that discontinuity per slot.
+ subq.b #1,d2
+ cmp.b 0(a1,d1.w),d2
+ bne .reject
  bra .next
 .reject:
  bclr d1,d0
