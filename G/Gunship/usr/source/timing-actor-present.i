@@ -11,7 +11,8 @@ AC_CURRENT equ AC_MASKS+4 ; four six-word coordinate/vertical arrays
 AC_BYTES equ AC_CURRENT+48 ; fifteen six-byte actor arrays
 AC_NEXT equ AC_BYTES+90 ; three six-word predicted coordinate arrays
 AC_SAFE equ AC_NEXT+36
-AC_SIZE equ AC_SAFE+2
+AC_SELECTED equ AC_SAFE+2 ; selector dependency for native bit-7 homing actors
+AC_SIZE equ AC_SELECTED+12
 
 ; a0=AC,a1=prepared AP,a2=AG,a3=committed P,d0=tick,d1=phase0..59 (caller requires phase < field rate).
 ; Return 0/-3, preserve others. Invalid phase writes nothing. Caller flushes
@@ -45,6 +46,9 @@ actor_present_capture:
  bsr actor_preview_step
  move.w d0,AC_SAFE(a6)
  movea.l AC_PREVIEW(a6),a0
+ move.l AP_SELECTED(a0),AC_SELECTED(a6)
+ move.l AP_SELECTED+4(a0),AC_SELECTED+4(a6)
+ move.l AP_SELECTED+8(a0),AC_SELECTED+8(a6)
  lea AP_ACTORS(a0),a0
  lea AC_NEXT(a6),a1
  moveq #17,d2
@@ -128,6 +132,22 @@ actor_present_build:
  move.l 0(a5,d5.w),d0
  cmp.l AC_GENERATIONS(a6,d5.w),d0
  bne .reject
+ ; Native bit-7 steering reads AA0A..AA15 unless bit-3/4 modes win first.
+ ; A different selector invalidates only dependent homing slots. Capture
+ ; it in AC, not the shared AP workspace reused by guided-release previews.
+ move.b 54(a3,d6.w),d0
+ andi.b #$98,d0
+ cmpi.b #$80,d0
+ bne .selector_ready
+ movea.l AC_PREVIEW(a6),a0
+ movea.l AP_H0(a0),a0
+ adda.l #$aa0a,a0
+ lea AC_SELECTED(a6),a1
+ REPT 3
+ cmpm.l (a0)+,(a1)+
+ bne .reject
+ ENDR
+.selector_ready:
  ; Certify current coordinates and vertical state against the captured pose.
  move.w d6,d5
  add.w d5,d5

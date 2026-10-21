@@ -861,6 +861,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     only the next selector reproduces the native poses exactly. The endpoint
     differences are 36/3/6 coordinate units; visible retargeting continuity
     and dependency certification remain open, with the raw failure retained.
+    Cached homing presentation now also records its selector dependency and
+    rejects a prediction if that selector has already changed, without
+    suppressing independent projectile modes. This does not resolve future
+    retargeting or its visual continuity; both mismatches remain recorded.
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.

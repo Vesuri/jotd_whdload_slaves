@@ -6934,3 +6934,41 @@ certification still require validation before C6/C9 acceptance. This finding
 must not be hidden by disabling Hellfire prediction or silently excluding
 all retargeted poses from the oracle. Other weapons, natural guided impacts
 and the broader CPU/video matrix remain open. No executable code changed.
+
+### Invalidate homing presentation after an observed selector change
+
+Actor presentation now retains the 12 selector bytes used to calculate its
+forecast in `AC_SELECTED`. Before borrowing a homing pose, it compares that
+snapshot with current native AA0A..AA15. A changed dependency returns the
+committed pose for that slot. Native bit-3/4 modes take priority over bit 7;
+only types satisfying `(type & $98) == $80` require this selector check.
+Independent projectiles keep their predictions. The snapshot belongs to each
+AC cache, since guided-release work reuses the shared AP preview workspace.
+
+Each actor cache grows from 218 to 230 bytes; two runtime caches increase
+the arena from 34,058 to 34,082 bytes. The controlled slave grows by 68 code
+bytes. Native state and the forecast arithmetic are unchanged. This guards
+an already-observed dependency change; it cannot know next-tick input or
+selection and does not eliminate the two future-retargeting discrepancies.
+
+Tests pass 72 selector changes (six slots × twelve bytes), including shared
+AP workspace reuse, plus four priority-mode controls. Existing 1,072 fraction
+views/repeats, 133 identity/state barriers and atomic clock/capture rejection
+checks pass with no presentation writes outside output/stack. The native
+actor-preview comparisons pass, as do 1,200 batch fields, the PAL/NTSC loop
+cases, 600 actor-runtime fields/288 presentation views, lifecycle and terminal
+retirement checks. All build variants assemble.
+
+The older `test_runtime_actor_release_c.py` fails before launch, with no
+occupied guided slot or release event. The same event trace fails against
+an independently assembled pre-change core (`selector-before.hunk`), so it
+is retained as a pre-existing fixture failure, not counted as passing guided
+release coverage. Repairing that fixture remains open.
+
+`selector-final-hellfire-pal-020` matches all 71 selected authoritative world
+states and all 1,395 common input records from the pre-change Hellfire run,
+with no active time/input loss. Native expiry remains world 85. Every saved
+AC selector equals the corresponding committed selector. The unconditional
+next-pose mismatches still occur at worlds 27 and 45; those records remain
+explicit in the dependency audit. Future retargeting continuity, screen-space
+error and broader weapon/CPU/video acceptance remain open.
