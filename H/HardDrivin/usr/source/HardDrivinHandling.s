@@ -1,9 +1,10 @@
 ; Arcade handling, CUSTOM1=2: a two-wheel car model replaces the native
 ; steering and skid. It steps once per PAL field (dt 1/50 s); a frame that
 ; took n fields runs n steps, each with its own field's mouse X. The native
-; engine still sets the forward speed; the model turns the car and adds its
-; sideways motion. Every hook is installed only for CUSTOM1=2, so the other
-; settings run exactly the release code.
+; engine drives the forward speed; the model turns the car, adds its
+; sideways motion and feeds its own forward speed change (tyre drag, slides,
+; v r) back to the native speed. Every hook is installed only for CUSTOM1=2,
+; so the other settings run exactly the release code.
 
 	IFND VERIFY_DRIVETRAIN_PHASE
 	FAIL "VERIFY_HANDLING requires VERIFY_DRIVETRAIN_PHASE"
@@ -20,6 +21,7 @@ HANDLING_FX_COAST equ 705	; engine braking limit, lb (0.2 g)
 HANDLING_K_LAT equ 457		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 3653	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
+HANDLING_K_PH equ 2435		; Q22 ft/s -> Q16 native velocity, after >> 16
 
 ; Model constants for one field, from tmp/arcade/tools/handling_fx.py.
 ; Speeds are Q6 ft/s words, the yaw rate and tyre deflection Q11 words
@@ -71,20 +73,26 @@ HS_VCR equ 58
 HS_FX equ 60
 HS_FYBF equ 62
 HS_FYR equ 64
-HS_MODEL equ 66			; size of the part the step uses
+HS_DUF equ 66			; output: forward speed the step adds beyond fx, Q22
+HS_FXBF equ 70
+HS_MODEL equ 72			; size of the part the step uses
 ; Game coupling
-HS_HEAD equ 66			; heading not yet applied, Q16
-HS_DX equ 70			; sideways motion not yet applied, Q8 long units
-HS_DZ equ 74
-HS_INDEX equ 78			; next mouse sample, in TS_FIELDS counts
-HS_PASS equ 82			; TS_PASSES of the last steering call
-HS_SKIP equ 86			; steps this frame leaves out (catch-up cap)
-HS_V8 equ 88			; velocity eighths at the last steering call
-HS_NPREV equ 90			; fields the last steering call stepped
-HS_LAST_HEAD equ 92		; G($994A) after the last steering call
-HS_LOOP equ 94			; fields left in this call
-HS_SKID equ 96			; tyres screeched in this frame
-HS_SIZE equ 98
+HS_HEAD equ 72			; heading not yet applied, Q16
+HS_DX equ 76			; sideways motion not yet applied, Q8 long units
+HS_DZ equ 80
+HS_INDEX equ 84			; next mouse sample, in TS_FIELDS counts
+HS_PASS equ 88			; TS_PASSES of the last steering call
+HS_SKIP equ 92			; steps this frame leaves out (catch-up cap)
+HS_V8 equ 94			; velocity eighths after the last steering call
+HS_NPREV equ 96			; fields the last steering call stepped
+HS_LAST_HEAD equ 98		; G($994A) after the last steering call
+HS_LOOP equ 100			; fields left in this call
+HS_SKID equ 102			; tyres screeched in this frame
+HS_PHASE equ 103		; the speed came from the phase solver
+HS_UBASE equ 104		; native forward speed of this call, Q6 ft/s
+HS_DU equ 106			; forward speed the model added in this call, Q22
+HS_CARRY equ 110		; native speed not yet applied, Q16 velocity
+HS_SIZE equ 114
 
 ; The slave's globals and Time.s lie beyond PC-relative range from this
 ; module: reach them from a local base with assembler-constant offsets.
@@ -279,8 +287,30 @@ _handling_steer:
 	muls.w -$6bb8(a4),d1
 	asr.l d2,d1
 	sub.l d1,HS_DZ(a0)
+	; the native speed plus what the model has added in this call; the
+	; speed stops at zero rather than changing sign
+	move.l HS_DU(a0),d0
+	swap d0
+	add.w HS_UBASE(a0),d0
+	move.w HS_UBASE(a0),d1
+	eor.w d0,d1
+	bpl.s .u_sign
+	moveq #0,d0
+.u_sign:
+	move.w d0,HS_U(a0)
 	move.l HS_PSI(a0),-(a7)
 	bsr _handling_step
+	move.l HS_DUF(a0),d0
+	add.l HS_DU(a0),d0
+	cmpi.l #HM_V_MAX,d0
+	ble.s .du_high
+	move.l #HM_V_MAX,d0
+.du_high:
+	cmpi.l #-HM_V_MAX,d0
+	bge.s .du_low
+	move.l #-HM_V_MAX,d0
+.du_low:
+	move.l d0,HS_DU(a0)
 	move.l HS_PSI(a0),d0
 	sub.l (a7)+,d0
 	cmpi.l #720<<16,d0
@@ -301,6 +331,7 @@ _handling_steer:
 .next:
 	subq.w #1,HS_LOOP(a0)
 	bne .field
+	bsr _handling_feedback
 .applied:
 	; whole heading units go through the native yaw-rate helper, which
 	; also keeps its pitch and roll coupling on slopes and in the loop
@@ -368,12 +399,14 @@ _handling_sync:
 	bsr _handling_reset
 .heading:
 	; velocity eighths, with the phase solver's fraction when it is current
+	sf HS_PHASE(a0)
 	move.w -$66d8(a4),d0
 	lea _phase_state(pc),a1
 	tst.w PH_VALID(a1)
 	beq.s .word_speed
 	cmp.w PH_CURRENT_V(a1),d0
 	bne.s .word_speed
+	st HS_PHASE(a0)
 	move.l PH_CURRENT_V(a1),d0
 	moveq #13,d1
 	asr.l d1,d0
@@ -394,7 +427,8 @@ _handling_sync:
 	muls.w #HM_K_U,d0
 	moveq #13,d1
 	asr.l d1,d0
-	move.w d0,HS_U(a0)
+	move.w d0,HS_UBASE(a0)
+	clr.l HS_DU(a0)
 	; the native net force over the last call's fields, held for this one
 	move.w d2,d0
 	sub.w HS_V8(a0),d0
@@ -461,6 +495,79 @@ _handling_sync:
 	move.w d1,HS_CONTACT(a0)
 	rts
 
+; A0 = state. The forward speed the model added in this call (cornering
+; drag, slides, wheelspin, v r) goes back to the native speed: a phase
+; solver that is current gets it in its anchor and current velocity, so
+; the native engine goes on from the new speed; otherwise it goes into
+; G($9928). The native engine steps from the anchor's whole speed word and
+; a phase ends on its whole endpoint, so only whole units are applied and
+; the fraction waits for later calls. The speed stops at zero rather than
+; changing sign. Clobbers D0-D2/A1.
+_handling_feedback:
+	move.l HS_DU(a0),d0
+	clr.l HS_DU(a0)
+	move.w d0,d1
+	swap d0
+	muls.w #HANDLING_K_PH,d0
+	mulu.w #HANDLING_K_PH,d1
+	clr.w d1
+	swap d1
+	add.l d1,d0
+	add.l HS_CARRY(a0),d0
+	moveq #0,d1
+	move.w d0,d1
+	move.l d1,HS_CARRY(a0)
+	clr.w d0
+	tst.l d0
+	beq.s .done
+	lea _phase_state(pc),a1
+	tst.b HS_PHASE(a0)
+	beq.s .word
+	move.l PH_CURRENT_V(a1),d1
+	bsr.s .add
+	add.l d0,PH_CURRENT_V(a1)
+	move.l PH_ANCHOR_V(a1),d1
+	bsr.s .add
+	add.l d0,PH_ANCHOR_V(a1)
+	move.w PH_CURRENT_V(a1),-$66d8(a4)
+	move.l PH_CURRENT_V(a1),d0
+	moveq #13,d1
+	asr.l d1,d0
+	bra.s .eighths
+.word:
+	move.w -$66d8(a4),d1
+	swap d1
+	clr.w d1
+	bsr.s .add
+	add.l d1,d0
+	swap d0
+	move.w d0,-$66d8(a4)
+	ext.l d0
+	asl.l #3,d0
+.eighths:
+	; the next force measurement starts from the speed the model left
+	cmpi.l #HANDLING_V8_MAX,d0
+	ble.s .eighths_high
+	move.l #HANDLING_V8_MAX,d0
+.eighths_high:
+	cmpi.l #-HANDLING_V8_MAX,d0
+	bge.s .eighths_low
+	move.l #-HANDLING_V8_MAX,d0
+.eighths_low:
+	move.w d0,HS_V8(a0)
+.done:
+	rts
+; D1 = speed, D0 = change; returns in D0 the change that stops at zero
+.add:
+	move.l d1,d2
+	add.l d0,d2
+	eor.l d1,d2
+	bpl.s .same_sign
+	move.l d1,d0
+	neg.l d0
+.same_sign:
+	rts
+
 ; A0 = state. Clears the model and starts its bookkeeping from the current
 ; heading and speed.
 _handling_reset:
@@ -474,6 +581,8 @@ _handling_reset:
 	clr.l HS_DX(a0)
 	clr.l HS_DZ(a0)
 	clr.w HS_NPREV(a0)
+	clr.l HS_DU(a0)
+	clr.l HS_CARRY(a0)
 	move.w -$66b6(a4),HS_LAST_HEAD(a0)
 	movem.l (a7)+,d0/a1
 	rts
@@ -624,14 +733,19 @@ _handling_step:
 	move.w HS_NF(a0),d6
 	lea _handling_front(pc),a2
 	bsr _handling_axle
-	; front force in body axes, the rest of fx to the rear wheels
+	; front force in body axes. The rear wheels get fx less the front
+	; wheel's own longitudinal force: fx is the native drive, and the drag
+	; of the steered front tyre is the model's (handling_fx fx_total=False)
 	moveq #14,d7
 	move.w d0,d2
 	muls.w HS_CD(a0),d2
+	move.l d2,d4
+	asr.l d7,d4
 	move.w d1,d3
 	muls.w HS_SD(a0),d3
 	sub.l d3,d2
 	asr.l d7,d2
+	move.w d2,HS_FXBF(a0)
 	muls.w HS_SD(a0),d0
 	muls.w HS_CD(a0),d1
 	add.l d1,d0
@@ -639,7 +753,7 @@ _handling_step:
 	move.w d0,HS_FYBF(a0)
 	move.w HS_FX(a0),d0
 	ext.l d0
-	sub.l d2,d0
+	sub.l d4,d0
 	cmpi.l #HM_FX_MAX,d0
 	ble.s .rt_high
 	move.l #HM_FX_MAX,d0
@@ -658,6 +772,17 @@ _handling_step:
 	lea _handling_rear(pc),a2
 	bsr _handling_axle
 	move.w d1,HS_FYR(a0)
+	; forward speed beyond fx: the tyres' deviation from it, and v r
+	add.w HS_FXBF(a0),d0
+	sub.w HS_FX(a0),d0
+	muls.w #HM_K_DT_M,d0
+	move.w HS_V(a0),d1
+	muls.w HS_RW(a0),d1
+	asr.l #3,d1
+	add.l d1,d0
+	asl.l #2,d1
+	add.l d1,d0
+	move.l d0,HS_DUF(a0)
 	; integrate: the heading from the old yaw rate, then the rates
 	move.w HS_RW(a0),d0
 	muls.w #HM_K_PSI,d0
@@ -1219,6 +1344,8 @@ _handling_math_test:
 	bsr .axle
 	move.w HS_FYSUM(a0),d0
 	ext.l d0
+	bsr .mix
+	move.l HS_DUF(a0),d0
 	bsr .mix
 	subq.w #1,HMV_FIELD(a4)
 	bne .field
