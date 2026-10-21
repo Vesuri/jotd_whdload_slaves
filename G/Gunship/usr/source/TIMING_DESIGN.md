@@ -7835,3 +7835,26 @@ all input, collision or NTSC paths. All four builds assemble: ordinary 6,088,
 experimental 44,680 and diagnostics 111,010 bytes; the constructor adds 232
 bytes without allocating runtime storage. Live lifecycle integration and
 performance acceptance remain open.
+
+
+### Exact forecast reuse entry (C6d)
+
+`forecast_player_get` accepts the constructor inputs plus a private output
+record. It tries exact checkpoint/context lookup first, returning 0 on a hit;
+a miss constructs a new tape, checks its initial checkpoint and returns 1.
+Rejection returns -3 without changing the output. Hits leave construction
+scratch and the private ground event untouched. Misses retain the constructor's
+requirement for an empty event, so callers must discard any previous deferred
+event before asking for a rebuild. No event is committed here.
+
+`test_forecast_reuse_c.py` carries tapes across the captured frames: PAL 020
+has nine hits and seven builds; PAL 060 has 26 hits and seven builds. All 49
+endpoints and stored checkpoints match independent replay, including rebuilding
+at each observed world-context change. Five forced-miss rejection cases per
+frame preserve output and source records. Guest writes stay private and
+registers are preserved. This replay uses stable prepared addresses and a
+constant lifecycle epoch; it does not establish live lifecycle invalidation
+or scene/model dependency safety. Evidence is `forecast-reuse-audit.json` in
+each capture directory plus the ignored harness test. All four builds pass:
+ordinary 6,088, experimental 44,742, diagnostics 111,072 bytes (+62 bytes).
+The entry is not yet called by runtime presentation.

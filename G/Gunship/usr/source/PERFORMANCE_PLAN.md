@@ -926,7 +926,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     access. Each captured hit takes 293 guest instructions. Private construction
     now runs the integrator and ground resolver into that tape, reproducing all
     49 captured endpoints and every checkpoint while rejecting five invalid
-    construction cases per frame. Runtime allocation,
+    construction cases per frame. A lookup-or-build entry reuses all 35 same-world
+    checkpoints across those frames and rebuilds at all observed world changes,
+    preserving output on rejection. Runtime allocation,
     lifecycle/dependency gates and unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and

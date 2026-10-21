@@ -90,3 +90,34 @@ forecast_player_build:
 .done:
  movem.l (sp)+,d1-d7/a0-a6
  rts
+
+; Same inputs as forecast_player_build, plus a6=private 86-byte output.
+; Return 0 cached, 1 rebuilt, -3 rejected. Output changes only on success.
+; Exact checkpoint/context lookup precedes construction. A hit does not touch
+; scratch or event. A miss requires an empty private event as for the builder.
+; No world/scene certificate is implied by a successful player forecast.
+forecast_player_get:
+ movem.l d1-d7/a0-a6,-(sp)
+ move.l d0,-(sp)
+ move.l a5,-(sp)
+ movea.l a6,a5
+ bsr forecast_tape_lookup
+ movea.l (sp)+,a5
+ tst.l d0
+ beq .hit
+ move.l (sp),d0
+ bsr forecast_player_build
+ tst.l d0
+ bne .done
+ movea.l a6,a5
+ bsr forecast_tape_lookup
+ tst.l d0
+ bne .done
+ moveq #1,d0
+ bra .done
+.hit:
+ moveq #0,d0
+.done:
+ addq.l #4,sp
+ movem.l (sp)+,d1-d7/a0-a6
+ rts
