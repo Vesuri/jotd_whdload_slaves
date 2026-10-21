@@ -1023,6 +1023,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     post-world prediction becomes ineligible when type 8 converts to effect
     type 9, without changing the allocation generation. Pixel/scanout, natural
     hits, other slots/weapons and lifecycle discontinuity coverage remain open.
+    Active-rocket pause/resume now passes on PAL 68020 and NTSC 68060:
+    actor/player/mask/cache state freezes for 120 fields; resume recaptures
+    the committed actor data at phase zero with fresh generation metadata.
+    All 38 eligible subsequent forecasts match native updates, and expiry
+    remains world 64. This does not yet cover active impact effects, guided
+    types, slot reuse across pause, other lifecycle exits or scanout continuity.
 - **C10. Option.** `CUSTOM1=1`, exposed as the boolean **Enhanced framerate**,
   is the master opt-in for all framerate enhancements. Omitted/zero retains
   original timing and rendering paths. All future C/D/E optimizations must

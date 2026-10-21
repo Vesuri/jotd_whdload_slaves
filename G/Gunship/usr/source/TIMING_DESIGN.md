@@ -6524,3 +6524,39 @@ routes continue for another 120 fields without a scheduler fault/history
 loss. This covers retained-world continuation across these display commands;
 it does not cover every command, other CPU/video pairs, death, landing,
 mission re-entry, disk loads or script-driven blocking UI. C remains open.
+
+### Active-rocket pause/resume and prediction recapture
+
+`anchor-actor-pause-pal-020` and `anchor-actor-pause-ntsc-060` extend live
+pause coverage to a real active type-8 rocket. The current controlled fixture
+launches through field-stamped controls, then pauses after world 24 with
+slot 5 lifetime 40. Both headless runs use verified binaries and disable
+host mouse input. No debugger writes alter gameplay state.
+
+During 120 emulator fields in native Tab pause, the complete 194-byte actor
+block, 86-byte player, allocation/eligibility/guidance masks and three
+weapon/ground/hit timer bytes remain unchanged. Both actor prediction caches
+and generation metadata also remain byte-identical, as do completed field
+and world counts. The three timer bytes are zero in these captures, so this
+is not evidence for freezing an active reload/hit timer or an animated
+impact effect; the live moving rocket is the nonzero-lifetime case.
+
+At the first resumed batch, clock phase is zero, the player cache is invalid
+and the guided-release cache is invalid. The primary actor cache has been
+rebuilt at the current logical world with phase zero and the new lifecycle
+generation metadata. A separate saved-state audit matches all 48 coordinate/
+vertical bytes, all 90 actor bytes and allocation/eligibility masks against
+the committed native data. Slot 5 remains eligible for prediction. This
+checks fresh recapture, rather than incorrectly requiring every cache to
+remain invalid after activation has seeded it.
+
+World captures 25..65 then verify 38 eligible next-pose forecasts against
+the following native updates on each setup. Rocket lifetime is exactly
+max(64-world,0), with release at world 64 on both; the pause does not consume
+world lifetime. No new clock phase is discarded after resume, and no history
+loss or scheduler fault occurs. The reset generations are zero and agree
+with the freshly captured cache; old-epoch identity is not reused with old
+prediction contents. This is committed/forecast-state evidence, not rendered
+scanout continuity. Active impact animation, other projectile/guidance types,
+slot-reuse across pause, death/landing and the remaining lifecycle matrix
+remain open.
