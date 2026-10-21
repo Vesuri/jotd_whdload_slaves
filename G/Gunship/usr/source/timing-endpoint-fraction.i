@@ -35,6 +35,9 @@ endpoint_fraction_step:
 	bne .bad
 .scale:
 	move.l d0,d3
+	; A validated remainder is less than one unit. With no new motion,
+	; the increment is zero and the residue stays unchanged; avoid MUL/DIV.
+	beq .whole
 	bpl .positive
 	neg.l d0
 .positive:

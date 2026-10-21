@@ -5268,3 +5268,34 @@ the endpoint owner from 5.28% to 3.65%, its scheduled wrapper from 4.59% to
 2.95%, and player_step from 2.81% to 1.72%. This short idle-route sample is
 not sufficient to establish sustained rate across heavy scenes or display
 latency; C9 remains open.
+
+### Avoid fraction arithmetic when the native motion delta is zero
+
+After validating the remainder, delta and interval length,
+`endpoint_fraction_step` now returns zero directly for a zero delta. Its
+validated residue is already below 1360, so the old multiply/divide produced
+exactly zero increment and the same residue. The fast path does not bypass
+invalid-input rejection or discard fractional motion from earlier fields.
+It uses the existing MOVE flags and adds one conditional branch.
+
+The arithmetic fixture passes 9,846 cases, including every remainder 0..1359
+for each supported interval length with zero delta, invalid zero-delta
+arguments, signed extrema, random inputs and interval-length changes.
+PAL/NTSC assembled loop comparisons for batches 1/3/10/80 and all four slave
+build variants pass.
+
+`tmp/dev/tmp/c/live-loop-000-zero-long` extends the same headless PAL idle
+route through thirty 100-field observations, after a 100-field profile.
+Between first and last observations, publication advances 3,134 fields
+(62.68 emulated seconds) and completed worlds advance by 188: 2.99936 ticks/s.
+The integer count has an endpoint quantization bound of one tick over that
+window (0.01596 ticks/s). No history is lost/discarded and no scheduler fault
+is recorded. Sampled publication-to-consumption backlogs range from 4 to 16
+fields and finish at 7, rather than growing continuously as before. The last
+observation has 3,450 applied player fields, 206 completed worlds and one
+world deadline currently executing.
+
+This establishes near-3-Hz throughput only for this PAL idle scene on the
+68000 configuration. It does not establish display/input latency, continuous
+rendering, heavy-scene throughput, NTSC rate, or cross-CPU world equality.
+Those C9 gates remain open.
