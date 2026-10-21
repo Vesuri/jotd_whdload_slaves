@@ -894,8 +894,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     Native collector replay now identifies the altitude-derived range limit
     at +A4B0 as the exact gate in all four boundary captures; the next limit
     is already written by the preceding world weapons update. Forecasting
-    collection with endpoint geometry, field-rate projectile integration and
-    near-pass validation remain open.
+    collection with a provisional native player endpoint now matches ordered
+    candidate identities in 27/27 captured intervals without gameplay writes
+    (current camera: 26/27). Actual endpoint-owner state, visibility and
+    steering certification, field-rate projectile integration and near-pass
+    validation remain open.
 - **C7. Per-frame work that is not presentation.**
   - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation
     `+0BE5A` keeps its field-based timers. Replay countdowns and animation once per

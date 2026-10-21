@@ -7390,3 +7390,43 @@ range limit and endpoint camera/object geometry, preserving native order and
 visibility certification. These observations do not justify publishing an
 early authoritative target or omitting field-rate projectile handling required
 by C6d; they identify inputs that its steering forecast must respect.
+
+
+### Private next-view candidate experiment (C6d)
+
+`forecast_homing_candidates_c.py` now composes the existing native player
+step, camera builder and private scene/candidate collector against the saved
+PAL 68060 worlds 20..46. Each experiment starts from the preceding world's
+hunks and already-updated range limit. It compares three cameras: current
+player, a fresh rate-3 neutral-input player step, and the recorded next player
+as an explicitly future-state oracle. World/model/object inputs remain at
+the preceding world. No future selector or pixels enter the forecast lane.
+
+The forecast candidate count and ordered identities match the recorded next
+collection in all 27 intervals. The current-camera lane matches 26, missing
+world 45→46's reacquisition; the oracle-camera lane matches all 27. Both
+previously failing Hellfire transitions therefore have reproducible private
+candidate forecasts. This is candidate-list evidence, not complete target
+state, pixel visibility, selected identity, projectile motion or visual
+continuity acceptance.
+
+Native-source setup restores the three installed presentation heading loads
+and the two installed target collector calls in the offline emulator before
+preparing the original world-view clone. The experiment never changes the
+running slave. During execution, a guest write hook permits only private
+player/state/camera/scene/target workspaces and stack. All 81 candidate views
+pass this write boundary, and captured native hunks remain unchanged.
+Setup restoration and emulator writes are outside that execution assertion.
+
+The fresh rate-3 player step is deliberately provisional. All 27 full player
+records differ from the next captured record (which also includes world
+updates), and its camera differs from the oracle in 11 intervals. Candidate
+identity agreement must not hide those differences. Next replace this
+provisional endpoint with a forecast that preserves the installed endpoint
+owner's fractions, delayed controls and interval anchor; then establish
+visibility and steering certification before any runtime integration. Do not
+publish an early authoritative selector or claim that C6d's required
+field-rate projectile behavior is implemented.
+
+Raw results are `tmp/dev/tmp/c/homing-candidate-forecast.json`, including all
+player-byte differences and each camera, count and identity comparison.
