@@ -956,7 +956,15 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     Profiling then identifies repeated scene collection as the dominant cost.
     Exact same-view reuse within one impulse check lowers repeated-query mean
     instructions from 66,467 to 57,334; live draws rise only slightly to 11.84/s,
-    with all 20 matching-time frames pixel-identical. Future input
+    with all 20 matching-time frames pixel-identical. A stronger installed
+    endpoint audit subsequently found that those earlier runs admitted an
+    incorrect world-27 homing forecast: publication and pixel equality did
+    not establish endpoint correctness. Target collection now refreshes its
+    coordinate/range table after loader-time preparation, matching the
+    ordinary private scene path. The corrected PAL 060 run rejects the
+    ambiguous views; PAL 060, PAL 020 and NTSC 060 repeats match all 30
+    checkable admitted endpoints to the next native world update, with no
+    sampled timing/input losses. Future input
     uncertainty, further cost optimization, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input

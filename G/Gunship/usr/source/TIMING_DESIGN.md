@@ -8199,3 +8199,50 @@ Evidence is `installed-forecast-profile.json` in both recent capture directories
 `forecast-view-reuse-combat-pal-060/{forecast-live-audit,view-reuse-live-comparison}.json`,
 `runtime-forecast-view-key-audit.json` and ignored harness tests. All four builds
 pass: ordinary 6,088, experimental 46,608 and diagnostics 112,938 bytes (+92).
+
+
+### Refresh target-collector ranges after native initialization (C6d)
+
+A stronger installed audit compares each admitted `RF_ACTOR_NEXT` with the
+first recorded native projectile coordinates in the following world. It
+exposes an error hidden by the earlier publication and matching-bitplane
+checks: at world 27 the forecast is (45075,19904,0), while the next native
+update is (45039,19907,6). The earlier same-view-reuse runs have five such
+mismatches on PAL 060, two on PAL 020 and five on NTSC 060. None records
+sampled timing/input losses. Earlier live publication evidence must not be
+read as evidence of correct future endpoints.
+
+The loader prepares private scene clones before the native coordinate/range
+table is initialized. `scene_private_step` already refreshes all 184 bytes
+from hunk 6 +18DC before reconstructing actor coordinates. The duplicated
+`scene_target_common` path omitted that refresh, so its cold ranges admitted
+a target using stale projected depth. Preparing offline fixtures from a
+mid-flight image hid the problem. Target collection now performs the same
+refresh before building its private scene state.
+
+The actor fixture deliberately zeros the private coordinate table after
+preparation: all 20 admitted native endpoints still match and seven ambiguous
+states reject. All 33 candidate/camera fixtures and the equal-camera,
+changed-view-mode reuse test pass. All four builds pass: ordinary 6,088,
+experimental 46,628 and diagnostics 112,958 bytes (+20).
+
+The corrected headless PAL 060 combat capture has 28 frames, 17 published
+homing predictions and 13 comparisons with a recorded subsequent world:
+all 13 match exactly. The ambiguous views now reject certification. There
+are no sampled clock, scheduler, input-history or command losses/faults;
+observed drawing is 12.05/s over this short window. This is partial endpoint
+evidence; rejection falls back to the existing bounded prediction and does
+not establish near-pass continuity or broad gameplay acceptance.
+Evidence: ignored `forecast-ranges-combat-pal-060` captures,
+`forecast-live-audit.json`, `live-forecast-endpoint-audit.json` and
+`test_runtime_forecast_actors_c.py`.
+
+PAL 020 repeats have 14 sampled frames, seven published predictions and five
+checkable endpoints, all exact (5.96 draws/s). NTSC 060 has 28 frames,
+16 published predictions and 12 checkable endpoints, all exact (12.27 draws/s).
+Both repeats have zero sampled timing/input losses or faults. Together the
+three runs check 30 admitted endpoints without a mismatch. Their evidence
+uses the same audit filenames under `forecast-ranges-combat-pal-020` and
+`forecast-ranges-combat-ntsc-060`. Both private target-collection entry-point
+regressions additionally pass 48 scenes each, with no native writes; the
+player-bound variant still passes with its native player operands poisoned.

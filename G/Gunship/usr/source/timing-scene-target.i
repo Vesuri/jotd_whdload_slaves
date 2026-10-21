@@ -163,6 +163,17 @@ scene_target_common:
  movea.l SCT_TARGET(a6),a3
  clr.w WT_STATE+2(a3)
  ; Same camera/context construction as scene_private_step.
+ ; Loader-time clones precede native transform-range initialization.
+ ; Refresh the coordinate table just as scene_private_step does; otherwise
+ ; cold forecast collectors can project zero/stale depth and admit a target
+ ; the real next world rejects. Rebuild actor coordinates afterward.
+ movea.l SCENE_H6(a6),a3
+ lea $18dc(a3),a3
+ lea SCENE_COORD(a6),a4
+ moveq #$b8/2-1,d1
+.coords:
+ move.w (a3)+,(a4)+
+ dbf d1,.coords
  movea.l a1,a0
  movea.l a2,a1
  movea.l SCENE_H6(a6),a2
