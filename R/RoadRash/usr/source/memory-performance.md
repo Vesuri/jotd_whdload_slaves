@@ -437,3 +437,46 @@ The final normal matrix is recorded in `d-public-assets-v4-matrix` plus
 `d-public-assets-v4-matrix-tail`. The initial 040 Cache probe detected race
 entry late; its retry and both 060 cells pass. The harness now validates the
 public entry instruction before accepting a trampoline destination.
+
+## D3 music headers and patterns
+
+`public_audio.s` copies the CPU prefix of each ProTracker module after native
+initialization has built the sample-pointer table. Only the module-base owner
+changes; all Paula sample pointers retain their original Chip addresses.
+The two installation sites check the original BSET instruction and relocated
+flag address before replacing it. The wrappers preserve registers and native
+condition codes, including BSET's Z result, and enable playback after publication.
+Unrecognized signatures or oversized prefixes retain native storage.
+
+The main player uses a 20 KiB slot at public offset `$5c000`, bringing the
+optional allocation to 388 KiB. The boot player uses the otherwise idle
+`$28000..$37fff` portion of the future main-image allocation. Its stop routine
+runs before that image overwrites the slot. The separate boot stack and title/
+intro images do not overlap it. The original Chip modules remain allocated.
+
+The eight audited M.K. modules have these CPU-prefix sizes: intro 61,500 bytes,
+end 17,468, each of the five level songs 7,228, and score 2,108. The copy counts
+all 128 order entries and bounds the resulting pattern prefix before writing.
+Native code still initializes sample data in Chip before the metadata copy.
+
+The first candidate (`d-public-audio-finish-*`) matches the accepted D2/C
+16,230 simulation hashes, 72 sound events, six terminal ranges, finish 16042,
+exit 16231 and restart. `d-public-audio-sequence` covers title, seven intro
+stages and race entry; all 31 race sample pointers remain Chip. Representative
+normal rates are A500 8.5, Fast 020 16.7 and 060 28.1 fps. The 060 result is
+below the preceding 28.3; this is recorded, not claimed as a speed improvement.
+
+FX.ICE and fx2.ice have eleven/eight 8-byte descriptors. These use an existing
+128-byte gap at public offset `$4e000`. Rebased relative offsets keep each of
+the four native ADD.L consumers producing the original Chip sample pointer.
+The native FX initialization remains responsible for flags and audio hardware.
+
+Final candidate `d-public-audio-v3-build/RoadRash.slave` has SHA-256
+`c4e013c4630bce3bbfc6858c51e0333f3444815c96635713ee7a53e85c5caff1`.
+`d-public-audio-v3-finish-*` passes both cadences and the accepted D2 comparison.
+`d-public-audio-v3-sequence-proof` verifies the entire 61,500-byte intro prefix
+against its Chip original, both players' sample pointers, and each race FX2
+sample address against its original descriptor. An earlier probe incorrectly
+assumed eleven records for FX2; the corrected probe reads the native header.
+`d-public-audio-v3-matrix-retry` records the representative normal matrix;
+the initial Chip-only attempt timed out in the emulator debugger.

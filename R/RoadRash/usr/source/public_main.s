@@ -77,6 +77,31 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ move.l a5,a1
+ adda.l #$35236,a1
+ cmpi.l #$08f90001,(a1)
+ bne .audio_done
+ move.l a5,d0
+ addi.l #$35ad0,d0
+ cmp.l 4(a1),d0
+ bne .audio_done
+ lea public_audio_main(pc),a0
+ move.w #$4ef9,(a1)
+ move.l a0,2(a1)
+ move.w #$4e71,6(a1)
+.audio_done:
+ move.l a5,a1
+ adda.l #$36050,a1
+ cmpi.w #$23c8,(a1)
+ bne .fx_done
+ move.l a5,d0
+ addi.l #$36106,d0
+ cmp.l 2(a1),d0
+ bne .fx_done
+ lea public_audio_fx(pc),a0
+ move.w #$4eb9,(a1)
+ move.l a0,2(a1)
+.fx_done:
  lea public_asset_pool(pc),a0
  move.l a5,d0
  addi.l #$4b000,d0

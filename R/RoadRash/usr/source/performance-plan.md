@@ -514,9 +514,9 @@ dictate the accelerated path's timestep.
     Retain native priority on 000/020/030; remeasure after D3/E changes the workload.
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
   - **Main-image progress:** enabled Fast-RAM paths now move the complete
-    246,764-byte main code/data image into an optional 368 KiB public allocation,
+    246,764-byte main code/data image into an optional 388 KiB public allocation,
     retaining DMA heaps in Chip. This reservation includes
-    CPU image-description tables. This includes native 68000 code/data and stack,
+    CPU image-description tables and music patterns. This includes native 68000 code/data and stack,
     with its original simulation retained. Main-image relocation, full-race equivalence,
     fallback, MMU, controls and visible-response checks pass in emulation. This
     does not close the low-memory, mixed-asset or broader-selection

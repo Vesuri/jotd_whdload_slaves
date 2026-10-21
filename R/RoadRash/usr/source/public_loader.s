@@ -78,6 +78,19 @@ public_loader_init:
  move.l (a6)+,(a2)
  bra .next
 .stack:
+ move.l a4,a1
+ adda.l #$6014,a1
+ cmpi.l #$08f90001,(a1)
+ bne .audio_done
+ move.l a4,d0
+ addi.l #$68ec,d0
+ cmp.l 4(a1),d0
+ bne .audio_done
+ lea public_audio_boot(pc),a0
+ move.w #$4ef9,(a1)
+ move.l a0,2(a1)
+ move.w #$4e71,6(a1)
+.audio_done:
  move.l a5,a0
  adda.l #$49000,a0
  move.w #$4020/4-1,d0
