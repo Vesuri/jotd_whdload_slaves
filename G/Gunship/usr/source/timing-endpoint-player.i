@@ -17,7 +17,8 @@ EP_WORK_SOURCE equ EP_WORK_BASE+MP_RECORD_SIZE
 EP_WORK_PACKET equ EP_WORK_SOURCE+MP_RECORD_SIZE
 EP_WORK_PREVIOUS equ EP_WORK_PACKET+PS_INPUT_SIZE
 EP_WORK_IMPULSE equ EP_WORK_PREVIOUS+2
-EP_WORK_SIZE equ EP_WORK_IMPULSE+2
+EP_WORK_CACHE equ EP_WORK_IMPULSE+2
+EP_WORK_SIZE equ EP_WORK_CACHE+4
 
 ; a0=EP_SIZE state, d0=rate 3/50/60, d1=previous Y -1..1.
 ; Return 0/-1; other registers preserved. Invalid input changes nothing.
@@ -111,13 +112,24 @@ endpoint_player_begin:
 ; Caller supplies validated code and distinct buffers, serialized foreground.
 endpoint_player_step:
 	movem.l d1-d7/a0-a6,-(sp)
+	lea -EP_WORK_SIZE(sp),sp
+	clr.l EP_WORK_CACHE(sp)
+	bra endpoint_player_step_common
+
+; Same ABI, plus a5=optional exact-input cache (null bypasses).
+; Cache storage is outside transactional player state. A rejected downstream
+; step may leave a reusable pure preview there, never published player motion.
+endpoint_player_step_cached:
+	movem.l d1-d7/a0-a6,-(sp)
+	lea -EP_WORK_SIZE(sp),sp
+	move.l a5,EP_WORK_CACHE(sp)
+endpoint_player_step_common:
 	move.l a0,d2
 	move.l a1,d3
 	move.l a2,d4
 	move.l a3,d5
 	move.l a4,d6
 	move.l d0,d7
-	suba.w #EP_WORK_SIZE,sp
 	movea.l sp,a6
 	move.w 4(a4),d1
 	or.w 6(a4),d1
@@ -222,7 +234,8 @@ endpoint_player_step:
 	lea EP_WORK_PACKET(a6),a4
 	moveq #0,d0
 	move.w EP_TICK(a6),d0
-	bsr player_step_interval
+	movea.l EP_WORK_CACHE(a6),a5
+	bsr player_step_cached_interval
 	tst.l d0
 	bne .bad
 	movea.l a6,a0
@@ -280,7 +293,8 @@ endpoint_player_step:
 	movea.l d6,a4
 	moveq #0,d0
 	move.w EP_TICK(a6),d0
-	bsr player_step_interval
+	movea.l EP_WORK_CACHE(a6),a5
+	bsr player_step_cached_interval
 	tst.l d0
 	bne .bad
 	movea.l a6,a0

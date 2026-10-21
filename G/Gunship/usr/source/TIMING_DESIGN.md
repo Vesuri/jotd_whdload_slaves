@@ -6006,3 +6006,43 @@ storage out of the per-field transactional state copies, reset it with the
 runtime lifecycle, and compare live rate and authoritative state. Any runtime
 use remains behind the default-off CUSTOM1 Enhanced framerate toggle. The
 87% reuse observation alone does not close C4f or C9.
+
+### Runtime motion-cache integration and 68000 comparison
+
+The experimental runtime now binds that exact-input cache through the optional
+SE_CACHE pointer in its ground/player context. The ordinary endpoint entry
+still bypasses caching. Its cached entry uses the same transactional motion
+path; only the two pure native-preview calls can reuse results. The 348-byte
+cache sits at the end of the arena, outside the per-field state copies. The
+context grows by four bytes, giving a 34,058-byte arena. Activation clears
+cache validity on every lifecycle epoch; prepared code and its tables remain
+immutable. A failed later transaction may retain a pure preview in the cache,
+but publishes no player state. All installation remains CUSTOM1-only and
+TIMING_RUNTIME-only.
+
+The assembled cached/uncached endpoint comparison matches every player and
+owner-state byte across 1,760 PAL/NTSC fields and four player configurations,
+including short between-tick pulses, command changes and deadline impulses.
+It avoids 1,136 of 1,824 native previews; 52 repeated-field rejections preserve
+player/owner state. The standalone 640-comparison cache test still passes.
+Runtime preparation at two arena addresses, explicit lifecycle validity reset,
+loop ownership, 1,200 batch fields, 800 gauge fields and 16 native target
+comparisons pass. The ordinary slave remains 6,088 bytes; runtime is 42,566
+bytes and VERIFY/input runtime variants are 108,896 bytes.
+
+`cache-live-000` and `cache-bypass-live-000` use the same headless a500-fast
+engine-start/takeoff route with host mouse disabled. The bypass fixture has
+the same layout and cache allocation but a null cache pointer and no validity
+write through that null pointer. Both effective binaries are hash-checked.
+At the final common producer field 1,366, the cached run has 80 completed
+world ticks, 1,350 applied player fields and no lost/discarded history. Bypass
+has 71 completed worlds, 1,206 applied fields and 136 discarded records.
+Across the nine snapshots, maximum sampled producer/consumer lag is 13 fields
+with caching versus 61 without it. These are sampled lags, not worst-case
+bounds or display latency. The route is not a bit-exact trajectory comparison:
+overload discards in bypass change the input history actually consumed.
+
+The integrated cache removes the previously observed overload on this
+particular route. It does not establish heavy-scene throughput, display
+latency or the remaining C4e/C9 gameplay matrix. Matched retained-input world
+captures across CPUs remain necessary after this optimization.

@@ -13,7 +13,8 @@ SE_COMMITTED equ 28
 SE_SIZE equ 30
 SE_GROUND equ SE_SIZE
 SE_EVENT equ SE_SIZE+4
-SE_GROUND_SIZE equ SE_SIZE+8
+SE_CACHE equ SE_SIZE+8 ; optional player preview cache, initially null
+SE_GROUND_SIZE equ SE_SIZE+12
 SE_WORK_PLAYER equ EP_SIZE
 SE_WORK_COMMAND equ EP_SIZE+MP_RECORD_SIZE
 SE_WORK_SIZE equ SE_WORK_COMMAND+8
@@ -175,7 +176,18 @@ scheduled_endpoint_common:
 	movea.l SE_SINE(a6),a3
 	movea.l SE_PACKET(a6),a4
 	move.l d6,d0
-	bsr endpoint_player_step
+	; Basic contexts have no optional extension. The ground context owns
+	; a cache pointer; preserve the private transaction base across dispatch.
+	move.l a5,-(sp)
+	tst.w SE_WORK_SIZE(a5)
+	beq .uncached
+	movea.l SE_CACHE(a6),a5
+	bra .player_step
+.uncached:
+	suba.l a5,a5
+.player_step:
+	bsr endpoint_player_step_cached
+	movea.l (sp)+,a5
 	tst.l d0
 	bne .done
 	tst.w SE_WORK_SIZE(a5)

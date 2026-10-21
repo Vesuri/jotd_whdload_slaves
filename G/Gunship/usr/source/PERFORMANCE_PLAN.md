@@ -756,11 +756,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     and live responsiveness remain unaccepted.
   - C4f. Price the per-field step and the history on the 68000; it renders about 5 fps and
     consumes about 10 fields per render.
-    Current rendered runtime still overloads the 68000. A non-skipping probe
-    finds about 87% exact repeated motion-preview inputs on the sampled route;
-    a standalone full-input cache passes 640 output comparisons, invalidation
-    and failure checks. Runtime integration and measured benefit remain open
-    (see TIMING_DESIGN.md, exact-input cache prototype).
+    The full-input motion cache is now integrated into the experimental
+    runtime. Cached/uncached motion matches across 1,760 PAL/NTSC fields.
+    The sampled 68000 engine-start/takeoff route now discards zero history
+    records versus 136 with cache bypass, reaching 80 versus 71 completed
+    worlds at producer field 1,366. Heavy-scene throughput and the remaining
+    CPU/state matrix are still open (TIMING_DESIGN.md, runtime cache comparison).
   - C4g. Rebuild the camera/state vector (`+057E2`) and the instrument values from the
     player state on every render. Gauges advance per consumed field (old C6a).
     Native needles have no incremental slew: +0AD30 derives their endpoints

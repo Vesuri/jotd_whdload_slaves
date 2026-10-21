@@ -16,6 +16,7 @@
  include "timing-kinematics.i"
  include "timing-attitude.i"
  include "timing-player-step.i"
+ include "timing-player-cache.i"
  include "timing-presentation.i"
  include "timing-field-gauges.i"
  include "timing-camera.i"

@@ -1,4 +1,4 @@
-; Optional exact-input cache for player_step_interval. Not installed.
+; Optional exact-input cache for player_step_interval. Runtime-owned when enabled.
 ; Requires player-step. Foreground/serialized use, disjoint buffers only.
 ; The prepared native stages and sine helper must remain immutable while
 ; valid. Clear PC_VALID on lifecycle/reset or before changing either code

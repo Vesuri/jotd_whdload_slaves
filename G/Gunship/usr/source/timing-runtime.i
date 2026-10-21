@@ -82,7 +82,8 @@ RT_SCRIPT_BITMAP equ RT_SCRIPT_POSE+8
 RT_DRAW_ENTRY equ RT_SCRIPT_BITMAP+4
 RT_DRAW_READY equ RT_DRAW_ENTRY+4
 RT_SCRIPT_PREVIEW equ RT_DRAW_READY+2
-RT_ARENA_SIZE equ RT_SCRIPT_PREVIEW+SP_SIZE
+RT_PLAYER_CACHE equ RT_SCRIPT_PREVIEW+SP_SIZE
+RT_ARENA_SIZE equ RT_PLAYER_CACHE+PC_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -333,6 +334,10 @@ timing_runtime_prepare:
  movea.l RT_HUNKS+16(a6),a0
  lea $1c5(a0),a0
  move.l a0,RT_CONSUMER+TF_MAP_MODE(a6)
+ ; Cache is beyond the signed-word offset range used by the binding table.
+ movea.l a6,a0
+ adda.l #RT_PLAYER_CACHE,a0
+ move.l a0,RT_PLAYER+SE_CACHE(a6)
  ; Wire arena-relative pointers from immutable offset pairs.
  lea .bindings(pc),a0
  move.w #(.bindings_end-.bindings)/4-1,d0

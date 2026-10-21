@@ -126,6 +126,10 @@ timing_runtime_activate:
  clr.w (a0)+
  dbf d1,.clear
  dbf d0,.range
+ ; Code/player epochs must never reuse an earlier preview. The pointer
+ ; remains stable; only validity is needed to discard all cached contents.
+ movea.l RT_PLAYER+SE_CACHE(a6),a0
+ clr.w PC_VALID(a0)
  clr.w RT_BATCH(a6)
  clr.l RT_BOUNDARY_PHASE(a6)
  clr.l RT_BOUNDARY_RECORD(a6)
