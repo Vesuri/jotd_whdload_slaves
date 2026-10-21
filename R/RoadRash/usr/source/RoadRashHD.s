@@ -30,6 +30,7 @@ C_PUBLIC_MAIN = 1
  ENDC
  ENDC
  IFD C_PUBLIC_MAIN
+C_CPU_BOBS = 1
  IFND C_STEP_BUILD
  FAIL "Public main image requires the shared runtime support"
  ENDC
@@ -292,7 +293,11 @@ _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
  IFD C_PUBLIC_MAIN
+ IFD C_CPU_BOBS
+ dc.l -$8d000
+ ELSE
  dc.l -$6d000 ; optional runtime, image headers and CPU mask index
+ ENDC
  ELSE
  IFD C_STEP_BUILD
  IFD C_FAST_STACK
@@ -912,6 +917,7 @@ enhanced_decrunch_done:
 	include blitter_queue.s
 	include bob_masks.s
 	include dirty_sky.s
+	include cpu_bobs.s
 	ENDC
 
  IFD C_PUBLIC_MAIN

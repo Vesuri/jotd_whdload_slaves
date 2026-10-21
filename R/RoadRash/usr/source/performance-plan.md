@@ -583,18 +583,21 @@ for final placement, measurements, validation and the complete 67-file inventory
     the blitter. Keep the native path for 68000, no public allocation, unusual
     horizons or conflicting/masked interrupts. See [validation](blitter-performance.md).
   - **Expected:** up to 8% on the 020. On fast CPUs the saving equals the road time.
-- **E2 Blitter queue.**
-  - E2a A ring of blit descriptors executed by a level-3 blitter-done handler. The game has
-    a dormant ring at `$aeb84` with handler `$aead6`; reuse its idea, but run in the slave.
-  - E2b Queue the bob blits (`$b3ba2`) so that `$afe12` prepares the next object while the
-    blitter draws.
-  - E2c Keep the synchronous path for the 68000 if the interrupt overhead costs more than
-    it saves (measure).
-  - **Expected:** a further 5–7% on 020; most of the remaining stall on fast CPUs.
+- **E2 complete — measured queue policy.**
+  - **E2a complete:** bounded descriptors and a level-3 completion handler ship
+    for the background clear (E1); ownership is drained and restored explicitly.
+  - **E2b evaluated, not retained:** a 16-slot bob ring overlapped preparation
+    with drawing, but measured interrupt/descriptor overhead erased the gain:
+    040 28.7 versus 29.9 fps, 060 29.4 versus 30.5 fps; 030 was unchanged.
+    Keep synchronous bob submission with cached masks and the E5 CPU path.
+  - **E2c complete:** the controlled 68000 queue experiment regressed from 9.7
+    to 8.1 fps. The shipping 68000 retains its native synchronous path.
+    The earlier estimated 5–7% bob-queue gain is withdrawn.
 - **E3 complete — precompute bob masks.** Cached draws drop both mask-building
   blits; clipped/split or uncached images retain the native path.
   - **E3a complete:** build masks during race preparation after image loads;
-    update recoloured words as they change. Reuse the old Chip main image after
+    update recoloured words on 030+; 020 caches static images and retains native
+    masks for recoloured bikes/riders because maintenance costs more. Reuse the old Chip main image after
     public relocation: no 2 MiB Chip requirement or extra option. Bounds failures
     fall back synchronously. The CPU index costs 32 KiB of optional public RAM.
   - **E3b complete:** 1,400 masks / 152,966 Chip bytes in the first-race audit;
@@ -612,8 +615,18 @@ for final placement, measurements, validation and the complete 67-file inventory
     `$b4dc4` copies without resetting it. The other three planes repeat this
     pattern. The fill and copy cover adjacent rectangles, so removing the fill
     would leave stale pixels. The estimated 0.55% saving is withdrawn.
-- **E5 040/060 CPU cookie-cut** (stretch). With sources and masks in fast RAM, draw bobs
-  with the CPU instead of the blitter on 040/060. Keep the blitter path elsewhere.
+- **E5 complete — 040/060 CPU cookie-cut.** Reuse the native width-specialized
+  CPU drawer for cached images up to 80 pixels wide, reading a bounded 128 KiB
+  public pixel cache and deriving masks in registers. Maintain recoloured copies,
+  wait for prior blits, and retain the blitter for wide/uncached/split images.
+  Optional public reservation is now 564 KiB; the Chip requirement remains 1 MiB.
+
+Step E is complete under emulator validation. Full-race simulation, restart,
+framebuffer equality, cache/MMU, controls and visible-response checks pass.
+Measured rates are 18.4 fps on 020+Fast, 39.4 on 030/50, 49.4 on 040/25 and
+49.6 on 060/50. These are sampled emulator workloads, not minimum frame rates.
+All changes remain behind default-off **Enhanced framerate**; hardware validation
+remains pending as agreed. See [results and evidence](blitter-performance.md).
 
 ### F. CPU work reduction (all CPUs; the 68000 depends on it)
 - **F1 Road rasteriser** (`$b10d0`/`$b1994`, 21.7%).

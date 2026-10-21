@@ -28,7 +28,7 @@
  or	aminet:dev/misc/whdload#?
  and	aminet:game/patch/
 
- Version 2.1 beta (20.10.2026):
+ Version 2.1 beta (21.10.2026):
  - fixed idle joystick steering recentring and keyboard/CD32 pause handling
  - wait for screen DMA before loading files, fixing the uncached 68030 crash
  - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
@@ -37,7 +37,9 @@
  - enhanced path enables CPU caches automatically unless NoCache is specified
  - enhanced path relocates the loader, title, intro, main program, menus and
    CPU data into optional public RAM, using Fast RAM when available; reserves
-   404 KB including stacks, image descriptions, music and graphics scratch
+   564 KB including stacks, image descriptions, music, scratch and image caches
+ - enhanced rendering overlaps background blits with road drawing, caches bob
+   masks and skips untouched sky; 68040/68060 also draw cached bobs with the CPU
  - enhanced intro waits for screen clears before decoding pictures and credits
  - movement, collision, AI and acceleration code runs from Fast RAM on the
    enhanced path

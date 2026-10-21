@@ -1,5 +1,10 @@
 # Cache, priority and public-memory work
 
+The allocation figures below describe the D checkpoint. Step E increases the
+optional public reservation from 404 to 564 KiB and reuses the abandoned Chip
+main image for blitter masks. The approved fixed-address exception is unchanged.
+See [current rendering memory and validation](blitter-performance.md).
+
 Step D is complete for the agreed emulator scope, with the explicitly approved
 fixed-address-global exception below. All runtime changes use Enhanced framerate. Hardware cache/coherency testing remains pending by agreement;
 emulator checks do not establish real-board timing or bus coherency.

@@ -2,11 +2,17 @@
 ; validated public relocation. The low entry trampoline and native heap remain.
 ; CPU-only lookup entries live in the optional public extension.
 e_masks_init:
+ IFD C_CPU_BOBS
+ bsr e_cpu_init
+ ENDC
  move.l a5,a1
  adda.l #$34296,a1
  lea e_dirty_alt(pc),a0
  move.w #$4eb9,(a1)
  move.l a0,2(a1)
+ ; Recolour cache maintenance costs more than native mask blits on 68020.
+ btst #2,verify_attn+3(pc)
+ beq .no_recolor
  ; Update cached masks after each native four-plane recolour exchange.
  move.l a5,a1
  adda.l #$30ee4,a1
@@ -18,6 +24,7 @@ e_masks_init:
  move.l a5,d0
  addi.l #$30ec2,d0
  move.l d0,2(a0)
+.no_recolor:
  lea e_mask_table(pc),a0
  move.l a5,d0
  addi.l #$60000,d0 ; main base = allocation + $5000
@@ -52,6 +59,9 @@ e_masks_build:
 .clear:
  clr.l (a0)+
  dbf d0,.clear
+ IFD C_CPU_BOBS
+ bsr e_cpu_reset
+ ENDC
  lea e_mask_cursor(pc),a0
  move.l #$80010,(a0)
  lea $432.w,a6
@@ -89,6 +99,12 @@ e_mask_set:
  cmpi.w #15,12(a6)
  bne .skip
  move.l (a6),d4
+ btst #2,verify_attn+3(pc)
+ bne .source
+ cmpi.l #$19a7e,d4
+ bcs .source
+ cmpi.l #$5c2cc,d4
+ bcs .skip
 .source:
  moveq #0,d2
  move.w 4(a6),d2
@@ -147,6 +163,9 @@ e_mask_set:
  move.l a4,4(a3)
  move.w d2,8(a3)
  move.w d3,10(a3)
+ IFD C_CPU_BOBS
+ bsr e_cpu_cache
+ ENDC
  move.l d4,a1
  subq.w #1,d3
 .row:
@@ -187,6 +206,13 @@ e_mask_enter:
  cmpa.l #0,a2
  beq .done
  move.l a1,d1
+ btst #2,verify_attn+3(pc)
+ bne .hash
+ cmpi.l #$19a7e,d1
+ bcs .hash
+ cmpi.l #$5c2cc,d1
+ bcs .done
+.hash:
  move.l d1,d0
  lsr.l #1,d0
  andi.w #2047,d0
@@ -206,6 +232,9 @@ e_mask_enter:
  move.l a1,(a0)
 .done:
  movem.l (a7)+,d0-d2/a0-a2
+ IFD C_CPU_BOBS
+ bsr e_cpu_try
+ ENDC
  move.w #$ffff,$55c.w
  rts
 
@@ -346,6 +375,9 @@ e_mask_recolor:
  suba.w d2,a3
  suba.w d2,a3
  suba.w d2,a3
+ IFD C_CPU_BOBS
+ bsr e_cpu_recolor
+ ENDC
  move.l a3,d0
  sub.l d4,d0
  move.w d2,d3
