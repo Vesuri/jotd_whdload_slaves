@@ -6634,3 +6634,29 @@ All observations use the current hash-checked controlled runtime, headless
 shared FS-UAE and disabled host mouse. This is one occupied-slot restriction
 and subsequent launch, not full weapon reload/arming, guidance collision,
 all weapons, scanout, or C9 duration acceptance.
+
+### Native firing-entry gate comparison
+
+The remaining h0+$9C42 read at +097A8 is a byte-valued firing inhibit:
+nonzero clears the primary request, then execution reaches native actor
+updates at +097B6. It is not decremented here. The loaded 0658 fast-memory
+snapshot has only one absolute reference to this address (that read), and
+an aligned hunk-0 PC-relative source-reference scan found none. This does
+not rule out indirect/aliased writes and does not establish the flag's
+original intended purpose. It must not be relabelled a timed reload.
+
+`test_weapon_entry_gate_c.py` extends the existing native/extracted weapon
+comparison to values 0, 1, 128 and 255. All 1,024 cases match the complete
+native memory comparison region, remaining private fire bytes, ordered
+callbacks and blitter-register writes. Existing target/UI/audio fixture
+limitations remain explicit. All 768 nonzero-gate cases clear the primary
+request, make no launch or ammunition-decrement call, retain one native
+actor-update call and leave the gate unchanged. The zero cases still cover
+24 launch calls and 24 RNG draws. Wrong binding and 23 corrupted signature
+sites still reject (1,050 assembled API calls total).
+
+A read-only audit of the saved five-CPU PAL/NTSC controlled world captures
+finds zero in all 610 samples; `weapon-entry-gate-live-audit.json` retains
+the counts by run. That establishes the gate's value in those windows, not
+a complete writer or mission-wide audit. Broader launch/arming/reload timing,
+weapon types and natural combat remain open. No gameplay code changed.

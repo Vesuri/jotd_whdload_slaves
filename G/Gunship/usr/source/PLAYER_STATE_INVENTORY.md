@@ -312,8 +312,16 @@ clears +BA0E to -1, disables guidance and sets the counter to -1 after the
 pending handshake clears. `field_guidance_advance` supplies that handshake
 on the next consumed field independently of drawing. This is a shared
 occupied-slot restriction, not proof of a generic fixed reload delay for
-all weapons. The weapon entry also checks +9C42 at +097A8; its full writer
-catalogue and remaining firing/arming restrictions still need auditing.
+all weapons. The weapon entry tests byte +9C42 at +097A8 and clears the
+primary fire request for any nonzero value before updating actors. It leaves
+the gate unchanged. Assembled native/clone comparisons cover 0/1/128/255 and
+confirm that nonzero values suppress launch/ammunition consumption but retain
+one actor update. The loaded 0658 snapshot has only this direct absolute
+reference to +9C42; no hunk-0 PC-relative source reference was found. This
+is not proof against an indirect writer or initialization alias. All 610
+saved controlled PAL/NTSC world snapshots contain zero. The original purpose,
+complete writer catalogue and remaining firing/arming restrictions remain
+unproven; do not describe this byte as a timed reload.
 
 ### Render-produced flight-end flag: plane reduction checkpoint
 

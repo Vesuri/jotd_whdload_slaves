@@ -1016,6 +1016,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     21 with one ammunition decrement. The earlier h6+4296 timer label means
     hit response, not reload; other weapon admission/reload conditions remain
     under audit. This does not close the overall weapon-duration requirement.
+    The additional +9C42 firing-inhibit byte now matches native behavior in
+    1,024 assembled cases, including all nonzero sign classes: launch and
+    ammunition consumption stop while actor updates continue. It stays zero
+    in all 610 current PAL/NTSC world captures. Its full writer catalogue and
+    purpose remain unproven; it is not established as a timed reload.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.
