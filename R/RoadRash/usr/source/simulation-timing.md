@@ -1,3 +1,51 @@
+## Lane-input origin and explicit-width interaction experiment
+
+`b-lane-d4-origin` traces normal B across rendering and the next simulation
+on the cycle-exact Fast-020 handling-reference configuration. At field 1202,
+D4 is 0 before `$b076e` and 1 after it, then remains 1 through simulation entry
+and all six lane-builder calls. Subsequent sampled frames carry 0 or 1 in the
+same way. World projection earlier leaves 453 or 517, but drawing and the
+post-handoff sprite setup overwrite that value before B's simulation.
+
+The native `$b076e` path ends through `$b0be2` and `$b0c34`. The latter clears
+D4, then uses shifts and ROXL to pack sprite-position control bits into it
+before copying its byte into D7. The remaining pointer writer `$aec6a` changes
+D0 only. Thus B's sampled narrow lane value originates in graphics control
+bits, not an explicit actor width. C's projection rebuild introduces a different
+register residue before the same lane routine. Neither residue is an adequate
+ownership contract for independent simulation.
+
+Native `$8da5c` separately loads a word from `$9414e`, indexed by actor `+$16`,
+and halves it into D2 at `$8da92`; its boundary calculations instead add/subtract
+D4 at `$8da96`/`$8dab8`. A private fixture changes only those arithmetic operands
+to D2 in the relocated helper, retaining the table, lane clamps and list writes.
+`c-lane-explicit-width-probe` verifies runtime instruction words `$d042` and
+`$9042` and observes D2=16 for all sampled calls, while D4 still contains
+453/517. This proves the fixture uses the loaded half-width; interpreting that
+as the original author's intended behavior remains an inference.
+
+`c-lane-explicit-width-lap` has no crash by field 1600, position 13802410,
+lateral -974, displayed rank 13 and a different native ahead order from B.
+Its early trajectory differs from the prior constant-0/1 fixtures, although
+those final values happen to agree. It does not pass the B handling gate.
+
+A second private fixture combines the explicit width with the previous
+four-field-reference NPC lateral formula and signed fractional carry, without
+the older longitudinal endpoint correction. It transfers carry on companion
+copies and clears it at race reset/reactivation; full carry lifecycle and
+non-riding transitions are not validated. `c-lane-width-npc-lap2` produces one
+crash at field 1320, final position 12281000, lateral -188, displayed rank 15,
+and an ahead order still different from B. B crashes at 1376, ends at 13031078
+and -931, also displaying rank 15. Equal crash count and displayed rank alone
+therefore do not establish equivalence. The earlier `-lap` launch failed before
+boot because the build was missing; `-lap2` is the completed tested run.
+
+Both fixtures remain private under `c-lane-explicit-width-*` and
+`c-lane-width-npc-*`. Production is unchanged. This establishes the graphics
+origin of the dependency and tests an explicit-width interpretation and its
+interaction with NPC rounding, but neither is an accepted handling fix.
+C's distance, opponent-order and scene requirements remain open.
+
 ## Object reuse disposition and lane-width handling evidence
 
 Do not promote the current D4-preserving object-reuse layout. It improves the
