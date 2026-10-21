@@ -467,7 +467,14 @@ dictate the accelerated path's timestep.
   throughput gains still depend on D–F; 50 fps needs both sufficient rendering
   performance and the cross-rate simulation checks above.
 
-### D. Caches, bus priority and memory
+### D. Caches, bus priority and memory — complete for agreed emulator scope
+
+D1a–D1d, D2a–D2d and D3a–D3g are complete in emulation. Real-hardware
+D1d coherency testing remains pending by agreement. D3d retains the explicitly
+approved fixed-address-global exception (1,035 audited short-address sites).
+See [memory-performance.md](memory-performance.md) and [memory-assets.json](memory-assets.json)
+for final placement, measurements, validation and the complete 67-file inventory.
+
 - **D1 Enable caches from the slave.**
   - Emulator implementation and cache-state/page-policy checks are complete;
     real-hardware coherency validation remains pending by agreement. See
@@ -511,17 +518,15 @@ dictate the accelerated path's timestep.
     measure.
   - The temporary startup copper list is the original setter. The complete D
     matrix confirms no benefit on 000/020/030 and a modest gain on 040/060.
-    Retain native priority on 000/020/030; remeasure after D3/E changes the workload.
+    Retain native priority on 000/020/030. The post-D3 matrix confirms this policy;
+    remeasure if E changes the workload.
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
-  - **Main-image progress:** enabled Fast-RAM paths now move the complete
-    246,764-byte main code/data image into an optional 404 KiB public allocation,
-    retaining DMA heaps in Chip. This reservation includes
-    CPU image-description tables, music patterns and colour-conversion scratch. This includes native 68000 code/data and stack,
-    with its original simulation retained. Main-image relocation, full-race equivalence,
-    fallback, MMU, controls and visible-response checks pass in emulation. This
-    does not close the low-memory, mixed-asset or broader-selection
-    audit below. Loader/title/intro CPU code/data and a separate guarded
-    boot stack now also use public RAM; their Chip copper lists stay in place. See memory-performance.md for exact evidence and limitations.
+  - **Complete:** native 68000 and accelerated Fast-RAM paths relocate bootstrap
+    and main code/data, both stacks, image descriptions, music/FX metadata,
+    CPU-only menu/intro assets and colour/IFF scratch. The optional reservation
+    is 404 KiB; native DMA buffers and load staging stay Chip. Fixed-address
+    globals are retained under the user's explicit D3d exception. All supported
+    emulator selections, full races, restart and cache/MMU checks pass.
   - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
     interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,
     references and relocation constraints. Account for every region; document why any
@@ -545,7 +550,7 @@ dictate the accelerated path's timestep.
     holds race actors, but graphics loaders reuse `$a5de0` and its image pointers
     must be classified by consumer. The D3 portrait audit establishes CPU copying
     from that scratch into Chip screens; the full-image move includes this
-    lifetime. Remaining image consumers still need explicit classification.
+    lifetime. The final 67-file inventory classifies the remaining image consumers.
     A race sample attributes 10.779% of CPU bus records to
     this region; it is a relocation candidate, not a proven throughput gain.
   - D3e Move the CPU stack and any separate interrupt stacks into the allocated memory.
@@ -553,8 +558,8 @@ dictate the accelerated path's timestep.
     handling; retain a valid stack throughout loading and relocation.
     The enhanced runtime now uses the tested optional Fast RAM CPU stack as a C
     cost reduction; guards, CD32 pause, 040/060 MMU and real quit paths pass.
-    This does not close the remaining relocation work or establish a universal
-    worst-case stack bound; see the runtime stack evidence in simulation-timing.md.
+    Both boot and main stacks are relocated and guarded. Tests do not establish a
+    universal worst-case stack bound; see memory-performance.md and simulation-timing.md.
   - D3f Keep DMA-accessed storage in chip RAM: screen buffers, copper lists, hardware
     sprite data, audio samples and blitter sources, masks and destinations. Reclaim old
     chip storage only after proving that no live reference or later loader uses it.

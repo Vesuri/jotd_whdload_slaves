@@ -1,7 +1,7 @@
 # Cache, priority and public-memory work
 
-Step D is in progress. All runtime changes use the existing Enhanced framerate
-selection. Hardware cache/coherency testing remains pending by agreement;
+Step D is complete for the agreed emulator scope, with the explicitly approved
+fixed-address-global exception below. All runtime changes use Enhanced framerate. Hardware cache/coherency testing remains pending by agreement;
 emulator checks do not establish real-board timing or bus coherency.
 
 ## Cache boundaries (D1)
@@ -521,3 +521,148 @@ without DMA addressing their public slots, then reaches the race. The shop's
 three-image set uses the same bounded first slot; its reader is statically
 audited, not separately exercised by that menu trace.
 Normal build SHA-256: `139996716e0fbc345040fbac60bfcef3cf86e6e22824442ae949d27d6ebd35ac`.
+
+## Final residency audit and approved exception
+
+`memory-assets.json` accounts for all 67 unpacked original assets, recording
+names, sizes, hashes and consumer-based placement without including game data.
+The inventory comprises four runtime executables, one unused original OS
+bootstrap, 23 blitter image sets, twelve CPU-drawn portraits, one CPU-drawn
+joystick image, one intro picture bundle, ten IFF screens, five backgrounds,
+eight music modules and two sound-effect banks.
+
+The low shared block retains fixed-address globals and interfaces. The
+conservative reachable main-code audit finds 1,035 instruction sites referring
+to 249 distinct absolute-short addresses in `$400..$467b`. This is a lower
+bound, not a complete disassembly of every indirect path. An absolute-short
+operand cannot represent the supported Fast RAM addresses. Moving this state
+would require changing instruction sizes/control flow or adding execution
+stubs, rather than adjusting relocation operands. The user explicitly approved
+retaining these globals as a D3d exception on 2026-10-21. This exception is not
+presented as a DMA requirement or as a completed instruction-rewriting project.
+
+The same low region contains DMA structures and image storage. Vectors and
+native shared loader entry `$4c98` retain their fixed interfaces. Loader copper
+`$4cc4..$4d5f`, title/intro copper, main screens/copper/sprites, blitter sources,
+masks/destinations and Paula samples remain Chip. The `$da7e` graphics scratch
+and `$f0de` background have explicit blitter consumers; only their separable
+CPU lifetimes move. `$467c/$467e` retain the blank-sprite alias.
+
+Original load/depack storage remains allocated, including old executable and
+asset copies. It is staging or compatibility storage, not a second writable
+simulation state. No Chip memory is reclaimed. Native read/depack destinations
+remain valid across reloads; public owners are published only after copies.
+The 1 MiB Chip requirement is unchanged; optional public reservation is 404 KiB.
+All changes remain behind the single default-off Enhanced framerate toggle.
+
+## D3 encoded graphics and intro completion ordering
+
+`public_iff.s` validates and copies each complete, even-sized FORM of at most
+16 KiB into the colour-conversion scratch before the main CPU RLE decoder.
+All ten inventoried screens fit (2,844–15,428 bytes). The colour table is
+regenerated before each recolouring consumer and is not used by an interrupt;
+these loader lifetimes do not overlap. Decoder register/CCR results are
+preserved, and its returned A0 is translated back to the native source offset.
+Unexpected formats or sizes use the original decoder input.
+
+`public_intro_index.s` moves the complete 137,138-byte intro picture bundle,
+including its eleven-entry index, into temporary public `$8000..$297b1`.
+Boot music now uses `$30000..$3ffff`, leaving both regions clear of intro code,
+loader and boot stack. Native main loading later overwrites these temporary
+regions. The bundle is CPU palette/RLE input; decoded planes and copper remain
+Chip. Its count and final picture endpoint are checked before copying.
+
+The complete bundle exposed a native ordering bug: the two intro screen-clear
+routines returned immediately after starting the blitter. The blitter could
+overwrite faster CPU decoding and the following credits. Their enhanced exits
+now wait for completion, preserving the original saved registers and CCR.
+This is confined to intro loading/display preparation, not a race pacing wait.
+The decoded-screen checkpoint comparison identifies the race: before the fix,
+the native sample had already lost picture pixels; the public decode produced
+the correct picture but later lost its credits. With the waits, both pictures
+and credits display. The complete public bundle matches the unpacked file
+byte-for-byte. `d-public-encoded-wait-sequence` covers all sampled intro stages,
+race entry, music/FX pointers and boot guards. Its 152-field DMA audit finds no
+DMA reads anywhere in the public allocation.
+
+The intro-completion candidate has 27,904 bytes, SHA-256
+`fd857ee83295968f81530d1de85d5b0cc544d636d432f75282d0ac4c62e444da`.
+
+The intro completion fix changes only the tail helper starting at slave offset
+`$6bd0` (and HUNK size words). All preceding runtime bytes are identical to
+`d-public-encoded-build`, whose full accepted fixed/varying race comparison,
+178-checkpoint native 68000 race/restart, all eleven normal machine cells,
+040/060 MMU policies, keyboard/CD32, demos and off/native-Fast controls pass.
+The final 040/060 data-cache-enabled checks also pass (`d-final-dcache-*`).
+Race-end and restarted-race PNGs match the preceding menu build exactly.
+Diagnostic-only failures from missing MMU policy defines and a long branch
+in the enlarged test slave were corrected before the successful runs.
+
+## Release validation
+
+The final source additionally preserves the FX initializer's MOVE condition
+codes from its original Chip pointer, even if a Fast allocation has its sign
+bit set. `d-release-build/RoadRash.slave` is 27,908 bytes, SHA-256
+`87df0c4f3883412f5dfc8e426548217ff856e25db19a647c9553cb2d07e33ac5`.
+
+`d-release-finish-{fixed,vary}` reproduces the accepted 16,230 hashes, 72 sound
+events, all six terminal regions, finish 16042, exit 16231 and restart.
+`d-release-native-race-public` matches the original controlled native race's
+178 checkpoints, input tape, finish/exit and restart exactly. Final MMU, stack,
+keyboard/CD32 and demo checks pass in `d-release-functional-*`.
+The immediately preceding intro-completion build also passes 040/060 data-cache
+emulation (`d-final-dcache-*`); the subsequent FX change preserves registers and
+CCR and introduces no new memory/cache operation. Eight normal-build paired
+steering injections (`d-final-visible-020`) retain the prior estimates
+140/120/160/140/120/160/140/120 ms. These include gameplay response and capture
+uncertainty; they are not an artificial presentation delay or host-display latency.
+
+| Final normal configuration | Frames/s |
+|---|---:|
+| A500, 1 MiB Chip | 8.5 |
+| Native 68000 with Fast RAM | 8.8 |
+| Chip-only 020 | 12.5 |
+| Fast 020 default / Cache | 16.7 |
+| Fast 020 NoCache | 16.6 |
+| 030 default / Cache | 25.0 |
+| 040 default / Cache | 25.2 |
+| 060 default / Cache | 28.5 |
+
+Evidence: `d-release-matrix-tail` (eleven normal cells) and `d-encoded-extra-*`
+(toggle-off controls and native-Fast normal build). Rates are emulator samples,
+not hardware claims. The latest equal-layout priority matrix
+`d-final-priority-matrix` retains native priority on 020/030: 020 16.7 versus
+16.6 cleared (NoCache 16.6 versus 16.4), and 030 25.0 either way. Clearing wins
+on 040 (25.2 versus 25.0) and 060 (28.5 versus 25.0). The final encoded-image
+changes run during loading and leave race rendering and that policy unchanged.
+
+`d-release-bus` records 99 race fields, with no DMA address in the 404 KiB public
+allocation. Remaining CPU Chip bus records are: screens/staging 170,429; approved
+fixed low interfaces/data 48,560; low graphics assets 27,891; graphics assets
+24,792; graphics scratch/background 28,608; vectors 299. There are no sampled
+CPU bus records in the old main image. These are bus-record counts, not CPU-time
+percentages; cache hits and unexecuted paths are outside this sample.
+
+Final public layout (all offsets relative to ExpMem):
+
+| Offset range | Lifetime / purpose |
+|---|---|
+| `$00000..$04fff` | Main supervisor stack, guards and spacing |
+| `$05000..$413eb` | Main image; earlier title/intro temporary storage |
+| `$08000..$297b1` | Intro-only encoded picture bundle, before main load |
+| `$30000..$3ffff` | Boot music prefix, stopped before main load |
+| `$42000..$48fcf` | Loader CPU image and external-call stubs |
+| `$49000..$4d01f` | Separate guarded boot stack |
+| `$4e000..$4e057` | Sound-effect descriptors (maximum) |
+| `$4e080..$4e17f` | Two menu-description slots |
+| `$4e180..$4ef7f` | Bounded joystick-source slot |
+| `$50000..$5bfff` | Twelve ordinary and three fixed image-description slots |
+| `$5c000..$60fff` | Main music header/pattern slot |
+| `$61000..$64fff` | Mutually exclusive colour-conversion / IFF input scratch |
+
+The intro-only rows intentionally reuse the later main-image range. Gaps remain
+reserved. Main and boot stack guards, native 68000 selection and Chip-only
+fallback are covered by the recorded runs. Hardware cache/coherency validation
+remains explicitly pending by agreement. Earlier sections retain intermediate
+results and open-work notes as implementation history; this release section
+and the approved exception describe the final D scope.

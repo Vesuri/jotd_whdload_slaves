@@ -37,7 +37,8 @@
  - enhanced path enables CPU caches automatically unless NoCache is specified
  - enhanced path relocates the loader, title, intro, main program, menus and
    CPU data into optional public RAM, using Fast RAM when available; reserves
-   404 KB including stacks, CPU image descriptions, music and colour tables
+   404 KB including stacks, image descriptions, music and graphics scratch
+ - enhanced intro waits for screen clears before decoding pictures and credits
  - movement, collision, AI and acceleration code runs from Fast RAM on the
    enhanced path
  - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path

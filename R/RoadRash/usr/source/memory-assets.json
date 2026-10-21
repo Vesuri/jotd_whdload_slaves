@@ -1,0 +1,508 @@
+{
+  "scope": "Native Ice-unpacked original assets; metadata only, no game payloads",
+  "assets": [
+    {
+      "file": "BUST_16.LBM",
+      "unpacked_bytes": 2844,
+      "sha256": "410718c7e50d6dad68fad5218a2479464bd98d46a1b350bcf746e25202bf5a34",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "CAR1.ICT",
+      "unpacked_bytes": 27510,
+      "sha256": "33c0bcc28f10c196671930567f1101b8fb5b562d8bf053d159ab75745162c16e",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 758
+    },
+    {
+      "file": "CAR2.ICT",
+      "unpacked_bytes": 14670,
+      "sha256": "0c0120965522be30804e5f106a47183f8f88c764966c88725b4a11f4f7723592",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 254
+    },
+    {
+      "file": "COP.ICT",
+      "unpacked_bytes": 22480,
+      "sha256": "2ee8d637f428b710b67dd186812f54301aa2825311f47a312bbfa82bd985a04a",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 632
+    },
+    {
+      "file": "DASH2.LBM",
+      "unpacked_bytes": 7824,
+      "sha256": "97cf13bdec7ba15b8f1a4dc483be58c331cff87509e3e5713680e4abf216f9c4",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "EBIKES2.ICT",
+      "unpacked_bytes": 144968,
+      "sha256": "90810ab8bef9013fe127c9507af7673fcf78c1ed84e1a3fc602e7466ec8728a6",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 6960
+    },
+    {
+      "file": "ebwhrep.ice",
+      "unpacked_bytes": 7898,
+      "sha256": "84dbe8396940671c4df4a69c2ab8851cf229cfb6a1b48b801263eb92cbd39868",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 688
+    },
+    {
+      "file": "ECOM.ICT",
+      "unpacked_bytes": 72214,
+      "sha256": "fee3fe9656d2ee51b8eb9272bb2af7d3daff0de8e427a3b3e92653fce3d367ae",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 1486
+    },
+    {
+      "file": "ECRASH.ICT",
+      "unpacked_bytes": 17148,
+      "sha256": "2bdc1b535c9f71b68f0c5c4edd57c5a26783daf01ed1d5a3e3c3b2b347a0c2d7",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 884
+    },
+    {
+      "file": "end.ice",
+      "unpacked_bytes": 76992,
+      "sha256": "8f36fdf6efd0c89348056c8bab33ce39e4df8af042115c7fafb7f503c1742e43",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 17468
+    },
+    {
+      "file": "FLAG2.ICT",
+      "unpacked_bytes": 14372,
+      "sha256": "7f3056c599b47e86323c95c53514606b7f39e3e877348e92250f60477e04d82c",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 380
+    },
+    {
+      "file": "FX.ICE",
+      "unpacked_bytes": 32688,
+      "sha256": "6c3ba08a31ddb8ce415d85bd7e0f27e58ecc29069183d9e4afe726db654d7ac9",
+      "kind": "sound effects",
+      "placement": "Public descriptors with rebased offsets; Chip Paula samples",
+      "cpu_prefix_bytes": 88
+    },
+    {
+      "file": "fx2.ice",
+      "unpacked_bytes": 15718,
+      "sha256": "a8c56f295fa372a2a534c74d23b367e12e86a78f7bb50f794f2e5757af03b89e",
+      "kind": "sound effects",
+      "placement": "Public descriptors with rebased offsets; Chip Paula samples",
+      "cpu_prefix_bytes": 64
+    },
+    {
+      "file": "GRASS.ICE",
+      "unpacked_bytes": 6048,
+      "sha256": "120fa2c0a683ace2b93aa6c94dcb4dd239b5896b2b03666de3b1787a23faac89",
+      "kind": "background",
+      "placement": "Public load scratch; native copy/depack into Chip blitter source at 0xf0de"
+    },
+    {
+      "file": "HS_16.LBM",
+      "unpacked_bytes": 9608,
+      "sha256": "b6f1900d203682228436fbda3620171682f3e2addc46017a725360f618e41cc2",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "INTRO.AMI",
+      "unpacked_bytes": 8200,
+      "sha256": "7e4e9bd105c3a8572138c869f18e6f2b74d9ccfe7e1fc75e5e507c153211be26",
+      "kind": "executable",
+      "placement": "Public CPU image; fixed control cells, DMA structures and original load image retained in Chip"
+    },
+    {
+      "file": "intro.icm",
+      "unpacked_bytes": 289536,
+      "sha256": "4d5dc309efc48a3261a7258bf5cb047ea0f91bbe91cb06e783ebb0daeb13798b",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 61500
+    },
+    {
+      "file": "JOYSTICK.ICE",
+      "unpacked_bytes": 2224,
+      "sha256": "e49b184e90bf022188ef2eaa23faf8f66b0b500511b7a53994cc421f61636499",
+      "kind": "CPU-drawn image",
+      "placement": "Public stored source and public portrait scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "LEV1.ICE",
+      "unpacked_bytes": 16318,
+      "sha256": "133d36e03c9f1da368560ce2821d79c2980109a838a0e77979c3906b3be408ff",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 7228
+    },
+    {
+      "file": "LEV1OBJ.ICE",
+      "unpacked_bytes": 117848,
+      "sha256": "b0de2f519fb9101bfd13bc963622bf0eab37eab4f7340ad84503713dbe261614",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 5168
+    },
+    {
+      "file": "LEV2.ICE",
+      "unpacked_bytes": 15866,
+      "sha256": "6d20b93b3c68c99490e8acaeab5ccb2ec7f3269189771da1bbf8bd3b2b8f58c2",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 7228
+    },
+    {
+      "file": "LEV2OBJ.ICE",
+      "unpacked_bytes": 107148,
+      "sha256": "e5683f8fb17ff285bfb46484e0d8644df0be1e4889bcf8557955f1a65ceed8f8",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 4412
+    },
+    {
+      "file": "LEV3.ICE",
+      "unpacked_bytes": 16274,
+      "sha256": "0dcccf5ecb05bf63529ff0c3c3e9cd584ef1080781178da0e28291fcb0e03e9a",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 7228
+    },
+    {
+      "file": "LEV3OBJ.ICE",
+      "unpacked_bytes": 122136,
+      "sha256": "67fb47de017b2da980ff9a3a6a3d870c26cfcbf4f9a18e47eb38feeb61c7f766",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 4664
+    },
+    {
+      "file": "LEV4.ICE",
+      "unpacked_bytes": 16274,
+      "sha256": "eb918defb2d8b6aaabfc30423a5b0c4e49cbfab28c955fe666288396270933ce",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 7228
+    },
+    {
+      "file": "LEV4OBJ.ICE",
+      "unpacked_bytes": 89442,
+      "sha256": "e56487c84a5c4702f7be89b484989aade42219449852746c56e74d4edbea1f8e",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 4538
+    },
+    {
+      "file": "LEV5.ICE",
+      "unpacked_bytes": 16318,
+      "sha256": "e0013f2698ad6bcbe2129cff98937c9d2f7c448bf4c57101d7c3dcea5dc499c9",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 7228
+    },
+    {
+      "file": "LEV5OBJ.ICE",
+      "unpacked_bytes": 127494,
+      "sha256": "25a689cea2f943119563a4836d5b9e754d6c2ae33f24f757d7fa04b14f208e2b",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 6302
+    },
+    {
+      "file": "LEVFIN.ICE",
+      "unpacked_bytes": 75236,
+      "sha256": "aad3e496f84eba9006ce11715b85a90ee569ad69e5730b65a9c9bcf2e5aa8a40",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 212
+    },
+    {
+      "file": "loader.ami",
+      "unpacked_bytes": 776,
+      "sha256": "a54e50cc51fd6cd4cbd2df6317729d713c4475664ec7069deaa0184c68761b27",
+      "kind": "unused original bootstrap",
+      "placement": "Not loaded by the WHDLoad runtime"
+    },
+    {
+      "file": "LOCPLA.SET",
+      "unpacked_bytes": 4624,
+      "sha256": "1100d02d002db48e5775ac6df116e5c9f86b530482ce022d12b44f792cc57daa",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 16
+    },
+    {
+      "file": "lomain.ami",
+      "unpacked_bytes": 28592,
+      "sha256": "547a32651153c2d5d96ce025c25947720ae581fdc4e10e3d12115337ce9eb99c",
+      "kind": "executable",
+      "placement": "Public CPU image; fixed control cells, DMA structures and original load image retained in Chip"
+    },
+    {
+      "file": "MIRTF1.ICT",
+      "unpacked_bytes": 7012,
+      "sha256": "022ee167583173d79cd9e07043cb2fe665301b0790bc892bd64ec8e1249be8aa",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 884
+    },
+    {
+      "file": "MIRTF2.ICT",
+      "unpacked_bytes": 3484,
+      "sha256": "8edcee43db0cd6d03e4561c69014337ba5c01eb2d8d2e48ce7485fcf265522da",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 380
+    },
+    {
+      "file": "PACIFIC.ICE",
+      "unpacked_bytes": 6048,
+      "sha256": "55fbf9ae1012719b2bbbdba2a35f17f0daa64e2b651de3a403a7b274dd7fb1b2",
+      "kind": "background",
+      "placement": "Public load scratch; native copy/depack into Chip blitter source at 0xf0de"
+    },
+    {
+      "file": "PALM.ICE",
+      "unpacked_bytes": 6048,
+      "sha256": "898807edd9e31b0927ae26e83efdd55ddb3d3203a62b5d7acb4925b3b05a8971",
+      "kind": "background",
+      "placement": "Public load scratch; native copy/depack into Chip blitter source at 0xf0de"
+    },
+    {
+      "file": "PBIKES.ICT",
+      "unpacked_bytes": 78908,
+      "sha256": "c78945318810ca147f6a651161c01cd55449f54639fa0b35c46f3ff70d4158eb",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 1612
+    },
+    {
+      "file": "pbwhrep.ice",
+      "unpacked_bytes": 7898,
+      "sha256": "59566cdb8f6d5dafb7ad2b137347d0610c2e5b30d97610879aff1311ad89ac31",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 688
+    },
+    {
+      "file": "PCOM.ICT",
+      "unpacked_bytes": 72214,
+      "sha256": "fee3fe9656d2ee51b8eb9272bb2af7d3daff0de8e427a3b3e92653fce3d367ae",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 1486
+    },
+    {
+      "file": "PCRASH2.ICT",
+      "unpacked_bytes": 41294,
+      "sha256": "284ba2183c200af1110065551a7de225feb3c8cf8b92e9f14603a24c3932e041",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 1374
+    },
+    {
+      "file": "pics.set",
+      "unpacked_bytes": 137138,
+      "sha256": "a1782fe328c6055bb01abd06f2aae6660f572558605d22e9a0c18eda6d881ab9",
+      "kind": "intro pictures",
+      "placement": "Complete public bundle during intro; CPU palette/RLE decoding into Chip copper/display storage",
+      "cpu_prefix_bytes": 90
+    },
+    {
+      "file": "PORT1.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "741d182cea0a9e2c67353cb3ad377a9679574534515d376cd7ce194ee2ea7cee",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT10.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "c4684fc7824200eb50047aa14aedc13256d6012f71bd99013e52f40f070d7911",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT11.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "ac6cdba0fc92ac1427e64a47862877a15192c3e9bcb37ff3333eca0e52b444c9",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT12.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "5a0e498723397b66e045392155d0879cbec9c402aad94c9cc7b06f4a1bb69f20",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT2.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "3ccc4fe2907dd7d15e0c5382d5f8949e0a941676cf5205fc4bab7efc2c60bbc5",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT3.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "ae546066170bfd067d50b3f0ef629a15cf4b2a73160a46eecc83e35e7c26a5fd",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT4.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "90836d26171d62dc2fb795acebbb97b0cadeb82a67fc7bdd819580d93fe4d045",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT5.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "81107c6b390f81a6d81a970ab972cc9fcb7233452ff0dfc84a18a2e1b9d6939e",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT6.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "35cd505f922a0ea4da5c53ce5af4812fba912bc08e3089d0819c889fe4512286",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT7.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "aa4644be55355861c9bef1c646e6f42bbb3addb477e3e05b4ad6096730f0834b",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT8.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "fbf8c4fdbf357fa59ec3894aaf9bb9ea68e8faefc1177c2029a2ec609b9bfc54",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "PORT9.SET",
+      "unpacked_bytes": 3856,
+      "sha256": "cb0c769c7487bc01bd11850f67a537ed6ea81b11ac20b729546f2f0dbf05b5d4",
+      "kind": "CPU-drawn portrait",
+      "placement": "Public main-image scratch; CPU copy into Chip screen"
+    },
+    {
+      "file": "purbikes.ice",
+      "unpacked_bytes": 12716,
+      "sha256": "7e0132bb76bcb678ffa2edd58e8c583d1ce90e1b57f35fdea78fd02d9af5093d",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 44
+    },
+    {
+      "file": "REDWOOD.ICE",
+      "unpacked_bytes": 6048,
+      "sha256": "e94f2ca68039cbe4137b6d4548669d87e3cb2221eee6ff617c6b4b5fa52db9ab",
+      "kind": "background",
+      "placement": "Public load scratch; native copy/depack into Chip blitter source at 0xf0de"
+    },
+    {
+      "file": "RES_GRA.ICE",
+      "unpacked_bytes": 13342,
+      "sha256": "84a372ec4ef153650f09d666ebc67cbd9b841c7981bb93101336473e2091bedc",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "RES_PAC.ICE",
+      "unpacked_bytes": 11978,
+      "sha256": "3ae8b4d07d5564c91351eedc1a9551e50223fed9adf3f4a55e5c8416e69c28b1",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "RES_PAL.ICE",
+      "unpacked_bytes": 12928,
+      "sha256": "81c993ec38061ea49567f688c4e28838a11aec2e9062e38cefd59841f8506846",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "RES_RED.ICE",
+      "unpacked_bytes": 15428,
+      "sha256": "d9e5aafc3067eb1f345b82b8efe0d886925d4df67aa8027876c3829c01400ec5",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "RES_SIE.ICE",
+      "unpacked_bytes": 11002,
+      "sha256": "ccb03b4879a8c34682a7781e7d0a6a178f80b33be70ac2ba81c8f698036d90ea",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "rr.ice",
+      "unpacked_bytes": 267508,
+      "sha256": "f028a869b517fc31dfd57dfdffab0b742901b98b6d0b9cfc70322447a6d72924",
+      "kind": "executable",
+      "placement": "Public CPU image; fixed control cells, DMA structures and original load image retained in Chip"
+    },
+    {
+      "file": "score.ice",
+      "unpacked_bytes": 11770,
+      "sha256": "77c1ff5489dd1764efbd5ce2c391593429428084c6b8761dcef1fd25c54bf99f",
+      "kind": "music",
+      "placement": "Public header/patterns; Chip Paula samples",
+      "cpu_prefix_bytes": 2108
+    },
+    {
+      "file": "SEL_16.LBM",
+      "unpacked_bytes": 3134,
+      "sha256": "ee9dfa4b36e977366500e9660323ced3678e4c4433284311053f5fea7047f7ec",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "SELTR_16.LBM",
+      "unpacked_bytes": 13956,
+      "sha256": "2987d578abdb8bd22ef4f0e4ff8c9bcae7eb302a387f218c69d40a19443dd22a",
+      "kind": "IFF screen",
+      "placement": "Native Chip load/depack staging; public 16 KiB decoder input; Chip decoded screen"
+    },
+    {
+      "file": "SIERRA.ICE",
+      "unpacked_bytes": 6048,
+      "sha256": "8c07c28e14cd5e9a123aaf4c80de6b9b97de11f403f986e6099717eb88d58ebc",
+      "kind": "background",
+      "placement": "Public load scratch; native copy/depack into Chip blitter source at 0xf0de"
+    },
+    {
+      "file": "SMPICS.ICE",
+      "unpacked_bytes": 11592,
+      "sha256": "040e480253d53b686ac6ca660f37753d6c18b1f4cbcbf07835d3fefb08b34f1c",
+      "kind": "blitter image set",
+      "placement": "Public descriptors; Chip blitter pixels",
+      "cpu_prefix_bytes": 72
+    },
+    {
+      "file": "TITLE.AMI",
+      "unpacked_bytes": 65158,
+      "sha256": "63d9fe6258fa3c7c1c0d9bcdbfbdf0cedde4f28333ae0be841da5a052367b225",
+      "kind": "executable",
+      "placement": "Public CPU image; fixed control cells, DMA structures and original load image retained in Chip"
+    }
+  ]
+}

@@ -1022,6 +1022,7 @@ enhanced_decrunch_done:
  IFD C_PUBLIC_MAIN
  include public_loader.s
  include public_boot.s
+ include public_iff.s
  include public_menu.s
  include public_recolor.s
  include public_audio.s
@@ -1248,4 +1249,5 @@ verify_c_selection:
 
  IFD C_PUBLIC_MAIN
  include public_boot_tables.s
+ include public_intro_index.s
  ENDC

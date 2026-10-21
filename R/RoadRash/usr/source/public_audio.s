@@ -25,7 +25,7 @@ public_audio_boot:
  movem.l d0-d7/a0-a6,-(a7)
  move.l _expmem(pc),a4
  move.l a4,a1
- adda.l #$28000,a1
+ adda.l #$30000,a1
  adda.l #$42000,a4
  move.l a4,a3
  adda.l #$6774,a3
@@ -98,8 +98,10 @@ public_audio_fx:
  dbf d0,.copy
  move.l a2,a0
 .native:
- move.w 32(a7),ccr
  move.l a0,(a3)
+ move.w 32(a7),ccr
+ ; MOVE originally set N/Z from the Chip pointer, even on high Fast maps.
+ move.l 16(a7),d0
  movem.l (a7)+,d0-d3/a0-a3
  addq.l #2,a7
  rts

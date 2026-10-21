@@ -84,6 +84,12 @@ public_boot_copy:
  move.w #$4e75,(a2)
  bra .next
 .publish:
+ cmpi.w #4099,d6
+ bne .entry
+ lea _base(pc),a0
+ adda.l #public_intro_index_install-_base,a0
+ jsr (a0)
+.entry:
  move.w #$4ef9,$8000
  move.l a5,$8002
  move.l _resload(pc),a2
