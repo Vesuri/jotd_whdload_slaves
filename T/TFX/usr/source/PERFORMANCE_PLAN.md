@@ -1024,3 +1024,65 @@ after the kept registers are restored. Poison scenes need DELTA_LISTING set to t
 poison build's own listing.
 
 Evidence: `tmp/dev/tmp/sfd4/` (twins, gates, scenes, poison scenes, `sfd-ab.json`).
+
+Step 5 measured and rejected (fused edge walking, poly_fill_040):
+- Polygon ($60d92 onwards, about 320 drawn polygons per frame) doubles its vertex list,
+  builds left and right edge tables (GenLeft $5f252, GenRight $5f1e0), and walks them
+  ($5f124) with one ScanFillDown call per run of lines between vertices (about 820
+  calls per frame).
+- Implementation tried: the 040 new-renderer patch list jumped from $60d92 to
+  poly_fill_040.
+  - Both edge lists were built with GenLeft's and GenRight's arithmetic into slave
+    records, stepping round the vertex list instead of a doubled copy.
+  - The walker's runs and its bottom line were drawn in one pass with sfd_span_040's
+    line body, shared as a macro (sfd_span_040's code stayed byte-identical).
+  - A climbing chain drew nothing, as in the original.
+  - These inputs ran the original code: more than 17 vertices, a chain that does not
+    reach the bottom within one lap, chains ending on different rows, and rows outside
+    0-199.
+  - The vertex limit matters: the game's edge tables hold 17 records (16 edges and
+    the end) per chain. A longer left chain runs into the right table, and a longer
+    right chain runs into the reciprocal table at $62e70. A chain has at most n-1
+    edges.
+- Verification passed:
+  - Native twins: 194 cases (7,368 lines) against the original Polygon tail with the
+    game's own ScanFillDown loop. They cover 1-32 vertices in both windings, a
+    16-edge chain, x beyond 319, climbing chains and every fallback, with an
+    independent model of the doubled list, GenLeft/GenRight and the walker.
+  - Controlled scenes: cockpit and views pairs gave identical displayed buffers.
+  - A poison build passed both scenes. It loaded junk into the exit registers and
+    flags, and into exactly the bytes the original writes but poly_fill_040 does not
+    (the edge records' bytes 0-9 and end records' bytes 0-3, the doubled list,
+    ScanFillDown's return cell).
+  - The 040, 040 original, 040 CUSTOM5, 030 and 060 gates passed.
+  - Normal and CHIP_ONLY builds had no relocations, and the normal build reproduced.
+
+Balanced 2,000-field pair (after one round of run-overhead tuning; the first version
+gave the same publications and est-040 -0.54%):
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications | 746 | 743 | -0.4% |
+| Emulator cycles/frame | 2,167,299 | 2,176,050 | +0.4% |
+| Estimated 040 cycles/frame | 1,687,608 | 1,682,124 | -0.33% |
+
+- The emulator measure regresses, so the step is rejected. The slave is unchanged.
+- Why the plan's 4% did not materialise, from instruction counts per frame:
+  - The original's work outside the line loop is about 71k instructions per frame:
+    GenLeft/GenRight and the walker 48k, the Polygon tail including the doubling
+    9.5k, and the ScanFillDown and sfd_span_040 entries and exits about 13k.
+  - poly_fill_040 still spent about 63k instructions per frame there:
+    - edge building 33k, the same arithmetic as GenLeft/GenRight;
+    - per-polygon checks and setup 13k;
+    - run changes 17k.
+  - So only about 8k instructions per frame (under 1%) were saved, within the scene
+    variation of a frame pair. The per-call overhead the estimate assumed is small
+    after step 4.
+- A worthwhile remaining gain would have to come from the line body itself (about 24
+  instructions per line, 4,100 lines per frame) or from fewer edges.
+- Harness pitfall: the Gouraud and texture fills read stale words of their own edge
+  end records (fractions at offsets 12-13 and 20-21). These are bytes neither Polygon
+  version writes. A poison that fills whole tables therefore changes the views images
+  without showing a real dependency. Poison only the bytes the original writes.
+- Evidence: `tmp/dev/tmp/poly5/` (`poly-rejected.s`, `poly-rejected.diff`, twins,
+  gates, scenes, poison scenes, `poly-ab.json`, the first run in `first-run/`).
