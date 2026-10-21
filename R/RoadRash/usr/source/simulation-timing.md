@@ -1,3 +1,46 @@
+## Passive movement audit and rejected all-CPU world reuse
+
+Fresh normal traces `b-passive-completed-motion` and
+`c-passive-completed-motion` use the reproduced corrected B binary and current
+production C, with passive debugger reads. They stop at the native movement
+boundary / entry to `step_end`, before C's event/pose helpers. The result agrees
+with the earlier movement decomposition: at cursor 590 B position is 3888640,
+C is 3855684, a 32956-unit (0.979565%) distance deficit from starting position
+524288. C reaches this boundary at live field 592 in this trace. Its first
+moving step is cursor 101, delta 1, speed 34; B's is cursor 102, delta 4, speed
+136. This confirms the input-exposure difference with the corrected reference;
+it does not authorize retroactive input or replace A4's live-field measurement.
+Decoded samples are retained in `passive-motion-decoded.json`.
+
+A new private experiment enables the previously validated D4-preserving
+world-object/geometry reuse on selected 020/030 hardware as well as 040/060.
+The source is copied from `c-world-reuse-d4-guarded-source`; the sole change is
+replacing the four-byte CPU-mask instruction with `moveq #-1,d1; nop` at reset.
+The enhancement master toggle and 020/Fast hardware gate remain required.
+Candidate and CPU-gated control are both 20580 bytes and differ only at
+file offsets `$b86..$b89`. This isolates enabling reuse from code-size/layout
+changes. The candidate SHA-256 is
+`6bf5d64c03cb21e2996061ced87b2fd15cc0c472ee60541cc39d8157ed0aafe8`.
+`c-world-reuse-allcpu-build` retains the source and byte diffs.
+
+The passive-debugger normal matrices give:
+
+| Cell | All-CPU reuse fps / distance | Same-layout gated control fps / distance |
+|---|---:|---:|
+| Fast 020 default | 11.4 / 3321603 | 12.5 / 3321603 |
+| Fast 020 Cache | 11.4 / 3321603 | 12.5 / 3311794 |
+| Fast 020 NoCache | 8.3 / 3301969 | 8.3 / 3301969 |
+| 030 default | 16.7 / 3311794 | 16.7 / 3311794 |
+| 030 Cache | 16.7 / 3311794 | 16.7 / 3311794 |
+
+Evidence: `c-world-reuse-allcpu-matrix` and
+`c-world-reuse-cpugate-control-matrix`. All probes complete, but the default/
+Cache 020 throughput regression rejects the candidate. NoCache and 030 show
+no improvement; the corresponding distance failures remain. This is not a
+full semantic validation of the expanded hardware selection, nor proof of the
+internal cause of its slowdown. No further acceptance tests or production
+integration are justified for this candidate. Production remains unchanged.
+
 ## Passive debugger: MMU and diagnostic capture validation
 
 The direct-read emulator `e0b2532a...` now also passes the retained C diagnostic
