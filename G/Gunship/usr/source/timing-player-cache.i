@@ -23,6 +23,8 @@ player_step_cached_interval:
 	movea.l a5,a6
 	; Compare in place on the common hit path. Build a preserved key only
 	; for a miss, before the native routine changes the input buffers.
+	; Fixed-size comparisons avoid per-longword loop overhead. Keep an
+	; early miss after EVERY comparison, including the exact word tail.
 	cmpi.w #1,PC_VALID(a6)
 	bne .prepare_miss
 	cmp.l PC_KEY+MP_RECORD_SIZE+PS_SIZE+PS_INPUT_SIZE(a6),d0
@@ -32,20 +34,18 @@ player_step_cached_interval:
 	cmpa.l PC_KEY+MP_RECORD_SIZE+PS_SIZE+PS_INPUT_SIZE+8(a6),a3
 	bne .prepare_miss
 	lea PC_KEY(a6),a5
-	moveq #MP_RECORD_SIZE/4-1,d1
-.compare_player:
+	REPT MP_RECORD_SIZE/4
 	cmpm.l (a1)+,(a5)+
 	bne .prepare_miss
-	dbf d1,.compare_player
+	ENDR
 	IFNE MP_RECORD_SIZE&2
 	cmpm.w (a1)+,(a5)+
 	bne .prepare_miss
 	ENDC
-	moveq #PS_SIZE/4-1,d1
-.compare_state:
+	REPT PS_SIZE/4
 	cmpm.l (a0)+,(a5)+
 	bne .prepare_miss
-	dbf d1,.compare_state
+	ENDR
 	IFNE PS_SIZE&2
 	cmpm.w (a0)+,(a5)+
 	bne .prepare_miss

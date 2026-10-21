@@ -955,6 +955,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     selected state comparisons without time/input loss, at 2.99750 Hz over
     1,201 native fields. Lag remains 24..43 fields; the near-target average
     does not accept responsiveness or the wider timing matrix.
+    Fixed-size exact cache comparisons now remove their per-longword loops,
+    reducing sampled cache cost/request by 11%. The NTSC 68000 route still
+    matches all 61 selected states, with no lost time/input, and completes
+    60 intervals in 1,194 fields (3.01508 Hz). Lag is 18..38 fields in this
+    sample; this remains too high for responsiveness acceptance.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL

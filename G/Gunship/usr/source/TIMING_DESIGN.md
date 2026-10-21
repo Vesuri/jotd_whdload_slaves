@@ -6683,3 +6683,40 @@ scheduler/render completion jitter. `reserve-clock-live-audit.json` retains
 per-run elapsed times and event intervals. This does not observe clock UI
 or minute rollover in play, and does not remove the 68000 responsiveness
 failure or close C9 duration acceptance. No gameplay code changed.
+
+### Remove loop overhead from exact player-cache comparisons
+
+The fixed player and step-state sizes now emit their comparisons at assembly
+time, retaining an early miss after every longword and the exact word tail.
+No key bytes, tick or code pointers are omitted, and hit/miss publication and
+failure behavior are unchanged. This adds 216 code bytes, with no arena
+change. The ordinary slave remains 6,088 bytes; the runtime becomes 43,654
+and diagnostic runtime 109,984 bytes.
+
+All 640 native/cache output comparisons pass, including 480 hits and 160
+misses. Every one of the 172 player/state/packet key bytes independently
+causes a miss when changed, as do the tick and both code pointers. Atomic
+failure, register preservation, buffer guards, bypass and invalidation pass.
+The before/after complete player/owner trace over 1,760 fields retains SHA256
+64886d032276507a8e0e1c8a2256b06393b6ceaabeeb64d5422be55222b421e8,
+including all four configurations, PAL/NTSC, pulses and boundary impulses.
+The batch comparison passes 1,200 fields/954 command yields; loop and all
+36 lifecycle calls pass. All build variants assemble.
+
+Matched 100-field NTSC 68000 profiles show cache self cost/request falling
+from 384,632 cycles / 115 calls (3,344.63) to 335,966 / 113 (2,973.15), about
+11.1%. The code interval and counts are retained in `cache-compare-cost.json`;
+`compare-cache-cost-ntsc-000` retains the new binary provenance and profile.
+Call counts differ with work completed during the fixed field window, so
+this is sampled workload cost, not a universal per-hit cycle guarantee.
+
+`compare-cache-world-fire-ntsc-000` matches all 61 selected authoritative
+states, rocket release at world 64 and eligible native next-pose forecasts.
+All 1,449 common consumed control records agree; the raw input comparison
+still fails solely on unused TR_RELATIVE and is retained. Actor exclusions
+remain inactive countdowns and C732 drawing scratch. No history loss,
+discard, clock rebase or scheduler fault occurs. Worlds 20..80 complete in
+1,194 native fields (3.01508 Hz), with 18..38 fields of lag, compared with
+1,201 fields and 24..43 lag before this change. Ten-world rolling rates
+remain 2.84360..3.17460 Hz. This finite-window improvement does not accept
+68000 responsiveness, establish scanout delay or close broader C9 gates.
