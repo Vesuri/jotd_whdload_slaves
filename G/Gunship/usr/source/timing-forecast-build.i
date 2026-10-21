@@ -4,8 +4,10 @@ FB_TAPE equ 0
 FB_CONTEXT equ 4
 FB_EVENT equ 8
 FB_OWNER equ 12
-FB_PLAYER equ FB_OWNER+EP_SIZE
-FB_PACKET equ FB_PLAYER+MP_RECORD_SIZE
+; Keep the owner and output in the private step workspace. No authoritative
+; data lives here; failed construction retires the tape before returning.
+FB_PLAYER equ FB_OWNER+EP_WORK_OUTPUT
+FB_PACKET equ FB_OWNER+EP_WORK_SIZE
 FB_CACHE equ FB_PACKET+PS_INPUT_SIZE
 FB_SIZE equ FB_CACHE+PC_SIZE
 
@@ -42,10 +44,12 @@ forecast_player_build:
 .owner:
  move.w (a1)+,(a5)+
  dbf d2,.owner
+ lea FB_PLAYER(a6),a5
  moveq #MP_RECORD_SIZE/2-1,d2
 .player:
  move.w (a2)+,(a5)+
  dbf d2,.player
+ lea FB_PACKET(a6),a5
  move.l (a3),(a5)+
  clr.l (a5)+
  clr.w (a5)
@@ -70,7 +74,7 @@ forecast_player_build:
  move.l EP_DELAY+CD_FIELD(a0),d0
  addq.l #1,d0
  lea FB_CACHE(a6),a5
- bsr endpoint_player_step_cached
+ bsr endpoint_player_step_private
  tst.l d0
  bne .bad
  subq.w #1,d1

@@ -8320,3 +8320,40 @@ that the underlying workload already lacks responsiveness headroom. The
 bypass is measurement-only and is not a proposed production fallback.
 Evidence: `guided-equality-ntsc-000-no-forecast`, built from the separately
 saved `guided-no-forecast` diagnostic source/listing.
+
+
+### Private forecast construction workspace (C6d)
+
+Cold installed forecast replay on the corrected PAL 060 captures uses
+1,476,439 guest instructions across 28 queries. Scene collection accounts
+for 914,001 instructions; construction accounts for 294,543. These are
+inclusive instruction counts, not CPU cycles, and forcing every query cold
+is a diagnostic rather than the measured live hit/miss distribution.
+
+The constructor now uses `endpoint_player_step_private` with its owner and
+player output inside one private `EP_WORK_SIZE` workspace, as the field-rate
+scheduled bridge already does. It avoids copying the owner into and out of
+a stack transaction and copying the player output back after every forecast
+field. The cache and packet remain disjoint from that workspace. Admission,
+checkpoint construction, event handling and publication order are unchanged;
+failed construction still retires the tape, and no authoritative state lives
+in this scratch buffer. `FB_SIZE` increases from 620 to 972 bytes and the
+runtime arena from 57,268 to 57,620 bytes.
+
+Independent assembled replay reproduces all player endpoints, cameras,
+candidate blocks and every intermediate owner/player checkpoint in 49 PAL
+020/060 frame fixtures, including five construction rejection cases per
+frame. The runtime lookup, cold-range actor endpoint, PAL/NTSC lifecycle/
+workspace and 40 atomic interval rejection checks pass. A paired comparison
+on 33 identical 060 fixtures reduces constructor guest instructions from
+344,557 to 310,721 (9.82%), with every recorded output unchanged.
+
+The full NTSC 000 guided run still first discards time at world 41, with
+nine clock phase units discarded. Selected non-actor state agrees with the
+020 reference through world 40; this optimization does not resolve the
+live overload. Scene collection remains the dominant cost. Evidence:
+`forecast-dependencies-pal-060/{builder-before-private,builder-private,
+builder-private-comparison}.json`, `forecast-ranges-combat-pal-060/
+installed-forecast-cold-profile.json`, and `guided-private-ntsc-000` in the
+ignored harness. All four builds pass: ordinary 6,088, experimental 46,636,
+diagnostics 112,966 bytes (+8 for runtime builds).
