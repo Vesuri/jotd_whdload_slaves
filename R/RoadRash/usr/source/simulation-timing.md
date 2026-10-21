@@ -1,3 +1,62 @@
+## Reference displacement after the lane-width correction
+
+A new private candidate applies the earlier compact four-field endpoint
+normalization to the committed lane-width model. It changes displacement to
+`max(0, new_speed + floor(3*new_speed/2) - floor(3*old_speed/2))` for every actor
+using the normal movement path. It changes neither acceleration nor input
+history, and does not backdate throttle. This calibrates the unit-step
+integration against B's observed delta-4 endpoint convention; it is not a
+uniquely determined physical model for B's other variable deltas.
+
+The normal binary in `c-approved-lane-motion-build` is 20616 bytes, SHA-256
+`5f2484e2b880cd73a8334239f00139d33391d8e16baafa325abdbe97ae5eed19`.
+The exact source delta is retained in `c-approved-lane-motion-source/source.patch`.
+The passive-debugger normal matrix gives:
+
+| Configuration | fps | Distance | Difference from corrected B | ±1% |
+| --- | ---: | ---: | ---: | --- |
+| Default Fast 020 | 12.5 | 3324779 | -1.1762% | Fail |
+| Cache Fast 020 | 12.5 | 3334538 | +0.0672% | Pass |
+| NoCache Fast 020 | 8.3 | 3315004 | -1.4668% | Fail |
+| 030/50 | 16.7 | 3324779 | -0.7933% | Pass |
+| 040/25 | 22.8 | 3334538 | -0.7966% | Pass |
+| 060/50 | 23.3 | 3334538 | -0.0269% | Pass |
+
+Fresh `c-approved-motion-{control,candidate}-trace` runs stop after movement,
+before event/pose completion. For each of player, $a61e0 and $a6260, 401 adjacent
+intervals through cursor 500 exactly match the intended displacement formula
+and position increment. The control retains speed-times-delta. At cursor 500
+both player speeds are 10373; positions are 2919413 / 2934972. This arithmetic
+check does not cover all actors, braking, crashes or later terrain transitions.
+
+At completed cursor 590 the control/candidate positions are 3855684 / 3868569;
+both boundaries are reached at live field 591 in these traces. Corrected B's
+retained cursor-590 position is 3888640. Equalizing *applied throttle exposure*
+compares that B boundary with candidate cursor 592, position 3888007: only 633
+units separate them. This explains the correction's effect; it does not replace
+the fixed-live-field gate. The earlier input-exposure difference and rendering
+phase remain relevant, and the two failed live-field cells are not waived.
+
+`c-approved-lane-motion-v3-period{4,0}-state` compares fixed-four and varying
+render intervals: all 1595 common completed hashes, sound requests and six
+field-1457 capture regions agree. The first diagnostic failed before the race
+because its patch target exceeded WHDLoad's signed displacement range. An
+attempt to place the helper before simulation also failed assembly (forward
+STEP_FIELDS definition and a distant code-copy jump). The successful diagnostic
+places it after hash storage, within range of both references. These diagnostic
+layout changes leave the measured normal binary byte-identical; failed logs
+remain under `c-approved-lane-motion-cadences{,-v2}.log`.
+
+A same-size unit-step variant replaces only the helper's multiply-by-one with
+zero-extension and an immediate word load, preserving D2's upper word. Its 12
+changed bytes occupy file offsets $4f28..$4f33; all other bytes match. Default
+020 measures 12.4 fps and NoCache 8.3, with unchanged distances 3324779/3315004.
+There is no measured throughput gain, so this variant is not promoted.
+
+Both candidates remain private. Full handling/lifecycle/response checks and
+the other cadence intervals have not been run on them. Production remains
+7475cfc6, with its five failing distance cells; C remains incomplete.
+
 ## Approved lane-width correction: integration validation
 
 The layout-preserving correction is now in `physics_aux.s`. Its normal build
