@@ -1,3 +1,45 @@
+## World-object reuse: D4 dependency isolated and corrected privately
+
+Follow-up probes identify the first divergence from direct reuse. At simulation
+cursor 1239 (hash slot 1238), projected world records match byte-for-byte after
+accounting for the rendered actor prefix. Actor state matches through native
+`$87592`. AI dispatch `$8d2c0` then changes opponent `$a61e0`'s steering word
+`+$46` to 4 in the rebuild control versus 2 in the direct-reuse candidate.
+The later three-byte movement difference in `$a62e0` is not the first cause.
+
+`c-world-reuse-{control,candidate}-lane2` captures D4 at the simulation entry
+and the relocated `$8da5c` lane builder. The rebuild leaves `$1b7` (439) in D4;
+direct reuse leaves `$ffff` (-1 in the word operations). All six observed lane
+builder calls retain their respective value. Native `$8da5c` uses D4 at
+`$8da96` and `$8dab8` without initializing it. Consequently lane membership
+lists differ before AI decisions. `-all-stages` and `-ai2` traces locate the
+steering write: control reaches `$8dba6`, candidate reaches `$8db70`.
+These observations establish a live register dependency beyond projected data.
+They do not justify changing the native lane-width behavior independently.
+
+A private correction captures D4 after the render's `$8a492` projection call
+and restores it when consuming the reuse marker. The existing 040/060 selection
+and CUSTOM2 gate remain in force. `c-world-reuse-d4-state` matches all 1596
+shared hashes, sound events and six captured regions against
+`c-pair-clear-vary-state`. `c-world-reuse-d4-finish` matches all 12095 hashes,
+66 events, six terminal regions, finish field 11907 and exit field 12096
+against `c-pair-clear-finish`. Restart captures `(93,92,0,1)` with cleared road
+fraction history. These tests force reuse on the functional 020 diagnostic.
+
+The normal candidate is 20580 bytes, SHA-256
+`967630422235d305103e9007dc404588ff5c681de0cb324873af677ac6e29498`.
+`c-world-reuse-d4-matrix` measures Fast 020 12.5, 040 23.0 and 060 23.1 fps;
+all three distances are 3321603. Current production measures 12.5/22.9/23.1,
+so the additional measured benefit is small and does not close B's distance gate.
+The equal-layout control differs only at file offset `$1e90` (BEQ to BRA,
+always rebuilding objects); it measures 040 21.5 and 060 23.0 fps. This separates
+the reuse benefit within that layout from the smaller net production gain.
+
+Source and builds remain under `c-world-reuse-d4-*`. Production remains
+unchanged pending arrest/wreck, exact cadence, hardware/fallback, controls,
+demo and latency checks. The added render hook must be included in the option-off
+patch audit before integration. C's B distance and handling gates remain open.
+
 ## Rendered world-object reuse: short replay rejects direct reuse
 
 A private candidate extends the existing geometry-ready marker to return from
