@@ -1,3 +1,66 @@
+## B reference provenance: committed condition-code fix
+
+The retained normal B binaries are not interchangeable. Rebuilding all source
+files from commit `10d0e5b7` reproduces `b-final-build/RoadRash.slave` byte for
+byte: 2476 bytes, SHA-256
+`6892f327f8f6c7719a3d5603a4bd1ed6a844dbd228b7e50c916678d58ba10bf3`.
+Removing only `andi #$ef,ccr` from `field_animation` reproduces the older
+`b-final-replay-on/tested.slave`: 2472 bytes, SHA-256
+`ae511e817d5f1544cade20c1d2e30dd8631ec05c3396e7625f2fbe53686fb57a`.
+The instruction restores the original phase increment's cleared X flag.
+Its addition also changes execution cost and subsequent code placement; these
+experiments do not isolate which effect changes the cached timing results.
+Reproduction builds and the audit are retained as `b-provenance-*`.
+
+`b-final-normal-on` used the older binary; `b-final-matrix-v2` used the
+committed corrected binary. A fresh three-cell run of the older binary,
+`b-distance-audit-fresh`, reproduces its distances: default/NoCache 3364352,
+Cache 3347896. Thus the Cache difference from corrected B's 3332298 is a
+reference-build difference, not evidence of nondeterminism. Keep both historical
+results, but identify the exact B binary in comparisons and use the committed
+corrected build for C's B-completion regression gate.
+
+A fresh normal default Fast-020 lap, `b-corrected-provenance-lap`, with
+`CUSTOM2=3` reproduces the older reference's sampled crash at field 1376,
+final position 13031078, lateral -931 and displayed rank 15. Its native ahead
+list ends `$a6360/$a62e0/$a63e0`, also unchanged. All shared reported gameplay
+fields match across the 752 samples; broad state hashes differ at 11 samples,
+so this is not a claim of complete memory equality. The older harness also
+stored raw player bytes at later samples. The handling discrepancy in C remains
+real; switching to corrected B does not remove it.
+
+A fresh eleven-cell run, `b-corrected-provenance-matrix`, confirms ten of
+`b-final-matrix-v2`'s eleven distance measurements. Compared with the unchanged
+production C binary (SHA-256
+`85250ab3d331371e2672ef052eaf44e7b87843363a07cc04c882b1ee4de1ee05`),
+the fresh measurements are:
+
+| Cell | Corrected B distance | C distance | Change |
+|---|---:|---:|---:|
+| a500-1m | 3425028 | 3425028 | +0.000% |
+| a1200 | 3337152 | 3337152 | +0.000% |
+| a1200-fast | 3364352 | 3321603 | -1.271% |
+| a1200-fast+cache | 3332298 | 3321603 | -0.321% |
+| a1200-fast+nocache | 3364352 | 3301969 | -1.854% |
+| 030-50 | 3324562 | 3311794 | -0.384% |
+| 030-50+cache | 3341412 | 3311794 | -0.886% |
+| 040-25 | 3361313 | 3321603 | -1.181% |
+| 040-25+cache | 3361313 | 3321603 | -1.181% |
+| 060-50 | 3335434 | 3321603 | -0.415% |
+| 060-50+cache | 3335434 | 3321603 | -0.415% |
+
+These are fixed live-field observations from the normal binaries. Matrix
+`status: passed` means the boot/probe completed; it does not mean the A4 distance
+gate passed. Default and NoCache 020, plus both 040 cells, fail ±1%. The default
+030 result is unresolved: retained corrected B measured 3351364, whereas this
+fresh run and `b-corrected-provenance-030-repeat` both measured 3324562,
+despite identical recorded emulator/binary hashes,
+effective configuration and initial state hash. Against the retained result C
+is -1.181%; against the fresh result it is -0.384%. Do not select the favorable
+reference or declare that cell accepted until this discrepancy is explained.
+The other six cells pass the distance comparison. Handling acceptance remains
+open independently. No runtime change is made by this reference audit.
+
 ## Explicit lane width: matched NPC control and crash origin
 
 `c-lane-width-npc-control-build` retains the same NPC fractional-lateral

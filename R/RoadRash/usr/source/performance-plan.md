@@ -389,8 +389,12 @@ A full race from zero damage to native WRECKED now also matches across fixed
 and varying cadences: 23,509 hashes, 105 sound requests, terminal state and
 exit tick 23,510; both restarts clear all road history/carry. These results do
 not establish B-equivalent handling. Default and
-uncached 020 distance still fail the one-percent gate, and opponent
-trajectories/order still differ. C remains incomplete.
+uncached 020 distance, and both 040 cells, fail the one-percent gate against
+the reproduced committed B build. The default 030 reference is unresolved:
+old and fresh corrected-B runs disagree despite matching recorded initial
+state/configuration. Six other cells pass distance. See the reference-provenance
+audit in simulation-timing.md; do not mix pre-fix and committed B binaries.
+Opponent trajectories/order still differ. C remains incomplete.
 
 Road normalization fixes proven loss of positive road-centre motion from
 one-field integer rounding. Current scene review restores the rider to the
