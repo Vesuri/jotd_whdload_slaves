@@ -1319,7 +1319,7 @@ with pl_020. Status per change:
 | Delta copy and its cache-line compare (step 6) | done | done on 030/060 (and TFX on 040); not on the 020 (no data cache, slower) |
 | mask_sprite8_040 (2) | done | done on every CPU (TFX's _MaskSprite is identical) |
 | fade_cols_040 (7) | done | unported: profile first |
-| rot_delta2_040 (8) | done | unported: profile first |
+| rot_delta2_040 (8) | done | measured slower on 020/030/060: stays 68040-only |
 | isqrt_040 (9) | done | unported: profile first |
 | sfd_span_040 (4) | done | TFX uses paraj's normal_fill instead: different routine |
 | FPU / integer projection (1) | done | TFX projects in integer already |
@@ -1371,3 +1371,21 @@ mask_sprite8_040 for plain TFX:
   | 68060 50 MHz | 469 | 502 | +7.0% |
 
 - Evidence: `tmp/dev/tmp/mask/`.
+
+rot_delta2_040 on other CPUs (measured, not adopted):
+- TFX's DoRotPt0 delta handler and dispatch table are identical to tfx.020's, $5e28
+  higher ($5f570, tail $5f5a0, table $5c400). A test build allocated rot_table on the
+  TFX path and hooked $5f570.
+- Same-seed action A/B, handler entry restored at run time against kept:
+
+  | CPU | multiply | table | change |
+  |---|---|---|---|
+  | 68020 14 MHz | 128 | 126 | -1.6% |
+  | 68030 50 MHz | 914 | 890 | -2.6% |
+  | 68040 core, TFX | 491 | 499 | +1.6% |
+  | 68060 50 MHz | 502 | 495 | -1.4% |
+
+- Only the 68040 gains (tfx.020 step 8: +1.3%). On the 020/030 the table's memory-indirect
+  lookups and a 32 KB table against a 256-byte data cache cost more than six MULS.W;
+  on the 060 MULS.W is cheap. The change stays in the 68040 list; TFX is not patched.
+- Evidence: `tmp/dev/tmp/rot/`.
