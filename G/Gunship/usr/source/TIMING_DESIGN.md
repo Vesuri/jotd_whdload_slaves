@@ -6199,3 +6199,43 @@ and drawing scratch. All 427 common consumed-control records match; the raw
 comparison differs only in TR_RELATIVE and stays recorded as failed. This
 partial comparison does not cover expiry or any world after the rebase.
 Further 68000 NTSC cost reduction is still required.
+
+### Validate field distribution once per player step
+
+endpoint_motion_step already validates the interval length and all ten
+fractional residues before its first write, while the native field widths
+bound every delta to [-65535,65535]. It now selects the scale factor once and
+inlines the same exact multiply/divide/floor arithmetic used by the checked
+endpoint_fraction_step primitive. This removes ten redundant validations,
+factor selections and register save/restore sets per field. The public checked
+primitive is unchanged. Whole-tick and zero-delta paths retain the existing
+residue; circular widths, negative floor correction and native wrapping are
+unchanged. Invalid motion inputs still reject before any output write.
+
+The independent integer model passes 1,542 motion cases: random records,
+extreme signed/unsigned differences, circular crossings, held-input endpoints,
+fresh per-field candidates across changing PAL/NTSC spans, zero deltas with
+nonzero residues, and atomic rejection of invalid spans/residues at every
+position. The 1,760-field cache/endpoint comparison, 1,200 batched fields,
+lifecycle and loop ownership regressions also pass. All variants build;
+ordinary remains 6,088 bytes, runtime is 42,732, VERIFY/input runtime is
+109,062 and the combat fixture is 109,178. Arena size is unchanged.
+
+`fast-motion-cost-ntsc-000` repeats the 100-field headless 68000 NTSC profile.
+Combined distribution self cost falls from 654,054 cycles over 97 motion
+calls (6,742.8/call, 5.47% of the previous sample) to 359,856 over 98 calls
+(3,672/call, 3.01%). That is approximately 46% lower sampled cost per call.
+There are no calls to the separately checked fraction primitive from this
+path. The sample has five target/world-completion entries and one main draw,
+without discarded history during the window; the differing boundary mix is
+retained in the profile rather than treated as a fixed-cycle benchmark.
+
+The longer `fast-motion-world-fire-ntsc-000` route first rebases at world 41,
+with 68 discarded history records and twelve discarded phase units. The
+previous optimization rebased at world 30. Worlds 20..40 now match the NTSC
+68020 reference's selected player/object/projectile/RNG/mission state, exact
+clock deadlines and eligible actor state; only inactive countdowns and C732
+drawing scratch differ. All 650 common consumed controls agree; raw records
+still differ only in unused TR_RELATIVE. That failed raw comparison and the
+successful scoped state audit are both retained. This is further throughput
+progress, not 68000 NTSC rate acceptance or a claim about expiry after rebase.

@@ -929,7 +929,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     identifies remaining field-owner, copy, distribution and raster cost. Direct key comparisons and
     grouped output copies now reduce sampled cache cycles/request by about
     46%, but only postpone the 68000 NTSC overload to world 30. Selected
-    state agrees through world 29; this remains an unaccepted rate case.
+    state agrees through world 29; this remains an unaccepted rate case. Validating
+    motion distribution once per field then reduces its sampled cost/call by
+    about 46%, postponing the first rebase to world 41 with selected state
+    equal through world 40. Sustained 68000 NTSC throughput remains open.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL

@@ -14,13 +14,16 @@ EM_SIZE equ EM_COUNT*4
 ; Residues stay in [0,1360); retain them across interval-length changes.
 endpoint_motion_step:
 	movem.l d1-d7/a0-a4,-(sp)
-	move.l d0,d6
+	moveq #0,d2 ; whole tick: no fractional scaling
 	cmpi.l #1,d0
 	beq .validate
+	moveq #85,d2
 	cmpi.l #16,d0
 	beq .validate
+	moveq #80,d2
 	cmpi.l #17,d0
 	beq .validate
+	moveq #68,d2
 	cmpi.l #20,d0
 	bne .bad
 .validate:
@@ -65,10 +68,35 @@ endpoint_motion_step:
 .circular_word:
 	ext.l d0
 .scale:
-	move.l d6,d1
-	bsr endpoint_fraction_step
-	; All arguments were validated before any writes. The field types
-	; bound every delta to [-65535,65535], so this cannot fail.
+	; Span and all residues were validated once before the first write.
+	; Native field widths bound delta to [-65535,65535]. Inline the same
+	; exact floor/remainder arithmetic as endpoint_fraction_step, avoiding
+	; ten redundant validations, factor selections and register save sets.
+	tst.l d2
+	beq .scaled
+	tst.l d0
+	beq .scaled ; zero motion preserves a validated fractional residue
+	move.l d0,d3
+	bpl .positive
+	neg.l d0
+.positive:
+	mulu.w d2,d0
+	tst.l d3
+	bpl .add
+	neg.l d0
+.add:
+	add.l (a0),d0
+	divs.w #EF_DEN,d0
+	move.l d0,d1
+	ext.l d0
+	swap d1
+	ext.l d1
+	bpl .remainder
+	subq.l #1,d0
+	addi.l #EF_DEN,d1
+.remainder:
+	move.l d1,(a0)
+.scaled:
 	btst #0,d4
 	beq .store_byte
 	add.w d0,(a3,d5.w)
