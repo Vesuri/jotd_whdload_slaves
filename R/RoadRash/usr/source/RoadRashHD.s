@@ -105,6 +105,16 @@ C_CACHE = 1
 	ENDC
 	ENDC
 
+; The complete priority matrix benefits 040/060 only. Diagnostics opt in.
+	IFD VERIFY_D_BUS_PRIORITY
+C_BUS_PRIORITY = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND C_BUS_PRIORITY
+C_BUS_PRIORITY = 1
+	ENDC
+	ENDC
+
 ; Normalize steering for the one-field runtime. Snapshot diagnostics retain
 ; explicit selection so older timing references can still be reproduced.
 	IFD VERIFY_C_STEERING
@@ -584,6 +594,11 @@ pl_c_simulation
 	PL_IFC2
 	IFD C_CACHE
 	PL_P $3284E,enhanced_decrunch_done
+	ENDC
+	IFD C_BUS_PRIORITY
+	PL_PS $712A,step_priority_end
+	PL_PS $28D26,step_priority_end
+	PL_PS $28D30,step_priority_end
 	ENDC
 	PL_PSS $660E,step_prepare,2
 	PL_P	$747E,step_main

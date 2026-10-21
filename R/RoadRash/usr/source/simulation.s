@@ -89,6 +89,9 @@ STEP_INPUT_SLOTS = 2048
 	ENDC
 step_reset:
 	movem.l d0-d7/a0-a6,-(a7)
+	IFD C_BUS_PRIORITY
+	bsr step_priority_begin
+	ENDC
 	move.l $a5d4c,d0
 	bsr step_reset_history
 	IFD VERIFY_C_DECAY_TEST
@@ -109,6 +112,9 @@ step_reset:
 ; Cursor field-1 reproduces the first boot's initial step at field 1.
 step_prepare:
 	movem.l d0-d7/a0-a6,-(a7)
+	IFD C_BUS_PRIORITY
+	bsr step_priority_begin
+	ENDC
 	move.l $a5d4c,d0
 	subq.l #1,d0
 	bsr step_reset_history
@@ -122,6 +128,12 @@ step_prepare:
 	movem.l (a7)+,d0-d7/a0-a6
 	move.w #1,$a6f00
 	rts
+
+	IFD C_BUS_PRIORITY
+	IFD VERIFY
+	include bus_priority.s
+	ENDC
+	ENDC
 
 ; d0 is the initial simulation cursor; the queue follows the live field.
 	IFD C_GEOMETRY_REUSE
@@ -1188,6 +1200,9 @@ step_geometry_reuse:
 	ENDC
 
 	IFND VERIFY
+	IFD C_BUS_PRIORITY
+	include bus_priority.s
+	ENDC
 	IFD REFERENCE_MOTION
 	include reference_motion.s
 	ENDC

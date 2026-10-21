@@ -496,6 +496,9 @@ dictate the accelerated path's timestep.
     with data-cache emulation both disabled and enabled; Fast code/stack use copyback.
   - **Expected:** 020 12.5 → 16.7 fps, 030/50 → 16.8 fps (measured with WHDLoad `Cache`).
 - **D2 Turn off blitter priority in the race.**
+  - Complete for the current memory layout: enable CPU/blitter sharing only on
+    enhanced 040/060, and restore the original priority on race/demo exit.
+    All-cell measurements and full-race equivalence are in memory-performance.md.
   - D2a Find who sets `BLTPRI`: DMACON writes are `$a879a #$8280`, `$a882e #$8220`,
     `$af224` and `move.w d1`; `$aeacc` clears it but has no callers. A VERIFY DMACON watch
     will tell.
@@ -506,11 +509,9 @@ dictate the accelerated path's timestep.
     Keep it on for the 68000 if slower.
   - **Expected:** a large share of the 18.8% stall becomes overlap on 020+ once D1 is in;
     measure.
-  - Current C experiment: clearing priority regresses cached 020 from 193 to
-    183 frames and uncached 020 from 109 to 105 over fields 100–1,000.
-    Equal-layout controls and DMACONR samples confirm the setting. Retain the
-    original priority; no general gain or all-cell D2 completion is established.
-    See the CPU/blitter priority control in [simulation-timing.md](simulation-timing.md).
+  - The temporary startup copper list is the original setter. The complete D
+    matrix confirms no benefit on 000/020/030 and a modest gain on 040/060.
+    Retain native priority on 000/020/030; remeasure after D3/E changes the workload.
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
   - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
     interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,
