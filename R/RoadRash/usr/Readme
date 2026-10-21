@@ -38,6 +38,8 @@
  - movement, collision, AI and acceleration code runs from Fast RAM on the
    enhanced path
  - uncached 68020 lane scanning also runs from Fast RAM on the enhanced path
+ - enhanced lane occupancy uses actor widths instead of leftover rendering
+   values; opponent paths and collision outcomes can differ from the original
  - raster edge generation runs from Fast RAM on the enhanced path
  - shared collision/pose scratch words use Fast RAM on the enhanced path
  - collision checks avoid redundant writes to already-clear actor flags

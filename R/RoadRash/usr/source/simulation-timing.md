@@ -1,3 +1,58 @@
+## Approved lane-width correction: integration validation
+
+The layout-preserving correction is now in `physics_aux.s`. Its normal build
+is byte-identical to `c-approved-lane-layout-build/RoadRash.slave` (20532 bytes,
+SHA-256 `e64caab08e23e2f0ac55cf9441501d376502d06f6cc373a3a45c7b9d91035c4c`).
+Initialization uses reserved space before the existing lane-scan helper and
+flushes the modified copy before execution. It runs behind the existing
+CUSTOM2/020/Fast gate; it does not patch the original lane operands.
+
+The normal candidate passes keyboard/CD32 controls, pause/resume and both
+fire/timeout demo exits on 040, with intact Fast-stack guards. The explicit
+CUSTOM2=0 check retains all 22 original hooks, 14 original scratch operands,
+the collision tail and both original D4 lane-width operands. Evidence is under
+`c-approved-lane-{keyboard,cd32,demo-fire,demo-timeout,off}`.
+
+Eight paired visible-response phases on each normal CPU configuration pass
+initial-state equality. On cached 020 the upper estimates are
+160/140/120/180/160/140/120/180 ms (median 150); on 040 they are
+120/140/120/140/120/140/120/140 ms (median 130). Every phase is no worse than
+its B reference. These are field-capture estimates with one PAL field of
+boundary uncertainty, not scanline-exact or host-input latency measurements.
+The first differing pixels inspected on both CPUs belong to the rider/bike.
+Evidence: `c-approved-lane-visible-{020,040}`.
+
+The previous finish tape releases throttle before this corrected model finishes.
+Both fixed and varying runs reach the 30000-field deadline without exiting;
+`c-approved-lane-finish-{fixed,vary}` remain failed fixtures. A fresh joystick-only
+driver records `c-approved-lane-driven-finish/driven-tape.json`; replaying it
+unchanged with varying render intervals matches all 12856 completed hashes,
+73 sound events and all six terminal capture regions. Finish is at tick 12668,
+exit at 12857. Both runs restart with cleared capture and road-fraction state.
+
+The existing arrest tape still reaches BUSTED. Fixed and varying runs in
+`c-approved-lane-arrest{,-vary}` match all 7977 hashes, 20 sound events, six
+capture regions and exit tick 7978; both restart with cleared state.
+The old natural-wreck tape also stops before the corrected bike is wrecked;
+its fixed/varying runs remain failures, not accepted lifecycle evidence.
+
+A fresh natural-crash driver reaches WRECKED without changing game memory.
+`c-approved-lane-driven-wreck{,-vary}` match all 24774 completed tick hashes,
+112 sound events, six capture regions and exit tick 24775. Both restart with
+cleared capture and road-fraction state. The final WRECKED image was inspected;
+repeated crashes, recovery and the terminal wreck are covered by this tape.
+
+Visual inspection covers the normal field-1600 scene against corrected B,
+finish, arrest and subsequent race start. The normal C scene shows a riding
+player in 13th place where B shows the player recovering from a crash; this
+is the documented handling difference, not an RNG-only claim. The inspected
+road, rider, scenery and HUD render correctly. Static captures alone do not
+prove absence of tearing during motion.
+
+The six-cell throughput measurements and five failing distance tolerances
+recorded below remain applicable. This correction establishes explicit lane
+occupancy; it does not close C or waive the distance/performance work.
+
 ## Approved lane-width candidate: cadence and hardware checks
 
 The first candidate under the clarified handling criteria changes only the two
@@ -33,9 +88,9 @@ The layout-preserving period-4 diagnostic also matches the first candidate's
 through field 1600, lateral -974 and displayed rank 13, versus B's one crash,
 -931 and rank 15. The user's approval permits this difference to be reviewed;
 it does not prove collisions, difficulty or race exits correct. Evidence and
-source diff are retained under `c-approved-lane-{width,layout}-*`. Both candidates
-remain private pending full-race, collision/lifecycle, response and visual
-validation. Production is unchanged; no failure is silently waived.
+source diff are retained under `c-approved-lane-{width,layout}-*`. At this checkpoint both candidates remained private pending full-race,
+collision/lifecycle, response and visual validation. The later integration
+entry above records the completed checks; no distance failure is waived.
 
 ## Approved handling acceptance clarification — 2026-10-21
 

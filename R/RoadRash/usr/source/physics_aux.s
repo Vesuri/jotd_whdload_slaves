@@ -138,7 +138,7 @@ step_physics_aux_init:
  suba.l #step_physics_aux_init-_resload,a2
  move.l (a2),a2
  IFD C_LANE_SCAN
- jmp aux_lane_scan_init(pc)
+ jmp aux_lane_width_init(pc)
  nop
  ELSE
  jsr (resload_FlushCache,a2)
@@ -182,7 +182,13 @@ aux_to_90b8e:
  IFD C_LANE_SCAN
 ; Preserve existing symbol offsets and add 256 bytes overall. Runtime placement
 ; still depends on the loader; see measured alignment effects in the audit.
- ds.b 58
+ ds.b 42
+aux_lane_width_init:
+; Reuse reserved initialization space without moving any hot copied routines.
+; The native table supplies D2 half-width; D4 is leftover render state.
+ lea aux_8da5c(pc),a0
+ move.w #$d042,$8da96-$8da5c(a0)
+ move.w #$9042,$8dab8-$8da5c(a0)
 aux_lane_scan_init:
 ; Only the measured uncached 68020 benefits. The outer gate already excludes 000.
  lea step_physics_aux_init(pc),a0
