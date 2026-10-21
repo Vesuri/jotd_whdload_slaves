@@ -1,3 +1,42 @@
+## Displacement candidate: response, finish and arrest validation
+
+The private 20616-byte displacement candidate remains unchanged (SHA-256
+`5f2484e2b880cd73a8334239f00139d33391d8e16baafa325abdbe97ae5eed19`).
+`c-approved-motion-visible-020` completes all eight paired cached-020 visible
+response phases with equal initial states: 180/160/140/120 ms, repeated twice.
+Median 150 ms and maximum 180 ms match the committed lane-width candidate's
+aggregate results, although phase alignment differs. Every phase is no worse
+than its corrected B reference. The inspected first differing pixels belong to
+the rider/bike. These remain capture-boundary estimates with one-field
+uncertainty; no exact host-input or scanline-latency claim is made.
+
+`c-approved-motion-driven-finish` records a successful race using the ordinary
+joystick driver, with no injected state or attacks. Replaying its recorded
+inputs unchanged with varying rendering intervals matches all 16230 completed
+tick hashes, 72 sound events and six terminal capture regions. Finish occurs at
+16042 and exit at 16231. Both fixed/varying runs restart with cleared capture
+and road-fraction state. The FINISHED image was inspected and renders correctly.
+The new recording is specific to this corrected model; it does not claim
+unchanged B or lane-only race outcomes.
+
+The existing arrest tape in `c-approved-motion-arrest{,-vary}` matches all
+7977 hashes, 19 sound events, six terminal regions and exit tick 7978 across
+cadences. Both runs restart cleanly. The terminal image confirms BUSTED.
+
+Two ordinary-input natural-wreck attempts did **not** reach WRECKED. The left
+roadside driver (`c-approved-motion-driven-wreck`) was arrested at tick 8580;
+the right roadside variant (`c-approved-motion-driven-right-wreck`) was arrested
+at 8323. Their images confirm BUSTED and both restart cleanly. They demonstrate
+crash/recovery and arrest, not terminal-wreck coverage. Neither is relabelled as
+a passing wreck fixture. Their outcomes are retained in
+`c-approved-motion-lifecycle-summary.json` alongside the successful comparisons.
+
+The proposal to separate applied-input-duration speed checks from live-field
+measurements is still awaiting user approval; A4a is unchanged. The candidate
+remains private. Wreck coverage, wider response/controls/hardware checks and
+acceptance of the remaining distance results are unresolved. Production and
+its five failing live-field distance cells are unchanged; C is not complete.
+
 ## Separating input exposure from speed: proposed acceptance clarification
 
 The remaining one-, two- and three-field diagnostic cadences are now complete.
