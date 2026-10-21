@@ -459,7 +459,12 @@ Subsequent NTSC 68020 idle and 68060 takeoff runs sustain approximately
 371 fields over 50.5 seconds. Critically, the PAL catch-up/copy/zero-motion
 100-field profiles contain zero completed renders: catching up can starve
 drawing despite near-3-Hz simulation. C8/C9 are not accepted; bounded
-render progress and measured display latency must accompany rate checks. Native world opening and the complete periodic
+render progress and measured display latency must accompany rate checks.
+The four-world catch-up allowance is now shared across snapshots, fixing
+unbounded renewal: the 68000 profile again records swaps, but the sampled
+world rate is 2.558 Hz with explicit time discards. The 68020 records fifteen
+swaps in two PAL seconds and preserves near-3-Hz takeoff timing without
+lost/discarded input. The starvation fix is not a responsiveness acceptance. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

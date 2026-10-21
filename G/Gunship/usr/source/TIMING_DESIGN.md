@@ -5334,3 +5334,32 @@ the interval between rendered frames. Do not accept C8/C9 from simulation
 throughput alone or solve this by dropping responsive field input silently.
 The next integration gate must measure completed renders alongside tick
 rate and input-to-display delay, and resolve this workload/scheduling limit.
+
+### Bound catch-up across snapshots to restore render progress
+
+The flight owner now retains the completed-world count at the last draw.
+Each subsequent snapshot gets only the remainder of the existing four-world
+catch-up allowance. Reaching that allowance forces a render before another
+snapshot; successful drawing renews it. Lifecycle recovery keeps lifetime
+world accounting, and unsigned subtraction handles counter wrap. This fixes
+the unbounded renewal that let continuous arrivals starve drawing. Existing
+explicit excess recovery and its discard counters remain in force.
+
+The assembled control fixture passes fourteen scenarios, including continuous
+arrivals, budgets 4/3/2/1 then a forced draw, renewed budget four, and world
+counter wrap. PAL/NTSC actual pipeline comparisons for batches 1/3/10/80 and
+all four build variants also pass.
+
+Live evidence (`tmp/dev/tmp/c/live-loop-{000,020}-bounded-draw`): the 68000
+100-field profile now contains one render entry and two swaps, versus zero
+previously; an already-running render explains the window boundary counts.
+Its 22.28-second observation window completes 57 worlds (2.558 Hz), with
+75 fields discarded during that window, 94 total. This restores progress,
+not acceptable responsiveness or throughput on the overloaded 68000.
+The 68020 profile contains sixteen render entries and fifteen swaps over
+100 fields (two nominal PAL seconds). Its subsequent takeoff-inclusive
+observations complete 44 worlds in 14.58 seconds (3.018 Hz, within one
+count/window of 3), with no lost/discarded input and backlog 0..4 fields.
+The four-world bound is a starvation safeguard, not an input-latency target.
+C9 still requires measured input-to-displayed-frame latency and adequate
+render progress alongside sustained world timing in all required windows.

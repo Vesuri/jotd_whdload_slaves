@@ -25,10 +25,17 @@ timing_runtime_loop:
  jsr (a5)
  tst.l d0
  bne .done
+ move.l RT_SCHEDULER+TS_WORLDS(a6),d6
 .batch:
+ ; Share the four-world catch-up allowance across snapshots until a draw.
+ ; Otherwise a producer that stays ahead can prevent drawing indefinitely.
+ move.l RT_SCHEDULER+TS_WORLDS(a6),d1
+ sub.l d6,d1
+ neg.l d1
+ addq.l #4,d1
+ ble .present
  movea.l a6,a0
  moveq #64,d0
- moveq #4,d1
  move.l #128,d2
  bsr timing_runtime_batch
  tst.l d0
@@ -51,11 +58,13 @@ timing_runtime_loop:
  move.w RT_HISTORY+TH_READ(a6),d0
  cmp.w RT_HISTORY+TH_WRITE(a6),d0
  bne .batch
+.present:
  movea.l a6,a0
  bsr timing_runtime_draw
  tst.l d0
- beq .batch
- bra .fault
+ bne .fault
+ move.l RT_SCHEDULER+TS_WORLDS(a6),d6
+ bra .batch
 .boundary:
  jsr (a4)
  movea.l a6,a0
