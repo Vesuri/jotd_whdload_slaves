@@ -5593,3 +5593,39 @@ world-budget rebases but does not solve sustained overload. Evidence is in
 `world-active-yield-020`, retains all input with no scheduler fault; 818
 common retained control records and player/RNG/mission/alive state at worlds
 100..102 match its pre-change run. The 68000 C9a/C9b gates remain open.
+
+
+### 68000 field-wait isolation and target-panel call range
+
+Rebuilding the current field-wait diagnostic exposed a signed-word BSR range
+failure from `timing_view_panel` to `timing_runtime_target_panel`. The hook now
+uses a local PC-relative base plus a long constant displacement and an
+indirect JSR, saving/restoring A1. This remains position independent on 68000
+and avoids making core growth depend on a 32-KiB call-distance limit. The
+16-case assembled target-panel test passes, including register preservation,
+native passthrough, stale-view suppression, adversarial draw restoration and
+six installer rejections. Runtime, VERIFY/runtime and field-wait builds pass.
+
+The first attempted diagnostic launch used an older binary after assembly
+failed; its `world-active-nodraw-000` output is excluded from acceptance.
+The successfully rebuilt capture is `world-active-nodraw-current-000`; its
+runtime slave hash matches the rebuilt binary, recorded in provenance.json.
+The capture runner now checks the effective slave hash for future runs.
+
+With main drawing replaced by a field wait, the current 68000 completes world
+100 at 1,667 consumed PAL fields with TC_DROPPED=0, no history loss/discards
+and no scheduler fault. Worlds 100..102 match the rendered 68020's player,
+RNG, mission payload and alive flags. This establishes that the tested
+simulation path can keep up when relieved of main rendering; the rendered
+68000 overload remains unresolved.
+
+Raw control-record comparison does not pass unchanged: 550 of the 815 common
+retained fields differ in TR_RELATIVE (+16). All other control bytes agree,
+including sampled X/Y, buttons, command cutoff, mode, deltas and edges.
+`controls_from_history` decodes the low bytes of TR_X/TR_Y and does not read
+TR_RELATIVE; references to TR_RELATIVE in the timing sources are its declaration
+and capture stores. Timestamp bytes remain subject to the seeded diagnostic
+policy described above. The raw mismatch is retained in active-comparison.json,
+with its separate byte audit in input-difference-audit.json. This is selected
+state and simulation-control evidence, not a blanket raw-state equality pass
+or completion of C9a.

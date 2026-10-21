@@ -894,7 +894,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     the broader no-draw matrix remain open. The 68000 active route fails
     equality under overload. Separating render-budget yields from true
     excess-time rebases reduces dropped time, but backlog discards remain;
-    this is not accepted as cross-CPU equality.
+    this is not accepted as cross-CPU equality. The current 68000 field-wait
+    diagnostic reaches world 100 in 1,667 PAL fields without dropped time
+    and matches selected state at worlds 100..102. A legacy captured input
+    field differs while the other control bytes agree; the raw comparison
+    remains explicitly non-passing.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and

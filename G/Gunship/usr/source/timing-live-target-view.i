@@ -49,7 +49,14 @@ timing_view_panel:
  bne .native
  cmpi.w #1,RT_VIEW_PHASE(a0)
  bne .skip
- bsr timing_runtime_target_panel
+ ; The timing core can exceed the 68000's signed-word BSR range.
+ ; Keep the call position independent without borrowing a caller register.
+ move.l a1,-(sp)
+.panel_call:
+ lea .panel_call(pc),a1
+ adda.l #timing_runtime_target_panel-.panel_call,a1
+ jsr (a1)
+ movea.l (sp)+,a1
 .skip:
  movem.l (sp)+,d0/a0
  rts
