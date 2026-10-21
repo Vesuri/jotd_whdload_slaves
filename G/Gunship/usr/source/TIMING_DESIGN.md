@@ -7174,3 +7174,36 @@ stack writes; no unexpected writes occur. Native state, capture cache and
 generations remain unchanged. This closes the assembled presentation-path
 check for mixed decoy contacts, without claiming live raster or scanout
 coverage. Result: `tmp/dev/tmp/c/decoy-presentation-pipeline-test.json`.
+
+
+### Native result-screen clock after a timed minute
+
+The headless `clock-ui-guest-pal-060` and `clock-ui-guest-ntsc-020` runs use
+current runtime code in a controlled combat-start diagnostic build. At tick
+192, a guest-code fixture sets only player exit/landing bytes +24/+82 to 2
+immediately before `world_reserves_step` reads the terminal state. The real
+clock is neither seeded forward nor edited. Native cleanup and the result UI
+then run normally; both captured `clock-result.png` images were visually
+inspected and show **Elapsed Time 01:04** in Mission Result Summary.
+
+| Run | Active native fields to terminal check | Seconds | World ticks | Rate | Completion lag |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| PAL 68060 | 3,201 | 64.02 | 192 | 2.999063 Hz | 1 field |
+| NTSC 68020 | 3,846 | 64.10 | 192 | 2.995320 Hz | 6 fields |
+
+Logical fields are exactly 3,200/3,840, phase zero, and the tick remains 192
+through return to native +05622. No sampled active clock/history/command
+loss or unexpected rebase occurs. Sampling is disabled on return. Evidence:
+ignored `capture_clock_ui_c.py`, `audit_clock_ui_c.py`, per-run provenance,
+minute/terminal player and arena snapshots, `clock-ui-audit.json`, and PNGs.
+The diagnostic source is `tmp/dev/tmp/build/clock-ui.s` with a private core
+and reserves include; its payload is 110,254 bytes. Production source was
+not modified to force an exit.
+
+This supplies actual clock UI evidence beyond the earlier conversion-code
+and minute-duration checks. The landing assertions on that screen are a
+consequence of the diagnostic exit bytes, not evidence of a natural landing.
+Earlier `clock-ui-*` and `clock-ui-terminal-*` attempts using debugger-written
+exit flags did not terminate flight and were interrupted; they are excluded
+from UI acceptance. The guest-code exit fixture is the successful method.
+Full C9 scene/rate/latency coverage remains open.

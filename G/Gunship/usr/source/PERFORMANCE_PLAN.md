@@ -701,6 +701,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     Executing the original conversion code passes 1,102 boundary cases per
     version, including minute/hour boundaries and the word counter's maximum.
     Evidence: ignored `tools/test_clock_c.py`, `tmp/c/clock-contract.json`.
+    Native result-screen captures now show 01:04 after 192 real world ticks
+    on PAL 68060 and NTSC 68020 (64.02/64.10 native-field seconds, no active
+    time/input loss). A guest-only diagnostic exit requests the result screen
+    without editing the tick count; this verifies clock UI, not natural landing.
   - C1b. Schedule 3 ticks per 50 PAL fields or 60 NTSC fields, carrying the fractional
     remainder. PAL deadlines therefore alternate 17/17/16 fields; NTSC uses
     20 fields. Use the measured display frequency, not the executable's region.
