@@ -931,9 +931,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     A 68020 field-wait repeat matches the same authoritative state and expiry
     with 1,226 matching input records. Raw differences remain recorded for
     unused animation countdowns (cross-CPU) and projection scratch (no-draw).
-    Impacts,
-    effect lifetimes, reload, slot reuse and the remaining duration/CPU/video
-    matrix are still open.
+    A controlled target-position event now exercises native type-8 impact,
+    type-9 effect conversion and release on 68020/060 and a field-wait build.
+    The occupied timer/frame/lifetime agree; release occurs 67 PAL fields
+    after impact. Natural guided hits, destructive damage, other effects,
+    reload and the remaining duration/CPU/video matrix are still open.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.
@@ -943,8 +945,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     with 2,058 matching retained control records and no losses/discards.
     Each CPU's 87 eligible cached forecasts match the next native update;
     19 live 68060 draw inputs after reuse use generation 2 and the correct
-    forward fractions. Pixel/scanout, impact, other slots/weapons and lifecycle
-    discontinuity coverage remain open.
+    forward fractions. The controlled PAL impact fixture also confirms that
+    post-world prediction becomes ineligible when type 8 converts to effect
+    type 9, without changing the allocation generation. Pixel/scanout, natural
+    hits, other slots/weapons and lifecycle discontinuity coverage remain open.
 - **C10. Option.** `CUSTOM1=1`, exposed as the boolean **Enhanced framerate**,
   is the master opt-in for all framerate enhancements. Omitted/zero retains
   original timing and rendering paths. All future C/D/E optimizations must

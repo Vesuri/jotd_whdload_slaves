@@ -5826,3 +5826,59 @@ reuse-draw-comparison.json in the respective harness output directories.
 This controlled target reposition makes reuse repeatable; it is not evidence
 for natural target reacquisition, projectile impacts/effect conversion, every
 slot/weapon type, NTSC or 68000 rendering. Those acceptance gates remain open.
+
+### Controlled native impact, effect animation and release
+
+The natural guided/aiming attempts did not establish impact: the original
+Hellfire route passes the nearby target, the farther-starting route selects
+the scripted helicopter (an unsuitable Hellfire target), and the ground-only
+variants did not launch. These output folders (`world-guided-impact-020`,
+`world-guided-distant-020`, `world-guided-ground-020`,
+`world-rocket-ground-020`, `world-rocket-aligned-020`) are excluded from impact
+acceptance. In particular, disabling the scripted object's active flag does
+not by itself prevent its projection from attracting target selection.
+
+The controlled collision fixture retains the previously validated rocket
+launch setup and field inputs. Immediately before world 25 target selection,
+ignored diagnostic guest code changes only ground target 23's high coordinate
+bytes to B0/46 (world position B000/4600). The rocket's native stored target
+is already 23; projectile state, collision code, allocation generation,
+constructor, damage handling and effect animation are unchanged. This tests
+the native collision pipeline under an explicit target-position event, not
+natural aiming or a whole mission. The compiled fixture is 108,786 bytes;
+its field-wait variant is 108,792 bytes. Both retain binary/listing provenance.
+
+`world-collision-020`, `world-collision-060` and
+`world-collision-nodraw-020` capture worlds 20..80. At world 25 (delivered
+field 417), native +C3E0 converts slot 5 from type 8 to type 9 and initializes
+lifetime 64/frame 0/countdown 12. Generation remains 1. The post-world
+prediction cache marks the slot ineligible throughout the effect, rather than
+continuing its projectile forecast. At worlds 26/27/28 the native
+life/frame/countdown triples are 63/1/4, 62/3/6 and 61/5/7. The effect reaches
+frame 6 at field 475 and the world update releases it at world 29, field 484,
+with life/type zero. Impact-to-release is 67 PAL fields, or 1.34 seconds.
+
+An independent replay of the documented native wrapping decrement, negative
+countdown reset, frame advancement and world lifetime decrement matches these
+snapshots on all three runs. The occupied slot's countdown agrees after its
+native impact initialization, including after release. The cross-CPU route
+has 1,225 matching common retained control records; the field-wait comparison
+has 1,226. Both retain zero dropped clock fields, lost/discarded history or
+commands, and scheduler faults. Player/split objects, projectile motion/type/
+lifetime/frame, allocation masks, generations, RNG, mission payload, alive
+table and countermeasures agree at all 61 snapshots.
+
+Raw actor-block differences remain recorded. Before impact all six unused
+animation countdowns differ across CPUs; after initialization only the five
+unused slots differ. Additional bytes are native drawing scratch: the long
+pointer at +C72A has different addresses but resolves to h6+$3978 on both
+CPUs; +C732 is the drawing value, and +C759 is the last projected effect
+frame (native +BC80). The field-wait comparison also differs in the drawing
+pointer and +C758 flag (set at +BCC4). These are reported explicitly rather
+than treating the entire actor block as equal. No occupied countdown, effect
+frame or lifetime difference is hidden by those observations. Reports are
+launch-comparison.json and effect-timing-comparison.json in the output folders.
+
+This is one controlled PAL collision/effect path. Natural guided hits,
+destructive damage outcomes, other effects/weapons, post-impact pixels,
+NTSC and the rendered 68000 overload gate remain unaccepted.
