@@ -444,3 +444,68 @@ timing_runtime_forecast_present:
 .done:
  movem.l (sp)+,d1-d7/a0-a6
  rts
+
+
+; Internal frame-path overlay. Only selector-dependent bit-7 homing slots
+; use the forecast; bit-3/4 guidance retains its existing release handling.
+; Failure retains the existing bounded actor result and never aborts a frame.
+; Caller has seeded RT_ACTOR_COORDS and admitted the presentation boundary.
+timing_runtime_forecast_overlay:
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ cmpi.w #1,RT_ACTOR_PRESENT+AC_VALID(a6)
+ bne .done
+ move.l RT_CLOCK+TC_TICKS(a6),d0
+ cmp.l RT_ACTOR_PRESENT+AC_TICK(a6),d0
+ bne .done
+ movea.l RT_HUNKS(a6),a1
+ movea.l a1,a2
+ adda.l #$ba08,a2
+ move.w (a2),d6
+ and.w 4(a2),d6
+ adda.l #$c6d6,a1
+ moveq #0,d7
+ moveq #5,d1
+.slots:
+ btst d1,d6
+ beq .next
+ move.b 0(a1,d1.w),d0
+ andi.b #$98,d0
+ cmpi.b #$80,d0
+ bne .next
+ bset d1,d7
+.next:
+ dbf d1,.slots
+ tst.w d7
+ beq .done
+ movea.l a6,a5
+ adda.l #RT_FORECAST,a5
+ addq.l #1,RF_ATTEMPTS(a5)
+ bsr timing_runtime_forecast_present
+ tst.l d0
+ bmi .rejected
+ and.w d0,d7
+ beq .rejected
+ addq.l #1,RF_ACCEPTED(a5)
+ moveq #5,d1
+.publish:
+ btst d1,d7
+ beq .skip
+ move.w d1,d2
+ add.w d2,d2
+ lea RF_PRESENT_COORDS(a5),a0
+ adda.w d2,a0
+ lea RT_ACTOR_COORDS(a6),a1
+ adda.w d2,a1
+ move.w (a0),(a1)
+ move.w 12(a0),12(a1)
+ move.w 24(a0),24(a1)
+.skip:
+ dbf d1,.publish
+ bra .done
+.rejected:
+ addq.l #1,RF_REJECTED(a5)
+.done:
+ moveq #0,d0
+ movem.l (sp)+,d1-d7/a0-a6
+ rts

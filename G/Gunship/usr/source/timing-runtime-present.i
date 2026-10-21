@@ -64,6 +64,8 @@ timing_runtime_present_state:
  bsr actor_present_build
  tst.l d0
  bmi .done
+ movea.l a6,a0
+ bsr timing_runtime_forecast_overlay
  ; The guided release cache owns at most the native guided slot. Its first
  ; fraction starts at release; unaffected actors retain world anchoring.
  lea RT_RELEASE_PRESENT(a6),a0

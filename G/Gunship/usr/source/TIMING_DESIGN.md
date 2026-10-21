@@ -8095,3 +8095,42 @@ Those calls now use 68000-compatible position-independent long displacements.
 The loader-dispatch regression passes 19 calls, including allocation/gating
 and cleanup, without native writes. All four builds pass: ordinary 6,088, experimental 46,322 and diagnostics
 112,652 bytes (+178).
+
+
+### Installed homing forecast overlay (C6d)
+
+The experimental frame path now calls `timing_runtime_forecast_overlay` after
+ordinary actor prediction and before guided-release overrides. It first checks
+the capture epoch and scans allocated/eligible actor modes; only bit-7 homing
+without the higher-priority bit-3/4 guidance modes invokes the expensive
+forecast. Successful identity-checked slots replace their private
+`RT_ACTOR_COORDS` triples. Other slots and rejected forecasts retain the
+existing bounded presentation result. Neither rejection nor ambiguity aborts
+the frame. Attempt/accepted/rejected counters reside in forecast storage;
+12 added bytes bring the arena to 56,918. Ordinary/default-off operation does
+not allocate or execute this experimental path.
+
+Overlay fixtures verify only the corrected Hellfire slot changes at initial,
+middle and late interval samples; bit-3 guidance skips forecasting. Existing
+frame publication tests pass 256 native endpoint cases and 256 fractional
+camera cases. Guided-release tests pass 1,056 fields across PAL/NTSC, two
+weapons and three batch sizes; drawing and loader regressions also pass.
+
+A fresh headless PAL 060 run with host mouse disabled and the existing combat
+initialization fixture exercises the installed code. Across 27 completed
+frames at worlds 24..30, all publish checked slot-5 coordinates equal to
+`RF_PRESENT_COORDS`. Counters advance from 18 attempts/15 accepted/3 rejected
+to 44/41/3. All sampled clock-drop and clock/scheduler/history/command fault
+fields are zero. Evidence is `forecast-overlay-combat-pal-060/` (including
+provenance, frames and `forecast-live-audit.json`) in the ignored harness.
+An earlier ordinary-startup capture launched no weapon and therefore provides
+no homing-overlay coverage.
+
+The new combat window observes 11.71 draws/s versus 14.29 in the earlier
+`forecast-dependencies-pal-060` capture. This is a measured cost/regression,
+not performance acceptance or a hardware benchmark. The runs use the same
+combat fixture and scripted inputs but not identical render schedules.
+Near-pass screenshots, control changes, other CPUs/video rates, natural
+weapon events and full state-isolation acceptance remain open. The fallback
+for rejected forecasts retains earlier limitations. All four builds pass:
+ordinary 6,088, experimental 46,508 and diagnostics 112,838 bytes (+186).
