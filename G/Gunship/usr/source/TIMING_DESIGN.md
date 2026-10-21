@@ -5672,3 +5672,35 @@ and `combat.s`; no production code is changed by these initializations.
 These runs are negative tests, not combat or weapon-lifetime acceptance.
 The next weapon check must establish an actual native launch and then compare
 occupied slots, damage/lifetimes and RNG across CPUs and rendering policies.
+
+### Live CRT transition ordering diagnostic
+
+The headless 68020 `world-crt-transitions-020` run records entries to native
++046DE, including return addresses, around FFAR selection (field 240), Space
+(260), and fire pulses (300 and 320). Unlike the preceding Backspace route,
+Space is the documented CRT-switch command. The run uses the same diagnostic
+combat binary; its hash and listing hash are retained in provenance.json.
+
+The trace identifies an ordering problem, rather than a missing fire edge.
+At native field 271 the command enters +046DE with CRT mode 1. At 274 the
+panel calls it again with mode 0. At 327 the weapon clone calls it with mode
+1; at 331 the panel again calls it with mode 0. Panel return addresses resolve
+to timing_runtime_target_panel, whereas the weapon return is clone +$84
+(native +09820). These are native field-counter values, not the input route's
+relative field labels. The separately single-stepped weapon callback after
+the second pulse also takes the map branch.
+
+Native +0473A clears selected-target status to $FF when leaving the map.
+Native panel +0469A/+046A0 then branches to +046DE on that negative status,
+reopening the map. The enhanced panel suppresses native per-render selection;
+world-owned selection runs only at the next world deadline. Consequently a
+render between the command/weapon transition and that deadline can reopen the
+map before reacquisition. World-20 RT_VIEW_SAVED retains negative status,
+while the completed world's authoritative target has status 2. The later
+captures still have zero projectile types and allocation generations.
+
+This establishes a targeting lifecycle/presentation ordering defect to fix;
+it does not establish launch, impact, or occupied-slot equality. The fix must
+preserve world-owned selection and keep presentation from undoing the pending
+CRT transition. Do not restore per-render target selection as a workaround.
+No production code was changed for these diagnostic runs.
