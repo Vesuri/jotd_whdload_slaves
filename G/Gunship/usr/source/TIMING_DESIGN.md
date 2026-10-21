@@ -7992,3 +7992,36 @@ forecast workspace/lifecycle tests pass with the enlarged arena. Evidence is
 the per-run `runtime-forecast-candidates-audit.json` and ignored harness tests.
 All four builds pass: ordinary 6,088, experimental 45,686, diagnostics 112,016
 bytes (+168). No live framerate or near-pass acceptance is claimed.
+
+
+### Runtime selector impulse agreement (C6d)
+
+`timing_runtime_forecast_certify` evaluates the native final-field impulse
+envelope before admitting `RF_CERTIFIED`. It starts with the zero-impulse
+forecast selector, reads the last pre-deadline tape checkpoint, and derives
+roll/pitch/heading eligibility with the same conditions as
+`world_motion_impulses`. It replays every nonzero combination through private
+endpoint motion, deferred ground resolution and candidate collection. Every
+branch must produce an unambiguous selector and match all 12 baseline bytes.
+No RNG call occurs. Return 0 certifies agreement; -3 rejects. The entire
+forecast workspace is scratch and consumers must inspect the return status.
+
+The collector body is shared with ordinary forecast candidate collection,
+without replacing each branch's player with the zero-impulse endpoint. The
+new certificate adds 12 arena bytes (56,830 total). This checks random-impulse
+uncertainty only: controls are held fixed, shared world/model data must remain
+stable, and future commands or multi-candidate visibility remain unresolved.
+It is not yet invoked by the frame loop and is not a live-cost acceptance.
+
+`test_runtime_forecast_certify_c.py` independently replays each admitted branch.
+The 49 recorded PAL 020/060 frames admit 28 selectors over 84 branch outcomes
+and reject the 21 initially ambiguous cases. Sixteen PAL 020 fixtures with
+damage bits 0 and 1 set exercise roll and heading as well as pitch: nine
+admitted selectors each match all 45 combinations (405 further outcomes).
+Thirty-seven controlled disagreements injected into a later private selector
+branch all reject, proving the comparison is effective. All runs preserve
+native/authoritative state, bound guest writes to private storage/stack and
+preserve non-result registers. Evidence is the per-run
+`runtime-forecast-certify-audit.json` and `runtime-forecast-certify-audit3.json`
+in the ignored harness. All four builds pass: ordinary 6,088, experimental
+46,042 and diagnostics 112,372 bytes (+356).

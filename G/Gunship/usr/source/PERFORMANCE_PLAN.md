@@ -938,8 +938,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     interval and passes all 49 captured frames, PAL/NTSC interval reuse and
     40 atomic admission rejections. Runtime private candidate collection now
     matches all 49 cameras/candidate blocks, admits 28 zero/one-candidate
-    selectors and rejects 21 ambiguous cases without native writes. Future
-    input/impulse certification, frame-loop dispatch, scene dependency gates and
+    selectors and rejects 21 ambiguous cases without native writes. Runtime
+    impulse agreement now checks every eligible final-field combination:
+    84 recorded and 405 damaged-fixture outcomes match independent replay,
+    and 37 injected selector disagreements reject. Future input uncertainty,
+    frame-loop dispatch, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
