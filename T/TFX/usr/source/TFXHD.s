@@ -650,6 +650,22 @@ patch_main
         CHECK_NO_FAST_ALLOC
         bne     .not020v
 
+        ; Fast shadows of both chip screen buffers: do_swap_screen then copies
+        ; only changed blocks. Not on the 68020: without a data cache the compare
+        ; costs more than the chip writes it saves. Allocation failure keeps the
+        ; full copy.
+        btst.b  #AFB_68030,attnflags+3(pc)
+        beq.b   .noshadow
+        movem.l d0-d1/a0-a1/a6,-(sp)
+        move.l  $4.w,a6
+        move.l  #bplbytes*8*2,d0
+        move.l  #MEMF_FAST!MEMF_CLEAR,d1
+        jsr     _LVOAllocMem(a6)
+        lea     delta_shadow(pc),a0
+        move.l  d0,(a0)
+        movem.l (sp)+,d0-d1/a0-a1/a6
+.noshadow:
+
         ; Alright, one more stupid speedup (attempt)
         ; Relocate data from chip data section to fast mem
         ; where possible
@@ -720,7 +736,8 @@ split_new_chip_data:
         jmp     resload_Abort(a0)
 .allocated:
         move.l  d0,a4
-        ; Optional fast shadows belong only to the new 040 data/render path.
+        ; tfx.020: the fast shadows come with the new 040 data/render path
+        ; (TFX allocates its own in patch_main).
         ; Allocation failure retains the complete screen-copy loop.
         move.l  #bplbytes*8*2,d0
         move.l  #MEMF_FAST!MEMF_CLEAR,d1
@@ -946,6 +963,18 @@ reset_copy_shadows:
         move.l  d2,-(sp)
         JMPPTR play_level_body
 play_level_body_ptr: dc.l 0
+
+; The same for TFX's @PlayLevel ($015ac).
+reset_copy_shadows_tfx:
+        move.l  a0,-(sp)
+        lea     delta_seen(pc),a0
+        clr.l   (a0)
+        clr.l   4(a0)
+        move.l  (sp)+,a0
+        subq.w  #8,sp                   ; original prologue
+        movem.l d2-d3,-(sp)
+        JMPPTR play_level_body_tfx
+play_level_body_tfx_ptr: dc.l 0
 
 COPY_SLOT = 150                         ; compare loop bytes (A/B swaps the slot)
 
@@ -2782,6 +2811,8 @@ pl_020
         PL_P    $6b0ee,normal_fill      ; ScanFillDown
 
         ; @PlayLevel
+        PL_P    $015ac,reset_copy_shadows_tfx
+        PL_GA   $015b2,play_level_body_tfx_ptr
         PL_PSS  $016b0,start_frame,2
         PL_PSS  $018a6,do_swap_screen,2
 

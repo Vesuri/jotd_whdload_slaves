@@ -1316,7 +1316,7 @@ with pl_020. Status per change:
 | Change | 68040 (tfx.020) | 020/030/060 (TFX) |
 |---|---|---|
 | Gouraud runs (11, 11b) | done | done (11c) |
-| Delta copy and its cache-line compare (step 6) | done | full copy every frame: port next (shadow allocation, @PlayLevel $15ac hook) |
+| Delta copy and its cache-line compare (step 6) | done | done on 030/060 (and TFX on 040); not on the 020 (no data cache, slower) |
 | mask_sprite8_040 (2) | done | TFX _MaskSprite unported: profile first |
 | fade_cols_040 (7) | done | unported: profile first |
 | rot_delta2_040 (8) | done | unported: profile first |
@@ -1328,3 +1328,30 @@ with pl_020. Status per change:
 
 Whether FPU-equipped 020/030/060 should instead run tfx.020 with the render list is
 open; it needs the render list to be measured on those CPUs.
+
+Delta copy for plain TFX:
+- patch_main's TFX fast-RAM block (new rendering only) allocates delta_shadow, so
+  do_swap_screen copies only changed 8-byte units to chip RAM (copy_changed_blocks,
+  with step 6's cache-line compare). pl_020 hooks @PlayLevel ($015ac; prologue SUBQ.W
+  #8,SP / MOVEM.L D2-D3,-(SP), body at $015b2) with reset_copy_shadows_tfx, which
+  invalidates the shadows as reset_copy_shadows does for tfx.020.
+- Coherence (`tools/tfx_delta_probe.py`, 030): at every swap the chip buffer about to
+  be overwritten equals its shadow when valid; 399 of 399 on each of the action, views
+  and follow tapes.
+- Same-seed A/B, delta_shadow cleared at run time (full copy) against kept:
+
+  | CPU | action | follow |
+  |---|---|---|
+  | 68030 50 MHz | 766 -> 901 (+17.6%) | 530 -> 582 (+9.8%) |
+  | 68020 14 MHz | 127 -> 124 (-2.4%) | 93 -> 91 (-2.2%) |
+  | 68040 core, TFX | 439 -> 462 (+5.2%) | - |
+  | 68060 50 MHz | 481 -> 475 (-1.2%) | 329 -> 328 |
+
+- The 68020 has no data cache: comparing two fast longs costs more than the chip write
+  it saves, so the allocation tests AFB_68030 (set on 030, 040 and 060). The 060
+  emulation does not charge chip-bus writes (memory-cycle-exact made no difference),
+  so it can only show the compare's cost. The 060 reaches chip RAM through the same
+  kind of accelerator bus as the 040, with a copyback data cache, and the 040 core gains
+  5.2%; the 060 keeps the shadow. Confirm on hardware.
+- Placement: the 020 allocates no shadow, the 030 does.
+- Evidence: `tmp/dev/tmp/delta/`.
