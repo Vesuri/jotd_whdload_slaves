@@ -6074,8 +6074,9 @@ byte audit permits only C724..C729 countdown differences when the associated
 type has no animation bit, and C732 native rendering scratch. Every other
 actor byte agrees. Each captured clock deadline equals ceil(world*50/3)
 fields from activation; no clock time or input history is lost/discarded and
-no scheduler faults occur. Worlds 20..80 span exactly 1,000 PAL fields for
-60 world intervals, i.e. 3.000 Hz over that window on all four runs.
+no scheduler faults occur. Worlds 20..80 span exactly 1,000 logical PAL fields for
+60 world intervals. This proves deadline arithmetic; actual completion rate
+requires the native field counter, as audited below.
 
 The 68020/060 and 68020/field-wait comparisons each match all 1,226 common raw
 control records. The corrected 68000 comparison has 1,226 raw differences,
@@ -6098,7 +6099,8 @@ main drawing replaced by a field wait. Selected world state and all actor
 bytes except the previously identified inactive animation countdowns/drawing
 scratch agree. All three release the rocket at world 64; each deadline is
 exactly world*20 fields from activation, without dropped time/history or
-scheduler faults. The 60-interval window spans 1,200 fields, exactly 3 Hz.
+scheduler faults. The 60-interval window spans 1,200 logical fields. Actual completion rate
+is measured separately from the native field counter.
 The field-wait comparison matches raw controls; cross-CPU raw inputs differ
 only in TR_RELATIVE across 1,444 common records. The failed raw comparison is
 retained, and the separate consumed-control/state audit passes.
@@ -6239,3 +6241,64 @@ drawing scratch differ. All 650 common consumed controls agree; raw records
 still differ only in unused TR_RELATIVE. That failed raw comparison and the
 successful scoped state audit are both retained. This is further throughput
 progress, not 68000 NTSC rate acceptance or a claim about expiry after rebase.
+
+### Share the scheduler's private player workspace
+
+The scheduler still copies authoritative owner state into a private workspace,
+performs deferred ground resolution there, checks producer health and only
+then publishes owner/player state. The endpoint core now borrows that same
+EP_WORK_SIZE workspace through an internal entry. It reads the authoritative
+player as an immutable source and leaves its candidate at EP_WORK_OUTPUT.
+It no longer copies owner state into/out of a second temporary, nor copies the
+source/output player through an extra bridge record. Public endpoint entries
+still allocate their own workspace and retain atomic rejection. Only the
+internal entry may leave private scratch changed after failure; callers must
+never pass authoritative owner storage to it.
+
+This removes two 164-byte owner copies and two 86-byte player copies per
+field without moving publication before the final health check. The arena
+stays 34,058 bytes. Runtime builds add 42 bytes relative to the preceding
+motion optimization: ordinary 6,088, runtime 42,774, VERIFY/input runtime
+109,104, combat fixture 109,220. The bridge workspace is now 610 bytes;
+the nested endpoint no longer allocates another 602-byte workspace.
+
+Tests pass eleven admission rejections, injected producer faults before and
+after publication (rollback versus exactly-once counting), deferred ground
+event rollback/retention and exactly-once notification, 960 scheduled fields
+each with and without ground, the 1,760-field public cached/uncached comparison,
+1,200 batch fields, loop ownership and lifecycle checks. An intermediate
+owner-only reuse also passed these relevant fault checks but first rebased
+at NTSC world 65; that diagnostic is retained as `private-motion`.
+
+The final `private-output-cost-ntsc-000` profile measures combined bridge/owner
+self cost at 726,688 cycles for 108 fields (6,728.6/field), versus 935,788 for
+99 fields (9,452.4/field) before workspace reuse: about 29% less sampled cost
+per field. The standalone endpoint-owner cost in the intermediate profile
+was about 35% lower; that intermediate number is not substituted for the
+final combined measurement.
+
+`private-output-world-fire-ntsc-000` completes worlds 20..80 without clock or
+history loss, discards, rebases or scheduler faults after activation. All 61
+selected world states match the NTSC 68020 reference, including rocket expiry
+at world 64; 43 eligible next-pose forecasts match their native updates. The
+actor audit permits only inactive countdowns and C732 rendering scratch.
+All 1,449 common consumed-control records agree; raw input differs only in
+TR_RELATIVE, and that raw failure remains saved alongside the scoped pass.
+
+### Distinguish logical deadlines from actual completion rate
+
+TC_LAST/TC_FIELDS measure delivered logical time. Exact ceil(world*rate/3)
+deadlines prove clock arithmetic, but cannot prove real-time throughput when
+the consumer is behind. The saved hunk-2 counter at each world-completion
+breakpoint supplies the actual emulated field timestamp. Earlier exact-3-Hz
+claims based only on logical fields are limited accordingly; they are not
+acceptance of the full C9b rate/latency requirement.
+
+In the final NTSC 68000 workspace run, worlds 20..80 take 1,220 native fields,
+so actual completion rate is 2.95082 Hz over that window. Completion lag is
+32..62 fields (about 0.53..1.03 seconds). Eliminating queue overflow is useful
+progress, but that lag and remaining rate deficit are not accepted. The prior
+PAL 68000 cache run takes 1,009 native fields over the same world window
+(2.97324 Hz), while its PAL 68020 comparison takes 999 (3.00300 Hz); the NTSC
+68020 reference takes 1,200 (3.00000 Hz). These are finite-window measurements,
+not worst-case bounds. Further performance and responsiveness work remains.

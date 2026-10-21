@@ -131,6 +131,34 @@ endpoint_player_step_common:
 	move.l a4,d6
 	move.l d0,d7
 	movea.l sp,a6
+	bsr endpoint_player_step_body
+	adda.w #EP_WORK_SIZE,sp
+	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+; Internal transaction entry: a0 is an EP_WORK_SIZE-byte PRIVATE workspace
+; whose first EP_SIZE bytes hold the owner's candidate; a1 is the read-only
+; source player, a5 the optional cache. Output player is EP_WORK_OUTPUT in
+; the workspace. Remaining ABI is unchanged.
+; May change workspace on failure. Caller must discard it, validate producer
+; health after success and only then publish both owner and player. Never
+; pass authoritative state here. Public entries above retain atomic failure.
+endpoint_player_step_private:
+	movem.l d1-d7/a0-a6,-(sp)
+	move.l a0,d2
+	lea EP_WORK_OUTPUT(a0),a6
+	move.l a6,d3
+	move.l a2,d4
+	move.l a3,d5
+	move.l a4,d6
+	move.l d0,d7
+	movea.l a0,a6
+	move.l a5,EP_WORK_CACHE(a6)
+	bsr endpoint_player_step_body
+	movem.l (sp)+,d1-d7/a0-a6
+	rts
+
+endpoint_player_step_body:
 	move.w 4(a4),d1
 	or.w 6(a4),d1
 	or.w 8(a4),d1
@@ -145,6 +173,8 @@ endpoint_player_step_common:
 	move.l (a4),(a2)
 	clr.l 4(a2)
 	clr.w 8(a2)
+	cmpa.l a0,a6
+	beq .state_ready
 	movea.l a6,a2
 	moveq #EP_SIZE/16-1,d1
 .state:
@@ -158,6 +188,7 @@ endpoint_player_step_common:
 	IFNE EP_SIZE&2
 	move.w (a0)+,(a2)+
 	ENDC
+.state_ready:
 	move.w EP_DONE(a6),d0
 	cmp.w EP_SPAN(a6),d0
 	bhs .bad
@@ -319,6 +350,8 @@ endpoint_player_step_common:
 	lea EP_WORK_OUTPUT(a6),a3
 	movea.l a6,a0
 	movea.l d2,a1
+	cmpa.l a0,a1
+	beq .state_published
 	moveq #EP_SIZE/16-1,d1
 .publish_state:
 	REPT 4
@@ -331,7 +364,10 @@ endpoint_player_step_common:
 	IFNE EP_SIZE&2
 	move.w (a0)+,(a1)+
 	ENDC
+.state_published:
 	movea.l d3,a1
+	cmpa.l a3,a1
+	beq .success
 	moveq #MP_RECORD_SIZE/16-1,d1
 .publish_player:
 	REPT 4
@@ -344,11 +380,10 @@ endpoint_player_step_common:
 	IFNE MP_RECORD_SIZE&2
 	move.w (a3)+,(a1)+
 	ENDC
+.success:
 	moveq #0,d0
 	bra .done
 .bad:
 	moveq #-1,d0
 .done:
-	adda.w #EP_WORK_SIZE,sp
-	movem.l (sp)+,d1-d7/a0-a6
 	rts

@@ -2,6 +2,8 @@
 ; Requires endpoint-ground-resolve; not installed in the native game loop.
 ; Copies retain the private-then-publish transaction, using word-aligned
 ; 16-byte groups and exact tails to reduce per-field copying overhead.
+; Endpoint calculation borrows this workspace; only this bridge publishes
+; after the final producer-health check and deferred-ground resolution.
 SE_OWNER equ 0
 SE_PLAYER equ 4
 SE_STAGES equ 8
@@ -15,8 +17,8 @@ SE_GROUND equ SE_SIZE
 SE_EVENT equ SE_SIZE+4
 SE_CACHE equ SE_SIZE+8 ; optional player preview cache, initially null
 SE_GROUND_SIZE equ SE_SIZE+12
-SE_WORK_PLAYER equ EP_SIZE
-SE_WORK_COMMAND equ EP_SIZE+MP_RECORD_SIZE
+SE_WORK_PLAYER equ EP_WORK_OUTPUT
+SE_WORK_COMMAND equ EP_WORK_SIZE
 SE_WORK_SIZE equ SE_WORK_COMMAND+8
 
 ; a0=context (six pointers, remaining bytes initially zero),
@@ -118,19 +120,6 @@ scheduled_endpoint_common:
 	IFNE EP_SIZE&2
 	move.w (a0)+,(a1)+
 	ENDC
-	movea.l SE_PLAYER(a6),a0
-	moveq #MP_RECORD_SIZE/16-1,d1
-.player:
-	REPT 4
-	move.l (a0)+,(a1)+
-	ENDR
-	dbf d1,.player
-	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
-	move.l (a0)+,(a1)+
-	ENDR
-	IFNE MP_RECORD_SIZE&2
-	move.w (a0)+,(a1)+
-	ENDC
 	move.w EP_DONE(a5),d0
 	cmp.w EP_SPAN(a5),d0
 	bne .ongoing
@@ -153,7 +142,7 @@ scheduled_endpoint_common:
 	move.w d1,d0
 	move.l d7,d1
 	movea.l a5,a0
-	lea SE_WORK_PLAYER(a5),a1
+	movea.l SE_PLAYER(a6),a1
 	bsr endpoint_player_begin
 	tst.l d0
 	bne .done
@@ -171,7 +160,7 @@ scheduled_endpoint_common:
 	cmp.w TS_DUE(a0),d1
 	bne .phase
 	movea.l a5,a0
-	lea SE_WORK_PLAYER(a5),a1
+	movea.l SE_PLAYER(a6),a1
 	movea.l SE_STAGES(a6),a2
 	movea.l SE_SINE(a6),a3
 	movea.l SE_PACKET(a6),a4
@@ -186,7 +175,7 @@ scheduled_endpoint_common:
 .uncached:
 	suba.l a5,a5
 .player_step:
-	bsr endpoint_player_step_cached
+	bsr endpoint_player_step_private
 	movea.l (sp)+,a5
 	tst.l d0
 	bne .done
@@ -224,6 +213,7 @@ scheduled_endpoint_common:
 	move.w (a0)+,(a1)+
 	ENDC
 	movea.l SE_PLAYER(a6),a1
+	lea SE_WORK_PLAYER(a5),a0
 	moveq #MP_RECORD_SIZE/16-1,d1
 .publish_player:
 	REPT 4

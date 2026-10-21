@@ -918,8 +918,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     input mismatch is solely unused TR_RELATIVE, with consumed controls equal.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows. The cached PAL rocket
-    comparison has exact deadline fields on all three CPUs and field-wait
-    rendering; worlds 20..80 span 1,000 fields (3.000 Hz). Broader windows,
+    comparison has exact logical deadline fields on all three CPUs and field-wait
+    rendering; worlds 20..80 span 1,000 logical fields. This alone does not
+    prove completion rate against the native field counter. Broader windows,
     scenes remain open. The cached NTSC rocket repeat matches selected state
     and exact 3 Hz deadlines on 68020/060 and 68020 field-wait rendering.
     The 68000 NTSC route still overloads at world 27 (77 discarded history
@@ -932,7 +933,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     state agrees through world 29; this remains an unaccepted rate case. Validating
     motion distribution once per field then reduces its sampled cost/call by
     about 46%, postponing the first rebase to world 41 with selected state
-    equal through world 40. Sustained 68000 NTSC throughput remains open.
+    equal through world 40. Shared private owner/output storage now completes
+    the NTSC 68000 route through world 80 with no loss or rebase and matching
+    selected state, reducing sampled bridge/owner cost per field by about 29%.
+    Actual completion nevertheless takes 1,220 native fields for 60 intervals
+    (2.95082 Hz), with 32..62 fields of lag. Rate/latency remain unaccepted;
+    logical deadline equality must not be mistaken for real-time throughput.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL
