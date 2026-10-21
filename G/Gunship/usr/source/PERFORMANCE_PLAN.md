@@ -1021,6 +1021,14 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     ammunition consumption stop while actor updates continue. It stays zero
     in all 610 current PAL/NTSC world captures. Its full writer catalogue and
     purpose remain unproven; it is not established as a timed reload.
+    Fuel/clock now have a scoped five-CPU PAL/NTSC live-capture audit:
+    all 600 adjacent world transitions preserve native reserve depletion
+    (40/120 units every 16 ticks, zero otherwise) at fixed collective 40,
+    both engines running and no damage. All 610 player clock samples equal
+    the world tick; native conversion advances 20 seconds over worlds 20..80.
+    Actual completion spans 19.78..20.02 seconds, separately from exact
+    logical deadlines. This does not cover minute rollover in play, clock
+    UI, variable collective, engine failure, reserve exhaustion or long runs.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.

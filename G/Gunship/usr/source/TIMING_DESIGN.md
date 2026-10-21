@@ -6660,3 +6660,26 @@ finds zero in all 610 samples; `weapon-entry-gate-live-audit.json` retains
 the counts by run. That establishes the gate's value in those windows, not
 a complete writer or mission-wide audit. Broader launch/arming/reload timing,
 weapon types and natural combat remain open. No gameplay code changed.
+
+### Reserve depletion and mission clock in saved live runs
+
+`audit_reserve_clock_c.py` checks the ten `anchor-draw-probe-{pal,ntsc}-`
+CPU captures (68000/020/030/040/060), worlds 20..80. It requires fixed
+collective 40, engine byte 28 decimal, no damage and positive reserves
+before applying the independently transcribed native rule at +0590C..05986.
+The two reserve words at player +4/+6 lose 40/120 units at worlds 32, 48,
+64 and 80, and remain unchanged at every intervening world. All 600
+adjacent transitions pass. This is reserve storage arithmetic, not a claim
+about physical fuel units. One-engine operation, damage, collective changes,
+exhaustion and long-duration depletion are outside this capture window.
+
+Every one of the 610 player +0C clock samples equals its world number.
+The previously executed native clock conversion (tick/3, then minutes and
+seconds) therefore advances 20 seconds over this window. Logical deadlines
+span exactly 20 seconds on every run; actual native-field completion spans
+19.78..20.02 seconds. Successive reserve events complete 5.22..5.48 seconds
+apart across these runs, around the nominal 16/3 seconds, with the existing
+scheduler/render completion jitter. `reserve-clock-live-audit.json` retains
+per-run elapsed times and event intervals. This does not observe clock UI
+or minute rollover in play, and does not remove the 68000 responsiveness
+failure or close C9 duration acceptance. No gameplay code changed.
