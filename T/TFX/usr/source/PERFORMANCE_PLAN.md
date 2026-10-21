@@ -663,7 +663,7 @@ Budget (estimated-040 savings, before interaction effects):
 
 The emulator total without step 1 is about 24-31%. The goal is achievable only if steps 2-5 deliver close to their estimates. If they don't, report the shortfall rather than reducing detail or simulation work.
 
-Status (2026-10-21). Every code step is complete or rejected; the records follow in the order the work was done.
+Status (2026-10-21). Every code step is complete or rejected; the records follow in the order the work was done. Step 11 was added after a follow-camera profile.
 
 | Step | Outcome | Measured (est-040 per frame) | Commit |
 |---|---|---|---|
@@ -678,6 +678,7 @@ Status (2026-10-21). Every code step is complete or rejected; the records follow
 | 8 | Done: rot_delta2_040 | -1.3%, 689 -> 708 | c0aed2ff |
 | 9 | Done: isqrt_040 (cycle-count acceptance); rest of tail too small | routine -4.8k (-0.29%) | b99c3ca8 |
 | 10 | Emulator: 746/2,000 (18.7 nominal fps), est-040 1.69 M (target 2.0 M met; 800/2,000 not) | - | - |
+| 11 | Done: gouraud_fill_040 (follow camera, F5) | follow -17.5%, 313 -> 414; action unchanged | - |
 
 Open, all waiting for the Apollo:
 - Run calib040 and replace the cost model's constants.
@@ -1218,3 +1219,47 @@ Step 3d re-assessed (instrument redraw): not implemented.
     must be found and tracked, or stale pixels stay on screen.
 - Net about 0.3-0.6% est-040, below what a frame pair resolves, with a stale-pixel risk.
 - Evidence: `tmp/dev/tmp/step3d/`.
+
+Step 11 done (Gouraud rows as runs of one colour, gouraud_fill_040):
+- New fixture: the follow-camera tape (`tools/follow.tape.json`, the flight tape plus F5
+  at swap 25, kept). Production b99c3ca8 gives 313/2,000 (7.8 nominal fps), est-040
+  3.44 M cycles per frame against 1.69 M in the cockpit.
+- The Gouraud path was 42.7% of the frame: c2p_32pixels_masked 816k, gouraud_fill 452k,
+  copy_linebuf_part 74k, the game's Gouraud scan tables and polygons 115k.
+  - Per frame: 126 Gouraud polygons, 2,462 rows, 25,171 pixels, 3,114 masked c2p calls.
+  - The shading itself is about 5 instructions per pixel. Each row of about ten pixels
+    paid a full 32-pixel conversion and eight plane read-modify-writes.
+- Probe of 10 follow-camera frames (1,416 polygons, 29,908 rows): 10.2 pixels, 2.37
+  colour runs and 1.28 longs per row; at most 5 runs per long; colour span at most 5.
+- gouraud_fill_040 writes the planes directly:
+  - Per long, the span is cleared in all eight planes. Each run of one colour ORs its
+    mask into the planes of the colour's set bits through a 256-entry table (gf_or,
+    entry offsets in gf_offsets, both at the end of the slave because the patch lists
+    use 16-bit offsets).
+  - Pixel i keeps the original colour, bits 16-23 of lc+dcdx/2+i*dcdx with the same
+    DIVS.L. While |dcdx| <= $ffff the colour steps exactly when the fraction's ADD.W
+    carries (rising) or does not (falling): the walk is ADD.W/DBcc per pixel and the
+    colour is a byte counter.
+  - Rows spanning more than 8 + width/4 colours, or with |dcdx| > $ffff (1.6% of the
+    probed rows, 1-2 pixels each), keep the chunky line buffer and c2p.
+  - 68040 only, at $4f840 in the new-renderer list; 020/030/060 keep gouraud_fill_new.
+- Verification:
+  - Native twins against gouraud_fill_new in the game process: 286 scan streams (276
+    real probe streams, synthetic rows at every start pixel 0-63, widths 1-320, ramps
+    flat to steep, wrapping, and dcdx 0, +-1, +-$4000, +-$8000, +-$ffff, +-$10000,
+    +-$10001) over a junk screen. All eight planes, registers and CCR equal; 24 screens
+    match a model of the original; 6 negative controls rejected.
+  - A static check that every gf_or entry ORs exactly its colour's planes.
+  - Gates: 040 CUSTOM5=0/1 patched; 040 original, 030 and 060 unchanged.
+  - Controlled scenes (action, views, follow camera) against gouraud_fill_new: every
+    displayed image equal; end state equal except the patch and audio-interrupt bytes
+    (views 11, follow 2, at $4d692-$4d789).
+- Balanced 2,000-field pairs:
+  - Follow camera: 313 -> 414 publications (+32.3%), emulator -24.4%, est-040 3.44 M ->
+    2.83 M (-17.5%). The Gouraud path falls from 1.34 M to 0.76 M est-040.
+  - Action flight: 732 -> 732, cycle-identical (no Gouraud polygons in that flight).
+- Remaining in gouraud_fill_040 (689k est-040): per-row setup with the DIVS.L about
+  200k, runs about 155k plus gf_or 68k, pixel walk about 110k, long clears about 95k.
+  A reciprocal multiply for the DIVS.L would save at most about 2%.
+- Evidence: `tmp/dev/tmp/gouraud/` (probe, gf-tests, gates, scenes, pairs, v1 = the
+  first version with a 5-instruction walk, 396/2,000).

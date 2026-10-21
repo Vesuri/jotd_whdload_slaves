@@ -3559,6 +3559,179 @@ isqrt_040:
         movem.l (sp)+,d4-d5
         rts
 
+; @GouraudFill ($4f840, tfx.020): each row is filled into the chunky line buffer
+; and converted 32 pixels at a time with a masked eight-plane c2p. Follow-camera
+; rows average about ten pixels and 2.4 colours, so one conversion with eight
+; read-modify-writes buys about ten pixels and costs ten times the shading. Here
+; the rows go straight to the planes: pixel i still takes bits 16-23 of
+; lc+dcdx/2+i*dcdx, but per long the span is cleared in all eight planes and each
+; run of one colour ORs its mask into the planes of the colour's set bits (gf_or,
+; at the end of the slave because the patch lists use 16-bit offsets). While
+; |dcdx| <= $ffff the colour steps exactly when the fraction's ADD.W carries
+; (rising) or does not (falling), so the walk is ADD.W/DBcc per pixel and the
+; colour a byte counter. Rows spanning more than 8 + width/4 colours (many short
+; runs per long) or stepping a colour per pixel keep the line buffer and c2p.
+
+; Emit the run that ends with D1 = pixels left after it - 1 (or 0 to the end of
+; the long): D0 = run mask, D5/D6 = start/L of the next run, D1 = gf_or offset.
+GF_EMIT macro
+        moveq   #-1,d0
+        lsr.l   d5,d0
+        sub.w   d1,d6
+        addq.w  #1,d6                   ; run length
+        add.w   d6,d5                   ; s after the run
+        moveq   #-1,d6
+        lsr.l   d5,d6
+        eor.l   d6,d0                   ; run mask
+        move.w  d1,d6
+        subq.w  #1,d6                   ; L after the run
+        moveq   #0,d1
+        move.b  d4,d1
+        move.w  (a4,d1.w*2),d1
+        endm
+
+; The longs of one row for one sign of dcdx: \1 = cs and \2 = addq when rising,
+; \1 = cc and \2 = subq when falling.
+GF_LONGS macro
+        lea     .back\@(pc),a6
+.long\@:
+        moveq   #31,d6
+        sub.l   d5,d6
+        cmp.l   d7,d6
+        ble.s   .cut\@
+        move.l  d7,d6                   ; L = pixels in this long - 1
+.cut\@:
+        sub.l   d6,d7
+        subq.l  #1,d7                   ; pixels after this long - 1
+        moveq   #-1,d0
+        lsr.l   d5,d0
+        moveq   #31,d1
+        sub.l   d5,d1
+        sub.l   d6,d1
+        lsr.l   d1,d0
+        lsl.l   d1,d0                   ; pixels s..s+L
+        not.l   d0                      ; clear the span in every plane
+        and.l   d0,(0-4)*bplbytes(a1)
+        and.l   d0,(1-4)*bplbytes(a1)
+        and.l   d0,(2-4)*bplbytes(a1)
+        and.l   d0,(3-4)*bplbytes(a1)
+        and.l   d0,(4-4)*bplbytes(a1)
+        and.l   d0,(5-4)*bplbytes(a1)
+        and.l   d0,(6-4)*bplbytes(a1)
+        and.l   d0,(7-4)*bplbytes(a1)
+.run\@:
+        move.w  d6,d1
+.px\@:
+        add.w   d3,d2
+        db\1    d1,.px\@
+        b\1.s   .step\@                 ; the colour steps after this run
+        moveq   #0,d1                   ; the run reaches the end of the long
+        GF_EMIT
+        jmp     (a0,d1.w)
+.step\@:
+        GF_EMIT
+        \2.b    #1,d4                   ; colour of the next run
+        jmp     (a0,d1.w)
+.back\@:
+        tst.w   d6
+        bpl.s   .run\@
+        addq.l  #4,a1
+        moveq   #0,d5
+        tst.l   d7
+        bpl.w   .long\@
+        lea     -rowbytes(a3),a3
+        bra.w   .yloop
+        endm
+
+gouraud_fill_040:
+        movem.l d0-d7/a0-a6,-(sp)
+        lea     64(sp),a2               ; scan table, inline after the return
+        move.w  ([_logbase_ptr,pc]),d4
+        move.l  ([_screen1_ptr,pc],d4.w),a3
+        move.w  a5,d4                   ; y
+        mulu.w  #rowbytes,d4
+        add.l   d4,a3                   ; a3 = row
+        lea     gf_or(pc),a0
+        lea     gf_offsets(pc),a4
+.yloop:
+        moveq   #16,d2
+        move.l  (a2)+,d0
+        lsr.l   d2,d0                   ; lx
+        move.l  (a2)+,d1
+        lsr.l   d2,d1
+        sub.l   d0,d1                   ; width - 1
+        blt.w   .done
+        move.l  (a2)+,d2                ; lc
+        move.l  (a2)+,d3
+        sub.l   d2,d3
+        move.l  d3,d4
+        bpl.s   .abs
+        neg.l   d4
+.abs:
+        clr.w   d4
+        swap    d4                      ; colour span |rc-lc| >> 16
+        move.l  d1,d5
+        lsr.l   #2,d5
+        addq.l  #8,d5
+        cmp.l   d5,d4
+        bhi.w   .steep                  ; more than 8 + width/4 colours
+        moveq   #1,d4
+        add.l   d1,d4
+        divs.l  d4,d3                   ; dcdx = (rc-lc)/(width+1)
+        move.l  d3,d4
+        asr.l   #1,d4
+        add.l   d4,d2                   ; lc+dcdx/2
+        move.l  d3,d4
+        bpl.s   .dabs
+        neg.l   d4
+.dabs:
+        cmp.l   #$ffff,d4
+        bhi.w   .steepfill              ; a colour step per pixel or more
+        moveq   #-32,d4
+        and.l   d0,d4
+        lsr.l   #3,d4
+        lea     (a3,d4.l),a1
+        add.w   #4*bplbytes,a1          ; plane 4 of the first long
+        moveq   #31,d5
+        and.l   d0,d5                   ; s = first pixel in the long
+        move.l  d1,d7                   ; pixels left - 1
+        move.l  d2,d4
+        swap    d4                      ; d4.b = colour, d2.w = fraction
+        tst.l   d3
+        bmi.w   .falling
+        GF_LONGS cs,addq
+.falling:
+        GF_LONGS cc,subq
+.steep:
+        moveq   #1,d4
+        add.l   d1,d4
+        divs.l  d4,d3
+        move.l  d3,d4
+        asr.l   #1,d4
+        add.l   d4,d2
+.steepfill:
+        movem.l a0/a2-a4,-(sp)
+        lea     linebuf(pc),a0
+        lea     (a0,d0.l),a1
+        move.l  d1,d5
+        moveq   #16,d6
+.gouraud:
+        move.l  d2,d4
+        lsr.l   d6,d4
+        add.l   d3,d2
+        move.b  d4,(a1)+
+        dbf     d5,.gouraud
+        add.l   d0,d1
+        move.l  a3,a1
+        bsr     copy_linebuf_part
+        movem.l (sp)+,a0/a2-a4
+        lea     -rowbytes(a3),a3
+        bra.w   .yloop
+.done:
+        movem.l (sp)+,d0-d7/a0-a6
+        rts
+
+
 ; DoRotPt0's two-component delta point ($59748, about 1,100 per frame): the
 ; running sums A2-A4 gain M * (D0,D1) through six MULS.W, then the tail at
 ; $59778 stores the point and dispatches the next command. The same shapes are
@@ -3887,7 +4060,7 @@ pl_fpu_new_render_040:
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new
         PL_P    $500dc,draw_line_strip_new
-        PL_P    $4f840,gouraud_fill_new
+        PL_P    $4f840,gouraud_fill_040 ; Gouraud rows as runs of one colour
         PL_P    $4f9f8,texture_fill
         PL_L    $6c534,$e9c136c5 ; bfextu d1{27:5},d3
         PL_L    $6c538,$78209843 ; moveq #32,d4 / sub.w d3,d4
@@ -4583,5 +4756,39 @@ mem_patched
 needs_fpu_patches
     dc.b    0
     cnop    0,4
+
+; gouraud_fill_040: per colour, OR the run mask D0 into the planes of its set
+; bits and go back to (A6). Entries are 4 bytes per set bit (2 for plane 4, whose
+; displacement is zero) plus the JMP.
+GF_SIZE macro
+        dc.w    GF_OFF
+GF_OFF  set     GF_OFF+2+4*(((GF_C>>0)&1)+((GF_C>>1)&1)+((GF_C>>2)&1)+((GF_C>>3)&1)+((GF_C>>5)&1)+((GF_C>>6)&1)+((GF_C>>7)&1))+2*((GF_C>>4)&1)
+        endm
+GF_PLANE macro
+        ifne    GF_C&(1<<\1)
+        or.l    d0,(\1-4)*bplbytes(a1)
+        endc
+        endm
+gf_offsets:
+GF_C    set     0
+GF_OFF  set     0
+        rept    256
+        GF_SIZE
+GF_C    set     GF_C+1
+        endr
+gf_or:
+GF_C    set     0
+        rept    256
+        GF_PLANE 0
+        GF_PLANE 1
+        GF_PLANE 2
+        GF_PLANE 3
+        GF_PLANE 4
+        GF_PLANE 5
+        GF_PLANE 6
+        GF_PLANE 7
+        jmp     (a6)
+GF_C    set     GF_C+1
+        endr
 ;============================================================================
 
