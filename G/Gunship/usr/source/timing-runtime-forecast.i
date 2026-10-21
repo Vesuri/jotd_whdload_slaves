@@ -46,6 +46,24 @@ timing_runtime_forecast_prepare:
  clr.l RF_EVENT(a6)
  lea RF_TAPE(a6),a0
  bsr forecast_tape_reset
+ ; Separate scene and collector; live target scratch must never be borrowed.
+ movea.l a4,a0
+ movea.l a5,a1
+ lea RF_TARGET(a6),a2
+ bsr target_select_prepare
+ tst.l d0
+ bne .done
+ ; Recover native hunk pointers from the arena below the forecast base.
+ movea.l a6,a0
+ suba.l #RT_FORECAST,a0
+ movea.l RT_HUNKS+16(a0),a1
+ movea.l RT_HUNKS+24(a0),a2
+ movea.l RT_HUNKS(a0),a0
+ lea RF_SCENE(a6),a3
+ lea RF_TARGET(a6),a4
+ lea RF_COLLECTOR(a6),a5
+ lea RF_PLAYER(a6),a6
+ bsr scene_target_player_prepare
 .done:
  movem.l (sp)+,d1-d7/a0-a6
  rts
@@ -159,6 +177,48 @@ timing_runtime_forecast_get:
  lea RF_PLAYER(a5),a6
  lea RF_WORK(a5),a5
  bsr forecast_player_get
+ bra .done
+.bad:
+ moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d7/a0-a6
+ rts
+
+
+; a0=arena, same serialized presentation-boundary contract as forecast_get.
+; Collect the held-control forecast view using the CURRENT world model/limits.
+; Return 0 for a zero/one-candidate selector in RF_SELECTED, -3 if ambiguous
+; or rejected. No bitmap sampling and no promise about future input/impulses.
+; The caller must certify that uncertainty before using this to steer a preview.
+; Scene/target scratch is private; native target/player state is never written.
+timing_runtime_forecast_candidates:
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ bsr timing_runtime_forecast_get
+ tst.l d0
+ bmi .bad
+ movea.l a6,a5
+ adda.l #RT_FORECAST,a5
+ lea RF_PLAYER(a5),a0
+ lea RF_CAMERA(a5),a2
+ bsr native_camera_build
+ movea.l RT_HUNKS(a6),a0
+ adda.l #$a99e,a0
+ lea RF_TARGET+WT_STATE(a5),a1
+ moveq #WT_STATE_SIZE/4-1,d1
+.seed:
+ move.l (a0)+,(a1)+
+ dbf d1,.seed
+ lea RF_SCENE(a5),a0
+ lea RF_CAMERA(a5),a1
+ movea.l RT_HUNKS(a6),a2
+ adda.l #$c6a0,a2
+ bsr scene_target_candidates_step
+ tst.l d0
+ bne .bad
+ lea RF_TARGET(a5),a0
+ lea RF_SELECTED(a5),a1
+ bsr target_selector_single
  bra .done
 .bad:
  moveq #-3,d0

@@ -7959,3 +7959,36 @@ arena and native state unchanged. Evidence is the per-run
 the ignored harness. These tests do not establish live cost, future-command
 certainty or scene/visibility correctness. All four builds pass: ordinary
 6,088, experimental 45,518 and diagnostics 111,848 bytes (+346).
+
+
+### Runtime forecast candidate collection (C6d)
+
+`timing_runtime_forecast_candidates` connects the runtime endpoint forecast
+to a dedicated camera, target workspace, collector and scene clone. Preparation
+binds the cloned scene's player map-cell/view reads to `RF_PLAYER`. It never
+borrows live target scratch. Each invocation rebuilds the camera, seeds the
+private target state from the current native state, collects against current
+world geometry/limits, and applies the zero/one-candidate selector helper.
+Return 0 admits `RF_SELECTED`; -3 rejects incomplete runtime state or ambiguous
+selection. On ambiguity the previous output selector remains unchanged and
+must not be used. No pixel samples, native targeting writes or actor
+publication occur. Shared world data must stay stable throughout the call.
+
+The private workspace grows by 8,926 bytes; runtime arena size is now 56,818.
+This remains experimental CUSTOM1-gated allocation. Scene/model reads are not
+cached between calls. A successful collection is still a held-control,
+zero-future-impulse hypothesis, not a certificate for future controls, random
+impulses, visibility with multiple candidates, or every near-projectile path.
+The frame loop does not invoke this entry yet.
+
+`test_runtime_forecast_candidates_c.py` verifies all 49 recorded PAL 020/060
+frames against independent replay: exact 12-byte cameras and complete 168-byte
+candidate states match. The 28 zero/one-candidate cases return the expected
+12-byte selector; 21 multi-candidate cases reject and retain sentinel output.
+Native hunks and authoritative arena state remain unchanged, writes stay in
+private storage/stack, and non-result registers are preserved. Existing
+activation (1,237 calls), three-layout PAL/NTSC relocation (660 fields) and
+forecast workspace/lifecycle tests pass with the enlarged arena. Evidence is
+the per-run `runtime-forecast-candidates-audit.json` and ignored harness tests.
+All four builds pass: ordinary 6,088, experimental 45,686, diagnostics 112,016
+bytes (+168). No live framerate or near-pass acceptance is claimed.

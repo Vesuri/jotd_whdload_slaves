@@ -936,7 +936,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     on lifecycle changes; PAL/NTSC binding, activation, retirement and relocated
     image tests pass. A checked runtime forecast entry selects the remaining
     interval and passes all 49 captured frames, PAL/NTSC interval reuse and
-    40 atomic admission rejections. Frame-loop dispatch, scene dependency gates and
+    40 atomic admission rejections. Runtime private candidate collection now
+    matches all 49 cameras/candidate blocks, admits 28 zero/one-candidate
+    selectors and rejects 21 ambiguous cases without native writes. Future
+    input/impulse certification, frame-loop dispatch, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
