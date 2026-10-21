@@ -390,10 +390,12 @@ and varying cadences: 23,509 hashes, 105 sound requests, terminal state and
 exit tick 23,510; both restarts clear all road history/carry. These results do
 not establish B-equivalent handling. Default and
 uncached 020 distance, and both 040 cells, fail the one-percent gate against
-the reproduced committed B build. The default 030 reference is unresolved:
-old and fresh corrected-B runs disagree despite matching recorded initial
-state/configuration. Six other cells pass distance. See the reference-provenance
-audit in simulation-timing.md; do not mix pre-fix and committed B binaries.
+the reproduced committed B build. Default 030 also fails: extra debugger
+ranking reads perturbed B's timing; a matched direct-RAM-read debugger pair
+restores the reference and gives C -1.181%. Six other cells passed the earlier
+distance comparison, but the passive-read debugger still needs full-matrix
+and replay validation. See the reference/observer audits in simulation-timing.md;
+do not mix pre-fix and committed B binaries or different observation schedules.
 Opponent trajectories/order still differ. C remains incomplete.
 
 Road normalization fixes proven loss of positive road-centre motion from

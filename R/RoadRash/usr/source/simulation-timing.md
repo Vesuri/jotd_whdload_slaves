@@ -1,3 +1,55 @@
+## 030 reference discrepancy isolated to debugger memory reads
+
+The preceding reference audit's unresolved default-030 measurement is now
+explained by the observation schedule. The old and fresh runs have identical
+DH1 file contents and effective emulator configuration apart from output paths.
+Their initial state hashes match; sampled native deltas first diverge at field
+400. Removing only the two newer native-ranking reads from `snapshot` reproduces
+the retained B distance 3351364 (`b-corrected-030-legacy-reads`), versus 3324562
+with those reads. No game binary or input tape changes are involved.
+
+The private GDB server services memory packets through `ad->bget(adr)`, even for
+RAM. A diagnostic patch instead uses the bank's checked `xlateaddr` pointer for
+RAM/ROM and retains the callback for other banks. Matched emulator builds from
+the same local source, differing only by that read-path patch, establish:
+
+| Emulator / snapshot reads | B distance | B fps |
+|---|---:|---:|
+| Original pinned emulator, current ranking reads | 3324562 | 13.3 |
+| Original pinned emulator, ranking reads omitted | 3351364 | 13.3 |
+| Rebuilt callback control, current ranking reads | 3324562 | 13.3 |
+| Direct RAM reads, current ranking reads | 3351364 | 13.3 |
+| Direct RAM reads, ranking reads omitted | 3351364 | 13.3 |
+
+The matched control SHA-256 is
+`b4fd56d305f71183e64c2aa90663274a039044fabe8cfba5521dd25e5bd0cce3`;
+the direct-read build is
+`e0b2532ace1de7dd4d66d811488ec67ea7080b9991ee57e7190d8e31483f99cc`.
+These are private diagnostic builds, not replacements for the pinned emulator.
+Both retain its old fields/input protocol and predate capability discovery.
+The exact patch is retained under ignored harness
+`tools/patches/fsuae-passive-debug-read.patch` (SHA-256
+`cf20d03d059009e6592d096b8cf1ea6ebcf71f844e4a1eaaeaae58f2109726c0`),
+with before/after source and `b-gdb-passive-provenance.json`. The shared
+AmigaXDev checkout and original emulator binary are unchanged.
+
+`b-gdb-passive-030{,-legacy}` matches all sampled deltas, rotation counts,
+and initial/590/600 state hashes across the two observation schedules.
+The unchanged production C build also matches those quantities in
+`c-gdb-passive-030{,-legacy}`: distance 3311794 at 16.7 fps.
+`b-gdb-passive-comparison.json` records the assertions. Thus C is -1.181%
+against B in the now observation-invariant tested 030 pair, and fails A4a.
+The favorable -0.384% comparison came from observer-perturbed B timing.
+This isolates the effect to the callback read path; it does not yet attribute
+the side effect to a particular internal bank implementation.
+
+Do not discard native ranking checks to recover an old numeric result. Expand
+validation of the passive-read debugger to the full matrix and replay before
+adopting it for acceptance. In particular, previous cross-speed observations
+must not be assumed immune merely because they were repeatable. The four other
+known distance failures and handling discrepancies remain open; no simulation
+constants or production code are changed by this investigation.
+
 ## B reference provenance: committed condition-code fix
 
 The retained normal B binaries are not interchangeable. Rebuilding all source
