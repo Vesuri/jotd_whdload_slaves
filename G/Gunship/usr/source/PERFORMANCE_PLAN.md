@@ -876,6 +876,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.
+    The recorded retarget endpoints now have a native-projection near-view
+    stress test: synthetic cameras at 256/128 coordinate units produce
+    36/~72-pixel horizontal corrections, versus ~2 pixels on the distant
+    live route. This rejects using that distant route as general acceptance.
+    Native motion extraction must preserve the near-target substep collision
+    checks and next-tick selector dependency (inventory in TIMING_DESIGN.md);
+    field-rate projectile integration and near-pass validation remain open.
 - **C7. Per-frame work that is not presentation.**
   - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation
     `+0BE5A` keeps its field-based timers. Replay countdowns and animation once per

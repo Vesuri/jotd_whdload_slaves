@@ -7063,3 +7063,64 @@ This closes the uncertainty about what this recorded retarget boundary
 actually drew. It does not establish a general error bound, near-projectile
 behavior, NTSC continuity, or scanout latency; C6d and full C9 remain open.
 No production behavior or authoritative motion changed in this measurement.
+
+
+### Near-view stress of Hellfire prediction and the free-flight split
+
+`measure_hellfire_near_projection_c.py` holds the two recorded native and
+forecast endpoints fixed and places a synthetic zero-heading/roll/pitch
+camera directly behind the native endpoint at the same height. It exercises
+native transforms, projection and clipping at twelve distances from 64 to
+4,096 coordinate units. Both source captures (PAL 020/060) give identical
+results at all 24 viewpoints; all 48 endpoint pairs reach drawing. This is
+a projection stress fixture, not a replay of a physically flown near pass
+or a new target-selection simulation.
+
+| Camera distance (coordinate units) | World-27 correction (pixels) | World-45 correction (pixels) |
+| --- | --- | --- |
+| 64 | -149, -12 | +139, +12 |
+| 128 | -73, -6 | +71, +6 |
+| 256 | -36, -4 | +36, +3 |
+| 512 | -18, -1 | +18, +1 |
+| 1,024 | -9, -1 | +9, +1 |
+| 4,096 | -2, 0 | +3, 0 |
+
+The small distant-route correction is therefore not a general visual bound.
+Do not accept the existing one-tick homing forecast on the strength of that
+route. The raw results are `tmp/dev/tmp/c/hellfire-near-projection-errors.json`.
+C6d needs a near-view remedy and native-state/collision validation; neither
+blanket suppression of homing prediction nor a delayed interpolation frame
+satisfies the selected design.
+
+Inspection of native +0BF86..+0C520 identifies these boundaries for C6d:
+
+- +0BF86..+0C078 selects the steering mode/target. Bit 3 and bit 4 precede
+  bit-7 homing; homing updates actor target identity (+54/+60) and target
+  index (+36) from AA0A..AA15 and helper +0C654. Countermeasures use other
+  modes and cannot share a homing-only policy.
+- +0C078..+0C10A reads target geometry and clamps a byte heading change to
+  actor turn limits (+24/+30), then updates heading (+18).
+- +0C10E..+0C216 computes horizontal displacement from that heading and the
+  speed class (+42), including quadrant handling and integer truncation.
+- +0C220..+0C26A adjusts the vertical velocity word by at most 64 toward
+  one quarter of the target height difference (except native bit-3 mode).
+- +0C296 chooses the far or near-target path at summed horizontal distance
+  $700. Far motion adds the full displacement at +0C2AE/+0C2C2/+0C2CC.
+  Near motion divides components into at most 127-unit pieces and performs
+  collision checks after each piece (+0C348..+0C3FA). Motion and collision
+  are interleaved here; replacing this with endpoint-only collision would
+  discard native swept checks.
+- +0C40E..+0C450 handles terrain/type changes; +0C456 owns world lifetime
+  decrement, expiry and deferred damage metadata. +0C4D2..+0C510 recomputes
+  the distance bucket (+66) for subsequent drawing.
+
+Consequently, simply dividing the per-tick displacement by the field rate
+is not a valid extraction. A field-rate candidate must preserve fractional
+remainders, target/heading and vertical-update order, generation/release
+boundaries, and the native near-path collision trajectory while keeping
+hits, damage and lifetime on world ticks. A target chosen only at the next
+world tick is still unknown during preceding fields: higher integration
+frequency alone cannot remove that dependency or prove native endpoint
+agreement. The next implementation gate must test target transitions as
+well as held-target motion; no authoritative projectile changes have been
+made based on this camera stress fixture.
