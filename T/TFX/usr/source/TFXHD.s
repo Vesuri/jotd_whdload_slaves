@@ -3108,6 +3108,146 @@ project_fpu_040:
 project_parameters_ptr: dc.l 0
         mc68020
 
+; _MaskSprite's CPU cookie-cut (minterm $CA) for the new 040 renderer. The game
+; calls its one-plane blit ($4e53a) eight times from $4e400, re-reading and
+; re-shifting the same mask for every plane. Here each mask word is loaded,
+; edge-masked and shifted once and applied to all eight planes. Per plane, the
+; longword read-modify-write sequence is unchanged; transparent mask words skip
+; writes that would store the unchanged destination. Entry at $4e400 with
+; D6 = size (h<<6|w), A0 = data plane 0, A1 = mask, A3 = destination plane 0,
+; A4 = data plane stride. Leaves D0/D1/A0/A1, CCR, memory and the parameter
+; block as the original loop does; the caller restores the other registers.
+mask_sprite8_040:
+        move.l  mask_params_ptr(pc),a6
+        move.w  d6,d2
+        and.w   #63,d2                  ; w
+        beq     .fallback
+        move.w  d6,d0
+        lsr.w   #6,d0                   ; h
+        beq     .fallback
+        move.l  d1,-(sp)                ; entry D1 (upper word survives)
+        movem.l a0-a1/a3,-(sp)
+        move.w  d6,8(a6)
+        subq.w  #1,d2
+        lea     .wcount(pc),a2
+        move.w  d2,(a2)
+        move.w  10(a6),.amod-.wcount(a2)
+        move.w  12(a6),.bmod-.wcount(a2)
+        move.w  16(a6),.dmod-.wcount(a2)
+        move.l  (a6),d7                 ; first word mask : last word mask
+        move.w  4(a6),d6
+        rol.w   #4,d6
+        and.w   #15,d6
+        neg.w   d6
+        add.w   #16,d6                  ; left shift 1..16, as the original
+        subq.w  #1,d0
+        move.l  a0,a5
+        move.l  a1,a0                   ; A0 = mask
+        move.l  a5,a1                   ; A1 = data plane 0
+        move.l  a4,a2                   ; A2 = data plane stride
+        lea     (a1,a2.l*2),a5
+        add.l   a2,a5                   ; A5 = data plane 3
+        lea     (a5,a2.l*2),a6
+        add.l   a2,a6                   ; A6 = data plane 6
+        lea     32000(a3),a4            ; A4 = destination plane 4
+.row:
+        move.w  .wcount(pc),d2
+.word:
+        moveq   #0,d3
+        move.w  (a0)+,d3
+        cmp.w   .wcount(pc),d2
+        bne.b   .notfirst
+        swap    d7
+        and.w   d7,d3
+        swap    d7
+.notfirst:
+        tst.w   d2
+        bne.b   .notlast
+        and.w   d7,d3
+.notlast:
+        lsl.l   d6,d3
+        beq     .skip
+        move.l  d3,d1
+        not.l   d1
+        ; Data words need no clearing: after the shift, their upper-word
+        ; bits lie outside the mask bits and are discarded by the AND.
+MASKPLANE MACRO
+        move.w  \1,d4
+        lsl.l   d6,d4
+        and.l   d3,d4
+        move.l  \2,d5
+        and.l   d1,d5
+        or.l    d4,d5
+        move.l  d5,\2
+        ENDM
+        MASKPLANE (a1),(a3)
+        MASKPLANE (a1,a2.l),8000(a3)
+        MASKPLANE (a1,a2.l*2),16000(a3)
+        MASKPLANE (a5),24000(a3)
+        MASKPLANE (a1,a2.l*4),(a4)
+        MASKPLANE (a5,a2.l*2),8000(a4)
+        MASKPLANE (a6),16000(a4)
+        MASKPLANE (a6,a2.l),24000(a4)
+.skip:
+        addq.l  #2,a1
+        addq.l  #2,a5
+        addq.l  #2,a6
+        addq.l  #2,a3
+        addq.l  #2,a4
+        dbf     d2,.word
+        adda.w  .amod(pc),a0
+        adda.w  .bmod(pc),a1
+        adda.w  .bmod(pc),a5
+        adda.w  .bmod(pc),a6
+        adda.w  .dmod(pc),a3
+        adda.w  .dmod(pc),a4
+        dbf     d0,.row
+        ; A4+24000-2-dmod is the plane-7 longword the original wrote last.
+        suba.w  .dmod(pc),a4
+        movem.l (sp)+,a0-a1/a3
+        move.l  mask_params_ptr(pc),a6
+        move.l  a1,18(a6)               ; parameter block after plane 7
+        move.l  a2,d2
+        lsl.l   #3,d2
+        sub.l   a2,d2
+        add.l   a0,d2
+        move.l  d2,22(a6)
+        lea     56000(a3),a5
+        move.l  a5,26(a6)
+        move.l  a5,30(a6)
+        add.l   a2,d2
+        move.l  d2,a0                   ; A0 advanced by eight planes
+        lea     64000(a3),a3
+        move.l  (sp)+,d1
+        move.w  8(a6),d1
+        and.w   #63,d1
+        subq.w  #1,d1
+        move.l  #$ffff,d0               ; MOVEQ #7 then DBF
+        lea     $4e42e-$4e518(a6),a6
+        andi.b  #$ef,ccr                ; X = 0 after the original LSL.L
+        tst.l   23998(a4)               ; N/Z of the last MOVE.L D5,(A3)
+        jmp     (a6)
+.fallback:
+        ; Zero width/height: run the original eight one-plane calls.
+        moveq   #7,d0
+.plane:
+        move.l  a1,18(a6)
+        move.l  a0,22(a6)
+        move.l  a3,26(a6)
+        move.l  a3,30(a6)
+        move.w  d6,8(a6)
+        jsr     $4e53a-$4e518(a6)
+        adda.l  a4,a0
+        lea     8000(a3),a3
+        dbf     d0,.plane
+        lea     $4e42e-$4e518(a6),a6
+        jmp     (a6)
+.wcount: dc.w 0
+.amod:  dc.w 0
+.bmod:  dc.w 0
+.dmod:  dc.w 0
+mask_params_ptr: dc.l 0
+
 pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
@@ -3119,6 +3259,8 @@ pl_fpu_new_render_040:
         PL_ENDIF
         PL_P    $016de,reset_copy_shadows
         PL_GA   $016e4,play_level_body_ptr
+        PL_P    $4e400,mask_sprite8_040 ; all eight planes per mask word
+        PL_GA   $4e518,mask_params_ptr
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new

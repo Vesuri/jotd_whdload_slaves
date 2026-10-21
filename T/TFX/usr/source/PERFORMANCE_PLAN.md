@@ -673,3 +673,45 @@ Step 0 done (method and fixtures):
 - A/B reports now include estimated-040 cycles and an input-identity check.
 - Balanced-profile pitfall: the harness's hunk image is unrelocated. Control bytes containing an absolute address must be rebuilt from the live base.
 - An Apollo calibration program, calib040, is ready. It times the instructions the cost model depends on, plus the old and new mask loops. It has been checked functionally in the emulator. Hardware numbers are pending: the Amiga is not available.
+
+Step 2 done (mask_sprite8_040):
+- The 040 new-renderer patch list replaces _MaskSprite's eight-call plane loop at $4e400 (PL_P, 6 bytes; parameter block via PL_GA $4e518).
+- Each mask word is loaded, edge-masked and shifted once, then applied to all eight planes.
+- Each plane keeps the original longword read-modify-write order. Fully transparent words skip their no-op writes.
+- Zero width or height falls back to the original eight one-plane calls.
+- The routine leaves D0/D1/A0/A1, CCR, memory and the parameter block exactly as the original loop does. It returns through the game's epilogue at $4e42e.
+- Original rendering, 030 and 060 keep the original bytes. CUSTOM5 does not affect this integer change.
+
+Verification:
+- **Native twins:** 192 cases pass. They run in the game process with _MaskSprite's real frame and cover:
+  - all 16 shifts;
+  - widths 1-40, heights 1-8;
+  - edge masks, separate mask/data modulos, odd sources and plane strides.
+- **Per-case checks:**
+  - all 64,064 destination bytes are compared in the guest;
+  - registers, CCR and the parameter block are compared;
+  - an independent byte oracle checks all eight plane windows.
+- **Negative controls:** four controls are rejected (a flipped byte, a wrong shift, wrong edge masks, a wrong plane stride).
+- **Controlled scenes:** two 400-update pairs, cockpit and views, give seven identical complete displayed buffers and PNGs each.
+  - Remaining end-state differences are the patch, the clocks, and one inactive audio-queue record (queue count 0).
+  - The cockpit run also differs in one data-hunk byte (+$244): an interrupt-phase difference, since the faster run ends 101 fields earlier. It is not claimed as equal.
+- **Gates and builds:**
+  - The 040, 040 original, 040 CUSTOM5, 030 and 060 gates pass.
+  - Normal and CHIP_ONLY builds have no relocations, and the normal build reproduces byte-identically.
+  - FPSP files are unchanged.
+
+Balanced 2,000-field pair:
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications (nominal fps) | 606 (15.15) | 671 (16.78) | +10.7% |
+| Emulator cycles/frame | | | -9.7% |
+| Estimated 040 cycles/frame | | | -7.2% |
+| Intervals (2/3/4 fields) | 12/398/195 | 50/583/37 | |
+
+- Both runs use one same-address, same-length write and matched startup hunks and registers.
+- The mask code itself saves about 100k estimated-040 cycles per frame. The rest of the drop is per-frame work changing with the faster cadence.
+- Zero FPSP entries.
+- One candidate start was rejected before timing (a one-vblank clock origin); the bounded retry was accepted.
+- Hardware speed is unmeasured.
+- Evidence: `tmp/dev/tmp/prof20/mask-*`, `mask-final-checks.json`.
