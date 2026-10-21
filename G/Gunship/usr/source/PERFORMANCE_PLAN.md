@@ -906,6 +906,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     release and script prediction caches and clears the player endpoint
     history after suspension. Previously valid caches survived until the next
     activation. Native state and terminal diagnostics remain intact.
+    Arena re-preparation and cached player motion also pass with original
+    0658 hunks independently relocated into three layouts, at both field
+    rates: 660 fields match across layouts with no retired-address access.
+    Full relocated world/render execution and native loader placement remain
+    outside that assembled check.
 - **C9. Validate.**
   - C9a. **World equality across CPUs:** matched world-tick state on the 68000, 68020 and
     68060, with the A2 seed and the same field-stamped input, using the A4 gate. The

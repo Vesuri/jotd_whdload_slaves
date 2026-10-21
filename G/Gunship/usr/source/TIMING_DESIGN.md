@@ -6800,3 +6800,30 @@ never reset by timing activation. The initial descent fixture is reapplied
 at each flight entry; this is not an uncontrolled mission replay. New mission
 selection, rearm/repair choices, relocation to different hunk addresses and
 the remaining CPU/video reload matrix remain open. No gameplay code changed.
+
+### Rebind a retired arena to relocated game hunks
+
+`test_runtime_relocation_c.py` uses original 0658 gamemule relocation records
+for three disjoint layouts: ascending $20000-byte slots from $200000,
+permuted slots from $400000 and another permutation from $780000. At each
+50/60 Hz rate, the first preparation uses a fresh arena; the next two reuse
+the preceding suspended/retired arena without host clearing. Preparation
+preserves all native hunk bytes, publishes the new hunk table and invalidates
+the player cache. Minimal native initialization permits normal activation.
+
+Two seconds of cached endpoint motion with short control pulses match all
+player/endpoint bytes across layouts: 660 fields total. Trace SHA256 values
+are 66a33f32dc079e58a58f22f6ade9ace69e2f8a1280077731f8d1d4cdc7175891
+(50 Hz) and 1990e791e9a387513f724534a531735b26e32e90252ca05186c029fe8d6f6c2a
+(60 Hz). Retired hunks are overwritten with poison. Memory hooks find no
+reads, writes or fetches in those hunks or the original captured native
+region during preparation, activation, motion and retirement. A deliberate
+executed read is a positive control for the detector; arena guards survive.
+Results are retained in `runtime-relocation-test.json`.
+
+This is original 0658 code at two field rates, not both game versions or a
+five-CPU live matrix. Full relocated native world/render execution and actual
+loader placement remain open. The preparation comment now matches the
+existing loader contract: fresh allocation or inactive, fully resolved arena
+reuse is permitted; live or partially committed work must not be overwritten.
+No executable code changed.

@@ -129,7 +129,8 @@ timing_runtime_hunks:
 
 ; a0=RT_ARENA_SIZE arena, a1=nine-pointer native hunk table, d0=50/60 field rate.
 ; Return 0 prepared but PAUSED, -1 invalid rate/signature. Preserve others.
-; Fresh allocation only: never prepare over live or partially committed work.
+; Fresh or inactive, fully resolved arena: never overwrite live or pending work.
+; Loader may reuse a retired arena after validating producer/scheduler inactivity.
 ; On signature failure the arena is partial/unusable and READY remains zero.
 ; Invalid rate changes nothing. No producer may access this arena yet.
 timing_runtime_prepare:
