@@ -67,6 +67,7 @@
  include "timing-endpoint-fraction.i"
  include "timing-endpoint-motion.i"
  include "timing-endpoint-player.i"
+	include "timing-forecast-checkpoint.i"
  include "timing-scheduled-endpoint.i"
  include "timing-endpoint-ground.i"
  include "timing-endpoint-camera.i"

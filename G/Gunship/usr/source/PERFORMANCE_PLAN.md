@@ -918,8 +918,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     1,215 shared hunk bytes are stable in 35 same-world completed-frame pairs
     on PAL 020/060. Fresh captures also verify all nine external input bytes
     and their full 256-byte record block across 35 pairs, with no sampled
-    input/time loss. Unvisited paths and intra-interval forecast equivalence
-    remain unverified, so cross-field forecast reuse is not enabled. Broader input
+    input/time loss. Remaining-interval forecasts and intermediate owner/
+    player checkpoints now match in all 35 pairs. An exact read-only matcher
+    passes those pairs and 8,890 byte-mutation rejections; bounded storage,
+    lifecycle/dependency gates and unvisited paths remain open, so cross-field
+    forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.

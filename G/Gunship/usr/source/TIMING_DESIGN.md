@@ -7728,3 +7728,40 @@ this route only. Other scenes/writers, command-induced changes, release and
 lifecycle transitions still need certification. No cross-field forecast
 cache is enabled. Next compare forecasts made at different consumed-field
 positions within one world interval, preserving the actual endpoint owner.
+
+
+### Remaining-interval replay and exact checkpoint admission (C6d)
+
+`audit_remaining_forecast_c.py` now starts from each of the 49 captured
+completed-frame states, rather than only world boundaries. It retains the
+actual endpoint owner's progress, fractions, delayed controls and field
+stamp, holds current X/Y, and simulates only the remaining fields to the
+same deadline. It applies private ground resolution and collects candidates
+with the private-player binding. Zero future impulses remain an explicit
+forecast assumption, not a prediction of world RNG.
+
+Across all nine PAL 020 and 26 PAL 060 same-world frame pairs, the complete
+86-byte final player, 12-byte camera and 168-byte candidate block are equal.
+More strongly, the earlier replay's intermediate EP_SIZE owner and player
+at the later frame's field stamp exactly match that later captured state.
+This supports a checkpoint-based reuse condition on this route, instead of
+assuming that equal world counts or currently neutral controls imply equal
+motion histories. The reports are each run's `remaining-forecast-audit.json`.
+
+The new standalone `forecast_checkpoint_match` compares all 164 owner bytes,
+all 86 player bytes and both held direction words against a private 254-byte
+checkpoint. It returns 0 only for an exact match, otherwise -3, preserves
+non-result registers and performs no non-stack writes. Field stamp, interval
+progress, fractions, delayed samples and command-owned player bytes are all
+included. It neither stores a forecast nor validates lifecycle/code epochs,
+shared-world dependencies or the chosen future-impulse policy. Callers must
+establish those conditions separately before reusing a result.
+
+`test_forecast_checkpoint_c.py` accepts all 35 captured pairs and rejects
+8,890 single-byte mutations covering every compared byte in every pair.
+Guest hooks check read bounds (including exact word tails), stack-only writes,
+checkpoint immutability and register preservation. All four builds assemble:
+ordinary 6,088 bytes, experimental 44,072, diagnostics 110,402. The matcher
+adds 56 bytes, with no runtime arena allocation or live cache activation.
+Next integrate bounded checkpoint storage and its lifecycle/dependency gates;
+these admission tests do not yet establish a live performance improvement.
