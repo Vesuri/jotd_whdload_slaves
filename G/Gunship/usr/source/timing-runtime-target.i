@@ -86,6 +86,20 @@ timing_runtime_target:
 .publish:
  move.w (a0)+,(a1)+
  dbf d2,.publish
+ ; The native panel falls back to the map when selection fails. Own that
+ ; decision at the world deadline, not at a render between a CRT command
+ ; (which clears selection) and the next opportunity to reacquire.
+ tst.b RT_TARGET+WT_STATE(a6)
+ bpl .selected
+ movea.l RT_HUNKS+16(a6),a0
+ tst.b $1c5(a0)
+ bne .selected
+ movea.l RT_HUNKS(a6),a0
+ adda.w #$46de,a0
+ move.l a6,-(sp)
+ jsr (a0)
+ movea.l (sp)+,a6
+.selected:
  movea.l RT_HUNKS+24(a6),a0
  move.l $47c4(a0),RT_SCRIPT_BITMAP(a6)
  move.w #2,RT_TARGET_PHASE(a6)

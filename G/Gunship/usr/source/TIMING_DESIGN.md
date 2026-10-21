@@ -5704,3 +5704,31 @@ it does not establish launch, impact, or occupied-slot equality. The fix must
 preserve world-owned selection and keep presentation from undoing the pending
 CRT transition. Do not restore per-render target selection as a workaround.
 No production code was changed for these diagnostic runs.
+
+### World-owned automatic CRT fallback and first live allocation
+
+`timing_runtime_target` now performs the native automatic map fallback only
+after world-owned selection fails while the CRT is in targeting mode. The
+presentation panel closes its frame without invoking the native painter when
+selection is negative and targeting mode is pending. This prevents commands
+and weapon transitions from being undone by an intervening render; it does
+not run selection at render rate. Native panel behavior for valid targets and
+existing map modes is retained, as is the unenhanced path.
+
+The assembled target test passes 16 native-selection comparisons (including
+failed selection), with explicit fallback-call/mode checks and duplicate
+world rejection. The panel test passes its existing 16 projection/restoration
+cases, six installer rejections and native passthrough, plus pending negative
+statuses $80 and $FF: no map fallback, no stale target draw, unchanged target
+and CRT mode, closed frame, and preserved registers. The fallback side effects
+in the target unit test are stubbed; the live run below executes the original
+helper. All four ordinary/runtime/verify-runtime/input-runtime builds pass;
+the ordinary slave remains 6,088 bytes.
+
+In `world-crt-fixed-020`, the same headless diagnostic route now allocates
+native slot 5: type 8, allocation masks $0020/$0020 and generation 1 at worlds
+20..22. CRT mode remains zero in all three snapshots. The pre-weapon trace
+contains the native launch path rather than only the map transition. This is
+the first live occupied-slot evidence for this fixture, not yet weapon-impact,
+lifetime or cross-CPU acceptance. Diagnostic inputs and initialization remain
+in ignored harness files; the fix applies only to the enhanced runtime.

@@ -2,6 +2,8 @@
 ; a0=arena, a5=native scene context; foreground serialized with world consumers.
 ; Return 0/-3, preserve other registers. Native panel writes to the target
 ; block are discarded; drawing/UI scratch outside that block remains native.
+; An invalid selection in targeting mode waits for the next world selection:
+; the native painter would otherwise reopen the map between world deadlines.
 timing_runtime_target_panel:
  movem.l d1-d7/a0-a6,-(sp)
  movea.l a0,a6
@@ -20,6 +22,12 @@ timing_runtime_target_panel:
 .save:
  move.w (a0)+,(a1)+
  dbf d1,.save
+ tst.b RT_VIEW_SAVED(a6)
+ bpl .paint
+ movea.l RT_HUNKS+16(a6),a0
+ tst.b $1c5(a0)
+ beq .close
+.paint:
  lea RT_VIEW(a6),a0
  movea.l RT_HUNKS(a6),a1
  adda.l #$a99e,a1
@@ -39,6 +47,7 @@ timing_runtime_target_panel:
 .restore:
  move.w (a0)+,(a1)+
  dbf d1,.restore
+.close:
  clr.w RT_VIEW_PHASE(a6)
  moveq #0,d0
  bra .done
