@@ -513,9 +513,10 @@ dictate the accelerated path's timestep.
     matrix confirms no benefit on 000/020/030 and a modest gain on 040/060.
     Retain native priority on 000/020/030; remeasure after D3/E changes the workload.
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
-  - **Main-image progress:** the selected enhanced 020+ path now moves the complete
+  - **Main-image progress:** enabled Fast-RAM paths now move the complete
     246,764-byte main code/data image into an optional 320 KiB public allocation,
-    retaining DMA heaps in Chip. Main-image relocation, full-race equivalence,
+    retaining DMA heaps in Chip. This includes native 68000 code/data and stack,
+    with its original simulation retained. Main-image relocation, full-race equivalence,
     fallback, MMU, controls and visible-response checks pass in emulation. This
     does not close the low-memory, mixed-asset or broader-selection
     audit below. Loader/title/intro CPU code/data and a separate guarded

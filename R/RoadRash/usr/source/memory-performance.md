@@ -324,6 +324,41 @@ The main-image normal build also passes the 030 Zorro III Fast-only short
 race (`d-public-z3`, 25.0 fps).
 
 D3 remains open for the low fixed-address data, other mixed CPU/DMA asset
-consumers, and the broader native-68000 main-code/stack path. Real-hardware
+consumers. The native-68000 main-code/stack path is completed below. Real-hardware
 040/060 cache coherency remains pending by agreement; the evidence above is
 emulator validation.
+
+
+## D3 native 68000 main image and stack
+
+Main relocation now has its own Enhanced-framerate/Fast-placement gate,
+independent of the 020+ simulation selection. A 68000 with Fast RAM uses the
+same main-image relocation and guarded supervisor stack while retaining its
+native simulation. C-only copied routines are remapped only when that path
+was actually initialized. No cache instruction is introduced on the 68000.
+Memory reservation and Chip fallback are unchanged.
+
+The normal 25,728-byte build SHA-256 is
+`07d21cf0f12f23e0383b1cc5a91baa1dc998b6dbd8d26aaea174f805eb3b3c61`.
+`d-native-main-promote-build` is byte-identical to the tested normal
+`d-native-main-public-build`. On the native A500 plus 8 MiB Fast configuration,
+`d-native-main-normal-*` measures 8.4 fps before and 8.8 fps after. Fast 020
+and 060 retain 16.7 and 28.6 fps respectively. This is an emulator result;
+bootstrap timing and native randomness can change the free-running distance,
+so functional equivalence is checked separately at an equal cadence.
+
+The private native comparison enables a fixed RNG seed and eight-field
+presentation cadence on both builds. It does not enable C simulation on the
+68000. `d-native-main-{reference,public}` matches the field-590 state hash
+2069561491 and both endpoint snapshots exactly. The complete native races
+in `d-native-main-race-{reference,public}` match all 178 state checkpoints,
+the generated steering/attack input tape, finish/exit state and restarted
+race state. Both finish, with race exit field 17874. No acceptance rule was
+relaxed. `d-native-main-functional-*` passes the existing 040/060 MMU policy,
+stack guards, keyboard/CD32 and demo checks for the broader selection.
+
+`d-native-main-{keyboard,pad}` verifies steering, release, pause/resume and
+both stack guards on the native 68000 path (284/312 observed bytes used).
+`d-native-main-finish-{fixed,vary}` also preserves all accepted enhanced-path
+16,230 hashes, 72 sound events, six terminal regions, finish/exit fields and
+restart, so broadening the memory gate does not alter C's selected behavior.

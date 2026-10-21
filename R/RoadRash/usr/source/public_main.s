@@ -1,5 +1,6 @@
 ; Move the complete patched rr.ice HUNK_CODE image into optional public RAM.
-; Called after C copy initializers, inside the CUSTOM2/CPU/Fast gate.
+; Called after any selected C copy initializers; independently gates CUSTOM2/Fast.
+; Native 68000 keeps its original simulation and gains code/data/stack placement.
 ; Keep the original Chip heap endpoint and all external DMA buffers unchanged.
 ; Validate the surviving native HUNK_RELOC32 block before changing anything.
 ; Never guess pointers from arbitrary words: use native relocation offsets
@@ -7,6 +8,8 @@
 ; This handles the main image; the broader D3 module/data audit remains open.
 public_main_init:
  movem.l d0-d7/a0-a6,-(a7)
+ move.l _enhanced_framerate(pc),d0
+ beq .done
  move.l _expmem(pc),a5
  cmpa.l #$200000,a5
  bcs .done
@@ -48,6 +51,10 @@ public_main_init:
  move.l #$3c3ec,d3
  move.l a5,a4
  bsr public_main_remap_span
+ ; C-only copies were never initialized on the native CPU path.
+ move.l verify_c_selection+20(pc),d0
+ cmpi.l #3,d0
+ bne .helpers
  lea public_main_spans(pc),a6
 .spans:
  move.l (a6)+,d2
@@ -70,6 +77,15 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ IFD C_FAST_STACK
+ ; Also install the guarded stack for a relocated native main image.
+ move.l a5,a1
+ adda.l #$2876c,a1
+ lea _base(pc),a0
+ adda.l #step_stack_start-_base,a0
+ move.w #$4ef9,(a1)
+ move.l a0,2(a1)
+ ENDC
  move.l a5,a1
  adda.l #$d000,a1
  lea public_main_lane_lookup(pc),a0

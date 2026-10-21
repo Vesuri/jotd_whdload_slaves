@@ -19,7 +19,7 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
- ; Whole main-image relocation shares the enhanced CPU/Fast gate.
+ ; Main-image relocation has its own CUSTOM2/Fast gate, including native 68000.
  ; Snapshot diagnostics opt in, keeping older reference builds reproducible.
  IFD VERIFY_D_PUBLIC_MAIN
 C_PUBLIC_MAIN = 1
@@ -31,7 +31,7 @@ C_PUBLIC_MAIN = 1
  ENDC
  IFD C_PUBLIC_MAIN
  IFND C_STEP_BUILD
- FAIL "Public main image requires the enhanced path selection"
+ FAIL "Public main image requires the shared runtime support"
  ENDC
  ; These older experiments introduce additional copies or absolute operands.
  ; Keep them on the native-image reference until their relocation is audited.
@@ -547,10 +547,11 @@ PatchLoader2:
 	adda.l #step_physics_aux_init-_base,a0
 	jsr (a0)
 	ENDC
+.no_c:
 	IFD C_PUBLIC_MAIN
+; The native 68000 path also benefits from public code and stack placement.
 	bsr public_main_init
 	ENDC
-.no_c:
 	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
 	jmp	(a1)
