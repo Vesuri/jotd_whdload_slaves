@@ -1,5 +1,7 @@
 ; Scheduler bridge for endpoint-player, with optional deferred ground.
 ; Requires endpoint-ground-resolve; not installed in the native game loop.
+; Copies retain the private-then-publish transaction, using word-aligned
+; 16-byte groups and exact tails to reduce per-field copying overhead.
 SE_OWNER equ 0
 SE_PLAYER equ 4
 SE_STAGES equ 8
@@ -103,15 +105,31 @@ scheduled_endpoint_common:
 	cmp.w EP_DELAY+CD_RATE(a0),d0
 	bne .phase
 	movea.l a5,a1
-	moveq #EP_SIZE/2-1,d1
+	moveq #EP_SIZE/16-1,d1
 .state:
-	move.w (a0)+,(a1)+
+	REPT 4
+	move.l (a0)+,(a1)+
+	ENDR
 	dbf d1,.state
-	movea.l SE_PLAYER(a6),a0
-	moveq #MP_RECORD_SIZE/2-1,d1
-.player:
+	REPT EP_SIZE/4-(EP_SIZE/16)*4
+	move.l (a0)+,(a1)+
+	ENDR
+	IFNE EP_SIZE&2
 	move.w (a0)+,(a1)+
+	ENDC
+	movea.l SE_PLAYER(a6),a0
+	moveq #MP_RECORD_SIZE/16-1,d1
+.player:
+	REPT 4
+	move.l (a0)+,(a1)+
+	ENDR
 	dbf d1,.player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a0)+,(a1)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a0)+,(a1)+
+	ENDC
 	move.w EP_DONE(a5),d0
 	cmp.w EP_SPAN(a5),d0
 	bne .ongoing
@@ -181,15 +199,31 @@ scheduled_endpoint_common:
 	bmi .done
 	movea.l a5,a0
 	movea.l SE_OWNER(a6),a1
-	moveq #EP_SIZE/2-1,d1
+	moveq #EP_SIZE/16-1,d1
 .publish_state:
-	move.w (a0)+,(a1)+
+	REPT 4
+	move.l (a0)+,(a1)+
+	ENDR
 	dbf d1,.publish_state
-	movea.l SE_PLAYER(a6),a1
-	moveq #MP_RECORD_SIZE/2-1,d1
-.publish_player:
+	REPT EP_SIZE/4-(EP_SIZE/16)*4
+	move.l (a0)+,(a1)+
+	ENDR
+	IFNE EP_SIZE&2
 	move.w (a0)+,(a1)+
+	ENDC
+	movea.l SE_PLAYER(a6),a1
+	moveq #MP_RECORD_SIZE/16-1,d1
+.publish_player:
+	REPT 4
+	move.l (a0)+,(a1)+
+	ENDR
 	dbf d1,.publish_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a0)+,(a1)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a0)+,(a1)+
+	ENDC
 	move.l d6,SE_FIELD(a6)
 	move.w #1,SE_COMMITTED(a6)
 	movea.l d5,a0

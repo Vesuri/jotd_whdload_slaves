@@ -1,5 +1,7 @@
 ; Transactional endpoint-preserving airborne player owner. Not installed.
 ; Requires player-step, control-delay, endpoint-motion and endpoint-impulse.
+; Word-aligned private copies use 16-byte groups and exact long/word tails.
+; This reduces field-rate copy overhead without changing publication order.
 EP_FRACTIONS equ 0
 EP_DELAY equ EM_SIZE
 EP_ANCHOR equ EP_DELAY+CD_SIZE
@@ -74,10 +76,18 @@ endpoint_player_begin:
 	clr.w EP_DONE(a0)
 	move.w d1,EP_TICK(a0)
 	lea EP_ANCHOR(a0),a2
-	moveq #MP_RECORD_SIZE/2-1,d2
+	moveq #MP_RECORD_SIZE/16-1,d2
 .copy:
-	move.w (a1)+,(a2)+
+	REPT 4
+	move.l (a1)+,(a2)+
+	ENDR
 	dbf d2,.copy
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1)+,(a2)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a2)+
+	ENDC
 	moveq #0,d0
 	bra .done
 .bad:
@@ -124,20 +134,38 @@ endpoint_player_step:
 	clr.l 4(a2)
 	clr.w 8(a2)
 	movea.l a6,a2
-	moveq #EP_SIZE/2-1,d1
+	moveq #EP_SIZE/16-1,d1
 .state:
-	move.w (a0)+,(a2)+
+	REPT 4
+	move.l (a0)+,(a2)+
+	ENDR
 	dbf d1,.state
+	REPT EP_SIZE/4-(EP_SIZE/16)*4
+	move.l (a0)+,(a2)+
+	ENDR
+	IFNE EP_SIZE&2
+	move.w (a0)+,(a2)+
+	ENDC
 	move.w EP_DONE(a6),d0
 	cmp.w EP_SPAN(a6),d0
 	bhs .bad
 	lea EP_WORK_CANDIDATE(a6),a0
 	lea EP_WORK_OUTPUT(a6),a2
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .player:
+	REPT 4
+	move.l (a1),(a0)+
+	move.l (a1)+,(a2)+
+	ENDR
+	dbf d1,.player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1),(a0)+
+	move.l (a1)+,(a2)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
 	move.w (a1),(a0)+
 	move.w (a1)+,(a2)+
-	dbf d1,.player
+	ENDC
 	lea EP_ANCHOR(a6),a0
 	lea EP_WORK_CANDIDATE(a6),a1
 	lea endpoint_motion_fields(pc),a2
@@ -160,10 +188,18 @@ endpoint_player_step:
 	tst.w EP_WORK_IMPULSE(a6)
 	beq .source_saved
 	lea EP_WORK_SOURCE(a6),a2
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .source:
-	move.w (a1)+,(a2)+
+	REPT 4
+	move.l (a1)+,(a2)+
+	ENDR
 	dbf d1,.source
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1)+,(a2)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a2)+
+	ENDC
 .source_saved:
 	lea EP_DELAY(a6),a0
 	movea.l d6,a1
@@ -216,11 +252,21 @@ endpoint_player_step:
 	lea EP_WORK_CANDIDATE(a6),a0
 	lea EP_WORK_BASE(a6),a1
 	lea EP_WORK_SOURCE(a6),a2
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .second_candidate:
+	REPT 4
+	move.l (a0),(a1)+
+	move.l (a2)+,(a0)+
+	ENDR
+	dbf d1,.second_candidate
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a0),(a1)+
+	move.l (a2)+,(a0)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
 	move.w (a0),(a1)+
 	move.w (a2)+,(a0)+
-	dbf d1,.second_candidate
+	ENDC
 	lea EP_WORK_PS(a6),a0
 	moveq #3,d0
 	move.w EP_WORK_PREVIOUS(a6),d1
@@ -259,15 +305,31 @@ endpoint_player_step:
 	lea EP_WORK_OUTPUT(a6),a3
 	movea.l a6,a0
 	movea.l d2,a1
-	moveq #EP_SIZE/2-1,d1
+	moveq #EP_SIZE/16-1,d1
 .publish_state:
-	move.w (a0)+,(a1)+
+	REPT 4
+	move.l (a0)+,(a1)+
+	ENDR
 	dbf d1,.publish_state
+	REPT EP_SIZE/4-(EP_SIZE/16)*4
+	move.l (a0)+,(a1)+
+	ENDR
+	IFNE EP_SIZE&2
+	move.w (a0)+,(a1)+
+	ENDC
 	movea.l d3,a1
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .publish_player:
-	move.w (a3)+,(a1)+
+	REPT 4
+	move.l (a3)+,(a1)+
+	ENDR
 	dbf d1,.publish_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a3)+,(a1)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a3)+,(a1)+
+	ENDC
 	moveq #0,d0
 	bra .done
 .bad:

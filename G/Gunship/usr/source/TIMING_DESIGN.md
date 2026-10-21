@@ -5243,3 +5243,28 @@ The second profile attributes 5.28% of sampled cycles to endpoint-player code,
 4.59% to its scheduled transaction wrapper, 3.60% to endpoint fraction math,
 and 4.75% to the private geometry copy. These are self-cycle groups, not
 inclusive costs or a substitute for matched world-state/latency validation.
+
+### Reduce per-field transaction copy cost
+
+The endpoint owner, scheduled endpoint bridge and shared player-step routines
+now copy aligned state/records in groups of four longwords, followed by exact
+longword/word tails. All private copies, validation and publication ordering
+remain in place; no rollback or ownership check is removed. In particular,
+the 86-byte player record keeps its final two-byte tail without touching the
+next record. The runtime code grows by 186 bytes.
+
+Validation covers 48 transaction calls with surrounding buffer canaries and
+register preservation, eleven admission rejections, faults before and after
+publication, once-only deferred ground notification, PAL/NTSC batch sizes
+1/3/10/80, and 360 native boundary comparisons in twelve held/reversal/pulse
+trajectories. All four slave variants build.
+
+The matched headless 68000 run `tmp/dev/tmp/c/live-loop-000-copy` ends with
+920 applied fields, 55 completed world ticks and zero lost/discarded input,
+versus 877/52 for the preceding catch-up-only run. Both published through
+field 946. The final backlog falls from 54 to 11 fields; sampled backlogs
+are 6, 6, 6, 6, 9 and 11. The 100-field profile reduces self-cycle shares for
+the endpoint owner from 5.28% to 3.65%, its scheduled wrapper from 4.59% to
+2.95%, and player_step from 2.81% to 1.72%. This short idle-route sample is
+not sufficient to establish sustained rate across heavy scenes or display
+latency; C9 remains open.

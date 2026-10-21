@@ -447,7 +447,11 @@ on that configuration. C8 catch-up now also skips a render when fields
 arrived while draining the previous snapshot. In the matched 68000 profile
 route this removes 148 discarded fields and raises completed worlds from
 42 to 52, but the backlog still grows (54 fields at the end); sustained
-rate acceptance remains open. Native world opening and the complete periodic
+rate acceptance remains open. Grouped longword copies in the player
+transactions further reduce the same run's final backlog to 11 fields,
+with 55 completed world ticks and no lost/discarded input; exact tails,
+rollback and 360 native boundary comparisons pass. Longer/heavier live
+rate and latency checks remain. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

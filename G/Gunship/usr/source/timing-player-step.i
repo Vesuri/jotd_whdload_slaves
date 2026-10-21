@@ -1,6 +1,8 @@
 ; Continuous control + flight composition. Requires attitude and kinematics.
 ; Standalone, not installed. Commands must already be applied in their
 ; scheduled order. Pitch clamp precedes stick/motion; no world decisions.
+; Word-aligned state/record copies use 16-byte groups and exact tails;
+; an 86-byte record must never read or write the following two bytes.
 PS_ATTITUDE equ 0
 PS_KINEMATICS equ AT_SIZE
 PS_SIZE equ AT_SIZE+KN_SIZE
@@ -43,14 +45,30 @@ player_step:
 	cmp.w PS_KINEMATICS+FR_RATE(a5),d0
 	bne .bad
 	movea.l a4,a2
-	moveq #PS_SIZE/2-1,d0
+	moveq #PS_SIZE/16-1,d0
 .copy_state:
-	move.w (a0)+,(a2)+
+	REPT 4
+	move.l (a0)+,(a2)+
+	ENDR
 	dbf d0,.copy_state
-	moveq #MP_RECORD_SIZE/2-1,d0
+	REPT PS_SIZE/4-(PS_SIZE/16)*4
+	move.l (a0)+,(a2)+
+	ENDR
+	IFNE PS_SIZE&2
+	move.w (a0)+,(a2)+
+	ENDC
+	moveq #MP_RECORD_SIZE/16-1,d0
 .copy_player:
-	move.w (a1)+,(a2)+
+	REPT 4
+	move.l (a1)+,(a2)+
+	ENDR
 	dbf d0,.copy_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1)+,(a2)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a2)+
+	ENDC
 	lea PS_ATTITUDE(a4),a0
 	lea PS_PLAYER(a4),a1
 	movea.l d5,a2
@@ -79,14 +97,30 @@ player_step:
 	tst.l d0
 	bne .bad
 	movea.l a4,a0
-	moveq #PS_SIZE/2-1,d0
+	moveq #PS_SIZE/16-1,d0
 .commit_state:
-	move.w (a0)+,(a5)+
+	REPT 4
+	move.l (a0)+,(a5)+
+	ENDR
 	dbf d0,.commit_state
-	moveq #MP_RECORD_SIZE/2-1,d0
+	REPT PS_SIZE/4-(PS_SIZE/16)*4
+	move.l (a0)+,(a5)+
+	ENDR
+	IFNE PS_SIZE&2
+	move.w (a0)+,(a5)+
+	ENDC
+	moveq #MP_RECORD_SIZE/16-1,d0
 .commit_player:
-	move.w (a0)+,(a6)+
+	REPT 4
+	move.l (a0)+,(a6)+
+	ENDR
 	dbf d0,.commit_player
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a0)+,(a6)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a0)+,(a6)+
+	ENDC
 	moveq #0,d0
 	bra .done
 .bad:
@@ -108,10 +142,18 @@ player_step_interval:
 	movea.l a1,a6
 	suba.w #MP_RECORD_SIZE,sp
 	movea.l sp,a5
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .copy:
-	move.w (a1)+,(a5)+
+	REPT 4
+	move.l (a1)+,(a5)+
+	ENDR
 	dbf d1,.copy
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a1)+,(a5)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a1)+,(a5)+
+	ENDC
 	movea.l sp,a1
 	move.w d2,$0c(a1)
 	bsr player_step
@@ -119,10 +161,18 @@ player_step_interval:
 	bne .done
 	movea.l sp,a5
 	move.w $0c(a6),$0c(a5)
-	moveq #MP_RECORD_SIZE/2-1,d1
+	moveq #MP_RECORD_SIZE/16-1,d1
 .commit:
-	move.w (a5)+,(a6)+
+	REPT 4
+	move.l (a5)+,(a6)+
+	ENDR
 	dbf d1,.commit
+	REPT MP_RECORD_SIZE/4-(MP_RECORD_SIZE/16)*4
+	move.l (a5)+,(a6)+
+	ENDR
+	IFNE MP_RECORD_SIZE&2
+	move.w (a5)+,(a6)+
+	ENDC
 .done:
 	adda.w #MP_RECORD_SIZE,sp
 	movem.l (sp)+,d1-d2/a1/a5-a6
