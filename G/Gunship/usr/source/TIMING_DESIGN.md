@@ -5422,3 +5422,39 @@ at nominal 60-Hz field resolution. These retain the same limitation as the
 PAL probe: completion after native swap is observed, first changed scanout is
 not. They extend the field-rate input/motion evidence to NTSC without closing
 the display-latency or heavy-scene acceptance gates.
+
+
+### PAL scanout correlation (68020/68060)
+
+The diagnostic-only `build_scanout_probe_c.py` extends the completed-frame
+record to 56 bytes, adding the native BitMap and plane-zero addresses after
+drawing returns. `run_scanout_probe_c.py` captures bitplane DMA across four
+alternating seven-field input pulses, using the same seeded takeoff route,
+headless output and disabled host mouse. No release-path code changes.
+Evidence is in `tmp/dev/tmp/c/scanout-probe-{020,060}`, including raw traces,
+frame/history rings and `scanout-summary.json`.
+
+`analyze_scanout_probe_c.py` checks each captured field's plane-zero DMA reads:
+exactly 4,000 consecutive words over 200 display lines, with no mixed buffer.
+It matches the first changed-roll frame's recorded plane to a transition from
+the other display buffer. This observes the emulated display reading the
+changed frame, rather than inferring display solely from a completed draw.
+Field labels are anchored to the native field counter read immediately after
+each capture. On the 68020, every label also agrees with the input producer's
+field stamp in the instruction trace. The 68060 trace has no CPU instruction
+records, so it uses the capture-end anchor and consecutive captured fields.
+
+| PAL CPU | Input-to-first changed buffer scanout, in fields | Nominal time |
+| --- | --- | --- |
+| 68020 | 13, 6, 5, 9 | 260, 120, 100, 180 ms |
+| 68060 | 3, 4, 4, 7..8 | 60, 80, 80, 140..160 ms |
+
+The last 68060 transition falls in the single-field gap between capture
+blocks; its interval is retained rather than assigning an exact first field.
+Other transitions have the preceding field's old buffer recorded. All four
+pulses contribute; no history loss, discards or scheduler fault occurs.
+There are 17/43 adjacent same-world camera changes in the 29/57 completed
+frames observed on 68020/060. These are field-resolution measurements of
+emulated scanout, not host-display or input-device latency. Instrumentation
+adds overhead. NTSC scanout, heavy scenes and the remaining C9 gates are still
+open; this does not establish a worst-case latency bound or complete C.
