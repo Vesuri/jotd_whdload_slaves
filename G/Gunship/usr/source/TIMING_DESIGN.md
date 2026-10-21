@@ -7249,3 +7249,35 @@ lifecycle-completion marker. Evidence is retained in the ignored harness:
 reports, and `retired-speed-live-pal-060/retired-speed-audit.json`.
 This resolves C7d's experimental command behavior; production activation and
 other C acceptance gates remain open.
+
+
+### Fresh native mission after terminal retirement (C8)
+
+The current runtime now has live evidence for the separate new-mission route,
+not only immediate takeoff into the continuing mission. Controlled landing
+at tick 16 returns to native result UI, then the route selects “Leave your
+chopper and call it quits for this mission”, proceeds through debriefing and
+service record, selects “Fly Another Regular mission”, and completes new
+orders/checklist/arming. The native loader reaches `timing_runtime_prepare`
+with the old arena inactive; the first new batch starts with native tick 0.
+
+`new-mission-explore-pal-020` and automated `new-mission-ntsc-060` both pass
+`audit_new_mission_c.py`. At old exit, menu, reload entry, new exit and 120
+fields after new exit, all sampling owners are off, all four prediction
+caches are invalid, and endpoint history is zero. Fresh activation has zero
+field/world/tick counters, zero phase, empty command/history reader cursors
+and one initial rebase. The next observation reaches native/runtime world 5
+with no active loss/discard or extra rebase. The controlled second landing
+ends at native tick 16 and acknowledges exactly 16 runtime worlds. Each
+terminal exit intentionally discards three remaining unread fields; active
+sampling loss is zero. The paused menu time creates no catch-up debt.
+
+Both flights use the diagnostic native-landing initialization, so this is
+new-mission/reload ownership evidence, not a naturally flown second mission.
+The native menu path and new orders are captured in PNGs. Code/state evidence
+includes the breakpoint at prepare, before/after arena and player snapshots,
+per-run `new-mission-audit.json`, and ignored `capture_new_mission_c.py`.
+`lifecycle-current.slave` is built from current sources with only the landing
+entry fixture (110,320-byte payload); production source is unchanged.
+Rearm/repair, weapon-induced death, natural landing and the remaining CPU/
+video lifecycle combinations remain open.

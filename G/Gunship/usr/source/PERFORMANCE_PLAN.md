@@ -935,8 +935,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     The native "Take off again immediately" route now reloads and prepares
     the same arena on both setups, preserving mission ticks 16→32 while
     restarting runtime counters and retiring history again at the second exit.
-    Natural mission landings, weapon-induced death, new missions, other reload
-    routes and the remaining CPU/video lifecycle matrix remain open.
+    The native leave/debrief/service-record/new-mission route also passes
+    PAL 68020/NTSC 68060: new tick/field/world counters start at zero, command
+    cursors reset, and the controlled second flight advances 0→5→16 before
+    retiring history again. Natural mission landings, weapon-induced death,
+    rearm/repair routes and the remaining CPU/video lifecycle matrix remain open.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
     Terminal flight retirement now explicitly invalidates player, actor,
