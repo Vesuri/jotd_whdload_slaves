@@ -678,7 +678,7 @@ Status (2026-10-21). Every code step is complete or rejected; the records follow
 | 8 | Done: rot_delta2_040 | -1.3%, 689 -> 708 | c0aed2ff |
 | 9 | Done: isqrt_040 (cycle-count acceptance); rest of tail too small | routine -4.8k (-0.29%) | b99c3ca8 |
 | 10 | Emulator: 746/2,000 (18.7 nominal fps), est-040 1.69 M (target 2.0 M met; 800/2,000 not) | - | - |
-| 11 | Done: Gouraud runs (follow camera, F5); 11b reciprocal | follow -19.2%, 313 -> 411; action unchanged | 7b933812 |
+| 11 | Done: Gouraud runs (follow camera, F5); 11b reciprocal; 11c every CPU | follow -19.2%, 313 -> 411; action unchanged; TFX 020/030/060 +14/+21/+23% | 7b933812 |
 
 Open, all waiting for the Apollo:
 - Run calib040 and replace the cost model's constants.
@@ -1285,3 +1285,46 @@ Step 11b (reciprocal for the row DIVS.L; two entries):
 - Evidence: `tmp/dev/tmp/gouraud2/` (reciprocal), `tmp/dev/tmp/gouraud3/` (two entries).
 - Evidence: `tmp/dev/tmp/gouraud/` (probe, gf-tests, gates, scenes, pairs, v1 = the
   first version with a 5-instruction walk, 396/2,000).
+
+Step 11c (Gouraud runs on every CPU):
+- Automatic selection runs tfx.020 with the 040 render list only on a full 68040. With
+  fast RAM, 020, 030 and 060 run plain TFX (integer maths) with pl_020, whose new
+  renderer calls the same chunky fill and c2p (gouraud_fill, C arguments, $6b8e0).
+- pl_020 now points $6b8e0 at gouraud_runs_c. Original rendering (CUSTOM4 bit 2) keeps
+  the game's routine. On the 68060 the call takes gr_body_div.
+- Follow camera, plain TFX, same seed, @GouraudFill switched at run time
+  (`tools/cpu_profile.py`, not a balanced pair):
+
+  | CPU (emulated) | chunky + c2p | runs | change |
+  |---|---|---|---|
+  | 68020 14 MHz, cycle-exact | 81 | 92 | +13.6% |
+  | 68030 50 MHz + 68882, cycle-exact | 444 | 539 | +21.4% |
+  | 68060 50 MHz (not cycle-exact) | 268 | 329 | +22.8% |
+
+  Runs with the committed placement reproduce 92, 539 and 329 and confirm the JMP;
+  an original-rendering run on the 030 confirms the game's bytes. Publications are
+  only comparable within one CPU: the emulator's timing models differ.
+- Equivalence: the C-entry twins (040 and 060) cover gouraud_runs_c against
+  gouraud_fill; the 020/030 run the same reciprocal body as the 040.
+- Evidence: `tmp/dev/tmp/gouraud3/tfx-*`, `tmp/dev/tmp/gouraud4/`.
+
+CPU gating review (2026-10-22). Rule from the user: gate a change to the 68040 only if
+it helps only there; otherwise every CPU that runs the code gets it. Today only a full
+68040 runs tfx.020 with the 040 render list; 020/030/060 (with fast RAM) run plain TFX
+with pl_020. Status per change:
+
+| Change | 68040 (tfx.020) | 020/030/060 (TFX) |
+|---|---|---|
+| Gouraud runs (11, 11b) | done | done (11c) |
+| Delta copy and its cache-line compare (step 6) | done | full copy every frame: port next (shadow allocation, @PlayLevel $15ac hook) |
+| mask_sprite8_040 (2) | done | TFX _MaskSprite unported: profile first |
+| fade_cols_040 (7) | done | unported: profile first |
+| rot_delta2_040 (8) | done | unported: profile first |
+| isqrt_040 (9) | done | unported: profile first |
+| sfd_span_040 (4) | done | TFX uses paraj's normal_fill instead: different routine |
+| FPU / integer projection (1) | done | TFX projects in integer already |
+| Chip/fast data split (original step 8) | done | TFX has its own fast-RAM relocation |
+| Native FPU paths (original step 9) | done | not applicable without FPSP traps |
+
+Whether FPU-equipped 020/030/060 should instead run tfx.020 with the render list is
+open; it needs the render list to be measured on those CPUs.

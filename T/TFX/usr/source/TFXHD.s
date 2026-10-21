@@ -2237,6 +2237,9 @@ copy_linebuf_part:
         move.l  a5,d0
         bra     c2p_32pixels_masked
 
+; gouraud_fill_new and gouraud_fill are no longer patched in: gouraud_runs and
+; gouraud_runs_c replace them on every CPU. They stay as the chunky fill and c2p
+; reference that the run fill's twin tests compare against.
 ; tfx.020 passes the scan stream inline at SP+4 and y in A5.
 ; Adapt to the existing C-argument fill without moving the caller's stream.
 gouraud_fill_new:
@@ -2774,7 +2777,7 @@ pl_020
         PL_P    $4c138,draw_line_normal ; _DrawLine
         PL_P    $6dd04,draw_line_strip  ; _DrawStipLine
 
-        PL_P    $6b8e0,gouraud_fill     ; @GouraudFill
+        PL_P    $6b8e0,gouraud_runs_c   ; @GouraudFill: rows as runs of one colour
         PL_P    $4d6f0,texture_fill     ; _TextureFill
         PL_P    $6b0ee,normal_fill      ; ScanFillDown
 
