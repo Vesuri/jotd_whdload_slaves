@@ -6827,3 +6827,44 @@ loader placement remain open. The preparation comment now matches the
 existing loader contract: fresh allocation or inactive, fully resolved arena
 reuse is permitted; live or partially committed work must not be overwritten.
 No executable code changed.
+
+### Live duration window through the first minute boundary
+
+Current-runtime `duration-pal-020`, `duration-pal-060`, `duration-ntsc-020`
+and `duration-ntsc-060` extend the same controlled rocket route to worlds
+20..200. All 724 captured player clocks equal their world numbers; all 720
+adjacent reserve transitions match the native fixed-collective rule. Both
+engines remain running, collective is 40 and damage is zero throughout. The
+reserve words lose 40/120 units at every sixteenth tick (32..192), with no
+intervening changes. Active history loss/discard, clock discard, extra rebase
+and scheduler faults remain zero.
+
+`audit_duration_c.py` executes the native minutes/seconds conversion from
+each saved hunk-0/hunk-6 pair in Unicorn. It identifies both original call
+sites by their relocated player-clock address and division signatures. All
+724 pairs match the native tick/3 conversion: tick 179 gives 00:59, and 180
+and 181 give 01:00. This checks live captured state and actual conversion
+instructions, not rendered clock pixels. The attempted NTSC 68020 screen
+check used pause/Escape after the capture window; it returned directly to
+the pilot menu, so `duration-result.png` is not minute-rollover UI evidence.
+
+| Video/CPU | Native fields for 180 intervals | Actual seconds | World Hz | Completion lag, fields |
+| --- | ---: | ---: | ---: | ---: |
+| PAL 68020 | 3000 | 60.000 | 3.00000 | 2..8 |
+| PAL 68060 | 3001 | 60.020 | 2.99900 | 1..5 |
+| NTSC 68020 | 3596 | 59.933 | 3.00334 | 3..10 |
+| NTSC 68060 | 3596 | 59.933 | 3.00334 | 1..5 |
+
+Native completion counters, not logical clock fields, supply these rates.
+Both same-video CPU pairs match all 181 selected player/object/projectile,
+RNG, mission/alive, generation and countermeasure states. Actor exceptions
+remain inactive animation countdowns and C732 rendering scratch. All 3,226
+common PAL input records match raw; the NTSC raw comparison fails solely on
+unused TR_RELATIVE across 3,842 common records, with consumed controls equal.
+The raw failure remains saved. Rocket release remains world 64.
+
+This extends duration and cross-CPU evidence through a minute boundary, not
+whole-mission acceptance, other control/damage/fuel conditions, the remaining
+CPUs or displayed-input latency. Results are retained in per-run
+`duration-audit.json`, `actual-rate.json` and state/input audit files. No
+executable code changed.

@@ -1047,8 +1047,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     both engines running and no damage. All 610 player clock samples equal
     the world tick; native conversion advances 20 seconds over worlds 20..80.
     Actual completion spans 19.78..20.02 seconds, separately from exact
-    logical deadlines. This does not cover minute rollover in play, clock
-    UI, variable collective, engine failure, reserve exhaustion or long runs.
+    logical deadlines. Longer current-runtime PAL/NTSC 68020/060 captures
+    now cover worlds 20..200: 724 live clock samples and 720 reserve transitions
+    pass, including native clock conversion 00:59→01:00 at tick 180. Each
+    same-video CPU pair matches all 181 selected states without active input
+    loss or time discard. Actual 180-interval spans are 59.933..60.020 seconds.
+    Clock UI at minute rollover, variable collective, engine failure, reserve
+    exhaustion and whole-mission duration coverage remain open.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.
