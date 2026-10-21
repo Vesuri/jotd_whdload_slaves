@@ -6764,3 +6764,39 @@ Only the slave arena is read after cleanup, since native hunks may be freed.
 The breakpoint on the cleanup clone remains armed until native return, so a
 second entry fails the check rather than silently repeating cleanup. Broader
 CPU/video, mission re-entry, disk-load and natural damage coverage remain open.
+
+### Re-enter flight after terminal retirement
+
+`test_runtime_reentry_c.py` compares a fresh arena with one that has processed
+16 worlds, ended, suspended and retired its predictions. The native initialized
+mission image is restored without clearing private runtime state, then normal
+activation runs at a new field/command epoch. Both PAL and NTSC are tested
+with native starting ticks 0 and 16. All 960 delivered fields across the eight
+runs match complete player, endpoint and 194-byte actor state between fresh
+and retired cases. Native mission ticks advance from their supplied starting
+value; lifetime runtime counters advance by the expected field/world deltas.
+This assembled comparison simulates native mission initialization and does
+not itself exercise menus or LoadSeg.
+
+The live `verified-continuing-reentry-pal-020` and `-ntsc-060` runs cover the
+actual post-flight route. After the controlled landing at tick 16, the result
+screen reports a perfect landing at a friendly base and elapsed 00:05 (PAL
+screen inspected). Space opens the native choice screen; mouse selection of
+"Take off again immediately" proceeds through helibase loading. A breakpoint
+at `timing_runtime_prepare` confirms the inactive arena is prepared again,
+then the first batch observes an active fresh epoch, zero runtime field/world
+counters, phase zero and invalid player cache. The player's native mission
+clock correctly remains 16: this continues the mission rather than starting
+a new one. An initial harness assertion expecting zero was rejected and
+corrected; its failed run is not counted as passing evidence.
+
+The second flight reaches native tick 21 (five newly completed worlds) with
+no history loss/discard, clock discard, extra rebase or scheduler fault in
+that active sample. It terminates at native tick 32 with 16 runtime worlds,
+native landing result 2 and cleared endpoint/cache state. Normal terminal
+suspension discards six unread records on PAL and three on NTSC; these are
+recorded separately from active-flight loss. The native mission clock is
+never reset by timing activation. The initial descent fixture is reapplied
+at each flight entry; this is not an uncontrolled mission replay. New mission
+selection, rearm/repair choices, relocation to different hunk addresses and
+the remaining CPU/video reload matrix remain open. No gameplay code changed.
