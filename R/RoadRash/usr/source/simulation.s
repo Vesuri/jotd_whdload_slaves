@@ -119,6 +119,7 @@ step_prepare:
 	IFD C_PUBLIC_MAIN
 	bsr e_masks_build
 	bsr e_dirty_reset
+	bsr f_hud_reset
 	ENDC
 	IFD C_BUS_PRIORITY
 	bsr step_priority_begin

@@ -59,6 +59,7 @@
    still builds the complete road geometry
  - 68040/68060 reuse rendered road geometry for the next simulation tick
    on the enhanced path, avoiding a redundant rebuild
+ - enhanced public-RAM path reduces road, HUD, dispatch and depth-sort CPU work
  - enhanced path uses a 16 KB CPU stack in optional Fast RAM; retains the
    original stack if the optional allocation is unavailable or unsuitable
  - predicts the displayed rider heading through the measured render interval

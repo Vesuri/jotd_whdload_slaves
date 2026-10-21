@@ -532,7 +532,9 @@ PatchLoader2:
 	move.l	_resload(pc),a2
 	jsr	(resload_Patch,a2)
 	IFD C_OBJECT_FAST
-	bsr step_object_fast_init
+	lea _base(pc),a0
+	adda.l #step_object_fast_init-_base,a0
+	jsr (a0)
 	ENDC
 	IFD VERIFY_C_ROAD_FAST
 	bsr step_road_fast_init
@@ -914,6 +916,7 @@ enhanced_decrunch_done:
 
 	IFD C_PUBLIC_MAIN
 	include public_main.s
+	include cpu_work.s
 	include blitter_queue.s
 	include bob_masks.s
 	include dirty_sky.s
