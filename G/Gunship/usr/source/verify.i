@@ -33,6 +33,24 @@ verify_dispatch:
 	lea verify_dispatch(pc),a4
 	adda.l #_verify_seed-verify_dispatch,a4
 	move.l (a4),$3cc(a0)
+	IFD TIMING_RUNTIME
+	; Runtime preparation precedes this verifier. Its private RNG therefore
+	; still contains the native timestamp entropy removed by the patches
+	; below. Apply the same seeded diagnostic policy to that prepared copy.
+	lea verify_dispatch(pc),a4
+	adda.l #timing_runtime_arena-verify_dispatch,a4
+	movea.l (a4),a4
+	move.l a4,d0
+	beq .rng_done
+	cmpi.l #1,RT_READY(a4)
+	bne .rng_done
+	move.l #$4e714e71,RT_RNG+$20(a4)
+	move.l #$4e714e71,RT_RNG+$24(a4)
+	move.l #$4e714e71,RT_RNG+$32(a4)
+	move.l #$4e714e71,RT_RNG+$36(a4)
+.rng_done:
+	; SetCPU below flushes these writes before any private code executes.
+	ENDC
 	clr.l 44(a3)
 	clr.l 48(a3)
 	clr.l 52(a3)

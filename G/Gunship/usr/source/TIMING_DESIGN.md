@@ -5481,3 +5481,42 @@ zero scheduler faults. The 22/42 completed frames include 12/31 adjacent
 same-world camera changes on 68020/060. This extends emulated scanout evidence
 to NTSC at field resolution. It does not cover host-display latency, heavy
 scenes, worst-case delay or C9's cross-CPU world-state equality gate.
+
+
+### C9a diagnostic seed policy and first neutral world comparison
+
+The first live cross-CPU capture exposed a diagnostic ordering error.
+`timing_runtime_dispatch` prepares its private RNG before `verify_dispatch`
+removes timestamp entropy from the native RNG. Consequently CUSTOM2's fixed
+seed policy covered the original routine but not the copy used by enhanced
+world callbacks. At world 100, the original entropy instructions were NOPs
+on both CPUs while the private copies retained their timestamp loads/XORs;
+the RNG states differed (`15455d99` on 68020, `18aece43` on 68060).
+
+The verifier now removes the same two eight-byte entropy sequences from
+RT_RNG when a prepared arena exists. Its existing SetCPU call flushes these
+writes before execution. This is restricted to seeded VERIFY builds; ordinary
+and non-VERIFY runtime behavior are unchanged. The assembled verifier test
+`test_verify_runtime_rng_c.py` checks exact changed bytes, null/unready arena
+bypass and register preservation with resload scratch-register clobbers.
+Ordinary, VERIFY, runtime and VERIFY/runtime builds all assemble.
+
+`capture_world_equality_c.py` stops at `scheduler_world_done`, after native
+world callbacks and before the completed-world count increments. It saves
+three consecutive boundaries (worlds 100..102), complete fast RAM, native
+hunks, mission/alive allocations and the runtime arena. Both runs use
+CUSTOM1=1/CUSTOM2=12345 and the same menu route, stopping before engine-start
+commands; flight controls remain neutral. The corrected PAL 68020/68060 runs
+match the complete 86-byte player block, gameplay RNG state, mission payload
+(first $94 bytes, excluding trailing allocation pointers), and 256 alive
+flags at each boundary. Input history is neutral with no loss/discards or
+scheduler faults. Evidence: `tmp/dev/tmp/c/world-equality-seeded-{020,060}`
+and `world-equality-seeded-summary.json`; the pre-fix captures are retained
+under `world-equality-{020,060}`.
+
+This is a grounded neutral-input comparison, not C9a acceptance. RNG state is
+unchanged across these three late idle boundaries. Whole-hunk comparison
+still reports relocation, clock and presentation differences; no blanket
+mask makes those comparisons pass. Active field-stamped input, airborne and
+combat state, full object allocations, 68000 and drawing-replaced-by-wait
+comparisons remain required.

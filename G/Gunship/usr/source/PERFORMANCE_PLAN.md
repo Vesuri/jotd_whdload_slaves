@@ -882,7 +882,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C9a. **World equality across CPUs:** matched world-tick state on the 68000, 68020 and
     68060, with the A2 seed and the same field-stamped input, using the A4 gate. The
     authoritative state must not depend on render rate. Also run a diagnostic with drawing
-    replaced by a field wait.
+    replaced by a field wait. The initial neutral PAL 68020/060 comparison
+    exposed and fixed a verifier seed-policy omission in the private RNG.
+    Worlds 100..102 now match player/RNG/mission-payload/alive state with
+    neutral controls; active input, full object state, 68000 and no-draw
+    comparisons remain open.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
