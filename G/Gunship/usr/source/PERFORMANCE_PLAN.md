@@ -939,6 +939,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     Actual completion nevertheless takes 1,220 native fields for 60 intervals
     (2.95082 Hz), with 32..62 fields of lag. Rate/latency remain unaccepted;
     logical deadline equality must not be mistaken for real-time throughput.
+    Assembly-time specialization of the fixed motion field types reduces
+    distribution cost per call by a further 35%. The matching NTSC 68000
+    route retains all 61 selected states and no time/input loss; actual rate
+    improves to 2.98013 Hz over 1,208 native fields, with 27..49 fields of lag.
+    Responsiveness and broader rate acceptance remain open.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL

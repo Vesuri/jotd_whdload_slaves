@@ -6302,3 +6302,32 @@ PAL 68000 cache run takes 1,009 native fields over the same world window
 (2.97324 Hz), while its PAL 68020 comparison takes 999 (3.00300 Hz); the NTSC
 68020 reference takes 1,200 (3.00000 Hz). These are finite-window measurements,
 not worst-case bounds. Further performance and responsiveness work remains.
+
+### Specialize fixed motion field types at assembly time
+
+The ten distributed field offsets and types are immutable. A single macro
+list now emits both their public descriptor table and specialized operations,
+removing indexed loads, flag dispatch and loop overhead from each field.
+Validation still precedes every write; signed floor/remainder arithmetic,
+circular deltas, zero-motion residues and atomic rejection are unchanged.
+Code grows by 644 bytes; the runtime arena remains 34,058 bytes. Ordinary
+slave size remains 6,088 bytes, runtime 43,418, diagnostic runtime 109,748.
+
+Validation passes 1,542 independent distribution cases, the 1,760-field
+cached/native integration comparison, 1,200 bounded-batch fields, PAL/NTSC
+loop cases and 36 lifecycle calls. All build variants assemble. In matched
+100-field NTSC 68000 profiles, distribution self cost falls from 392,904
+cycles / 107 calls (3,672 per call) to 273,072 / 115 (2,374.54 per call),
+about 35% less. Its share falls from 3.28% to 2.28%. Provenance is retained
+in `typed-motion-cost-ntsc-000` and its corresponding compiled listing.
+
+`typed-motion-world-fire-ntsc-000` completes worlds 20..80 without lost or
+discarded history, clock rebase or scheduler faults. All 61 selected states
+match the NTSC 68020 reference; rocket release remains world 64 and all 43
+eligible forecasts match native updates. All 1,449 common consumed controls
+match. Raw comparisons still fail solely on unused TR_RELATIVE; actor
+exceptions remain inactive animation countdowns and C732 drawing scratch.
+Actual completion takes 1,208 native fields (2.98013 Hz), with 27..49 fields
+of lag. Ten-world rolling rates range from 2.80374 to 3.14136 Hz; the average
+is not a latency guarantee. This improves throughput but does not accept
+C9b/C9c, nor establish displayed-frame latency.
