@@ -938,8 +938,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     The native leave/debrief/service-record/new-mission route also passes
     PAL 68020/NTSC 68060: new tick/field/world counters start at zero, command
     cursors reset, and the controlled second flight advances 0→5→16 before
-    retiring history again. Natural mission landings, weapon-induced death,
-    rearm/repair routes and the remaining CPU/video lifecycle matrix remain open.
+    retiring history again. Native rearm/refuel through the arming screen also
+    passes both setups, preserving mission ticks 16→21→32 with fresh input
+    cursors and no sampled active loss or extra rebase. Natural mission
+    landings, weapon-induced death, repair and the remaining CPU/video
+    lifecycle matrix remain open.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
     Terminal flight retirement now explicitly invalidates player, actor,

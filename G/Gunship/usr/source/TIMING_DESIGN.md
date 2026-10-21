@@ -7281,3 +7281,31 @@ per-run `new-mission-audit.json`, and ignored `capture_new_mission_c.py`.
 entry fixture (110,320-byte payload); production source is unchanged.
 Rearm/repair, weapon-induced death, natural landing and the remaining CPU/
 video lifecycle combinations remain open.
+
+
+### Native rearm/refuel continuation (C8)
+
+The third postflight choice, “Rearm and Refuel to continue mission without
+repairing damage”, now passes the installed lifecycle harness on PAL 68020
+and NTSC 68060. Both routes enter the native arming screen, select Continue,
+reach runtime preparation with the old arena inactive, and start a fresh
+runtime epoch while preserving native mission tick 16. Native tick 21 is
+observed at the fifth world completion; the controlled next landing exits
+at native tick 32 after exactly 16 acknowledged runtime worlds.
+
+`capture_rearm_c.py` and `audit_rearm_c.py` retain the observations in
+`rearm-pal-020` and `rearm-ntsc-060`. At exit, arming menu, prepare entry and
+second exit, sampling owners are off, all four prediction caches are invalid,
+and endpoint history is zero. Activation resets field/world counters, phase,
+and command/history cursors. The active snapshots have no time or input
+loss/discard and no additional rebase. Second exits intentionally discard
+six unread fields on PAL and three on NTSC; these are terminal retirement,
+not active input loss. The native arming screens were visually inspected.
+
+The exploratory run first missed Continue and was interrupted while still
+in the arming screen; that interrupted observation is excluded. Both final
+automated routes complete without debugger interruption. Both flights use
+the controlled landing initialization in `lifecycle-current.slave`, so this
+establishes rearm/reload ownership, not natural landing, fuel/ammunition
+accounting or repair acceptance. Those checks and remaining CPU/video
+combinations remain open; production code is unchanged.
