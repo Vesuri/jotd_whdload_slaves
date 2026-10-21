@@ -8246,3 +8246,77 @@ uses the same audit filenames under `forecast-ranges-combat-pal-020` and
 `forecast-ranges-combat-ntsc-060`. Both private target-collection entry-point
 regressions additionally pass 48 scenes each, with no native writes; the
 player-bound variant still passes with its native player operands poisoned.
+
+
+### Guided-combat equality with installed forecasts (C9a/C9b)
+
+The corrected range-refresh build now has eight deterministic headless runs
+of the same controlled Hellfire route, worlds 20..80: rendered 68000/020/060
+and 020 field-wait presentation, each on PAL and NTSC. Inputs are injected
+at native producer fields relative to verified runtime activation; NTSC
+scales the PAL event schedule. Both builds retain forecast/presentation
+preparation; the field-wait diagnostic replaces only the native drawing call.
+Each capture saves its exact listing and slave/listing hashes. Host mouse
+input is disabled.
+
+All 61 selected states agree on PAL across the three CPUs and field-wait
+presentation. NTSC 020/060/field-wait also agree at all 61 boundaries. The
+comparison includes the full player/split-object block +3B88..+3E5D, actor
++C6A0..+C761 block, allocation masks, generation counters, selector AA0A..AA15,
+gameplay RNG, mission payload, alive table and countermeasures. Raw actor
+differences remain recorded: only C724..C729 countdown bytes whose slot type
+has no animation bit, and C732 drawing scratch, are permitted. This does
+not prove equality of every external world-object/model record.
+
+PAL common raw control records match: 1,230 for 000/020 and 1,226 each for
+020/060 and 020/field-wait. NTSC 020/field-wait matches 1,445 records; the
+1,446 common 020/060 records differ solely in unused TR_RELATIVE, with every
+consumed control byte equal. Raw mismatches remain explicit. The successful
+runs have exact logical deadlines, no sampled clock/history/command losses
+or faults, and no rebase after activation. Forecast attempt counts differ
+substantially without changing the compared gameplay state: PAL 000/020/060/
+field-wait have 15/129/274/690 attempts, NTSC 020/060/field-wait 124/257/767.
+
+Actual completion is measured separately against the native field counter
+at the completed-world checkpoint, over 60 intervals:
+
+| Video / CPU | Native fields | Worlds/s | Completion lag, fields |
+|---|---:|---:|---:|
+| PAL 000 | 1014 | 2.95858 | 11..42 |
+| PAL 020 | 1004 | 2.98805 | 3..9 |
+| PAL 060 | 999 | 3.00300 | 1..5 |
+| PAL 020 field wait | 1000 | 3.00000 | 3..4 |
+| NTSC 020 | 1199 | 3.00250 | 4..11 |
+| NTSC 060 | 1201 | 2.99750 | 2..6 |
+| NTSC 020 field wait | 1200 | 3.00000 | 4..5 |
+
+**NTSC 68000 fails:** the first loss is at world 41, with 67 history records
+and nine clock phase units discarded, after six forecast attempts. Those
+counters remain at world 80. Selected non-actor state and raw controls match
+through world 40; the full-run equality and rate gates fail. PAL 000 retains
+state equality but its completion lag remains unacceptable for responsive
+presentation. These runs therefore do not close C9a/C9b/C9c. Further work
+must reduce the expensive guided presentation path and verify the heavier
+68000 case, without changing world timing or discarding accepted input.
+
+Evidence lives under ignored `tmp/dev/tmp/c/guided-equality-{pal,ntsc}-*`:
+`guided-comparison.json` preserves raw differences, `guided-state-audit.json`
+checks scoped equality, `guided-rate-audit.json` checks health/deadlines and
+actual rate, and `guided-overload-audit.json` records the NTSC 000 failure.
+Harness sources are `capture_guided_equality_c.py`,
+`analyze_guided_equality_c.py`, `audit_guided_equality_c.py` and
+`audit_guided_rate_c.py`. The ordinary and experimental production sources
+are unchanged by this diagnostic; neither controlled startup nor field-wait
+presentation is installed in the ordinary slave.
+
+A diagnostic-only control skips exactly the call to
+`timing_runtime_forecast_overlay`, retaining ordinary rendering, field motion
+and world execution. On NTSC 000 it matches all 61 selected states and 1,447
+common raw control records without loss or active rebasing, with zero
+forecast attempts. Completion is still only 2.95324 Hz over 1,219 native
+fields, with 23..52 fields of lag. This isolates the added homing forecast
+cost as sufficient to trigger the observed overflow, while also showing
+that the underlying workload already lacks responsiveness headroom. The
+bypass is measurement-only and is not a proposed production fallback.
+Evidence: `guided-equality-ntsc-000-no-forecast`, built from the separately
+saved `guided-no-forecast` diagnostic source/listing.

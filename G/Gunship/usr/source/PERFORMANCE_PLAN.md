@@ -1061,6 +1061,15 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     runtime activation before deriving the input epoch; the earlier attempt
     scheduled controls 14 fields early and is excluded. Its remaining raw
     input mismatch is solely unused TR_RELATIVE, with consumed controls equal.
+    The corrected guided-forecast path now also matches 61 selected world
+    states, including target selection and RNG, on PAL 000/020/060 and 020
+    field-wait presentation, and NTSC 020/060/field-wait. The NTSC 000 guided
+    route fails at world 41, discarding 67 history records and nine clock
+    phase units; selected non-actor state agrees through world 40. A diagnostic
+    forecast bypass removes that loss but retains 23..52 fields of lag,
+    confirming both added forecast cost and inadequate base headroom. This
+    extends combat coverage but does not close full-world equality or rate
+    acceptance (TIMING_DESIGN.md, guided-combat equality).
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows. The cached PAL rocket
     comparison has exact logical deadline fields on all three CPUs and field-wait
