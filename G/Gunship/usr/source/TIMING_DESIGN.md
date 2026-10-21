@@ -6894,3 +6894,43 @@ control, all 39 sites differ from original relocated bytes in the enabled
 `disabled-result.json` and `toggle-enabled-site-control.json`. This covers
 the current runtime's omitted/zero gate in two live configurations, not all
 versions or CPU/video combinations. No executable code changed.
+
+### Live Hellfire lifetime exposes a selector-dependent prediction boundary
+
+`hellfire-pal-020` and `hellfire-pal-060` use the current controlled combat
+fixture with key 6 instead of key 5, retaining the same field-stamped fire
+inputs. Native selection/launch produces type $80 in slot 5. All 71 selected
+authoritative snapshots, worlds 20..90, match across CPUs; all 1,391 common
+input records match raw. Lifetime is max(85-world,0), with native release at
+world 85. No active history loss/discard, clock discard, rebase or scheduler
+fault occurs. Actual 70-interval spans are 1,167/1,165 PAL fields, or
+2.99914/3.00429 Hz. This route does not hit a target.
+
+The unconditional next-pose oracle fails on both CPUs. Of 64 candidate
+comparisons, 62 match; the two mismatches occur at worlds 27→28 and 45→46,
+when the first selector word at h0+$AA0A changes $0002→$FFFF and back. The
+next XYZ differences are ±36, ∓3 and ±6 stored coordinate units:
+
+| Capture world | Forecast XYZ | Next native XYZ |
+| --- | --- | --- |
+| 27 | B013 / 4DC0 / 0000 | AFEF / 4DC3 / 0006 |
+| 45 | AFEF / 689F / 0015 | B013 / 689C / 000F |
+
+`replay_hellfire_retarget_c.py` reloads each saved state and executes the
+assembled private actor preview. The original selector reproduces the saved
+forecast; replacing only AA0A..AA15 with the following world's selector
+reproduces its native position exactly. This passes for both transitions on
+both CPUs, with native hunk-0/hunk-6 memory unchanged by preview execution.
+The discrepancy is therefore a future selector dependency, not an arithmetic
+mismatch in this replay. Native +0BFA6..+0BFFC retargets bit-7 actors from that
+selector before steering them.
+
+The raw forecast failures remain evidence; the dependency audit reports
+candidate, matching and mismatching poses separately. Its output is not a
+passing forecast certificate. Prediction uses current committed selection;
+future aim/selection may change at the next world boundary. Screen-space
+size/continuity of these snaps and the appropriate selector-dependency
+certification still require validation before C6/C9 acceptance. This finding
+must not be hidden by disabling Hellfire prediction or silently excluding
+all retargeted poses from the oracle. Other weapons, natural guided impacts
+and the broader CPU/video matrix remain open. No executable code changed.

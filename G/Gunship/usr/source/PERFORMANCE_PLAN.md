@@ -855,6 +855,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     without shifting unrelated actors (both native guided weapon types, PAL/NTSC,
     batch sizes 1/3/10). Other object families, live cost/visual acceptance and
     native flight activation remain open (see TIMING_DESIGN.md).
+    Current live Hellfire (type $80) captures match 71 selected states on PAL
+    68020/060 and expire at world 85. However, two of 64 candidate next poses
+    per CPU fail unconditional equality at target-selector changes. Replaying
+    only the next selector reproduces the native poses exactly. The endpoint
+    differences are 36/3/6 coordinate units; visible retargeting continuity
+    and dependency certification remain open, with the raw failure retained.
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.
