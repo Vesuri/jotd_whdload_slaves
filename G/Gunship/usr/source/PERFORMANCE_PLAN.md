@@ -897,7 +897,7 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     collective and joystick pulses now matches the same selected state on
     68020/060 and on 68020 with main drawing replaced by a field wait.
     Retained input records also agree. Full object state, combat, 68000 and
-    the broader no-draw matrix remain open. The 68000 active route fails
+    the broader no-draw matrix remain open. The uncached 68000 active route fails
     equality under overload. Separating render-budget yields from true
     excess-time rebases reduces dropped time, but backlog discards remain;
     this is not accepted as cross-CPU equality. The current 68000 field-wait
@@ -905,8 +905,18 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     and matches selected state at worlds 100..102. A legacy captured input
     field differs while the other control bytes agree; the raw comparison
     remains explicitly non-passing.
+    With motion caching, the controlled PAL rocket route now matches selected
+    player/object/projectile, RNG and mission state at all 61 worlds 20..80
+    on rendered 68000/020/060 and 68020 field-wait presentation, with no lost
+    time/input. All expire at world 64. The corrected 68000 capture waits for
+    runtime activation before deriving the input epoch; the earlier attempt
+    scheduled controls 14 fields early and is excluded. Its remaining raw
+    input mismatch is solely unused TR_RELATIVE, with consumed controls equal.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
-    the emulated clock, on PAL and NTSC, in all windows.
+    the emulated clock, on PAL and NTSC, in all windows. The cached PAL rocket
+    comparison has exact deadline fields on all three CPUs and field-wait
+    rendering; worlds 20..80 span 1,000 fields (3.000 Hz). Broader windows,
+    scenes and NTSC coverage remain open.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL

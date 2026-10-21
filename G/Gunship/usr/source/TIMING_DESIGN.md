@@ -6046,3 +6046,45 @@ The integrated cache removes the previously observed overload on this
 particular route. It does not establish heavy-scene throughput, display
 latency or the remaining C4e/C9 gameplay matrix. Matched retained-input world
 captures across CPUs remain necessary after this optimization.
+
+### Cached runtime: PAL rocket equality on all three CPUs
+
+The 109,012-byte `cache-combat` guest fixture uses the established controlled
+player/target start and field-stamped weapon/fire tape. Headless runs with
+host mouse disabled capture worlds 20..80 on 68000, 68020 and 68060; the
+109,018-byte field-wait variant repeats on 68020. All effective binaries are
+hash-checked. The matching directories are `cache-world-fire-active-000`,
+`cache-world-fire-020`, `cache-world-fire-060` and
+`cache-world-fire-nodraw-020`.
+
+The initial `cache-world-fire-000` attempt is excluded from matched-input
+acceptance. At the route stop, that CPU had not activated the runtime: its
+clock and owner were still zero/inactive. Inferring epoch zero scheduled
+controls 14 fields early and produced the misleading world-63 rocket expiry.
+The runner now waits at the first active batch when necessary, checks active
+clock/ownership and zero dropped time, saves the epoch state and asserts the
+same epoch at every world capture. The corrected 68000 run expires at world
+64, agreeing with the other CPUs. This was a harness scheduling defect, not
+a target/weapon change; no gameplay fix was made for it.
+
+Across all 61 corrected snapshots, the compared player/split-object block,
+projectile coordinates/type/lifetime, allocation/masks, generation, RNG,
+mission payload, alive table and countermeasures agree. An explicit actor
+byte audit permits only C724..C729 countdown differences when the associated
+type has no animation bit, and C732 native rendering scratch. Every other
+actor byte agrees. Each captured clock deadline equals ceil(world*50/3)
+fields from activation; no clock time or input history is lost/discarded and
+no scheduler faults occur. Worlds 20..80 span exactly 1,000 PAL fields for
+60 world intervals, i.e. 3.000 Hz over that window on all four runs.
+
+The 68020/060 and 68020/field-wait comparisons each match all 1,226 common raw
+control records. The corrected 68000 comparison has 1,226 raw differences,
+all solely TR_RELATIVE bytes 16..19 (opposite 00000000/FFFFFFFF); every
+consumed control byte agrees. Its raw comparison remains failed and saved;
+a separate scoped audit establishes consumed-control and selected-world
+state equality. The 68000 and field-wait forecast audits each confirm 43
+eligible next poses against the following native world update.
+
+This extends the natural projectile-expiry and free-motion forecast evidence
+to rendered 68000 play after caching. It does not close the full input,
+collision/damage, effect, lifecycle, heavy-scene, NTSC or scanout matrix.
