@@ -934,7 +934,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     table poisoned, with no observed external data reads. The experimental
     runtime now allocates/prepares the private workspace and retires its tape
     on lifecycle changes; PAL/NTSC binding, activation, retirement and relocated
-    image tests pass. Construction dispatch, scene dependency gates and
+    image tests pass. A checked runtime forecast entry selects the remaining
+    interval and passes all 49 captured frames, PAL/NTSC interval reuse and
+    40 atomic admission rejections. Frame-loop dispatch, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and

@@ -7927,3 +7927,35 @@ Lifecycle and modal-resume regressions also pass. Evidence is
 modal-resume and retirement tests in the ignored harness. This is standalone
 runtime execution, not yet a live emulator framerate measurement. All four
 builds pass: ordinary 6,088, experimental 45,172 and diagnostics 111,502 bytes.
+
+
+### Runtime remaining-interval forecast entry (C6d)
+
+`timing_runtime_forecast_get` now constructs or reuses a player forecast from
+a drained presentation boundary. It validates runtime ownership, active
+clock/history/command streams, scheduler completion, fault flags and video
+rate. A partially completed endpoint must have the next logical tick and a
+remaining field count equal to `ceil((rate-phase)/3)`. It copies the endpoint
+owner privately; when the previous interval is complete, it begins only that
+copy for the next world deadline. The authoritative player/owner are untouched.
+
+The world-tick counter becomes the forecast context's world epoch. The entry
+discards only its previous private speculative ground event and calls the
+lookup-or-build path with current held directions and zero future impulses.
+Return 0 means reused, 1 built, -3 rejected; consumers may use `RF_PLAYER` only
+on success. It does not commit ground events, publish a camera or update
+projectile presentation, and is not yet called by the frame loop.
+
+`test_runtime_forecast_get_c.py` loads the recorded runtime arenas and retains
+the private forecast workspace between frames. All 49 endpoints match the
+independent replay: nine hits/seven builds on PAL 020 and 26 hits/seven builds
+on PAL 060. Guest writes remain inside forecast storage/stack; authoritative
+arena bytes and native hunks remain unchanged, and registers are preserved.
+`test_runtime_forecast_interval_c.py` verifies a 17-field PAL and 20-field NTSC
+interval, including an initial build, repeated same-field hit and reuse after
+every pre-deadline player step. Forty admission failures leave the entire
+arena and native state unchanged. Evidence is the per-run
+`runtime-forecast-get-audit.json` and `runtime-forecast-interval-test.json` in
+the ignored harness. These tests do not establish live cost, future-command
+certainty or scene/visibility correctness. All four builds pass: ordinary
+6,088, experimental 45,518 and diagnostics 111,848 bytes (+346).
