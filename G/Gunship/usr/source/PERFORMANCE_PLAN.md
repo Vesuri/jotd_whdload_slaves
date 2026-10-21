@@ -887,7 +887,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     pause/release now freezes player/world/input-history state for 120 fields
     on PAL 68020 and NTSC 68060. Resume resets phase, motion fractions,
     delayed input, interval anchor and preview cache, then advances without
-    simulating paused time. Other lifecycle cases remain open.
+    simulating paused time. Live Escape from pause now also returns to native
+    cleanup on PAL 68020/NTSC 68060, aborting one retained field without an
+    extra completed field/world or a new epoch. Repeated Space map/display
+    transitions suspend sampling, mark execution and resume with reset
+    history. Separate deadline-aligned cases complete their retained world
+    exactly once before rebasing. Death, landing, disk loads, other commands
+    and the remaining CPU/video lifecycle matrix remain open.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
 - **C9. Validate.**

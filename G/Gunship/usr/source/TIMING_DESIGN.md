@@ -6474,3 +6474,53 @@ This fills the PAL counterpart of the current controlled five-CPU workload,
 not the broader input/collision, lifecycle, duration, heavy-scene or scanout
 matrix. Production timing remains gated behind the experimental build flag;
 C is still not accepted, especially the 68000 responsiveness case.
+
+### Live Escape-from-pause and display-boundary continuation
+
+The current controlled cached-runtime build now exercises two additional
+lifecycle paths on PAL 68020 and NTSC 68060, headlessly with host mouse off
+and effective slave/listing hashes recorded. These are actual native command
+handlers reached through the installed foreground owner, not stubbed UI.
+
+`anchor-pause-exit-fixed-pal-020` and `anchor-pause-exit-fixed-ntsc-060` enter
+Tab pause, remain there for 120 native fields, then press Escape. All 86
+player bytes remain frozen during pause, along with accepted-field/deadline
+counts, completed fields/worlds and history cursors. The native nonlocal
+return reaches h0+$5622 (the original flight cleanup call) with runtime
+status 4 and the native exit byte $80. Exactly one retained field is counted
+as aborted; no additional field or world is completed. Clock epoch and phase
+discard do not change, scheduler pending/due flags clear, and the command
+queue cursors are rebased together. Producers remain disabled and the abort,
+completed-field/world and epoch counts stay unchanged during 120 further
+emulator fields of cleanup observation.
+
+The first PAL runner (`anchor-pause-exit-pal-020`) incorrectly reported a
+post-cleanup duration using the old native hunk-2 pointer. Native flight
+storage can be released/reused at that point; its apparent counter jump is
+not elapsed flight time. That duration is excluded. The corrected repeats
+observe only the slave-owned arena after cleanup and use the emulator's
+120-field advance. Both ordinary pause and exit runners now assert equality
+of the entire player record, rather than only its clock word.
+
+`anchor-display-boundary-pal-020` and `anchor-display-boundary-ntsc-060`
+press Space four times, observing CRT states 0→1→0→1→0 after native handlers.
+This map/display command is a brief transition, not a blocking map menu.
+Sampling is suspended before execution; the retained command is marked once
+before continuation. Each transition completes exactly one retained field,
+with no world deadline in these four cases. The first resumed batch has
+active producers, zero clock phase, invalid preview cache and zero motion
+fractions; one rebase occurred and no field was aborted or history lost.
+Native transitions take 0..1 PAL fields and zero whole NTSC fields; these
+rounded field timestamps are not instruction-level duration measurements.
+
+Separate `anchor-display-deadline-pal-020` and
+`anchor-display-deadline-ntsc-060` runs schedule Space before a known native
+field and assert TS_DUE=1 at boundary admission. Both map-entry and map-exit
+cases complete the retained field and exactly one due world before rebasing.
+No completed count advances while the native display handler alone runs.
+Resumed batches retain the same reset/health invariants; continuation takes
+three PAL fields and two NTSC fields respectively. Both ordinary and due
+routes continue for another 120 fields without a scheduler fault/history
+loss. This covers retained-world continuation across these display commands;
+it does not cover every command, other CPU/video pairs, death, landing,
+mission re-entry, disk loads or script-driven blocking UI. C remains open.
