@@ -703,7 +703,7 @@ explicit agreement; physical cache/coherency validation remains D1d.
   installer, reproducible `make dist`, independently extracted installer archive
   with current sources, and a coherent release commit. See [release.md](release.md).
 
-### H. Post-release visual investigations — open
+### H. Post-release visual investigations — H1 open; H2 complete
 
 - **H1 Investigate track-height projection discontinuities.** The recording
   `Screen Recording 2026-10-21 at 23.14.20.mov` shows the player bike and road
@@ -723,6 +723,14 @@ explicit agreement; physical cache/coherency validation remains D1d.
     evidence. Preserve consistent simulation speed, vsync and input latency;
     do not introduce delayed interpolation. Validate any adopted correction
     against native paths and the existing timing/latency acceptance checks.
+
+- **H2 Investigate distant and mirror rider visibility oscillation — complete.**
+  Both reproduce in untouched v2.0 and enhanced 3.0b. Native whole-segment
+  distance comparisons alternate at the forward 30/31 and mirror -1/-2
+  boundaries, removing and restoring draw records despite smooth relative
+  motion. No enhancement-caused regression was found; behavior is unchanged.
+  See [visibility-investigation.md](visibility-investigation.md) for the native
+  code paths, runtime evidence, provenance and limits of the comparison.
 
 ### Order and milestones
 1. A1–A4, then B1–B3: harness and fixes. Milestone: verified references.
