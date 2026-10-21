@@ -5363,3 +5363,44 @@ count/window of 3), with no lost/discarded input and backlog 0..4 fields.
 The four-world bound is a starvation safeguard, not an input-latency target.
 C9 still requires measured input-to-displayed-frame latency and adequate
 render progress alongside sustained world timing in all required windows.
+
+### Completed-frame responsiveness probe (PAL 68020/68060)
+
+The ignored harness now has `build_frame_probe_c.py`, `run_frame_probe_c.py`
+and `analyze_frame_probe_c.py`. A diagnostic-only compiled guest copy records
+one 48-byte entry per successful native draw: consumed field, completed world
+count, draw-start/end field stamps, the published camera, decoded controls,
+player XYZ and command sequence. A 512-entry ring publishes its count only
+after native drawing returns. Helpers preserve registers and write diagnostic
+storage only; debugger access is read-only. This adds measurement overhead,
+and is not a release-path change. The diagnostic helpers are placed after the
+core to avoid pushing a live target-panel BSR beyond the 68000 branch range.
+
+After the same seeded menu/engine/takeoff route, eight alternating joystick
+left/right pulses are injected. Each appears in seven consecutive native input
+records; the surrounding records are neutral. Four pulses on each CPU have
+both press and release strictly between world deadlines, including the neutral
+field before and after the pulse. All eight produce later camera-roll changes.
+The PAL 68020 no-pulse control follows the same schedule and has only neutral
+records/packets and camera roll zero throughout; XYZ changes from flight alone
+do not count as control-response evidence.
+
+| PAL configuration | Completed frames | End-to-end field span | Same-world adjacent camera changes | Draw duration | First captured input to changed-roll frame completion |
+| --- | ---: | ---: | ---: | --- | --- |
+| 68020 | 60 | 377 | 36 | 4..6 fields | 13, 6, 5, 9, 7, 5, 6, 12 fields |
+| 68060 | 115 | 380 | 89 | 3..4 fields | 3, 4, 4, 7, 3, 3, 3, 3 fields |
+
+All frames have ordered consumed/start/end stamps, and the subsequent frame
+starts no earlier than the preceding completion. No history was lost/discarded
+and no scheduler fault occurred. Two 68020 pulses finish before a frame samples
+their nonzero packet; their accumulated motion still appears in the following
+frame. This directly exercises input contributions between world deadlines,
+rather than merely counting renders between ticks.
+
+Evidence is under `tmp/dev/tmp/c/frame-probe-{020,060,020-control}`: raw frame
+rings, arena/history snapshots, event stamps and `frame-summary.json`. The
+observed input-to-completed-frame intervals are 100..260 ms on the 68020 and
+60..140 ms on the 68060, at field resolution. Completion is after the native
+swap routine, but this probe does not observe the first changed scanline on
+the display. Do not promote these numbers to end-to-end input/display latency
+or accept all of C9c: scanout, NTSC, heavy scenes and the overloaded 68000 remain.
