@@ -727,6 +727,12 @@ split_new_chip_data:
         jsr     _LVOAllocMem(a6)
         lea     delta_shadow(pc),a0
         move.l  d0,(a0)
+        ; DoRotPt0 delta table (rot_delta2_040); without it the handler multiplies.
+        move.l  #ROT_SLOTS*ROT_BUCKETS*32,d0
+        move.l  #MEMF_FAST!MEMF_CLEAR,d1
+        jsr     _LVOAllocMem(a6)
+        lea     rot_table(pc),a0
+        move.l  d0,(a0)
         lea     new_chip_ranges(pc),a5
 .relocate:
         move.l  (a5)+,d1
@@ -3489,6 +3495,184 @@ FADE_COMPONENT MACRO
 fade_cols_body: dc.l 0                  ; $24a0
 fade_cols_exit: dc.l 0                  ; $258c
 
+; DoRotPt0's two-component delta point ($59748, about 1,100 per frame): the
+; running sums A2-A4 gain M * (D0,D1) through six MULS.W, then the tail at
+; $59778 stores the point and dispatches the next command. The same shapes are
+; drawn many times per frame under few rotations, so about 70% of these points
+; repeat a (delta, matrix) pair seen earlier in the frame, but never the
+; previous point's. A table per matrix slot holds each delta's three increments
+; and the last product (the original's final D3). The key compares the delta
+; words exactly and the matrix registers D4/D5/D6/A5 and the high word of D7
+; exactly, so a hit adds what the six products would add: the sums are mod
+; 2^32 either way. Leaves D0/D1/D3, A2-A4, X and memory as the original
+; (the miss path uses the stack below SP). Buckets are invalidated with a key
+; that hashes elsewhere, so no key value is reserved.
+ROT_SLOTS = 4
+ROT_BUCKETS = 256                       ; 32-byte entries: key, three increments, D3
+rot_delta2_040:
+        movem.w (a0)+,d0-d1             ; the delta (dx, dy)
+        cmp.l   rot_cur(pc),d4
+        bne.w   .matrix
+        cmp.l   rot_cur+4(pc),d5
+        bne.w   .matrix
+        cmp.l   rot_cur+8(pc),d6
+        bne.w   .matrix
+        cmpa.l  rot_cur+12(pc),a5
+        bne.w   .matrix
+        move.l  d7,d3
+        clr.w   d3
+        cmp.l   rot_cur+16(pc),d3
+        bne.w   .matrix
+.lookup:
+        ; No instruction here changes X (the original's MULS.W/ADDA.L keep it).
+        moveq   #0,d3
+        move.w  d1,d3
+        rol.w   #5,d3
+        eor.w   d0,d3
+        and.w   #(ROT_BUCKETS-1)<<5,d3
+        or.w    rot_slot(pc),d3
+        cmp.w   ([rot_table,pc],d3.l),d0
+        bne.b   .miss
+        cmp.w   ([rot_table,pc],d3.l,2),d1
+        bne.b   .miss
+        adda.l  ([rot_table,pc],d3.l,4),a2
+        adda.l  ([rot_table,pc],d3.l,8),a3
+        adda.l  ([rot_table,pc],d3.l,12),a4
+        move.l  ([rot_table,pc],d3.l,16),d3
+        jmp     ([rot_tail,pc])
+.miss:
+        move.l  a1,-(sp)
+        move.w  ccr,-(sp)               ; X survives the arithmetic below
+        move.l  rot_table(pc),a1
+        adda.l  d3,a1
+        move.w  d0,(a1)+
+        move.w  d1,(a1)+
+        move.l  d4,d3
+        swap    d3
+        muls.w  d0,d3
+        move.l  d3,(a1)
+        move.w  d5,d3
+        muls.w  d0,d3
+        move.l  d3,4(a1)
+        move.l  a5,d3
+        swap    d3
+        muls.w  d0,d3
+        move.l  d3,8(a1)
+        move.l  d5,d3
+        swap    d3
+        muls.w  d1,d3
+        add.l   d3,(a1)
+        move.w  d6,d3
+        muls.w  d1,d3
+        add.l   d3,4(a1)
+        move.l  d7,d3
+        swap    d3
+        muls.w  d1,d3
+        add.l   d3,8(a1)
+        move.l  d3,12(a1)               ; the original's final D3
+        adda.l  (a1)+,a2
+        adda.l  (a1)+,a3
+        adda.l  (a1)+,a4
+        move.w  (sp)+,ccr
+        move.l  (sp)+,a1
+        jmp     ([rot_tail,pc])
+.matrix:
+        ; New matrix: find its slot, or take the oldest and invalidate it.
+        tst.l   rot_table(pc)
+        beq.w   .plain                  ; no table: the original products
+        move.w  ccr,-(sp)
+        movem.l d1-d2/a1,-(sp)
+        move.l  d7,d3
+        clr.w   d3                      ; the matrix word in D7's high half
+        lea     rot_mats(pc),a1
+        moveq   #0,d2
+.find:
+        cmp.l   (a1),d4
+        bne.b   .next
+        cmp.l   4(a1),d5
+        bne.b   .next
+        cmp.l   8(a1),d6
+        bne.b   .next
+        cmpa.l  12(a1),a5
+        bne.b   .next
+        cmp.l   16(a1),d3
+        beq.b   .found
+.next:
+        lea     20(a1),a1
+        addq.w  #1,d2
+        cmp.w   #ROT_SLOTS,d2
+        bne.b   .find
+        move.w  rot_next(pc),d2         ; oldest slot
+        lea     rot_next(pc),a1
+        addq.w  #1,(a1)
+        andi.w  #ROT_SLOTS-1,(a1)
+        move.w  d2,d1
+        mulu.w  #20,d1
+        lea     rot_mats(pc),a1
+        adda.l  d1,a1
+        move.l  d4,(a1)+
+        move.l  d5,(a1)+
+        move.l  d6,(a1)+
+        move.l  a5,(a1)+
+        move.l  d3,(a1)
+        moveq   #0,d1
+        move.w  d2,d1
+        ror.w   #3,d1                   ; slot * 8192
+        move.l  rot_table(pc),a1
+        adda.l  d1,a1
+        move.w  #ROT_BUCKETS-1,d3
+.clear:
+        clr.l   (a1)                    ; key (0,0) hashes to bucket 0 ...
+        lea     32(a1),a1
+        dbf     d3,.clear
+        move.l  rot_table(pc),a1
+        move.l  #$00200000,(a1,d1.l)    ; ... and bucket 0 gets (32,0)
+.found:
+        ror.w   #3,d2                   ; slot * 8192
+        lea     rot_slot(pc),a1
+        move.w  d2,(a1)
+        lea     rot_cur(pc),a1
+        move.l  d4,(a1)+
+        move.l  d5,(a1)+
+        move.l  d6,(a1)+
+        move.l  a5,(a1)+
+        move.l  d7,d3
+        clr.w   d3
+        move.l  d3,(a1)
+        movem.l (sp)+,d1-d2/a1
+        move.w  (sp)+,ccr
+        bra.w   .lookup
+.plain:
+        move.l  d4,d3                   ; the original handler from $5974c
+        swap    d3
+        muls.w  d0,d3
+        adda.l  d3,a2
+        move.w  d5,d3
+        muls.w  d0,d3
+        adda.l  d3,a3
+        move.l  a5,d3
+        swap    d3
+        muls.w  d0,d3
+        adda.l  d3,a4
+        move.l  d5,d3
+        swap    d3
+        muls.w  d1,d3
+        adda.l  d3,a2
+        move.w  d6,d3
+        muls.w  d1,d3
+        adda.l  d3,a3
+        move.l  d7,d3
+        swap    d3
+        muls.w  d1,d3
+        adda.l  d3,a4
+        jmp     ([rot_tail,pc])
+rot_table: dc.l 0
+rot_tail: dc.l 0                        ; $59778
+rot_slot: dc.w 0
+rot_next: dc.w 0
+rot_cur: dc.l 0,0,0,0,1                 ; low word set: matches no D7
+rot_mats: dcb.l ROT_SLOTS*5,1           ; likewise
+
 pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
@@ -3509,6 +3693,8 @@ pl_fpu_new_render_040:
         PL_P    $0249a,fade_cols_040    ; @AltFadeColsMiss, factor 50 as a copy
         PL_GA   $024a0,fade_cols_body
         PL_GA   $0258c,fade_cols_exit
+        PL_P    $59748,rot_delta2_040   ; DoRotPt0 delta table
+        PL_GA   $59778,rot_tail
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new

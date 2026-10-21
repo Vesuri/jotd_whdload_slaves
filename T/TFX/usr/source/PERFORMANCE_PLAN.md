@@ -881,3 +881,76 @@ Verification:
   - The same divergence as the copy-only run (ScanFillDown +17k, copy +7k,
     PlotColour +5k) outweighs the saving in the frame total.
 - Evidence: `tmp/dev/tmp/fade7/` (the copy-only run in `copy-only/`).
+
+Step 8 done (DoRotPt0 delta table, rot_delta2_040):
+- The handler at $59748 (about 1,100 two-component delta points per frame) adds
+  M * (dx, dy) to the running sums A2-A4 with six MULS.W. The tail at $59778
+  stores the point and dispatches the next command.
+- Measurement (`tools/rotpt_probe.py`, cockpit and views scenes):
+  - No point repeats the previous point's delta (0 of 2,024), so the planned reuse
+    of the last products would never fire.
+  - About 75% of points repeat a (delta, matrix) pair seen earlier in the frame. The
+    same shapes (11 delta sequences) are drawn many times under few matrices (8).
+- Implementation: the 040 new-renderer patch list jumps from $59748 to rot_delta2_040.
+  - A 32 KB table (4 matrix slots x 256 buckets of 32 bytes) is allocated with the
+    copy shadow.
+  - The key compares the delta words and the matrix registers D4/D5/D6/A5 and the
+    high word of D7 exactly.
+  - A hit adds the stored three increments and loads the stored last product (the
+    original's final D3). The sums agree modulo 2^32.
+  - A miss multiplies as the original and fills the entry. A new matrix finds its
+    slot or takes the oldest, which is invalidated with keys that hash to other
+    buckets, so no key value is reserved.
+  - Without the table, the handler multiplies.
+  - D0/D1/D3, A2-A4, X and the stored points match the original. The miss and
+    new-matrix paths use the stack below SP.
+- Unlike step 7, this can be slower: a miss costs about 40 est-040 cycles more than
+  the original, and break-even is about a 30% hit rate. In the action flight the hit
+  rate is 84% (932 of 1,108 points per frame); the probes gave 68-70%.
+
+Verification:
+- **Native twins:** 220 command streams (2,043 points) pass against a verbatim copy
+  of the original handler, which chains through the game's own tail.
+  - The fixture owns dispatch entries 254 (chain) and 255 (return), so neither side
+    runs the other's code.
+  - The streams cover matrix-slot eviction (7 matrices for 4 slots), bucket
+    collisions, (0,0), (32,0) and extreme deltas, matrices differing only in unused
+    register halves, and the table-less path (190 points).
+  - An independent model checks the points, D0/D1/D3 and the sums, and a cache
+    model predicts 314 hits.
+  - Four negative controls are rejected: a wrong sum, a wrong D3, a wrong X flag,
+    and a stale entry from another matrix.
+- **Controlled scenes:** cockpit (400 updates) and views pairs give 7 and 5 identical
+  complete displayed buffers and PNGs. The end states are identical apart from the
+  patch and the clocks.
+- **Gates and builds:**
+  - The 040 and 040 CUSTOM5 gates jump to rot_delta2_040 with the table allocated.
+    The 040 original, 030 and 060 gates keep $4c9800032604.
+  - Normal and CHIP_ONLY builds have no relocations, and the normal build reproduces.
+  - FPSP files are unchanged.
+
+Balanced 2,000-field pair:
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications (nominal fps) | 689 (17.23) | 708 (17.70) | +2.8% |
+| Emulator cycles/frame | 2,346,597 | 2,283,623 | -2.7% |
+| Estimated 040 cycles/frame | 1,863,457 | 1,839,904 | -1.3% |
+| Intervals (2/3/4 fields) | 77/600/11 | 127/577/3 | |
+
+- DoRotPt0 falls by 125k est-040 cycles per frame and rot_delta2_040 adds 104k.
+  The rest of the frame is nearly unchanged.
+- The est-040 gain is smaller than the emulator's because the model charges the
+  hit path's six memory-indirect table accesses at 5 cycles each.
+- Zero FPSP entries.
+- Possible refinement: address the entry through a saved address register instead
+  of memory-indirect modes, and check the matrix once per object rather than per
+  point.
+
+Harness pitfalls:
+- Dispatch entry 104 is not stable at run time. It pointed to $59788 in the twin
+  boot, while the flight profile reaches $59748. Twins must own their chain opcode;
+  a first run that chained through 104 ran another handler on both sides.
+- This pair needed seven candidate starts: six failed on startup hunk differences
+  that CLOCK_NORMALIZE does not cover (hunks 0 and 1), and the seventh matched exactly.
+- Evidence: `tmp/dev/tmp/rot8/` (probes, twins, scenes, gates, `rot-ab.json`).
