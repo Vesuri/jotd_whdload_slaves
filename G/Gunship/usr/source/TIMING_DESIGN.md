@@ -5629,3 +5629,46 @@ policy described above. The raw mismatch is retained in active-comparison.json,
 with its separate byte audit in input-difference-audit.json. This is selected
 state and simulation-control evidence, not a blanket raw-state equality pass
 or completion of C9a.
+
+
+### Expanded object ranges and live weapon-test limitations
+
+The existing active-flight captures at worlds 100..102 were compared over
+additional ranges from the actor/script preview inventories. The $2D6-byte
+player/split-object block (h6+$3B88), eight allocation-mask bytes (h0+$BA08),
+twelve selected-pool bytes (h0+$AA0A), and two countermeasure bytes
+(h6+$42E8) agree across 68020/060 and the 68020 field-wait run. In the
+$C2-byte actor/scratch block (h0+$C6A0), only the six h0+$C724..$C729
+countdowns differ across CPUs; the 68020 field-wait comparison is exact.
+All six slots are unallocated and their type bytes are zero in these
+captures. Native field countdowns wrap even for empty slots; the effect
+constructor at +09BBE initializes its timer to 12. These observations do not
+establish equality for occupied/converted slots. Raw differences are retained
+in `tmp/dev/tmp/c/world-object-range-audit.json`.
+
+Live fire diagnostics confirm delivery but do not yet prove a launch.
+A recorded press becomes a rising edge in the following native input field.
+In `world-fire-first-probe-020`, the first due weapon callback after the
+second press sees private fire packet 0100 and accumulated edge word 0001,
+with 18 worlds completed. The native weapon path in `world-weapon-path-020`
+then takes its CRT/map branch, calls original +046DE and clears the request
+without allocating a projectile. This folder retains the pre-weapon arena,
+fast RAM and instruction/register observations in weapon-path.txt.
+
+The Backspace target command also performs a lifecycle rebase in this route:
+by the later fire event, TC_DROPPED is 33 and three history records have been
+discarded. Nominal field/3-Hz arithmetic from the initial epoch therefore
+cannot identify the subsequent weapon deadline; use observed scheduler/world
+counters. Do not treat this as a matched uninterrupted input timeline.
+
+The latest compiled diagnostic fixture initializes before runtime ownership:
+player B000/3E00, altitude 48, collective 40, RPM 153 and engine bits 1C;
+active helicopter slot 5 starts at B400/4400 with its known active metadata,
+and the native CRT mode starts at zero. It selects FFAR at field 240 and
+pulses fire at 300 and 320. `world-launch-targeted-020` captures worlds
+20..22 and a screenshot, with binary provenance. It still has no allocated
+projectile slots. The fixture is in ignored `tmp/dev/tmp/build/combat-loop.i`
+and `combat.s`; no production code is changed by these initializations.
+These runs are negative tests, not combat or weapon-lifetime acceptance.
+The next weapon check must establish an actual native launch and then compare
+occupied slots, damage/lifetimes and RNG across CPUs and rendering policies.
