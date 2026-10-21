@@ -468,3 +468,21 @@ periods agree; all other hunk bytes match apart from the intended patch. This is
 not a new general state-equivalence waiver. CPU/option gates, normal/CHIP_ONLY
 builds, unchanged FPSP files and all 246 inspected 060 FPU sites pass. Evidence,
 limitations and reproduction tools remain in `tmp/dev/docs/optimization-20fps.md`.
+
+
+Small retained scanline improvement: replace two MOVEQ/AND edge extractions in
+new-renderer 040 ScanFillDown with register BFEXTU instructions, in the same code
+space. No lookup tables, allocations or helper jumps are added. All 65,536
+edge-word pairs pass native original/replacement GPR/CCR comparison and an
+independent value/input oracle; four corruptions are rejected. Five complete
+64,000-byte displayed-buffer/PNG comparisons pass, with next-field DMA checks.
+
+The matched-start, same-build/emulator/seed extended pair improves 598 to 601
+publications/2,000 PAL fields (+0.50%, 14.95 to 15.025 nominal fps); both short
+prefixes remain 80/250 (16.0). An initial control and four pre-timing startup
+mismatches are retained separately. Both accepted runs match a common recorded
+startup state before timing; no selection was made using candidate frame counts.
+This small emulator gain is not a hardware-speed claim. Enabled measurement has
+zero FPSP entries/cache flushes. Normal/CHIP_ONLY builds, CPU/render-option gates,
+unchanged FPSP binaries and original 060 edge/FPU instructions are verified.
+The 20 fps hardware objective remains open.

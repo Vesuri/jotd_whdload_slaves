@@ -3135,6 +3135,9 @@ pl_fpu_new_render_040:
         PL_P    $500dc,draw_line_strip_new
         PL_P    $4f840,gouraud_fill_new
         PL_P    $4f9f8,texture_fill
+        PL_L    $6c534,$e9c136c5 ; bfextu d1{27:5},d3
+        PL_L    $6c538,$78209843 ; moveq #32,d4 / sub.w d3,d4
+        PL_L    $6c53c,$e9c256c5 ; bfextu d2{27:5},d5
         ; Keep original ScanFillDown: the equivalent port measured slower on 040.
         PL_GA   $55bec,_texture_ptr_ptr
         PL_ENDIF
