@@ -934,8 +934,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     A controlled target-position event now exercises native type-8 impact,
     type-9 effect conversion and release on 68020/060 and a field-wait build.
     The occupied timer/frame/lifetime agree; release occurs 67 PAL fields
-    after impact. Natural guided hits, destructive damage, other effects,
-    reload and the remaining duration/CPU/video matrix are still open.
+    after impact. The NTSC repeat agrees on both CPUs and with field-wait
+    rendering, releasing after 60 fields under native field-count animation.
+    Cross-CPU NTSC raw input differs only in unused TR_RELATIVE; all consumed
+    controls agree, and that raw mismatch remains recorded. Natural guided
+    hits, destructive damage, other effects, reload and the remaining
+    duration/CPU/video matrix are still open.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.

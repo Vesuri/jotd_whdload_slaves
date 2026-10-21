@@ -5882,3 +5882,37 @@ launch-comparison.json and effect-timing-comparison.json in the output folders.
 This is one controlled PAL collision/effect path. Natural guided hits,
 destructive damage outcomes, other effects/weapons, post-impact pixels,
 NTSC and the rendered 68000 overload gate remain unaccepted.
+
+### NTSC controlled impact and field-based effect timing
+
+`capture_collision_ntsc_c.py` uses the same collision binary and world-25
+target-position event, scaling the PAL input field labels by 6/5 (rounded):
+weapon selection at 288/293, fire at 360/365 and 384/389. The capture window
+remains worlds 20..80. All three NTSC runs use 60-field clock state.
+
+`world-collision-ntsc-020`, `world-collision-ntsc-060` and
+`world-collision-ntsc-nodraw-020` all convert the rocket at world 25, delivered
+field 500. The native countdown/frame replay reaches frame 6 at field 558;
+world 28 releases the effect at field 560. Thus impact-to-release is 60 NTSC
+fields (1.00 second). The occupied slot's timer, frame and lifetime match the
+independent field-rule replay on all three runs, and prediction remains
+ineligible after conversion. This preserves the native field-count animation
+rule: it is not an assertion that PAL and NTSC effect durations are equal in
+seconds. PAL releases after 67 fields/1.34 seconds in the corresponding case.
+
+At all 61 snapshots, the compared player/split objects, projectile state,
+allocation/generation, RNG, mission payload, alive table and countermeasures
+agree across CPUs and with field-wait rendering. No clock time or input is
+lost/discarded, and there are no scheduler faults. The field-wait comparison
+also matches all 1,444 common raw control records. Across CPUs, all 1,443
+common records differ only in TR_RELATIVE (bytes 16..19, 00000000 versus
+FFFFFFFF); every other control byte agrees. The source still only declares
+and captures TR_RELATIVE; controls_from_history consumes sampled X/Y instead.
+The raw comparison remains failed and unchanged. input-difference-audit.json
+records the limited consumed-control claim rather than hiding that mismatch.
+
+Raw actor differences are retained as in the PAL comparison: unused countdowns
+and drawing scratch/pointers. This completes this controlled effect-timing
+repeat on 68020/060 and field-wait presentation under NTSC; it does not close
+the remaining natural-hit, destructive-damage, lifecycle, pixel/scanout or
+68000 acceptance gates.
