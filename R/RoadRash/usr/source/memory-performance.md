@@ -676,3 +676,22 @@ fallback are covered by the recorded runs. Hardware cache/coherency validation
 remains explicitly pending by agreement. Earlier sections retain intermediate
 results and open-work notes as implementation history; this release section
 and the approved exception describe the final D scope.
+
+
+### Bootstrap loading-picture correction (2026-10-21)
+
+The initial loading animation has a separate one-image SET at loader `$6cf0`
+(90 × 25 pixels, pixel base `$6d00`). The two absolute operands at `$4906`
+and `$4a84` must retain the original Chip header at `$6cf0`/`$6cf2`:
+`$49ae` adds the SET base to its pixel offset, and `$4a82` passes that pointer
+to the blitter. Relocating both operands had made the animation three colored
+rectangles. They are now excluded from `public_loader_refs`, while their native
+values remain covered by `public_loader_check`. Other loader CPU state still
+relocates. The retained mixed descriptor/pixel block is DMA-owned storage.
+
+The production build restores the motorcycle/“BUSY” image on cached 040/25
+and 040 with MMU/data caches. Both descriptor operands are verified as Chip
+addresses and the initialized pixel pointer is `$6d00`; both runs proceed into
+a race. Evidence: `tmp/dev/tmp/loading-graphics-fixed3` and
+`tmp/dev/tmp/loading-graphics-mmu-fixed` (including screenshots and pointer
+records). No race rendering, simulation, or allocation size changes.

@@ -15,9 +15,9 @@ public_loader_refs:
  dc.w $442c
  dc.w $446c
  dc.w $4492
- dc.w $4506
+ ; $4906: loading-animation SET at $6cf0 retains its Chip DMA storage.
  dc.w $4514
- dc.w $4684
+ ; $4a84: its descriptor reader at $6cf2 must use the same Chip header.
  dc.w $4698
  dc.w $47b8
  dc.w $47bc
