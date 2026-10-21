@@ -591,15 +591,22 @@ for final placement, measurements, validation and the complete 67-file inventory
   - E2c Keep the synchronous path for the 68000 if the interrupt overhead costs more than
     it saves (measure).
   - **Expected:** a further 5–7% on 020; most of the remaining stall on fast CPUs.
-- **E3 Precompute bob masks.** Drop blits 1–2 of 6 per bob.
-  - E3a Build a mask plane per image/LOD at load time into chip RAM. Check the chip budget:
-    1 MB machines may not fit, so make it an option for 2 MB chip.
-  - E3b **Expected:** about 1.7% of CPU on 020, and about 30% of the bobs' blitter channel
-    time.
-- **E4 Remove redundant blit work.**
-  - E4a Skip clearing lines that the opaque mountain/hill copies overwrite anyway: 1–2%.
-  - E4b Clear only the sky regions dirtied by last frame's bobs in this buffer (dirty
-    rectangles from the bob clip results): 2–4%.
+- **E3 complete — precompute bob masks.** Cached draws drop both mask-building
+  blits; clipped/split or uncached images retain the native path.
+  - **E3a complete:** build masks during race preparation after image loads;
+    update recoloured words as they change. Reuse the old Chip main image after
+    public relocation: no 2 MiB Chip requirement or extra option. Bounds failures
+    fall back synchronously. The CPU index costs 32 KiB of optional public RAM.
+  - **E3b complete:** 1,400 masks / 152,966 Chip bytes in the first-race audit;
+    every word matches the live source planes at four checkpoints. Final CPU
+    timing is measured with the combined E changes, not the old 1.7% estimate.
+- **E4 complete — remove redundant blit work.**
+  - **E4a complete:** skip plane-specific sky rows fully overwritten by the
+    opaque mountain/hill copies, with the corrected hill completion wait.
+  - **E4b complete:** track conservative full-width dirty rectangles per buffer
+    from clipped bobs, scenery and the ground boundary; reset on race preparation
+    and retain conservative fallbacks. Combined E3/E4 output matches 64 complete
+    reference framebuffers; full-race hashes/events/finish/restart match D.
   - **E4c complete — retain the dial fills.** The coverage audit disproved the
     proposed redundancy: `$b4da4` advances BLTDPT by the rectangle height before
     `$b4dc4` copies without resetting it. The other three planes repeat this

@@ -292,7 +292,7 @@ _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
  IFD C_PUBLIC_MAIN
- dc.l -$65000 ; optional runtime plus CPU-only image headers
+ dc.l -$6d000 ; optional runtime, image headers and CPU mask index
  ELSE
  IFD C_STEP_BUILD
  IFD C_FAST_STACK
@@ -533,7 +533,9 @@ PatchLoader2:
 	bsr step_road_fast_init
 	ENDC
 	IFD C_COLLISION_GEOMETRY
-	bsr step_collision_geometry_init
+	lea _base(pc),a0
+	adda.l #step_collision_geometry_init-_base,a0
+	jsr (a0)
 	ENDC
 	IFD C_PHYSICS_FAST
 ; Copy after C patches so the relocated code includes the steering hooks.
@@ -648,116 +650,6 @@ pl_main
 	PL_END
 	
 
-	IFD C_STEP_BUILD
-pl_c_simulation
-	PL_START
-; Applied only after step_select_path accepts CUSTOM2 and CPU/Fast placement.
-	PL_P $31994,raster_edge_fast
-
-	IFD C_FUSED_LEAN
-	PL_PSS $9DE8,step_fused_lean,4
-	ENDC
-	PL_IFC2
-	IFD C_CACHE
-	PL_P $3284E,enhanced_decrunch_done
-	ENDC
-	IFD C_BUS_PRIORITY
-	PL_PS $712A,step_priority_end
-	PL_PS $28D26,step_priority_end
-	PL_PS $28D30,step_priority_end
-	ENDC
-	PL_PSS $660E,step_prepare,2
-	PL_P	$747E,step_main
-	PL_P	$75B6,step_end
-	PL_P	$915A,step_camera_decay
-	IFD STEP_EXTRAPOLATE
-	PL_PS	$75C8,step_view_begin
-	PL_P	$7748,step_view_end
-	ENDC
-	PL_NOP	$76C6,6
-	PL_PSS	$A40E,step_start_sprite,2
-	PL_PS	$70DC,step_field_input
-	PL_S	$70E2,$7116-$70E2
-	PL_P	$73F4,step_input_key
-	PL_PSS	$9E0E,step_crash_sprite,2
-	PL_PS	$9E26,step_pose_clear
-	PL_NOP	$9D24,6
-	PL_NOP	$9D32,6
-	PL_PS	$A104,step_spark_test
-	PL_NOP	$A11C,6
-	PL_NOP	$9EEC,4
-	PL_P	$9E70,step_pose_lean
-	PL_P	$9EF0,step_lean_end
-	PL_P	$9F48,step_pose_project
-	IFD VERIFY_C_ROAD_FAST
-	PL_P $970E,step_road_fast_code
-	ENDC
-	IFD C_OBJECT_FAST
-	PL_P $B02E,step_object_fast_code
-	ENDC
-	IFD VERIFY_C_OBJECT_WIDTH
-; Width is not consumed by rejection tests. Defer the divide until the
-; object's depth/lateral checks have accepted it.
-	PL_NOP $B2E8,6
-	PL_PSS $B326,step_object_width,2
-	ENDC
-	IFD REFERENCE_MOTION
-	PL_P $B4A4,reference_motion_begin
-	PL_P $B4D2,reference_motion_displacement
-	ENDC
-	IFD C_STEERING
-	IFD C_ROAD_TIMING
-	PL_P $10C64,step_actor_road_reactivate
-	PL_P $BABE,step_road_reference
-	PL_PS $BCD0,step_actor_road
-	PL_PSS $BDF0,step_actor_road_copy,6
-	ENDC
-	PL_P	$B93A,step_steering_heading
-	PL_P	$B97A,step_steering_motion
-	PL_P	$B9A0,step_steering_store
-	ENDC
-	IFD C_POSE_PREDICT
-	PL_PSS $A8E2,step_predict_pose,4
-	IFD POSE_PREDICT_MEASURED
-	IFD STEP_EXTRAPOLATE
-	FAIL "Measured pose prediction conflicts with whole-view extrapolation"
-	ENDC
-	IFD VERIFY_C_LATENCY
-	FAIL "Measured pose prediction conflicts with the latency probe"
-	ENDC
-	PL_PS $75C8,step_predict_render_begin
-	PL_PS $773C,step_predict_render_end
-	ENDC
-	ENDC
-	PL_S	$AECC,$AEE2-$AECC
-	PL_NOP	$6FA0,6
-	PL_R	$6FE6
-	PL_NOP	$28C7C,$28C94-$28C7C
-	PL_NOP	$28C9A,$28CBC-$28C9A
-	PL_PSS	$28C4C,step_reset,4
-	IFD VERIFY_SKIP_RENDER
-	PL_NOP	$7730,6
-	ENDC
-	IFD VERIFY_FRAME_PERIOD
-	PL_PS	$7736,verify_pace
-	ENDC
-	IFD VERIFY_C_LATENCY
-	PL_PS	$75C8,step_latency_render
-	PL_PS	$7736,step_latency_swap
-	ENDC
-	IFD VERIFY_C_EVENTS
-	PL_PS $F06A,step_event_engine
-	PL_PS $F080,step_event_stop
-	PL_PS $F0BE,step_event_primary
-	PL_PS $F0DE,step_event_secondary
-	PL_PS $F120,step_event_siren
-	ENDC
-	IFD C_FAST_STACK
-	PL_P	$2876C,step_stack_start
-	ENDC
-	PL_ENDIF
-	PL_END
-	ENDC
 
 	IFD VERIFY_C_SEED_RNG
 	IFND VERIFY
@@ -1018,6 +910,8 @@ enhanced_decrunch_done:
 	IFD C_PUBLIC_MAIN
 	include public_main.s
 	include blitter_queue.s
+	include bob_masks.s
+	include dirty_sky.s
 	ENDC
 
  IFD C_PUBLIC_MAIN
@@ -1221,6 +1115,117 @@ public_ref_8 equ *-4
 	ENDC
 	ENDC
 	
+	IFD C_STEP_BUILD
+pl_c_simulation
+	PL_START
+; Applied only after step_select_path accepts CUSTOM2 and CPU/Fast placement.
+	PL_P $31994,raster_edge_fast
+
+	IFD C_FUSED_LEAN
+	PL_PSS $9DE8,step_fused_lean,4
+	ENDC
+	PL_IFC2
+	IFD C_CACHE
+	PL_P $3284E,enhanced_decrunch_done
+	ENDC
+	IFD C_BUS_PRIORITY
+	PL_PS $712A,step_priority_end
+	PL_PS $28D26,step_priority_end
+	PL_PS $28D30,step_priority_end
+	ENDC
+	PL_PSS $660E,step_prepare,2
+	PL_P	$747E,step_main
+	PL_P	$75B6,step_end
+	PL_P	$915A,step_camera_decay
+	IFD STEP_EXTRAPOLATE
+	PL_PS	$75C8,step_view_begin
+	PL_P	$7748,step_view_end
+	ENDC
+	PL_NOP	$76C6,6
+	PL_PSS	$A40E,step_start_sprite,2
+	PL_PS	$70DC,step_field_input
+	PL_S	$70E2,$7116-$70E2
+	PL_P	$73F4,step_input_key
+	PL_PSS	$9E0E,step_crash_sprite,2
+	PL_PS	$9E26,step_pose_clear
+	PL_NOP	$9D24,6
+	PL_NOP	$9D32,6
+	PL_PS	$A104,step_spark_test
+	PL_NOP	$A11C,6
+	PL_NOP	$9EEC,4
+	PL_P	$9E70,step_pose_lean
+	PL_P	$9EF0,step_lean_end
+	PL_P	$9F48,step_pose_project
+	IFD VERIFY_C_ROAD_FAST
+	PL_P $970E,step_road_fast_code
+	ENDC
+	IFD C_OBJECT_FAST
+	PL_P $B02E,step_object_fast_code
+	ENDC
+	IFD VERIFY_C_OBJECT_WIDTH
+; Width is not consumed by rejection tests. Defer the divide until the
+; object's depth/lateral checks have accepted it.
+	PL_NOP $B2E8,6
+	PL_PSS $B326,step_object_width,2
+	ENDC
+	IFD REFERENCE_MOTION
+	PL_P $B4A4,reference_motion_begin
+	PL_P $B4D2,reference_motion_displacement
+	ENDC
+	IFD C_STEERING
+	IFD C_ROAD_TIMING
+	PL_P $10C64,step_actor_road_reactivate
+	PL_P $BABE,step_road_reference
+	PL_PS $BCD0,step_actor_road
+	PL_PSS $BDF0,step_actor_road_copy,6
+	ENDC
+	PL_P	$B93A,step_steering_heading
+	PL_P	$B97A,step_steering_motion
+	PL_P	$B9A0,step_steering_store
+	ENDC
+	IFD C_POSE_PREDICT
+	PL_PSS $A8E2,step_predict_pose,4
+	IFD POSE_PREDICT_MEASURED
+	IFD STEP_EXTRAPOLATE
+	FAIL "Measured pose prediction conflicts with whole-view extrapolation"
+	ENDC
+	IFD VERIFY_C_LATENCY
+	FAIL "Measured pose prediction conflicts with the latency probe"
+	ENDC
+	PL_PS $75C8,step_predict_render_begin
+	PL_PS $773C,step_predict_render_end
+	ENDC
+	ENDC
+	PL_S	$AECC,$AEE2-$AECC
+	PL_NOP	$6FA0,6
+	PL_R	$6FE6
+	PL_NOP	$28C7C,$28C94-$28C7C
+	PL_NOP	$28C9A,$28CBC-$28C9A
+	PL_PSS	$28C4C,step_reset,4
+	IFD VERIFY_SKIP_RENDER
+	PL_NOP	$7730,6
+	ENDC
+	IFD VERIFY_FRAME_PERIOD
+	PL_PS	$7736,verify_pace
+	ENDC
+	IFD VERIFY_C_LATENCY
+	PL_PS	$75C8,step_latency_render
+	PL_PS	$7736,step_latency_swap
+	ENDC
+	IFD VERIFY_C_EVENTS
+	PL_PS $F06A,step_event_engine
+	PL_PS $F080,step_event_stop
+	PL_PS $F0BE,step_event_primary
+	PL_PS $F0DE,step_event_secondary
+	PL_PS $F120,step_event_siren
+	ENDC
+	IFD C_FAST_STACK
+	PL_P	$2876C,step_stack_start
+	ENDC
+	PL_ENDIF
+	PL_END
+	ENDC
+
 	IFD C_STEP_BUILD
 	IFND VERIFY
 verify_c_selection:

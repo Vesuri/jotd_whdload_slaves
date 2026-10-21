@@ -116,6 +116,10 @@ public_ref_22 equ *-4
 ; Cursor field-1 reproduces the first boot's initial step at field 1.
 step_prepare:
 	movem.l d0-d7/a0-a6,-(a7)
+	IFD C_PUBLIC_MAIN
+	bsr e_masks_build
+	bsr e_dirty_reset
+	ENDC
 	IFD C_BUS_PRIORITY
 	bsr step_priority_begin
 	ENDC

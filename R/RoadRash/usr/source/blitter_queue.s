@@ -18,6 +18,7 @@ e_blitter_init:
  beq .done
  lea e_main(pc),a0
  move.l a5,(a0)
+ bsr e_masks_init
  move.l a5,a1
  adda.l #$2fd60,a1
  lea e_background_road(pc),a0
@@ -28,6 +29,7 @@ e_blitter_init:
  rts
 
 e_background_road:
+ bsr e_masks_build
  movem.l d0-d7/a0-a6,-(a7)
  move.l e_main(pc),a2
  adda.l #$2726e,a2
@@ -59,6 +61,33 @@ e_background_road:
  move.w d3,(a1)+
  subi.l #$20d0,d2
  dbf d4,.sky
+ IFND VERIFY_E_CLEAR_CONTROL
+ ; Opaque scenery replaces [top,horizon-16) in its destination planes.
+ ; Reproduce the native signed shifts, then clip to the current sky height.
+ move.l e_main(pc),a2
+ adda.l #$270a6,a2
+ move.w (a2),d0
+ move.w d0,d1
+ asr.w #2,d1
+ sub.w d1,d0
+ subi.w #27,d0
+ bsr e_clear_height
+ lea e_ring(pc),a2
+ move.w d0,22(a2) ; plane 1
+ move.w d0,30(a2) ; plane 0
+ move.l e_main(pc),a2
+ adda.l #$270a6,a2
+ move.w (a2),d0
+ move.w d0,d1
+ asr.w #2,d1
+ sub.w d1,d0
+ asr.w #1,d1
+ sub.w d1,d0
+ subi.w #19,d0
+ bsr e_clear_height
+ lea e_ring(pc),a2
+ move.w d0,14(a2) ; plane 2
+ ENDC
  move.l $408.w,d2
  addi.l #$41a0,d2
  moveq #42,d0
@@ -75,6 +104,7 @@ e_background_road:
  move.l d2,(a1)+
  move.w #$01ff,(a1)+
  move.w d3,(a1)+
+ bsr e_dirty_prepare
  lea e_read(pc),a1
  clr.w (a1)
  ; A zero-height sky is omitted, never encoded as a 1024-line blit.
@@ -119,6 +149,7 @@ e_background_road:
  movem.l (a7)+,d0-d2/a0-a1
  rts
 .native:
+ bsr e_dirty_reset
  movem.l (a7)+,d0-d7/a0-a6
  move.l e_main(pc),a0
  adda.l #$31744,a0
@@ -150,6 +181,7 @@ e_irq:
  rte
 
 e_start_next:
+.next:
  lea e_read(pc),a1
  move.w (a1),d0
  cmpi.w #48,d0
@@ -159,6 +191,8 @@ e_start_next:
  move.w #1,(a1)
  lea e_ring(pc),a1
  adda.w d0,a1
+ tst.w 6(a1)
+ beq .next
  move.l (a1)+,$54(a0)
  move.w (a1)+,$40(a0)
  clr.w $42(a0)
@@ -188,4 +222,20 @@ e_hill_wait:
  bne .wait
  addq.l #2,a0
  andi.w #$ffc0,d7
+ rts
+
+; d0 is the opaque band top; d6 is sky height. Encode a nonempty clear only.
+e_clear_height:
+ tst.w d0
+ ble .zero
+ cmp.w d6,d0
+ bls .encode
+ move.w d6,d0
+ beq .zero
+.encode:
+ lsl.w #6,d0
+ ori.w #20,d0
+ rts
+.zero:
+ moveq #0,d0
  rts

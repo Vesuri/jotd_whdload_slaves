@@ -26,6 +26,8 @@ public_asset_relocate:
 .native_done:
  move.w sr,-(a7)
  movem.l d0-d2/a0-a3,-(a7)
+ lea e_masks_dirty(pc),a1
+ move.w #1,(a1)
  move.l public_asset_pool(pc),a1
  cmpa.l #0,a1
  beq .done
