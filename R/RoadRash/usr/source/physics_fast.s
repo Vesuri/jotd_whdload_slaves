@@ -13,6 +13,7 @@
 step_physics_fast_init:
  bsr step_scratch_init
  lea $8b486,a0
+public_ref_160 equ *-4
  lea step_physics_fast_code(pc),a1
  move.w #7040/4-1,d0
 .copy:
@@ -36,28 +37,44 @@ step_physics_fast_init:
  ENDC
  lea step_physics_fast_code+$0(pc),a0
  move.w #$4ef9,$8b486
+public_ref_161 equ *-4
  move.l a0,$8b488
+public_ref_162 equ *-4
  lea step_physics_fast_code+$1122(pc),a0
  move.w #$4ef9,$8c5a8
+public_ref_163 equ *-4
  move.l a0,$8c5aa
+public_ref_164 equ *-4
  lea step_physics_fast_code+$1428(pc),a0
  move.w #$4ef9,$8c8ae
+public_ref_165 equ *-4
  move.l a0,$8c8b0
+public_ref_166 equ *-4
  lea step_physics_fast_code+$760(pc),a0
  move.w #$4ef9,$8bbe6
+public_ref_167 equ *-4
  move.l a0,$8bbe8
+public_ref_168 equ *-4
  lea step_physics_fast_code+$666(pc),a0
  move.w #$4ef9,$8baec
+public_ref_169 equ *-4
  move.l a0,$8baee
+public_ref_170 equ *-4
  lea step_physics_fast_code+$caa(pc),a0
  move.w #$4ef9,$8c130
+public_ref_171 equ *-4
  move.l a0,$8c132
+public_ref_172 equ *-4
  lea step_physics_fast_code+$1008(pc),a0
  move.w #$4ef9,$8c48e
+public_ref_173 equ *-4
  move.l a0,$8c490
+public_ref_174 equ *-4
  lea step_physics_fast_code+$1a6a(pc),a0
  move.w #$4ef9,$8cef0
+public_ref_175 equ *-4
  move.l a0,$8cef2
+public_ref_176 equ *-4
 .done:
  lea step_physics_fast_init(pc),a2
  suba.l #step_physics_fast_init-_resload,a2
@@ -79,7 +96,9 @@ step_scratch_init:
  beq .done
  lea step_scratch_words(pc),a2
  move.w $8b480,(a2)
+public_ref_177 equ *-4
  move.w $a59ca,2(a2)
+public_ref_178 equ *-6
  move.l a2,d1
  lea .first(pc),a0
  bsr .patch
@@ -98,9 +117,23 @@ step_scratch_init:
  rts
 .first:
  dc.l $8c8b0,$8ce6c,0
+public_ref_179 equ *-12
+public_ref_180 equ *-8
 .second:
  dc.l $89d60,$89e1a,$89f04,$89f92,$89fc4
+public_ref_181 equ *-20
+public_ref_182 equ *-16
+public_ref_183 equ *-12
+public_ref_184 equ *-8
+public_ref_185 equ *-4
  dc.l $8c8b6,$8c9de,$8ca0a,$8ca22,$8cb08,$8cb34,$8cb4c,0
+public_ref_186 equ *-32
+public_ref_187 equ *-28
+public_ref_188 equ *-24
+public_ref_189 equ *-20
+public_ref_190 equ *-16
+public_ref_191 equ *-12
+public_ref_192 equ *-8
 step_scratch_words: dc.w 0,0
 step_scratch_enabled:
  IFD VERIFY_C_SCRATCH_CONTROL
@@ -183,8 +216,10 @@ step_physics_to_8da5c:
  ENDC
 step_physics_to_8dade:
  jmp $8dade
+public_ref_193 equ *-4
 step_physics_to_8de84:
  jmp $8de84
+public_ref_194 equ *-4
 step_physics_to_8e166:
  IFD C_PHYSICS_AUX
  IFND VERIFY_C_PHYSICS_AUX_CONTROL
@@ -198,11 +233,16 @@ step_physics_to_8e166:
  ENDC
 step_physics_to_8e2d6:
  jmp $8e2d6
+public_ref_195 equ *-4
 step_physics_to_8e614:
  jmp $8e614
+public_ref_196 equ *-4
 step_physics_to_8e70c:
  jmp $8e70c
+public_ref_197 equ *-4
 step_physics_to_8e91c:
  jmp $8e91c
+public_ref_198 equ *-4
 step_physics_to_8eaf0:
  jmp $8eaf0
+public_ref_199 equ *-4

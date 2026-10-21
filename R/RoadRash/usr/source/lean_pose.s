@@ -7,6 +7,7 @@ step_fused_lean:
  movem.l d0-d2/a4,-(a7)
  move.w 4(a1),d0
  sub.w $a5d1e,d0
+public_ref_91 equ *-4
  bmi .restore
  cmpi.w #30,d0
  bgt .restore
@@ -21,4 +22,5 @@ step_fused_lean:
 .original:
  clr.w 18(a0)
  cmpa.l #$a5de0,a1
+public_ref_92 equ *-4
  rts

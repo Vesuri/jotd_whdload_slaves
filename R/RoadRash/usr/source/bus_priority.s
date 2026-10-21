@@ -32,6 +32,7 @@ step_priority_end:
 .done:
 	movem.l (a7)+,d0-d1/a0
 	clr.l $a5916           ; original instruction, including condition codes
+public_ref_25 equ *-4
 	rts
 step_priority_saved:
 	dc.w 0

@@ -16,12 +16,16 @@ step_latency_input:
 	tst.l 8(a0)
 	bne .done
 	btst #3,$a598c
+public_ref_latency_0 equ *-4
 	beq .done
 	move.l $a5d4c,8(a0)
+public_ref_latency_1 equ *-6
 	moveq #0,d0
 	move.b $a598c,d0
+public_ref_latency_2 equ *-4
 	move.l d0,56(a0)
 	move.l $a5d4c,d0
+public_ref_latency_3 equ *-4
 	sub.l step_stats+8(pc),d0
 	move.l d0,60(a0)
 .done:
@@ -36,10 +40,13 @@ step_latency_replayed:
 	tst.l 12(a0)
 	bne .done
 	btst #3,$a598c
+public_ref_latency_4 equ *-4
 	beq .done
 	move.l $a5d4c,12(a0)
+public_ref_latency_5 equ *-6
 	move.l d3,16(a0)
 	move.w $a7262,d0
+public_ref_latency_6 equ *-4
 	ext.l d0
 	move.l d0,48(a0)
 .done:
@@ -54,6 +61,7 @@ step_latency_simulated:
 	tst.l 20(a0)
 	bne .done
 	move.l $a5d4c,20(a0)
+public_ref_latency_7 equ *-6
 	move.l step_stats+8(pc),24(a0)
 .done:
 	movem.l (a7)+,a0
@@ -67,13 +75,16 @@ step_latency_render:
 	tst.l 28(a0)
 	bne .done
 	move.l $a5d4c,28(a0)
+public_ref_latency_8 equ *-6
 	move.l step_stats+8(pc),32(a0)
 	move.w $a5d60,d0
+public_ref_latency_9 equ *-4
 	ext.l d0
 	move.l d0,52(a0)
 .done:
 	movem.l (a7)+,d0/a0
 	jmp $8970e
+public_ref_latency_10 equ *-4
 
 step_latency_swap:
 	movem.l a0,-(a7)
@@ -83,12 +94,14 @@ step_latency_swap:
 	tst.l 40(a0)
 	bne .wait
 	move.l $a5d4c,36(a0)
+public_ref_latency_11 equ *-6
 .wait:
 	movem.l (a7)+,a0
 	IFD VERIFY_FRAME_PERIOD
 	bsr verify_pace
 	ELSE
 	jsr $aecba
+public_ref_latency_12 equ *-4
 	ENDC
 	movem.l a0,-(a7)
 	lea step_latency_stats(pc),a0
@@ -97,6 +110,7 @@ step_latency_swap:
 	tst.l 40(a0)
 	bne .done
 	move.l $a5d4c,40(a0)
+public_ref_latency_13 equ *-6
 	move.l $404,44(a0)
 .done:
 	movem.l (a7)+,a0

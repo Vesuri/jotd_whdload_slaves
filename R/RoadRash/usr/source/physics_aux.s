@@ -20,24 +20,28 @@ VERIFY_C_LANE_SCAN_CONTROL = 1
 	ENDC
 step_physics_aux_init:
  lea $8d2c0,a0
+public_ref_200 equ *-4
  lea aux_8d2c0(pc),a1
  move.w #775,d0
 .copy_8d2c0:
  move.w (a0)+,(a1)+
  dbf d0,.copy_8d2c0
  lea $8dd66,a0
+public_ref_201 equ *-4
  lea aux_8dd66(pc),a1
  move.w #130,d0
 .copy_8dd66:
  move.w (a0)+,(a1)+
  dbf d0,.copy_8dd66
  lea $8e166,a0
+public_ref_202 equ *-4
  lea aux_8e166(pc),a1
  move.w #183,d0
 .copy_8e166:
  move.w (a0)+,(a1)+
  dbf d0,.copy_8e166
  lea $8da5c,a0
+public_ref_203 equ *-4
  lea aux_8da5c(pc),a1
  move.w #86,d0
 .copy_8da5c:
@@ -111,28 +115,44 @@ step_physics_aux_init:
  ENDC
  lea aux_8d2c0+$0(pc),a0
  move.w #$4ef9,$8d2c0
+public_ref_204 equ *-4
  move.l a0,$8d2c2
+public_ref_205 equ *-4
  lea aux_8d2c0+$14a(pc),a0
  move.w #$4ef9,$8d40a
+public_ref_206 equ *-4
  move.l a0,$8d40c
+public_ref_207 equ *-4
  lea aux_8d2c0+$1ae(pc),a0
  move.w #$4ef9,$8d46e
+public_ref_208 equ *-4
  move.l a0,$8d470
+public_ref_209 equ *-4
  lea aux_8d2c0+$226(pc),a0
  move.w #$4ef9,$8d4e6
+public_ref_210 equ *-4
  move.l a0,$8d4e8
+public_ref_211 equ *-4
  lea aux_8dd66+$0(pc),a0
  move.w #$4ef9,$8dd66
+public_ref_212 equ *-4
  move.l a0,$8dd68
+public_ref_213 equ *-4
  lea aux_8e166+$0(pc),a0
  move.w #$4ef9,$8e166
+public_ref_214 equ *-4
  move.l a0,$8e168
+public_ref_215 equ *-4
  lea aux_8e166+$ec(pc),a0
  move.w #$4ef9,$8e252
+public_ref_216 equ *-4
  move.l a0,$8e254
+public_ref_217 equ *-4
  lea aux_8da5c+$0(pc),a0
  move.w #$4ef9,$8da5c
+public_ref_218 equ *-4
  move.l a0,$8da5e
+public_ref_219 equ *-4
 .done:
  lea step_physics_aux_init(pc),a2
  suba.l #step_physics_aux_init-_resload,a2
@@ -148,36 +168,49 @@ step_physics_aux_init:
 aux_8d2c0:
  ds.b 1552
  jmp $8d8d0
+public_ref_220 equ *-4
  cnop 0,2
 aux_8dd66:
  ds.b 262
  jmp $8de6c
+public_ref_221 equ *-4
  cnop 0,2
 aux_8e166:
  ds.b 368
  jmp $8e2d6
+public_ref_222 equ *-4
  cnop 0,2
 aux_8da5c:
  ds.b 174
  jmp $8db0a
+public_ref_223 equ *-4
 aux_to_8d91c:
  jmp $8d91c
+public_ref_224 equ *-4
 aux_to_8d940:
  jmp $8d940
+public_ref_225 equ *-4
 aux_to_8d9e2:
  jmp $8d9e2
+public_ref_226 equ *-4
 aux_to_8db0a:
  jmp $8db0a
+public_ref_227 equ *-4
 aux_to_8db40:
  jmp $8db40
+public_ref_228 equ *-4
 aux_to_8de6c:
  jmp $8de6c
+public_ref_229 equ *-4
 aux_to_8dfc8:
  jmp $8dfc8
+public_ref_230 equ *-4
 aux_to_90b7c:
  jmp $90b7c
+public_ref_231 equ *-4
 aux_to_90b8e:
  jmp $90b8e
+public_ref_232 equ *-4
 
  IFD C_LANE_SCAN
 ; Preserve existing symbol offsets and add 256 bytes overall. Runtime placement
@@ -200,6 +233,7 @@ aux_lane_scan_init:
  btst #0,d0
  bne.s .done
  lea $8d970,a0
+public_ref_233 equ *-4
  lea aux_lane_scan_body(pc),a1
  moveq #56,d0
 .copy:
@@ -212,7 +246,9 @@ aux_lane_scan_init:
  ENDC
  lea aux_lane_scan(pc),a0
  move.w #$4ef9,$8d966
+public_ref_234 equ *-4
  move.l a0,$8d968
+public_ref_235 equ *-4
 .done:
  jsr (resload_FlushCache,a2)
  rts
@@ -220,6 +256,7 @@ aux_lane_scan:
  move.b $71(a1),d7
  subq.w #1,d1
  lea $8d012,a6
+public_ref_236 equ *-4
 aux_lane_scan_body:
  ds.b $72
  ENDC

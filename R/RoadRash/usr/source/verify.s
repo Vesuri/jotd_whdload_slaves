@@ -41,6 +41,7 @@ verify_cpu_set:
 
 verify_field:
 	addq.l	#1,$a5d4c          ; displaced instruction, including its CCR
+public_ref_9 equ *-4
 	move.w	sr,-(a7)
 	movem.l	d0-d2/a0-a1,-(a7)
 	lea	verify_stats(pc),a0
@@ -74,18 +75,22 @@ verify_field:
 	ENDC
 .seen:
 	move.l	$a5d4c,16(a0)
+public_ref_10 equ *-6
 	move.l	48(a0),d0          ; requested exact race field, zero disables hashing
 	beq.b	.done
 	cmp.l	16(a0),d0
 	bne.b	.done
 	moveq	#0,d0
 	lea	$a5d4c,a1          ; clock plus complete actor storage through $a6edf
+public_ref_11 equ *-4
 	move.w	#($a6ee0-$a5d4c)/2-1,d2
 	bsr.b	.hash
 	lea	$a7220,a1          ; nearest-rider rank/speed cells
+public_ref_12 equ *-4
 	moveq	#3,d2
 	bsr.b	.hash
 	lea	$a59f4,a1          ; displayed player rank
+public_ref_13 equ *-4
 	moveq	#0,d2
 	bsr.b	.hash
 	move.l	d0,56(a0)
@@ -109,6 +114,7 @@ verify_frame:
 	lea	verify_stats(pc),a0
 	addq.l	#1,24(a0)
 	move.l	$a5d4c,d0
+public_ref_14 equ *-4
 	move.l	d0,d1
 	sub.l	28(a0),d0
 	move.l	d1,28(a0)
@@ -122,6 +128,7 @@ verify_frame:
 	movem.l	(a7)+,d0-d1/a0
 	move.w	(a7)+,ccr
 	move.l	$a7266,a2          ; displaced MOVEA leaves CCR unchanged
+public_ref_15 equ *-4
 	rts
 
 	cnop	0,4
@@ -169,10 +176,12 @@ verify_pace:
 	subq.b #1,d0
 .wait:
 	cmp.b $aec0c,d0
+public_ref_16 equ *-4
 	bhi .wait
 	movem.l (a7)+,d0/a0
 	ELSE
 	cmpi.b	#VERIFY_FRAME_PERIOD-1,$aec0c
+public_ref_237 equ *-4
 	bcs.b	verify_pace
 	ENDC
 	IFND C_STEP_BUILD
@@ -184,6 +193,7 @@ verify_pace:
 	ENDC
 .original:
 	jmp	$aecba
+public_ref_17 equ *-4
 	IFD VERIFY_FRAME_PATTERN
 verify_period_index:
 	dc.w 0

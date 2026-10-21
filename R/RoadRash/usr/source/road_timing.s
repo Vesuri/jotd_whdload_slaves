@@ -41,6 +41,7 @@ step_road_reference:
  add.w d1,$36(a1)
  movem.l (a7)+,d0/d2/a0
  jmp $8bad2
+public_ref_145 equ *-4
 ; Preserve the measured placement of the later Fast RAM code copies.
  ds.b 12
 
@@ -49,6 +50,7 @@ step_actor_road:
  movem.l d0/d2/a0,-(a7)
  move.l a1,d0
  subi.l #$a5d60,d0
+public_ref_146 equ *-4
  cmpi.l #$1180,d0
  bcc .native
  lsr.l #5,d0
@@ -77,6 +79,7 @@ step_actor_road_copy:
  movem.l d0-d2/a2,-(a7)
  move.l a0,d0
  subi.l #$a5d60,d0
+public_ref_147 equ *-4
  cmpi.l #$1180,d0
  bcc .done
  move.l d0,d2
@@ -87,6 +90,7 @@ step_actor_road_copy:
  adda.l d0,a2
  move.l a1,d1
  subi.l #$a5d60,d1
+public_ref_148 equ *-4
  cmpi.l #$1180,d1
  bcc .clear
  move.l d1,d2
@@ -102,6 +106,7 @@ step_actor_road_copy:
  movem.l (a7)+,d0-d2/a2
  lsr.w $2c(a0)
  move.w #1,$8b484
+public_ref_149 equ *-4
  rts
 
 ; Native reactivation at $90c64 repositions the rider and clears +$36/+$38.
@@ -111,6 +116,7 @@ step_actor_road_reactivate:
  movem.l d0-d1/a0,-(a7)
  move.l a1,d0
  subi.l #$a5d60,d0
+public_ref_150 equ *-4
  cmpi.l #$1180,d0
  bcc .done
  move.l d0,d1
@@ -123,4 +129,6 @@ step_actor_road_reactivate:
  movem.l (a7)+,d0-d1/a0
  move.w (a7)+,ccr
  lea $a851a,a4
+public_ref_151 equ *-4
  jmp $90c6a
+public_ref_152 equ *-4

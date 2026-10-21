@@ -30,6 +30,7 @@ step_event_engine:
 	movem.l (a7)+,d0-d2/a0
 	move.w (a7)+,ccr
 	jmp $b506c
+public_ref_155 equ *-4
 step_event_stop:
 	move.w sr,-(a7)
 	movem.l d0-d2/a0,-(a7)
@@ -39,6 +40,7 @@ step_event_stop:
 	movem.l (a7)+,d0-d2/a0
 	move.w (a7)+,ccr
 	jmp $b5184
+public_ref_156 equ *-4
 step_event_primary:
 	move.w sr,-(a7)
 	movem.l d0-d2/a0,-(a7)
@@ -47,6 +49,7 @@ step_event_primary:
 	movem.l (a7)+,d0-d2/a0
 	move.w (a7)+,ccr
 	jmp $b507e
+public_ref_157 equ *-4
 step_event_secondary:
 	move.w sr,-(a7)
 	movem.l d0-d2/a0,-(a7)
@@ -55,6 +58,7 @@ step_event_secondary:
 	movem.l (a7)+,d0-d2/a0
 	move.w (a7)+,ccr
 	jmp $b507e
+public_ref_158 equ *-4
 step_event_siren:
 	move.w sr,-(a7)
 	movem.l d0-d2/a0,-(a7)
@@ -63,6 +67,7 @@ step_event_siren:
 	movem.l (a7)+,d0-d2/a0
 	move.w (a7)+,ccr
 	jmp $b5052
+public_ref_159 equ *-4
 step_event_log:
 	lea step_event_stats(pc),a0
 	move.l 8(a0),d2

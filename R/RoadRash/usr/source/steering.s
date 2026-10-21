@@ -21,6 +21,7 @@ step_steering_heading:
 	asr.l #8,d0
 	move.w d0,$c(a1)
 	jmp $8b94c
+public_ref_142 equ *-4
 
 step_steering_motion:
 	tst.b $6e(a1)
@@ -36,6 +37,7 @@ step_steering_motion:
 	asr.l #8,d0
 	btst #5,$68(a1)
 	jmp $8b984
+public_ref_143 equ *-4
 
 step_steering_store:
 	tst.b $6e(a1)
@@ -78,6 +80,7 @@ step_steering_store:
 ; a residual from the pre-crash trajectory.
 step_steering_finish:
 	tst.b $a5dce
+public_ref_144 equ *-4
 	bmi .done
 	move.l a0,-(a7)
 	lea step_steering_fraction(pc),a0

@@ -14,11 +14,13 @@
 step_collision_geometry_init:
 	lea step_collision_geometry_code(pc),a0
 	lea $8970e,a1
+public_ref_104 equ *-4
 	move.w #($8984e-$8970e)/2-1,d0
 .copy:
 	move.w (a1)+,(a0)+
 	dbf d0,.copy
 	lea $8989e,a1
+public_ref_105 equ *-4
 	move.w #($898e2-$8989e)/2-1,d0
 .tail:
 	move.w (a1)+,(a0)+

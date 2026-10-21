@@ -19,6 +19,7 @@ reference_motion_begin:
 reference_motion_displacement:
  move.w $12(a1),d0
  move.w $a6f00,d2
+public_ref_43 equ *-4
  mulu.w d2,d0
  movem.l d1/d3,-(a7)
  move.l d0,d3

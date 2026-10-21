@@ -19,6 +19,54 @@ STEP_NO_HASH = 1
 	ENDC
 	ENDC
 
+ ; Whole main-image relocation shares the enhanced CPU/Fast gate.
+ ; Snapshot diagnostics opt in, keeping older reference builds reproducible.
+ IFD VERIFY_D_PUBLIC_MAIN
+C_PUBLIC_MAIN = 1
+ ENDC
+ IFD C_RUNTIME_ONLY
+ IFND C_PUBLIC_MAIN
+C_PUBLIC_MAIN = 1
+ ENDC
+ ENDC
+ IFD C_PUBLIC_MAIN
+ IFND C_STEP_BUILD
+ FAIL "Public main image requires the enhanced path selection"
+ ENDC
+ ; These older experiments introduce additional copies or absolute operands.
+ ; Keep them on the native-image reference until their relocation is audited.
+ IFD VERIFY_C_ROAD_FAST
+ FAIL "Road-copy experiment is not audited with public main image"
+ ENDC
+ IFD VERIFY_C_GEOMETRY_LUT
+ FAIL "Geometry LUT overlaps the public main allocation"
+ ENDC
+ IFD VERIFY_C_AUDIT
+ FAIL "Legacy phase audit is not audited with public main image"
+ ENDC
+ IFD VERIFY_C_DECAY_TEST
+ FAIL "VERIFY_C_DECAY_TEST needs public-main operand audit"
+ ENDC
+ IFD VERIFY_C_SEED_ATTACK
+ FAIL "VERIFY_C_SEED_ATTACK needs public-main operand audit"
+ ENDC
+ IFD VERIFY_C_SEED_FINISH
+ FAIL "VERIFY_C_SEED_FINISH needs public-main operand audit"
+ ENDC
+ IFD VERIFY_C_OBJECT_WIDTH
+ FAIL "VERIFY_C_OBJECT_WIDTH needs public-main operand audit"
+ ENDC
+ IFD VERIFY_B
+ FAIL "VERIFY_B needs public-main operand audit"
+ ENDC
+ IFD VERIFY_C_PHYSICS_AUX_CONTROL
+ FAIL "VERIFY_C_PHYSICS_AUX_CONTROL needs public-main operand audit"
+ ENDC
+ IFD STEP_EXTRAPOLATE
+ FAIL "Legacy pose extrapolation is not audited with public main image"
+ ENDC
+ ENDC
+
 ; Derive lean in the simulation pose traversal, reusing its actor eligibility.
 	IFD VERIFY_C_FUSED_LEAN
 C_FUSED_LEAN = 1
@@ -243,19 +291,24 @@ _base		SLAVE_HEADER			;ws_Security + ws_ID
 _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
-	IFD C_STEP_BUILD
-	IFD C_FAST_STACK
-	IFD VERIFY_C_GEOMETRY_LUT
-	dc.l -$a000 ; stack plus exact road-width quotient table
-	ELSE
-	dc.l -$5000 ; optional WHDLoad-managed stack and guards
-	ENDC
-	ELSE
-	dc.l 0
-	ENDC
-	ELSE
-	dc.l 0
-	ENDC				;ws_ExpMem
+ IFD C_PUBLIC_MAIN
+ dc.l -$50000 ; optional public main image, stack and reserved headroom
+ ELSE
+ IFD C_STEP_BUILD
+ IFD C_FAST_STACK
+ IFD VERIFY_C_GEOMETRY_LUT
+ dc.l -$a000 ; stack plus exact road-width quotient table
+ ELSE
+ dc.l -$5000 ; optional WHDLoad-managed stack and guards
+ ENDC
+ ELSE
+ dc.l 0
+ ENDC
+ ELSE
+ dc.l 0
+ ENDC
+ ENDC ; ws_ExpMem
+
 		dc.w	_name-_base		;ws_name
 		dc.w	_copy-_base		;ws_copy
 		dc.w	_info-_base		;ws_info
@@ -485,6 +538,9 @@ PatchLoader2:
 	adda.l #step_physics_aux_init-_base,a0
 	jsr (a0)
 	ENDC
+	IFD C_PUBLIC_MAIN
+	bsr public_main_init
+	ENDC
 .no_c:
 	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
@@ -703,17 +759,22 @@ step_seed_rng:
 	move.l d0,-(a7)
 	moveq #0,d0
 	jsr $90088
+public_ref_0 equ *-4
 	jsr $9011c
+public_ref_1 equ *-4
 	move.l (a7)+,d0
 	jmp $8685c
+public_ref_2 equ *-4
 	ENDC
 
 ; A one-field simulation has measurable integration/collision differences.
 ; Wait for one elapsed tick; the original swap waits for the following tick.
 safe_swap:
 	cmpi.b	#1,$aec0c
+public_ref_3 equ *-4
 	bcs.b	safe_swap
 	jmp	$aecba
+public_ref_4 equ *-4
 
 ; Bound unusually long frames before both physics and rate calculations use d1.
 bound_delta:
@@ -722,6 +783,7 @@ bound_delta:
 	moveq	#8,d1
 .store:
 	move.w	d1,$a6f00
+public_ref_5 equ *-4
 	rts
 
 ; Four fields per phase, independent of rendered frame rate. The original
@@ -729,6 +791,7 @@ bound_delta:
 field_animation:
 	move.l	d0,-(a7)
 	move.l	$a5d4c,d0
+public_ref_6 equ *-4
 	IFD VERIFY
 	movem.l	a0,-(a7)
 	lea	verify_animation(pc),a0
@@ -736,6 +799,7 @@ field_animation:
 	ENDC
 	lsr.l	#2,d0
 	move.b	d0,$a5990
+public_ref_7 equ *-4
 	IFD VERIFY
 	and.l	#7,d0
 	move.l	d0,12(a0)
@@ -941,6 +1005,10 @@ enhanced_decrunch_done:
 	rts
 	ENDC
 
+	IFD C_PUBLIC_MAIN
+	include public_main.s
+	ENDC
+
 ReadSomeFile:
 	; Preloaded files can arrive before the previous screen blit finishes.
 	; Finish DMA before overwriting its destination (notably DASH2.LBM).
@@ -1118,6 +1186,7 @@ previous_button_state
 	dc.l	0
 expansion_memory:
 	dc.l	$80000
+public_ref_8 equ *-4
 	IFD VERIFY
 	include	verify.s
 	IFD VERIFY_B
@@ -1149,4 +1218,8 @@ verify_c_selection:
 
 	IFD C_RUNTIME_ONLY
 	include raster_edge.s
+	ENDC
+
+	IFD C_PUBLIC_MAIN
+	include public_refs.s
 	ENDC

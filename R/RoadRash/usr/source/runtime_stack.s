@@ -36,11 +36,13 @@ step_stack_start:
 	move.l step_stack_stats+20(pc),a7
 	move.w #$2700,sr
 	jmp $a8776
+public_ref_153 equ *-4
 .original:
 	movem.l (a7)+,d0/a0-a1
 	lea $77cbe,a7
 	move.w #$2700,sr
 	jmp $a8776
+public_ref_154 equ *-4
 
 	cnop 0,4
 step_stack_stats:

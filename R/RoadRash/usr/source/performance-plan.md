@@ -513,6 +513,12 @@ dictate the accelerated path's timestep.
     matrix confirms no benefit on 000/020/030 and a modest gain on 040/060.
     Retain native priority on 000/020/030; remeasure after D3/E changes the workload.
 - **D3 Relocate everything eligible to public RAM** (fast RAM preferred when available).
+  - **Main-image progress:** the selected enhanced 020+ path now moves the complete
+    246,764-byte main code/data image into an optional 320 KiB public allocation,
+    retaining DMA heaps in Chip. Main-image relocation, full-race equivalence,
+    fallback, MMU, controls and visible-response checks pass in emulation. This
+    does not close the bootstrap/low-memory, mixed-asset or broader-selection
+    audit below. See memory-performance.md for exact evidence and limitations.
   - D3a Audit all loaded code, data and stacks, including menus, race logic, rendering,
     interrupts and audio routines. Classify each region by CPU/DMA access, lifetime,
     references and relocation constraints. Account for every region; document why any
@@ -534,8 +540,10 @@ dictate the accelerated path's timestep.
     transfers if a CPU-side copy is useful (including E5's images and masks).
     The actor-memory audit identifies a concrete lifetime conflict: `$a5d60..$a6edf`
     holds race actors, but graphics loaders reuse `$a5de0` and its image pointers
-    can feed the blitter. Keep that graphics scratch in Chip RAM when separating
-    race actor storage. A race sample attributes 10.779% of CPU bus records to
+    must be classified by consumer. The D3 portrait audit establishes CPU copying
+    from that scratch into Chip screens; the full-image move includes this
+    lifetime. Remaining image consumers still need explicit classification.
+    A race sample attributes 10.779% of CPU bus records to
     this region; it is a relocation candidate, not a proven throughput gain.
   - D3e Move the CPU stack and any separate interrupt stacks into the allocated memory.
     Audit stack bounds, startup/switching, exception/interrupt entry and exit, and quit

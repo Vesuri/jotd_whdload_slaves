@@ -178,3 +178,70 @@ verify public-memory sizing, placement and fallback; remeasure blitter
 priority; and repeat the final normal-build and functional matrix. D3 is
 still open. Real-hardware cache/coherency validation remains pending by the
 user's explicit choice; emulator validation is the current scope.
+
+## Main-image implementation and emulator validation
+
+The normal enhanced 020+ Fast path now relocates the complete main payload,
+including menus, simulation, rendering, interrupt/audio code and CPU data.
+`public_main.s` validates the HUNK type, target, count, trailer and every
+aligned in-range operand offset before any relocation writes. Unavailable or
+unsuitable optional memory, or a malformed table, retains the native main
+image. `public_refs.s` contains explicit slave-operand annotations; it never
+scans arbitrary numeric values for apparent addresses. Older experimental
+copies with unaudited references are rejected at assembly time when combined
+with this feature. Full snapshot diagnostics select `VERIFY_D_PUBLIC_MAIN`.
+
+The optional allocation is 320 KiB. Its first 20 KiB retain the existing
+16 KiB guarded supervisor stack and spacing; the 246,764-byte main payload
+begins at offset `$5000`. The remaining 60,436 bytes are reserved headroom.
+The Chip requirement remains 1 MiB. The original main image and heap remain
+allocated; no stale Chip storage is reclaimed. The enhancement toggle, 020+
+selection and actual Fast-memory placement gate all relocation writes.
+The implementation accepts the normal Zorro II and upper 32-bit Fast windows.
+
+Native portrait loads at `$a5de0` were followed to their consumers. The SET
+relocator at `$afd9c` builds image pointers, and the portrait renderer at
+`$b0ce4` copies pixels into Chip screen planes using CPU byte loops. Thus this
+portrait lifetime does not require the scratch image itself to remain Chip.
+Four 19-field portrait-menu DMA captures and inspected screenshots pass
+(`d-public-menu-v3-fixed`). The broader graphics/load audit remains open;
+this evidence does not classify every shared image consumer as CPU-only.
+`d-public-load-v2-fixed/loads.json` records 29 file loads through a complete
+race, with preserved filenames, sizes and destination addresses.
+
+The normal 22,180-byte build has SHA-256
+`f440dc05b67b65329675b2343bc414cffd756d3c049e8a41f27dddb754994136`.
+`d-main-hardened-matrix` passes all 11 normal cells:
+
+| Configuration | Frames/s |
+|---|---:|
+| A500, 1 MiB | 8.5 |
+| Chip-only 020 | 12.5 |
+| Fast 020 default / Cache | 16.7 |
+| Fast 020 NoCache | 16.6 |
+| 030 default / Cache | 25.0 |
+| 040 default / Cache | 25.2 |
+| 060 default / Cache | 28.6 |
+
+`d-main-promote-build` is byte-identical to the tested normal and lean MMU
+builds. `d-public-functional-*` passes 040/060 MMU policy, stack guards,
+keyboard/CD32 input and demo transitions. `d-public-extra-v2-off-*` passes
+with the toggle disabled. `d-public-no-allocation` and
+`d-public-odd-relocation` inject missing allocation and an invalid odd
+relocation offset respectively: both run the full short window with the
+original main entry, without a partially installed relocation.
+
+`d-public-promote-finish-{fixed,vary}` repeats the accepted 16,230 hashes,
+72 sound events, six terminal regions and finish/exit fields exactly, and
+restarts cleanly. The input-replay probe (`d-public-extra-v2-latency`) applies
+field-301 input to simulation tick 301; it uses a diagnostic configuration
+without measured heading prediction because those probes share native hooks.
+The separate **normal-build** visible-response test uses eight paired
+neutral/RIGHT injections with identical initial states. Estimates are
+140/120/160/140/120/160/140/120 ms (median 140 ms), including gameplay response
+and capture-end uncertainty; these are not an artificial presentation delay
+or a measurement of host-display latency. Evidence: `d-public-visible-020`.
+
+This closes the main-image implementation only. D3 still needs the remaining
+bootstrap/low-memory and mixed-asset audit, broader CPU/memory selection and
+DMA coverage, and remeasurement of priority after this workload change.

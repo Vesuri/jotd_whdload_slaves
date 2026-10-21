@@ -8,6 +8,7 @@ edge_b1994:
  move.l a0,-(a7)
 edge_b1996:
  movea.l $b1950,a0
+public_ref_18 equ *-4
 edge_b199a:
  movem.l d1/d3,-(a7)
 edge_b199e:
