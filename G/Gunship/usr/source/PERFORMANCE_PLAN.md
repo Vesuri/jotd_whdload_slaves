@@ -892,10 +892,17 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     extra completed field/world or a new epoch. Repeated Space map/display
     transitions suspend sampling, mark execution and resume with reset
     history. Separate deadline-aligned cases complete their retained world
-    exactly once before rebasing. Death, landing, disk loads, other commands
+    exactly once before rebasing. Controlled native landing and fatal ground
+    impact now return to original cleanup at world 16 on PAL 68020/NTSC 68060,
+    acknowledging the ending world once and keeping producers off afterward.
+    Natural mission landings, weapon-induced death, disk loads, other commands
     and the remaining CPU/video lifecycle matrix remain open.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
+    Terminal flight retirement now explicitly invalidates player, actor,
+    release and script prediction caches and clears the player endpoint
+    history after suspension. Previously valid caches survived until the next
+    activation. Native state and terminal diagnostics remain intact.
 - **C9. Validate.**
   - C9a. **World equality across CPUs:** matched world-tick state on the 68000, 68020 and
     68060, with the A2 seed and the same field-stamped input, using the A4 gate. The

@@ -18,6 +18,28 @@ timing_runtime_suspend:
  moveq #-3,d0
  rts
 
+; Terminal flight only, after successful suspension under producer exclusion.
+; Discard predictions and player-step history before returning to native
+; cleanup. Keep native state, counters and terminal diagnostics intact.
+; Activation initializes the cleared endpoint for the next mission.
+; a0=prepared suspended arena. Return 0, preserve non-result registers.
+timing_runtime_retire:
+ movem.l d1/a0-a1,-(sp)
+ clr.w RT_ACTOR_PRESENT+AC_VALID(a0)
+ clr.w RT_RELEASE_PRESENT+AC_VALID(a0)
+ clr.w RT_SCRIPT_PRESENT+SPC_VALID(a0)
+ movea.l a0,a1
+ adda.l #RT_PLAYER_CACHE,a1
+ clr.w PC_VALID(a1)
+ lea RT_ENDPOINT(a0),a1
+ moveq #EP_SIZE/2-1,d1
+.clear_endpoint:
+ clr.w (a1)+
+ dbf d1,.clear_endpoint
+ moveq #0,d0
+ movem.l (sp)+,d1/a0-a1
+ rts
+
 ; a0=arena. Return 0/-3, invalid requests write nothing.
 ; Resume normal play only: native player/mission must already be ready.
 ; Read fresh native field/Y and accepted command sequence under exclusion.

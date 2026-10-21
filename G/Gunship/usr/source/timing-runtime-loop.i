@@ -137,6 +137,10 @@ timing_runtime_loop:
  jsr (a4)
  movea.l a6,a0
  bsr timing_runtime_suspend
+ tst.l d0
+ bne .end_leave
+ bsr timing_runtime_retire
+.end_leave:
  jsr (a5)
  tst.l d0
  bne .done

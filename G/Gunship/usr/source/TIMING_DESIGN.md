@@ -6720,3 +6720,47 @@ discard, clock rebase or scheduler fault occurs. Worlds 20..80 complete in
 1,201 fields and 24..43 lag before this change. Ten-world rolling rates
 remain 2.84360..3.17460 Hz. This finite-window improvement does not accept
 68000 responsiveness, establish scanout delay or close broader C9 gates.
+
+### Retire predictions and player history on terminal flight exit
+
+Live controlled landing exposed valid player/actor prediction caches after
+return to native cleanup. Sampling had stopped and the next activation would
+invalidate them, but C8c requires retirement at flight end itself. The loop
+now calls `timing_runtime_retire` after successful terminal suspension, while
+producer exclusion still holds. It invalidates player-cache, actor, release
+and script prediction flags and clears the complete endpoint state (motion
+fractions, delayed controls, anchor and interval metadata). It touches no
+native hunk, so cleanup may subsequently release those hunks safely. The
+next activation initializes endpoint rate/history normally. Ordinary pause
+and failure paths retain their existing state and diagnostics.
+
+`test_runtime_retire_c.py` seeds every retired range with nonzero bytes and
+compares the entire arena against the exact permitted changes on PAL/NTSC.
+Native memory, surrounding guards and registers remain unchanged; repeated
+retirement is idempotent. The eight PAL/NTSC loop cases still match explicit
+dispatch with balanced exclusion and native exit once, and now require cleared
+endpoint state and all four invalid caches at exit. The existing 36 lifecycle
+calls pass, and all build variants assemble.
+
+The live `retired-landing-exit-pal-020` / `-ntsc-060` fixtures start at height
+one, zero speed/collective/RPM and stopped engines, with downward velocity
+-8. Initial exit and landing flags are explicitly cleared and all 86 initial
+player bytes are recorded before activation. Native ground handling produces
+landing classification 2, then the native periodic guard copies it to the
+exit byte at world 16. No exit result is injected by the runner.
+
+The corresponding `retired-crash-exit-pal-020` / `-ntsc-060` fixtures start
+with downward velocity -128 and both engine damage bits set (word +0E=12,
+configuration bit zero cleared). Native ground handling produces fatal exit
+reason 1 and leaves landing classification zero. These are controlled initial
+conditions, not weapon-induced damage or a natural mission landing.
+
+Both paths execute the native cleanup clone once, acknowledge the ending
+world once, and return status 4 to the original +05622 continuation at tick
+16 without another player field. All producers are off, endpoint bytes are
+zero and prediction flags invalid at return. For another 120 monitor fields,
+producer ownership, field/world counters and epoch count remain unchanged.
+Only the slave arena is read after cleanup, since native hunks may be freed.
+The breakpoint on the cleanup clone remains armed until native return, so a
+second entry fails the check rather than silently repeating cleanup. Broader
+CPU/video, mission re-entry, disk-load and natural damage coverage remain open.
