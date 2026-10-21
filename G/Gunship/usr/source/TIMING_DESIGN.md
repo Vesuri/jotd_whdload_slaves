@@ -8162,3 +8162,40 @@ not improved that live window. `cache-live-comparison.json` records exact
 visual/schedule equality. Remaining frame cost still requires profiling.
 All four builds pass: ordinary 6,088, experimental 46,516 and diagnostics
 112,846 bytes (+8).
+
+
+### Same-view reuse inside impulse certification (C6d)
+
+Profiling installed completed-frame snapshots attributes 1,382,501 of
+1,794,603 forecast instructions to native scene collection (77.0%; wrapper
+included 77.8%). There are three collections per sampled frame; no constructor
+miss occurs when repeating these completed-frame queries. This explains why
+constructor optimization alone does not address most steady-state cost.
+
+Certification now reuses the immediately preceding successful candidate/
+selector result when a later impulse branch has exactly the same 12 camera
+bytes and private player view-mode byte. Camera X/Y also cover the private
+map-cell reads. Those are the only cloned operands bound to the private
+player; shared target/model/object inputs are unchanged during this serialized
+call. The shortcut is internal to certification after a successful collection;
+it is never used across frames, world updates, commands or lifecycle changes.
+A changed view mode must recollect even when its camera-heading contribution
+is canceled by the player heading. Two bytes store the collected view mode,
+bringing the arena to 57,268 bytes.
+
+Independent branch tests still pass all 489 outcomes and 37 controlled selector
+disagreements. A targeted key test proves both equal-view reuse and recollection
+for an altered view byte with identical camera bytes. The retarget overlay
+fixtures also pass. A new installed PAL 060 combat run publishes all 28
+sampled frames with no sampled timing/input faults. Repeated installed queries
+now average 57,334 guest instructions versus 66,467 previously; 69 scene
+collections serve 28 frames, rather than three per frame. These snapshot
+profiles exclude the cost of reaching the frame and do not measure CPU cycles.
+
+Observed draws/s rises slightly from 11.71 to 11.84 over the recorded window.
+All bitplanes match on the 20 frames with identical logical time/phase; later
+render schedules differ. This is not broad performance/visual acceptance.
+Evidence is `installed-forecast-profile.json` in both recent capture directories,
+`forecast-view-reuse-combat-pal-060/{forecast-live-audit,view-reuse-live-comparison}.json`,
+`runtime-forecast-view-key-audit.json` and ignored harness tests. All four builds
+pass: ordinary 6,088, experimental 46,608 and diagnostics 112,938 bytes (+92).

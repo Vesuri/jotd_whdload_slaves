@@ -952,7 +952,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     timing/input faults, but draws fall to 11.71/s versus 14.29 in the earlier
     baseline window. Exact caching inside construction cuts its replay instruction
     count by 58–60% with identical outputs; the live 060 frame schedule and
-    bitplanes remain identical, so no measured framerate gain yet. Future input
+    bitplanes remain identical, so that change has no measured framerate gain.
+    Profiling then identifies repeated scene collection as the dominant cost.
+    Exact same-view reuse within one impulse check lowers repeated-query mean
+    instructions from 66,467 to 57,334; live draws rise only slightly to 11.84/s,
+    with all 20 matching-time frames pixel-identical. Future input
     uncertainty, further cost optimization, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input

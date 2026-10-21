@@ -235,6 +235,9 @@ timing_runtime_forecast_collect:
  lea RF_TARGET(a5),a0
  lea RF_SELECTED(a5),a1
  bsr target_selector_single
+ tst.l d0
+ bne .done
+ move.b RF_PLAYER+$1a(a5),RF_CAMERA_VIEW(a5)
  bra .done
 .bad:
  moveq #-3,d0
@@ -340,7 +343,7 @@ timing_runtime_forecast_certify:
  bmi .bad_saved
  movea.l (sp)+,a4
  movea.l a6,a0
- bsr timing_runtime_forecast_collect
+ bsr timing_runtime_forecast_collect_reuse
  tst.l d0
  bne .bad
  lea RF_SELECTED(a5),a0
@@ -508,4 +511,39 @@ timing_runtime_forecast_overlay:
 .done:
  moveq #0,d0
  movem.l (sp)+,d1-d7/a0-a6
+ rts
+
+
+; Internal to one serialized certification call, AFTER successful collection.
+; Shared world/target/model data and object coordinates cannot change here.
+; Exact camera equality covers private map-cell X/Y reads; compare the private
+; view-mode byte separately. No other cloned operand binds to RF_PLAYER.
+; Equal inputs retain the previous candidate/selector result. Never use this
+; shortcut across frames, world steps, commands or lifecycle transitions.
+timing_runtime_forecast_collect_reuse:
+ movem.l d1/a0-a3,-(sp)
+ suba.w #12,sp
+ movea.l a0,a3
+ adda.l #RT_FORECAST,a3
+ lea RF_PLAYER(a3),a0
+ movea.l sp,a2
+ bsr native_camera_build
+ move.b RF_PLAYER+$1a(a3),d0
+ cmp.b RF_CAMERA_VIEW(a3),d0
+ bne .miss
+ movea.l sp,a0
+ lea RF_CAMERA(a3),a1
+ moveq #2,d1
+.compare:
+ cmpm.l (a0)+,(a1)+
+ bne .miss
+ dbf d1,.compare
+ moveq #0,d0
+ bra .done
+.miss:
+ movea.l 16(sp),a0 ; saved caller arena (after 12 bytes scratch + d1)
+ bsr timing_runtime_forecast_collect
+.done:
+ adda.w #12,sp
+ movem.l (sp)+,d1/a0-a3
  rts
