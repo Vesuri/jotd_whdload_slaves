@@ -292,7 +292,7 @@ _keydebug	dc.b	0			;ws_keydebug = F9
 _keyexit	dc.b	$5F;ws_keyexit = help
 _expmem
  IFD C_PUBLIC_MAIN
- dc.l -$61000 ; optional runtime plus CPU-only image headers
+ dc.l -$65000 ; optional runtime plus CPU-only image headers
  ELSE
  IFD C_STEP_BUILD
  IFD C_FAST_STACK
@@ -1022,6 +1022,7 @@ enhanced_decrunch_done:
  IFD C_PUBLIC_MAIN
  include public_loader.s
  include public_boot.s
+ include public_recolor.s
  include public_audio.s
  include public_assets.s
  ENDC

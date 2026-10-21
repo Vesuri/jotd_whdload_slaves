@@ -8,6 +8,6 @@ SOURCE = $(PROGNAME)HD.s
 
 all :  $(WHDLOADER)
 
-$(WHDLOADER) : $(SOURCE) ReadJoypad.s verify.s verify_b.s verify_c_audit.s simulation.s verify_c_events.s verify_c_latency.s steering.s runtime_stack.s physics_fast.s physics_aux.s road_timing.s collision_geometry.s lean_pose.s raster_edge.s reference_motion.s bus_priority.s public_main.s public_refs.s public_loader.s public_boot.s public_boot_tables.s public_assets.s public_audio.s
+$(WHDLOADER) : $(SOURCE) ReadJoypad.s verify.s verify_b.s verify_c_audit.s simulation.s verify_c_events.s verify_c_latency.s steering.s runtime_stack.s physics_fast.s physics_aux.s road_timing.s collision_geometry.s lean_pose.s raster_edge.s reference_motion.s bus_priority.s public_main.s public_refs.s public_loader.s public_boot.s public_boot_tables.s public_assets.s public_audio.s public_recolor.s
 	$(WDATE)
 	$(VASM) -o $(WHDLOADER) $(SOURCE)

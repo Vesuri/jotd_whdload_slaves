@@ -480,3 +480,21 @@ sample address against its original descriptor. An earlier probe incorrectly
 assumed eleven records for FX2; the corrected probe reads the native header.
 `d-public-audio-v3-matrix-retry` records the representative normal matrix;
 the initial Chip-only attempt timed out in the emulator debugger.
+
+## D3 colour-conversion scratch
+
+The original `$da7e..$11a7d` scratch has both CPU and DMA lifetimes. The
+blitter uses it directly (for example `$b3cc6` writes it to BLTDPT, `$b3d06`
+to BLTCPT and `$b3d3c` to BLTAPT); background pixels at `$f0de` also feed
+BLTAPT at `$b2de2`. These graphics lifetimes retain Chip storage.
+
+`public_recolor.s` separates the CPU-only colour-conversion lifetime: the
+six calls of `$b1c6a` generate a 16 KiB table, and twelve references supply
+it to the CPU recolouring routine `$b253c`. All eighteen explicit LEA sites
+are checked before any is changed. The generated table now occupies public
+`$61000..$64fff`; blitter and menu operands remain unchanged. Total optional
+reservation is 404 KiB. No old Chip storage is reclaimed.
+
+`d-public-recolor-finish-*` preserves the complete fixed/varying race results;
+`d-public-recolor-matrix-tail` measures 8.5/16.7/28.1 fps on A500/Fast020/060.
+Normal slave SHA-256: `b8068b883910c9ee34bbac836de48d44f0379cd4530937e0111f97e2ac5b413a`.

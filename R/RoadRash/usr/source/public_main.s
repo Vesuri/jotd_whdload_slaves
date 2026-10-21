@@ -77,6 +77,7 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ bsr public_recolor_init
  move.l a5,a1
  adda.l #$35236,a1
  cmpi.l #$08f90001,(a1)
