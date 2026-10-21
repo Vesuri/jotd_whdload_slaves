@@ -77,6 +77,7 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ bsr e_blitter_init
  bsr public_iff_init
  bsr public_menu_init
  bsr public_recolor_init

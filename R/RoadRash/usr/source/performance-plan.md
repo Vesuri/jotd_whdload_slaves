@@ -574,11 +574,14 @@ for final placement, measurements, validation and the complete 67-file inventory
     Do this after D1/D2 have been measured.
 
 ### E. Blitter work and overlap
-- **E1 Overlap the background clear with the road.**
-  - E1a Start the `$b1744` blits through a queue, then run `$b10d0`. They touch disjoint
+- **E1 complete — overlap the background clear with the road.**
+  - **E1a complete:** start the `$b1744` blits through a bounded queue, then run
+    `$b10d0`; drain before the plane-2 mask pass. They touch disjoint
     memory: the road writes planes 0/1 below the horizon, the clear writes planes 0–3 above
     it and planes 2/3 below.
-  - E1b Needs `BLTPRI` off (D2) for the CPU to proceed.
+  - **E1b complete:** temporarily clear and restore `BLTPRI` while the queue owns
+    the blitter. Keep the native path for 68000, no public allocation, unusual
+    horizons or conflicting/masked interrupts. See [validation](blitter-performance.md).
   - **Expected:** up to 8% on the 020. On fast CPUs the saving equals the road time.
 - **E2 Blitter queue.**
   - E2a A ring of blit descriptors executed by a level-3 blitter-done handler. The game has

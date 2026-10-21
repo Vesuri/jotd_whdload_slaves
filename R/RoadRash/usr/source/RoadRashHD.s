@@ -1017,6 +1017,7 @@ enhanced_decrunch_done:
 
 	IFD C_PUBLIC_MAIN
 	include public_main.s
+	include blitter_queue.s
 	ENDC
 
  IFD C_PUBLIC_MAIN
