@@ -12,6 +12,7 @@ timing_runtime_suspend:
  bsr timing_suspend
  movea.l (sp)+,a0
  clr.w RT_CAPTURE_OWNER(a0)
+ bsr timing_runtime_forecast_reset
  moveq #0,d0
  rts
 .bad:
@@ -24,6 +25,7 @@ timing_runtime_suspend:
 ; Activation initializes the cleared endpoint for the next mission.
 ; a0=prepared suspended arena. Return 0, preserve non-result registers.
 timing_runtime_retire:
+ bsr timing_runtime_forecast_reset
  movem.l d1/a0-a1,-(sp)
  clr.w RT_ACTOR_PRESENT+AC_VALID(a0)
  clr.w RT_RELEASE_PRESENT+AC_VALID(a0)
@@ -152,6 +154,8 @@ timing_runtime_activate:
  ; remains stable; only validity is needed to discard all cached contents.
  movea.l RT_PLAYER+SE_CACHE(a6),a0
  clr.w PC_VALID(a0)
+ movea.l a6,a0
+ bsr timing_runtime_forecast_reset
  clr.w RT_BATCH(a6)
  clr.l RT_BOUNDARY_PHASE(a6)
  clr.l RT_BOUNDARY_RECORD(a6)
@@ -221,6 +225,8 @@ timing_runtime_modal_suspend:
  tst.l d0
  bne .done
  clr.w RT_CAPTURE_OWNER(a1)
+ movea.l a1,a0
+ bsr timing_runtime_forecast_reset
  bra .done
 .bad:
  moveq #-3,d0

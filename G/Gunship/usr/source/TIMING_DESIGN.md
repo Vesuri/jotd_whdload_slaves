@@ -7894,3 +7894,36 @@ All four builds pass: ordinary 6,088, experimental 44,954, diagnostics 111,284
 bytes (+212). Runtime allocation/activation is unchanged. The captured route
 does not prove every motion/contact path, and private player forecasts still
 do not certify scene collection or future input/impulse outcomes.
+
+
+### Runtime forecast workspace and retirement (C6d)
+
+The experimental runtime now allocates and prepares a dedicated forecast
+workspace. `RT_FORECAST` follows the existing player cache and contains its
+own context, ground event, sine helper/table, seven motion stages, ground
+clone, tape, constructor scratch, owner scratch and output player. The arena
+grows from 34,082 to 47,892 bytes (13,810 additional bytes). Long base
+adjustments keep the new storage outside signed-word addressing tables.
+The existing CUSTOM1 gate still controls all experimental allocation.
+
+`timing_runtime_forecast_prepare` runs before the loader's cache flush and
+before READY publication. It binds every forecast sine call privately and
+binds the forecast ground clone to its own event, leaving the authoritative
+clone/event untouched. Any preparation rejection keeps runtime READY clear.
+Successful activation, suspension, terminal retirement and script-modal
+suspension retire tape validity/count/context epoch and clear only the
+forecast event. Full preparation clears the entire arena on module reload.
+A fixed context lifecycle epoch of 1 depends on this unconditional retirement
+protocol; callers must not reuse a tape across those transitions. No forecast
+construction or new actor rendering is invoked yet.
+
+The forecast workspace test verifies PAL/NTSC bindings, all 42 private calls,
+private table contents, ground-event separation, seeded stale-tape retirement,
+invalid-activation atomicity and arena guards. Existing activation tests pass
+1,237 calls at two rates/two arena addresses. Relocation tests pass three
+game layouts at both rates (660 player fields) without retired-image accesses.
+Lifecycle and modal-resume regressions also pass. Evidence is
+`runtime-forecast-workspace-test.json` and the activation, relocation, lifecycle,
+modal-resume and retirement tests in the ignored harness. This is standalone
+runtime execution, not yet a live emulator framerate measurement. All four
+builds pass: ordinary 6,088, experimental 45,172 and diagnostics 111,502 bytes.

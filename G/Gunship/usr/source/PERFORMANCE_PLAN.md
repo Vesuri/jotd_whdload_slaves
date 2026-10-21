@@ -931,8 +931,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     preserving output on rejection. Read tracing isolated the player forecast
     dependency to the native sine table; optional private helper/table copies
     and 42 validated stage bindings preserve all 49 forecasts with that native
-    table poisoned, with no observed external data reads. Runtime allocation,
-    lifecycle/dependency gates and unvisited paths remain open, so live
+    table poisoned, with no observed external data reads. The experimental
+    runtime now allocates/prepares the private workspace and retires its tape
+    on lifecycle changes; PAL/NTSC binding, activation, retirement and relocated
+    image tests pass. Construction dispatch, scene dependency gates and
+    unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass

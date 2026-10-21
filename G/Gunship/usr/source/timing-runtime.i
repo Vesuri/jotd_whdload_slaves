@@ -83,7 +83,19 @@ RT_DRAW_ENTRY equ RT_SCRIPT_BITMAP+4
 RT_DRAW_READY equ RT_DRAW_ENTRY+4
 RT_SCRIPT_PREVIEW equ RT_DRAW_READY+2
 RT_PLAYER_CACHE equ RT_SCRIPT_PREVIEW+SP_SIZE
-RT_ARENA_SIZE equ RT_PLAYER_CACHE+PC_SIZE
+RT_FORECAST equ RT_PLAYER_CACHE+PC_SIZE
+; Dedicated forecast storage; use a long base adjustment beyond signed words.
+RF_CONTEXT equ 0
+RF_EVENT equ RF_CONTEXT+FCT_CONTEXT_SIZE
+RF_SINE equ RF_EVENT+GD_SIZE
+RF_STAGES equ RF_SINE+536
+RF_GROUND equ RF_STAGES+MS_CODE_SIZE
+RF_TAPE equ RF_GROUND+GR_CODE_SIZE
+RF_WORK equ RF_TAPE+FCT_SIZE
+RF_OWNER equ RF_WORK+FB_SIZE
+RF_PLAYER equ RF_OWNER+EP_SIZE
+RF_SIZE equ RF_PLAYER+MP_RECORD_SIZE
+RT_ARENA_SIZE equ RT_FORECAST+RF_SIZE
 
 ; a0=first code address from a valid DOS LoadSeg chain, a1=36-byte output.
 ; Require the nine-hunk 0658 layout. Return 0/-1, preserve other registers.
@@ -339,6 +351,10 @@ timing_runtime_prepare:
  movea.l a6,a0
  adda.l #RT_PLAYER_CACHE,a0
  move.l a0,RT_PLAYER+SE_CACHE(a6)
+ movea.l a6,a0
+ bsr timing_runtime_forecast_prepare
+ tst.l d0
+ bne .bad
  ; Wire arena-relative pointers from immutable offset pairs.
  lea .bindings(pc),a0
  move.w #(.bindings_end-.bindings)/4-1,d0
