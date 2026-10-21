@@ -928,7 +928,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     49 captured endpoints and every checkpoint while rejecting five invalid
     construction cases per frame. A lookup-or-build entry reuses all 35 same-world
     checkpoints across those frames and rebuilds at all observed world changes,
-    preserving output on rejection. Runtime allocation,
+    preserving output on rejection. Read tracing isolated the player forecast
+    dependency to the native sine table; optional private helper/table copies
+    and 42 validated stage bindings preserve all 49 forecasts with that native
+    table poisoned, with no observed external data reads. Runtime allocation,
     lifecycle/dependency gates and unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and

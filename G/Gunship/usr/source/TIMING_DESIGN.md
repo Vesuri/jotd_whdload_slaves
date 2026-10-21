@@ -7858,3 +7858,39 @@ or scene/model dependency safety. Evidence is `forecast-reuse-audit.json` in
 each capture directory plus the ignored harness test. All four builds pass:
 ordinary 6,088, experimental 44,742, diagnostics 111,072 bytes (+62 bytes).
 The entry is not yet called by runtime presentation.
+
+
+### Private forecast sine dependency (C6d)
+
+Read tracing of `forecast_player_build` across the 49 captured PAL 020/060
+frames found external data reads only within the native 512-byte sine table
+at hunk 4 +01C8..+03C7. The full table and helper instruction shape are stable
+across those captures. The helper masks the angle to eight bits, doubles it
+and reads one word, so its complete potential table dependency is 256 entries,
+not merely the entries observed on this route. This is separate from the
+scene collector's shared model dependencies.
+
+`timing-forecast-sine.i` provides `forecast_sine_prepare`, which validates the
+24-byte helper and its expected table pointer before copying the helper and
+whole table into a 536-byte private buffer. `forecast_stages_bind_sine` checks
+all six call sites in each of the seven private motion clones before rebinding
+all 42 operands. The caller must pass this same private helper in the forecast
+context, use separate forecast stages, and flush instruction caches after
+construction. Installed/native motion stages must not be rebound. These
+construction helpers are placed after runtime entry points to retain the
+68000 loader's PC-relative call reach.
+
+`test_forecast_private_sine_c.py` zeroes the entire native sine table during
+construction. All 49 forecast endpoints and checkpoints still match the
+independent replay after the original table is restored. Read tracing observes
+no data accesses outside private buffers, immutable module data and stack in
+these runs. `test_forecast_sine_prepare_c.py` verifies 24 corrupted helper bytes
+and 252 corrupted call-site bytes reject atomically, checks all 42 successful
+bindings, register preservation and canaries. Evidence includes
+`forecast-sine-dependency-audit.json`, `forecast-sine-prepare-test.json` and the
+per-run `forecast-private-sine-audit.json` in the ignored harness.
+
+All four builds pass: ordinary 6,088, experimental 44,954, diagnostics 111,284
+bytes (+212). Runtime allocation/activation is unchanged. The captured route
+does not prove every motion/contact path, and private player forecasts still
+do not certify scene collection or future input/impulse outcomes.

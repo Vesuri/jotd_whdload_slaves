@@ -91,3 +91,7 @@
  include "timing-runtime-actors.i"
 
  include "timing-runtime-loop.i"
+
+; Construction-only helpers follow runtime entry points to preserve 68000
+; PC-relative loader call reach. They are not on the installed frame path.
+ include "timing-forecast-sine.i"
