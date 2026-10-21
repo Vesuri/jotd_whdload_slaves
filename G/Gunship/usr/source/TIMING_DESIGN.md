@@ -6868,3 +6868,29 @@ whole-mission acceptance, other control/damage/fuel conditions, the remaining
 CPUs or displayed-input latency. Results are retained in per-run
 `duration-audit.json`, `actual-rate.json` and state/input audit files. No
 executable code changed.
+
+### Current master-toggle off paths in live flight
+
+`capture_disabled_c.py` checks the current diagnostic runtime with omitted
+CUSTOM1 on PAL 68020 (`toggle-omitted-pal-020`) and explicit CUSTOM1=0 on
+NTSC 68060 (`toggle-zero-ntsc-060`). Both use original 0658, a hash-checked
+slave, headless shared FS-UAE and disabled host mouse. The WHDLoad boolean
+remains **Enhanced framerate**, default zero.
+
+During flight and after another 120 native fields, all 24 timing hook
+sites equal the original game bytes relocated to the live hunk addresses.
+The comparison includes entire PSS replacement spans. All 14 native blitter
+wait loops and the pixel-helper call are also unchanged: 39 sites total.
+The baseline access-fault hook identifies the actual loaded slave, avoiding
+confusion with preloaded file copies. Existing baseline compatibility patches
+are retained rather than treated as optional enhancement sites.
+
+The CUSTOM1 value, timing arena pointer/status, runtime hunk table, blitter
+helper target and wait-site table remain zero. Native flight continues:
+player tick 51→66 on PAL and 58→73 on NTSC in the sampled intervals. These
+are off-path observations, not enhanced 3-Hz rate measurements. As a positive
+control, all 39 sites differ from original relocated bytes in the enabled
+`duration-pal-020/world-20` capture. Results are retained in each
+`disabled-result.json` and `toggle-enabled-site-control.json`. This covers
+the current runtime's omitted/zero gate in two live configurations, not all
+versions or CPU/video combinations. No executable code changed.

@@ -1086,6 +1086,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   use this same gate. The new blitter patches and diagnostic native input
   producer are gated already; the original slave's cache policy and existing
   compatibility/protection fixes remain baseline behaviour.
+  Current-runtime live checks now confirm omitted CUSTOM1 on PAL 68020 and
+  explicit zero on NTSC 68060 preserve all 39 timing/blitter patch sites,
+  leave the timing arena/table unallocated and continue native flight. An
+  enabled capture changes all 39 sites, providing a positive control.
 
 ### D. Remove fixed overheads
 
