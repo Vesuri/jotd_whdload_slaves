@@ -74,6 +74,7 @@ timing_runtime_forecast_reset:
  move.l a0,-(sp)
  adda.l #RT_FORECAST,a0
  clr.l RF_EVENT(a0)
+ clr.w RF_ACTOR_SAFE(a0)
  adda.w #RF_TAPE,a0
  bsr forecast_tape_reset
  movea.l (sp)+,a0
@@ -362,6 +363,47 @@ timing_runtime_forecast_certify:
  bra .done
 .bad_saved:
  movea.l (sp)+,a4
+.bad:
+ moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d7/a0-a6
+ rts
+
+
+; a0=arena at a serialized, drained presentation boundary. Return safe-slot
+; mask 0..63 or -3 rejected; RF_ACTOR_NEXT contains next-world coordinates.
+; Eligibility is not identity certification: a presentation consumer must
+; still validate generations, current slot state, timing and uncertainty.
+; Reuses the private AP scratch, never overwrites an AC capture or native data.
+timing_runtime_forecast_actors:
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ movea.l a0,a5
+ adda.l #RT_FORECAST,a5
+ clr.w RF_ACTOR_SAFE(a5)
+ bsr timing_runtime_forecast_certify
+ tst.l d0
+ bne .bad
+ lea RT_ACTOR_PREVIEW(a6),a0
+ movea.l RT_HUNKS+24(a6),a1
+ adda.w #$3b88,a1
+ lea RF_CERTIFIED(a5),a2
+.preview_base:
+ lea .preview_base(pc),a3
+ adda.l #actor_preview_selected_step-.preview_base,a3
+ jsr (a3)
+ tst.l d0
+ bmi .bad
+ move.l d0,d3
+ lea RT_ACTOR_PREVIEW+AP_ACTORS(a6),a0
+ lea RF_ACTOR_NEXT(a5),a1
+ moveq #8,d1
+.copy:
+ move.l (a0)+,(a1)+
+ dbf d1,.copy
+ move.w d3,RF_ACTOR_SAFE(a5)
+ move.l d3,d0
+ bra .done
 .bad:
  moveq #-3,d0
 .done:

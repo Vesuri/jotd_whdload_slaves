@@ -8025,3 +8025,33 @@ preserve non-result registers. Evidence is the per-run
 `runtime-forecast-certify-audit.json` and `runtime-forecast-certify-audit3.json`
 in the ignored harness. All four builds pass: ordinary 6,088, experimental
 46,042 and diagnostics 112,372 bytes (+356).
+
+
+### Runtime selector-fed actor forecast (C6d)
+
+`timing_runtime_forecast_actors` now composes impulse agreement with
+`actor_preview_selected_step`. It uses the certified selector and current
+committed player to produce six next-world actor coordinate triples in
+`RF_ACTOR_NEXT`, with the preview eligibility mask in `RF_ACTOR_SAFE`. It
+reuses private actor-preview scratch without changing existing actor
+presentation captures. The mask is cleared before every attempt and on
+lifecycle retirement, and published only after copying all coordinates.
+Return -3 rejects; a nonnegative return is the mask, not proof of slot identity.
+Presentation must still check generations, current actor state, clock phase
+and any remaining uncertainty before drawing a prediction. This entry is
+not yet called by the frame loop. Its 38 bytes bring the arena to 56,868 bytes.
+
+`test_runtime_forecast_actors_c.py` composes the entire runtime path on worlds
+20..46 of the PAL 060 Hellfire capture. These snapshots were taken inside a
+batch; the test explicitly normalizes scheduler/batch metadata to model a
+drained boundary at that world phase, keeping held controls. Seven ambiguous
+states reject. All 20 admitted slot-5 endpoints match the following native
+world, including both retargeting errors at worlds 27 and 45. Writes are
+bounded to forecast/actor-preview scratch and stack; native hunks and other
+authoritative arena bytes remain unchanged. Forced admission failures clear
+stale masks, and exact-range retirement plus PAL/NTSC workspace tests pass.
+Evidence is `runtime-forecast-actors-test.json` in the ignored harness. This
+is an integration replay, not proof of real frame-loop scheduling, visual
+near-pass quality or acceptable cost. All four builds pass: ordinary 6,088,
+experimental 46,144 and diagnostics 112,474 bytes (+102). The preview call
+uses a position-independent long displacement to stay valid on the 68000.

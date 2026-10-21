@@ -941,7 +941,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     selectors and rejects 21 ambiguous cases without native writes. Runtime
     impulse agreement now checks every eligible final-field combination:
     84 recorded and 405 damaged-fixture outcomes match independent replay,
-    and 37 injected selector disagreements reject. Future input uncertainty,
+    and 37 injected selector disagreements reject. The combined runtime actor
+    forecast reproduces 20 recorded Hellfire endpoints, including both known
+    retargeting errors, and rejects seven ambiguous states in explicitly
+    normalized drained-boundary fixtures. Future input uncertainty,
     frame-loop dispatch, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
