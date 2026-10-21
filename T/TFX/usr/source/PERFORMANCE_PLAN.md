@@ -954,3 +954,73 @@ Harness pitfalls:
 - This pair needed seven candidate starts: six failed on startup hunk differences
   that CLOCK_NORMALIZE does not cover (hunks 0 and 1), and the seventh matched exactly.
 - Evidence: `tmp/dev/tmp/rot8/` (probes, twins, scenes, gates, `rot-ab.json`).
+
+Step 4 done (scanline span setup, sfd_span_040):
+- ScanFillDown's loop at $6c520 (about 4,000 lines per frame) took each line's
+  edge integer parts through BFEXTU, shifts and subtractions, then dispatched on the
+  span's long count. Spans crossing a long boundary (about 680 per frame) wrote each
+  of the eight planes with two BFINS on memory.
+- Implementation: the 040 new-renderer patch list jumps from $6c514 (after the
+  entry has computed A0 and the colour word) to sfd_span_040.
+  - Per-x tables in the slave give the long offset and both edge masks (x 0-319,
+    3,200 bytes, generated at assembly time).
+  - A span inside one long, and each edge long of a wider span, is plotted by the
+    game's colour-specialised routine (PlotColour $6a4b8). The longs between the
+    edges are filled plane by plane, as the original does.
+  - A non-empty line whose right edge lies beyond x = 319 continues in the original
+    loop from that line. None did in the flight.
+  - Memory, D0, D7, A0, A2-A5 and the flags at exit equal the original's. D1-D6, A1
+    and A6 hold other scratch values. The only caller ($5f1c4, from the edge walker)
+    restores A6 and A1; the edge walker and Polygon write the others before reading
+    them. A build that loads fixed junk into those registers at exit gives the same
+    displayed buffers in both scenes.
+- Cost (est-040): about 14 cycles fewer per line inside one long and about 150 fewer
+  per wider line, but about 22 more per call (entry and exit). A one-line call inside
+  one long is about 8 cycles slower than the original; calls average about 4.6 lines.
+  So this step is accepted on the frame pair, not on a cycle-count argument.
+
+Verification:
+- **Native twins** (`tools/opt20_sfd_test.py`): 187 calls (6,670 lines) pass against
+  the original loop, which the fixture selects by rewriting $6c514 per side.
+  - Lines: 341 empty or crossing, 1,133 inside one long, 853 with adjacent edge longs,
+    3,401 with longs between the edges, 644 aligned left edges, 847 aligned right
+    edges and 500 beyond x = 319. Eight calls draw no line.
+  - The guest compares the whole 80 KB buffer; the host compares D0, D7, A0, A2-A5,
+    SP and CCR, and checks the candidate's rows against an independent model.
+  - Four negative controls are rejected: a wrong bitplane byte, a wrong kept register,
+    a wrong X flag, and a model whose right edge is exclusive.
+- **Controlled scenes:** cockpit (400 updates) and views pairs give 7 and 5 identical
+  complete displayed buffers and PNGs. End state differs only in timing-dependent
+  game bytes (cockpit $4d692-$4d693; views $40cb7, $4d72e-$4d72f, $4d77d), besides
+  the patch and the clocks. The scratch-register poison build matches the candidate's
+  images; its end state differs only at patch sites holding slave addresses and $40cb7.
+- **Gates and builds:**
+  - The 040 and 040 CUSTOM5 gates jump to sfd_span_040. The 040 original, 030 and 060
+    gates keep $4dfa000ad1fc.
+  - Normal and CHIP_ONLY builds have no relocations, and the normal build reproduces.
+  - FPSP files are unchanged.
+
+Balanced 2,000-field pair (matched on the first candidate start):
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications (nominal fps) | 708 (17.70) | 746 (18.65) | +5.4% |
+| Emulator cycles/frame | 2,283,623 | 2,167,299 | -5.1% |
+| Estimated 040 cycles/frame | 1,840,235 | 1,687,993 | -8.3% |
+| Intervals (2/3/4 fields) | 126/578/4 | 240/504/1 | |
+
+- ScanFillDown falls by 307k est-040 cycles per frame; sfd_span_040 adds 157k and
+  PlotColour 20k (it now also plots wide spans' edges). Span drawing went from 374k
+  to 245k.
+- The gain is above the plan's 2% because the wide spans' BFINS pairs (about 100k
+  est-040 cycles) went too.
+- The estimate is now below the 2.0 M cycles/frame software target; the emulator is
+  at 746 of the 800 publications.
+- Zero FPSP entries.
+
+Harness pitfall: the first poison build loaded the junk before restoring A5 from
+D5, which crashed the game (illegal instruction after a jump to $5A). Poison only
+after the kept registers are restored. Poison scenes need DELTA_LISTING set to the
+poison build's own listing.
+
+Evidence: `tmp/dev/tmp/sfd4/` (twins, gates, scenes, poison scenes, `sfd-ab.json`).

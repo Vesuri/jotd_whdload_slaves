@@ -3673,6 +3673,125 @@ rot_next: dc.w 0
 rot_cur: dc.l 0,0,0,0,1                 ; low word set: matches no D7
 rot_mats: dcb.l ROT_SLOTS*5,1           ; likewise
 
+; ScanFillDown's scanline loop ($6c520, about 4,100 lines per frame) derives
+; each line's long offsets, bit offset and widths from the edges' integer parts
+; with BFEXTU, shifts and subtractions, then dispatches on the span's long
+; count; a span that crosses a long boundary writes each of the eight planes
+; with two BFINS. Here per-x tables give the long offset and both edge masks.
+; A span inside one long, and each edge long of a wider span, is plotted by
+; the game's colour-specialised routine (PlotColour $6a4b8: eight AND/OR, then
+; JMP (A6)), as the original plots its narrow spans; the longs between the
+; edges are filled plane by plane as the original does. A non-empty span whose
+; right edge lies beyond x = 319 continues in the original loop from that line.
+; Memory, D0, D7, A0, A2-A5 and the flags at exit are the original's. D1-D6,
+; A1 and A6 hold other scratch values: the only caller ($5f1c4) restores A1
+; and A6, and the edge walker and Polygon after it write the others first.
+SFD_RIGHT = 319
+sfd_span_040:
+        move.l  d0,-(sp)                ; colour word, restored at exit
+        move.w  d0,d1
+        clr.b   d1
+        lsr.w   #3,d1
+        move.l  a4,d0                   ; left slope
+        lea     ([PlotColour_ptr,pc],d1.w),a4 ; this colour's plotter
+        move.l  a5,d5                   ; right slope
+        lea     sfd_masks(pc),a5
+        lea     .line(pc),a6
+        adda.l  #55960,a0
+.line:
+        lea     40(a0),a0
+        subq.w  #1,d7
+        bmi.w   .exit
+        move.l  a2,d1
+        move.l  a3,d2
+        adda.l  d0,a2
+        adda.l  d5,a3
+        swap    d1                      ; left x
+        swap    d2                      ; right x
+        cmp.w   d1,d2
+        bcs.b   .line                   ; empty, as the original's tests find
+        cmp.w   #SFD_RIGHT,d2
+        bhi.w   .original
+        move.w  sfd_offsets(pc,d1.w*2),d3 ; 4 * left long
+        move.w  sfd_offsets(pc,d2.w*2),d4
+        sub.w   d3,d4                   ; 4 * (right long - left long)
+        bne.b   .wide
+        lea     -32000(a0,d3.w),a1
+        move.l  4(a5,d2.w*8),d2         ; right edge mask
+        and.l   (a5,d1.w*8),d2          ; and left edge mask
+        move.l  d2,d6
+        not.l   d6
+        jmp     (a4)
+.wide:
+        lea     -32000(a0,d3.w),a1      ; left edge long
+        move.l  4(a5,d2.w*8),d3         ; right edge mask
+        move.l  (a5,d1.w*8),d2          ; left edge mask
+        move.l  d2,d6
+        not.l   d6
+        lea     .middle(pc),a6
+        jmp     (a4)
+.middle:
+        subq.w  #4,d4                   ; 4 * longs between the edges
+        beq.b   .right
+        move.w  2(sp),d1                ; colour word, plane 7's bit first
+        lea     32004(a1),a6            ; plane 7, first long after the edge
+        move.w  d4,d2
+        neg.w   d2
+        asr.w   #1,d2
+        add.w   d1,d1
+.plane:
+        subx.l  d6,d6
+        jmp     .filled(pc,d2.w)
+        rept    8
+        move.l  d6,(a6)+
+        endr
+.filled:
+        suba.w  d4,a6
+        lea     -8000(a6),a6
+        add.w   d1,d1
+        bne.b   .plane
+.right:
+        lea     4(a1,d4.w),a1           ; right edge long
+        move.l  d3,d2
+        move.l  d3,d6
+        not.l   d6
+        lea     .line(pc),a6
+        jmp     (a4)
+.original:
+        suba.l  d0,a2
+        suba.l  d5,a3
+        movea.l d0,a4
+        movea.l d5,a5
+        movem.l (sp)+,d0
+        movea.l sfd_loop(pc),a6
+        jmp     ([sfd_line,pc])
+.exit:
+        movea.l d0,a4                   ; MOVEA/MOVEM keep SUBQ's flags
+        movea.l d5,a5
+        movem.l (sp)+,d0
+        jmp     ([sfd_exit,pc])
+sfd_exit: dc.l 0                        ; $6c4b8
+sfd_loop: dc.l 0                        ; $6c520
+sfd_line: dc.l 0                        ; $6c528
+        cnop    0,4
+sfd_masks:                              ; per x: left edge mask, right edge mask
+SFD_X   set     0
+        rept    SFD_RIGHT+1
+        ifeq    SFD_X&31
+        dc.l    -1
+        else
+        dc.l    $7fffffff>>((SFD_X&31)-1) ; positive: the shift fills with zeros
+        endc
+        dc.l    ($ffffffff<<(31-(SFD_X&31)))&$ffffffff
+SFD_X   set     SFD_X+1
+        endr
+sfd_offsets:                            ; per x: 4 * long index
+SFD_X   set     0
+        rept    SFD_RIGHT+1
+        dc.w    (SFD_X>>5)*4
+SFD_X   set     SFD_X+1
+        endr
+
 pl_fpu_new_render_040:
         PL_START
         PL_IFC4X 2
@@ -3695,6 +3814,10 @@ pl_fpu_new_render_040:
         PL_GA   $0258c,fade_cols_exit
         PL_P    $59748,rot_delta2_040   ; DoRotPt0 delta table
         PL_GA   $59778,rot_tail
+        PL_P    $6c514,sfd_span_040     ; ScanFillDown lines from per-x tables
+        PL_GA   $6c4b8,sfd_exit
+        PL_GA   $6c520,sfd_loop
+        PL_GA   $6c528,sfd_line
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new
@@ -3704,7 +3827,7 @@ pl_fpu_new_render_040:
         PL_L    $6c534,$e9c136c5 ; bfextu d1{27:5},d3
         PL_L    $6c538,$78209843 ; moveq #32,d4 / sub.w d3,d4
         PL_L    $6c53c,$e9c256c5 ; bfextu d2{27:5},d5
-        ; Keep original ScanFillDown: the equivalent port measured slower on 040.
+        ; Lines beyond x = 319 still run the original loop with these edges.
         PL_GA   $55bec,_texture_ptr_ptr
         PL_ENDIF
         PL_IFC4X 5 ; Uncapped: skip simulation work when no vblank elapsed.
