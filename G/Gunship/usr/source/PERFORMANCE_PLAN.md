@@ -904,7 +904,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     not alone certify visibility. Exhaustive visibility predicates now prove
     invariant homing selector bytes for worlds 27..46; worlds 20..26 remain
     ambiguous. A private zero/one-candidate helper is implemented and native-
-    equivalent (2,048 cases), but not installed in presentation. Broader input
+    equivalent (2,048 cases). A selector-fed private actor entry now reproduces
+    all next Hellfire poses in 44 admitted branches across worlds 27..46,
+    including both original errors, without native writes. Neither helper is
+    installed in presentation yet. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.

@@ -91,6 +91,16 @@ actor_preview_prepare:
 ; changed eligibility and lifecycle epochs before using AP_SAFE/coordinates.
 actor_preview_step:
  movem.l d1-d7/a0-a6,-(sp)
+ moveq #0,d6
+ bra actor_preview_snapshot_entry
+
+; Same ABI, plus a2=read-only 12-byte forecast selector. Caller must certify
+; candidate geometry/visibility and its epoch before choosing this entry.
+; Overrides only the private dependency; never borrows native selector RAM.
+actor_preview_selected_step:
+ movem.l d1-d7/a0-a6,-(sp)
+ move.l a2,d6
+actor_preview_snapshot_entry:
  movea.l a0,a6
  movea.l a1,a0
  lea AP_PLAYER(a6),a1
@@ -114,6 +124,14 @@ actor_preview_step:
  move.b (a0)+,(a1)+
  dbf d1,.bytes
  dbf d7,.snapshot
+ tst.l d6
+ beq .native_selector
+ movea.l d6,a0
+ lea AP_SELECTED(a6),a1
+ move.l (a0)+,(a1)+
+ move.l (a0)+,(a1)+
+ move.l (a0),(a1)
+.native_selector:
  movea.l AP_H6(a6),a0
  move.w $42e8(a0),AP_COUNTERMEASURES(a6)
  clr.l AP_UNCERTAIN(a6)

@@ -7548,3 +7548,49 @@ invalid-state rejections. All four builds assemble: ordinary payload remains
 6,088 bytes; experimental runtime is 43,836 and diagnostic variants 110,166
 (+66 bytes). Arena layout is unchanged. These checks establish the isolated
 helper, not a runtime homing correction or field-rate projectile acceptance.
+
+
+### Selector-fed private projectile preview (C6d)
+
+`actor_preview_selected_step` adds an explicit private selector input to the
+existing native projectile preview. It first snapshots ordinary actor/player
+inputs, then replaces only AP_SELECTED from the caller's 12-byte read-only
+buffer before running the private native step. The old `actor_preview_step`
+continues to snapshot the current native selector. Both entries preserve
+non-result registers and return the same per-slot safety mask contract.
+AP_SIZE and arena layout are unchanged. Neither entry publishes actor or
+target state, and the new entry is not installed in live presentation.
+
+The caller must certify the supplied selector's candidate geometry,
+visibility, dependencies and epoch. This entry itself is an input mechanism,
+not a certificate or a reason to accept an otherwise unsafe slot. Identity,
+allocation, morph, expiry and terrain barriers still apply after preview.
+The single-candidate helper can provide its selector bytes only after its
+separate geometry/dependency gates pass. Multi-candidate forecasts remain
+unresolved; no blanket actor suppression is introduced.
+
+
+`test_homing_selected_preview_c.py` composes retained-owner candidate envelope
+outputs with `target_selector_single` and the new actor entry. All 44 admitted
+branches across worlds 27..46 reproduce the next recorded Hellfire XYZ
+exactly, including the original world-27 and world-45 mismatches. Inputs to
+the helper are private forecast candidate blocks; the next recorded selector
+is not supplied to the pipeline. The next native position is only the oracle.
+The emitted selector buffer is read-only during preview, registers are
+preserved, native hunks stay unchanged, and guest writes are restricted to AP,
+the private selector output, and stack. Feeding the current native selector
+to the new entry produces byte-identical AP state and masks to the old entry
+in all 20 intervals.
+
+The existing actor-preview regression also passes 1,200 native steps (7,200
+slot inputs), its -1 terrain-oracle rerun, 122 signature rejects, 22 mixed
+decoy cases and 90 retained unrelated slots. All four builds assemble:
+ordinary 6,088 bytes, experimental 43,866, diagnostic variants 110,196.
+The new entry adds 30 bytes and no arena storage. Evidence is retained in
+`homing-selected-preview-test.json` and the ignored test script.
+
+This removes the two recorded endpoint errors in the offline certified
+single-candidate pipeline. It does not change their behavior in the installed
+runtime, prove cheap online certification, or satisfy the field-rate
+projectile and near-view acceptance gates. Those remain required before
+production activation.
