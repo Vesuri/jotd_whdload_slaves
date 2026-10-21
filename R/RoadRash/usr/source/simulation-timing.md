@@ -1,3 +1,51 @@
+## World-object reuse: lifecycle, cadence and hardware checks
+
+The D4-preserving candidate remains private. Its normal binary is unchanged
+from `c-world-reuse-d4-build` (20580 bytes). A guarded source variant in
+`c-world-reuse-d4-guarded-source` wraps the new render hook and cache helper in
+`C_GEOMETRY_REUSE`; its normal output is byte-identical. No production source
+has been replaced.
+
+`c-world-reuse-d4-arrest` passes strict comparison with `c-pair-clear-arrest`:
+7084 hashes, 24 events, six terminal regions and exit field 7085. Its fresh
+race capture is `(100,99,0,1)`. `c-world-reuse-d4-wreck` passes against
+`c-pair-clear-wreck`: 23509 hashes, 105 events, six terminal regions and exit
+23510 after natural damage reaches 32; restart captures `(99,98,0,1)`.
+Both clear capture state and player/NPC road fractions on restart. The exact
+restart observation field need not equal the reference; terminal race state
+and the reset invariants are the assertions.
+
+`c-world-reuse-d4-period{1,2,3,4}-state` each matches 1595 shared hashes, sound
+events and six regions against `c-pair-clear-4-state`. Histograms contain
+1600/799/533/399 frames in the requested one/two/three/four-field bins.
+The one-field diagnostic skips drawing; these functional runs prove cadence
+invariance, not achievable hardware frame rates. Every normal companion is
+byte-identical to the candidate. The previously recorded variable-cadence
+attack replay and full finish replay also pass.
+
+The initial three-cell matrix plus `c-world-reuse-d4-other-matrix` cover all
+11 normal cells. Rates are A500 8.5, Chip-only 020 12.5, Fast 020 12.5,
+NoCache 020 8.3, 030 16.7, 040 23.0 and 060 23.1 fps; explicit Cache gives
+the same frame rates. Explicit-Cache 020 distance is 3311794, versus 3321603
+in the current production result, despite equal fps. Default Fast 020 remains
+3321603 and NoCache 3301969. Thus this candidate does not close the fixed-field
+distance gate, and the Cache observation must not be hidden by aggregate rates.
+`c-world-reuse-d4-mmu` passes both 040 and 060 functional cells with CPU data
+cache emulation disabled; these are not performance measurements.
+
+On normal 040, `c-world-reuse-d4-off` verifies the original instruction at the
+new `$87692` hook in addition to the previous 21 sites, 14 scratch operands
+and collision-tail instruction. `-keyboard` and `-cd32` pass release, pause
+at active field 161, clock freeze and resume. Stack guards remain intact,
+with observed high-water use of 228 and 364 bytes respectively.
+
+`c-world-reuse-d4-demo-fire` and `-demo-timeout` both return to a normal
+race with intact stack guards. Timeout exits at active field 3598; observed
+stack high-water use is 308/304 bytes for fire/timeout respectively.
+
+Latency remains to be measured before promotion. C's B distance and handling
+acceptance gates remain open independently of candidate equivalence.
+
 ## World-object reuse: D4 dependency isolated and corrected privately
 
 Follow-up probes identify the first divergence from direct reuse. At simulation
