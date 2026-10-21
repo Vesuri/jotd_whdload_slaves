@@ -6331,3 +6331,46 @@ Actual completion takes 1,208 native fields (2.98013 Hz), with 27..49 fields
 of lag. Ten-world rolling rates range from 2.80374 to 3.14136 Hz; the average
 is not a latency guarantee. This improves throughput but does not accept
 C9b/C9c, nor establish displayed-frame latency.
+
+### Generate fixed anchor copies from the motion field list
+
+The same immutable field list now emits direct byte/word anchor copies as
+well as distribution and the public table. Only the ten motion fields are
+copied; current controls and other non-motion inputs retain their previous
+ownership, including the separate native previous-coarse-speed byte. This
+removes the indexed loads, type checks and loop from each field's preview
+setup. The standalone core grows by 20 bytes, with no arena change.
+Ordinary slave payload remains 6,088 bytes; runtime is 43,440, diagnostic
+runtime 109,768 and the controlled combat fixture 109,884.
+
+A before/after binary comparison matches every player/owner byte across
+1,760 fields, all four configurations, PAL/NTSC, short input pulses,
+command changes and world-boundary impulses. Both traces hash to
+64886d032276507a8e0e1c8a2256b06393b6ceaabeeb64d5422be55222b421e8.
+The cached/native comparison still avoids 1,136 of 1,824 native previews
+and rejects 52 duplicate fields. Batch tests pass 1,200 fields and 954
+command yields; loop tests retain native exit-once and balanced exclusion;
+36 lifecycle calls pass. All build variants assemble.
+
+The geometry-exit batch test initially failed only after code moved. A
+write trace identified native pixel plotting at h0+$82a2/$82a6 modifying
+synthetic code at $174b8..$17544: the fixture's $10000 code placement
+overlapped bitmap addresses retained in the captured game state. Relocating
+standalone runtime code to $100000, outside that drawing surface, fixes
+this test collision. The committed binary had passed despite the overlap;
+that passing result did not prove code-memory isolation. The corrected
+batch, loop and lifecycle runs use the relocated fixture. This is a harness
+layout correction, not an alteration to native drawing or runtime behavior.
+
+In `fixed-anchor-cost-ntsc-000`, sampled player-owner self cost falls from
+335,714 / 115 calls (2,919.25 cycles/call) to 264,032 / 115 (2,295.93),
+about 21%; its share falls from 2.81% to 2.21% of the 100-field profile.
+The full `fixed-anchor-world-fire-ntsc-000` run matches selected state at
+all 61 world boundaries, 43 native next-pose forecasts and rocket release
+at world 64, without history loss, time discard, rebase or scheduler fault.
+All 1,449 common consumed controls match; raw TR_RELATIVE mismatches remain
+recorded, with only inactive actor countdowns/C732 excluded from actor state.
+Actual worlds 20..80 span 1,201 native fields (2.99750 Hz). Completion lag
+remains 24..43 fields (400..717 ms), with ten-world rolling rates ranging
+2.81690..3.15789 Hz. Near-target average throughput does not close C9c,
+prove display latency, or accept broader scene/CPU timing gates.

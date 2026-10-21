@@ -3,9 +3,16 @@
 EM_COUNT equ 10
 EM_SIZE equ EM_COUNT*4
 
-; Emit executable fixed-type field operations and the public layout table
-; from the same list. Types/offsets are immutable; no per-field dispatch.
+; Emit distribution (mode 1), anchor copies (mode 2), or the public layout
+; table (mode 0) from one list. Types/offsets never require runtime dispatch.
 EM_ITEM MACRO
+ IFEQ EM_EMIT_CODE-2
+ IFNE (\2)&1
+ move.w \1(a0),\1(a1)
+ ELSE
+ move.b \1(a0),\1(a1)
+ ENDC
+ ELSE
  IFNE EM_EMIT_CODE
  moveq #0,d0
  moveq #0,d1
@@ -64,6 +71,7 @@ EM_ITEM MACRO
  addq.l #4,a0
  ELSE
  dc.w \1,\2
+ ENDC
  ENDC
  ENDM
 

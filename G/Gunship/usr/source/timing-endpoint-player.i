@@ -211,19 +211,11 @@ endpoint_player_step_body:
 	ENDC
 	lea EP_ANCHOR(a6),a0
 	lea EP_WORK_CANDIDATE(a6),a1
-	lea endpoint_motion_fields(pc),a2
-	moveq #EM_COUNT-1,d1
-.anchor:
-	move.w (a2)+,d0
-	btst #0,1(a2)
-	beq .byte
-	move.w (a0,d0.w),(a1,d0.w)
-	bra .next
-.byte:
-	move.b (a0,d0.w),(a1,d0.w)
-.next:
-	addq.l #2,a2
-	dbf d1,.anchor
+	; Copy only anchored motion, retaining current command/non-motion bytes.
+	; The same fixed-field list generates distribution and the public table.
+EM_EMIT_CODE SET 2
+	EM_FIELDS
+EM_EMIT_CODE SET 0
 	; Native +0939c reads the PREVIOUS coarse speed before +09674
 	; replaces it. It belongs to the flight anchor, despite being derived.
 	; Feeding the last field preview back here changes configuration-2 power.

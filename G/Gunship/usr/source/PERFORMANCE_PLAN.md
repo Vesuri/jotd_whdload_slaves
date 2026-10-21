@@ -944,6 +944,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     route retains all 61 selected states and no time/input loss; actual rate
     improves to 2.98013 Hz over 1,208 native fields, with 27..49 fields of lag.
     Responsiveness and broader rate acceptance remain open.
+    Direct anchor copies from the same fixed-field list then reduce sampled
+    player-owner cost by 21%. The matched NTSC 68000 run completes all 61
+    selected state comparisons without time/input loss, at 2.99750 Hz over
+    1,201 native fields. Lag remains 24..43 fields; the near-target average
+    does not accept responsiveness or the wider timing matrix.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL
