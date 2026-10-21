@@ -30,7 +30,7 @@
  CUSTOM1 selects one of the preset passwords in the WHDLoad startup options.
  CUSTOM accepts a user-defined password; see the format and examples below.
  CUSTOM2=1 enables "Enhanced framerate". It is off by default; omit CUSTOM2
- or use CUSTOM2=0 for original timing and rendering.
+ or use CUSTOM2=0 for original timing. Visual bug fixes apply in both modes.
 
  With Enhanced framerate, 68020+ machines with suitable Fast RAM render as
  fast as they can while retaining vsync. The simulation advances in fixed
@@ -43,7 +43,8 @@
  NoCache is specified. A 68000 with suitable Fast RAM can benefit from faster
  rendering while retaining the original simulation. Chip-only machines and
  unavailable/unsuitable optional memory use the original path. Input,
- loading and ECS/AGA border fixes also apply when CUSTOM2 is off.
+ loading, distant/mirror bike visibility, hill projection and ECS/AGA border
+ fixes also apply when CUSTOM2 is off.
 
  Performance (emulated PAL, first race, 500 fields of full throttle):
  -----------------------------------------------------------------
@@ -115,6 +116,7 @@ Source: GameWinners.com ,  http://www.gamewinners.com
  - optional Enhanced framerate for smoother, vsynced play on Fast RAM Amigas
  - consistent simulation speed on the accelerated path, with reduced visible
    steering lag and corrected opponent lane occupancy
+ - fixed distant and mirror bike flicker and vertical jumps on hills
  - fixed joystick steering recentring and keyboard/CD32 pause handling
  - fixed a loading crash on uncached 68030 machines
  - blanked the border during play on ECS/AGA machines

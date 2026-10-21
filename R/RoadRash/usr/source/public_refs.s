@@ -759,4 +759,12 @@ public_main_helper_refs:
  IFD public_ref_latency_13
  dc.l public_ref_latency_13-_base
  ENDC
+ dc.l visual_ref_0-_base
+ dc.l visual_ref_1-_base
+ dc.l visual_ref_2-_base
+ dc.l visual_ref_3-_base
+ dc.l visual_ref_4-_base
+ dc.l visual_ref_5-_base
+ dc.l visual_ref_6-_base
+ dc.l visual_ref_7-_base
  dc.l -1

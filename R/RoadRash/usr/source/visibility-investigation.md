@@ -1,5 +1,10 @@
 # Rider visibility investigation (2026-10-21)
 
+**Follow-up, 2026-10-22:** the user subsequently authorized fixing these inherited
+bugs in both framerate modes. [Implementation and validation](visual-fixes.md)
+supersede the historical no-patch/evaluation-only disposition below.
+
+
 Both reported forms of flicker reproduce in the untouched v2.0 game as well as
 3.0b with Enhanced framerate enabled. The reproduced disappearances originate
 in the native visibility decisions, before drawing. No enhancement regression

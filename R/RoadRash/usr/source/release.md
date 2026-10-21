@@ -119,3 +119,12 @@ Evidence is retained under ignored `tmp/dev/tmp/g-*`: `g-checks.json`,
 `g-smoke-*`, `g-visible-result.json`, and `g-installer-native/result.json`.
 The release directory has its own complete file/hash manifest. The Makefile's
 normal build and harness normal build are byte-identical.
+
+## Original visual fixes, 22 October follow-up
+
+The same 3.0b version/date now includes stable distant/mirror rider visibility
+and corrected hill projection in both CUSTOM2 modes. See [visual-fixes.md](visual-fixes.md)
+for implementation, replay equivalence and unchanged measured throughput.
+The updated installer is built under `tmp/dev/tmp/release-3.0b-visual-final/`;
+its manifest records the exact source and slave hashes. Earlier archive hashes
+in this document describe the preceding build.

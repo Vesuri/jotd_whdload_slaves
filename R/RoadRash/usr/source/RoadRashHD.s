@@ -546,10 +546,15 @@ PatchLoader2:
 	jsr (a0)
 	ENDC
 .no_c:
+	ENDC
+; Install render correction after the native simulation geometry is copied.
+	move.l expansion_memory(pc),a1
+	lea pl_visual_height(pc),a0
+	move.l _resload(pc),a2
+	jsr (resload_Patch,a2)
 	IFD C_PUBLIC_MAIN
 ; The native 68000 path also benefits from public code and stack placement.
 	bsr public_main_init
-	ENDC
 	ENDC
 	movem.l	(a7)+,d0-d1/a0-a2
 	jmp	(a1)
@@ -591,6 +596,7 @@ pl_messages_main
 
 pl_main
 	PL_START
+	PL_P $9E2C,visual_actor_visibility
 	PL_PS $2874E,enable_border_blank
 	PL_IFC2
 	IFD VERIFY_C_SEED_RNG
@@ -646,6 +652,8 @@ pl_main
 	PL_NOP	$2F116,2
 	PL_END
 	
+
+	include visual_fixes.s
 
 ; Enable ECS/AGA border blanking whenever the main display is installed.
 ; Both BPLCON0 copper moves must retain ECSENA, including the bottom blank.

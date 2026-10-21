@@ -1,5 +1,10 @@
 # Track-height projection investigation (H1)
 
+**Follow-up, 2026-10-22:** the user subsequently authorized fixing these inherited
+bugs in both framerate modes. [Implementation and validation](visual-fixes.md)
+supersede the historical no-patch/evaluation-only disposition below.
+
+
 Completed 2026-10-21. H1c is an evaluation only, as requested: no correction
 has been applied to the slave, release archive or running game.
 

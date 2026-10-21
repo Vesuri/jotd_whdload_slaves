@@ -703,7 +703,7 @@ explicit agreement; physical cache/coherency validation remains D1d.
   installer, reproducible `make dist`, independently extracted installer archive
   with current sources, and a coherent release commit. See [release.md](release.md).
 
-### H. Post-release visual investigations — complete (H1c evaluation only)
+### H. Post-release visual investigations and fixes — complete
 
 - **H1 Investigate track-height projection discontinuities — complete.** The recording
   `Screen Recording 2026-10-21 at 23.14.20.mov` shows the player bike and road
@@ -712,7 +712,7 @@ explicit agreement; physical cache/coherency validation remains D1d.
   frames, including a 79-recording-pixel drop between frames 10 and 11. Smaller
   similar jumps also occur in an untouched v2.0 hill capture; this does not yet
   establish the cause or whether the enhancements amplify it by itself. The
-  completed investigation is in [height-projection-investigation.md](height-projection-investigation.md).
+  completed investigation is in [height-investigation.md](height-investigation.md).
   - H1a Complete: compared matched early and later hills in v2.0 and both CUSTOM2
     paths. A native arithmetic model exactly matches road geometry, projected
     road heights and player draw Y in all 6,794 consecutive render snapshots.
@@ -733,6 +733,18 @@ explicit agreement; physical cache/coherency validation remains D1d.
   motion. No enhancement-caused regression was found; behavior is unchanged.
   See [visibility-investigation.md](visibility-investigation.md) for the native
   code paths, runtime evidence, provenance and limits of the comparison.
+
+- **H3 Fix the inherited visual defects — complete.** Authorized after H1/H2;
+  applies in both CUSTOM2 modes. See [visual-fixes.md](visual-fixes.md).
+  - H3a Replace distant-rider and mirror visibility thresholds with full-position
+    comparisons; retain the original projection indices and speed-dependent
+    close-behind rule. Both reproduced flicker intervals are stable.
+  - H3b Align the fractional height term with the following track interval;
+    retain wrap handling and native simulation geometry. Road, actors, scenery
+    and clipping share the corrected render reference, without added latency.
+  - H3c Validate both modes, track wraps/reloads, airborne/crash sequences,
+    full-race state/event/finish/restart equivalence, CPU fallbacks and throughput;
+    update the 3.0b readme and rebuild the installer.
 
 ### Order and milestones
 1. A1–A4, then B1–B3: harness and fixes. Milestone: verified references.
