@@ -874,7 +874,9 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C8a. When a render takes longer than a tick (the 68000 in heavy scenes), run overdue
     world ticks back to back up to a fixed bound. The player path still consumes every
     field.
-  - C8b. Drop and report excess time. Pause, the map, menus and disk loads disable sampling,
+  - C8b. Drop and report excess time. Exhausting the world allowance now
+    yields to rendering with unread input and clock phase retained; only
+    oversized field snapshots enter excess-time recovery. Pause, the map, menus and disk loads disable sampling,
     discard unread active history, and rebase, so they create no catch-up debt.
   - C8c. Reset prediction and player-step history at camera cuts, mission start, death and
     landing.
@@ -889,7 +891,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     collective and joystick pulses now matches the same selected state on
     68020/060 and on 68020 with main drawing replaced by a field wait.
     Retained input records also agree. Full object state, combat, 68000 and
-    the broader no-draw matrix remain open.
+    the broader no-draw matrix remain open. The 68000 active route fails
+    equality under overload. Separating render-budget yields from true
+    excess-time rebases reduces dropped time, but backlog discards remain;
+    this is not accepted as cross-CPU equality.
   - C9b. **Rate:** world ticks per second within a stated bound of 3.000, measured against
     the emulated clock, on PAL and NTSC, in all windows.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and

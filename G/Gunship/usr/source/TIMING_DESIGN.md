@@ -5558,3 +5558,38 @@ only subsets of the full elapsed interval; the reported counts are common
 retained fields, not a claim that every field was archived. These comparisons
 cover selected authoritative state, not all pointer-backed objects. Combat,
 68000, the broader no-draw matrix and full C9a acceptance remain open.
+
+
+### Render-budget yield versus excess-time recovery
+
+The field-scheduled active-flight route on 68000 fails C9a: at world 100,
+153 input-history records had been discarded, TC_DROPPED was 242 fields,
+and player position/reserves differed from the 68020. No producer overflow
+was reported. Inspection found that a world-budget stop inside a snapshot
+was handled like an oversized field backlog: both scheduler outcomes returned
+-2 and the foreground owner suspended/rebased, discarding unread input.
+
+`timing_runtime_batch` now distinguishes these cases using TS_EXCESS. When
+only the world allowance is exhausted, it clears the remaining snapshot
+budget metadata, retains the unread queue and clock phase, and returns 5.
+The loop draws once and then takes a fresh snapshot. It does not reset the
+player interval, commands or prediction state. A genuinely oversized field
+snapshot still returns latched -2 and follows explicit excess-time recovery.
+The shared four-world allowance between draws remains enforced.
+
+Assembled tests compare 60-field PAL/NTSC sequences consumed with one-world
+and eight-world batch allowances, including controls/commands, player,
+endpoint state and clock. Repeated render yields retain every field and
+produce identical results. The existing 1,200-field batch comparisons and
+954 command-budget yields pass, as do 15 loop-control scenarios and the
+PAL/NTSC loop/reference cases with batches 1/3/10/80. The 80-field overload
+cases retain their documented discard behavior. Ordinary, runtime,
+VERIFY/runtime and input/runtime builds assemble.
+
+The live 68000 rerun still fails the equality gate: at world 100, history
+discards are 109 and TC_DROPPED is 89 fields. This removes unnecessary
+world-budget rebases but does not solve sustained overload. Evidence is in
+`tmp/dev/tmp/c/world-active-{000,yield-000}`. The 68020 regression run,
+`world-active-yield-020`, retains all input with no scheduler fault; 818
+common retained control records and player/RNG/mission/alive state at worlds
+100..102 match its pre-change run. The 68000 C9a/C9b gates remain open.

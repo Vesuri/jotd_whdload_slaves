@@ -48,6 +48,8 @@ timing_runtime_loop:
  beq .modal
  cmpi.l #4,d0
  beq .end
+ cmpi.l #5,d0
+ beq .present
  cmpi.l #-2,d0
  beq .excess
  bra .fault

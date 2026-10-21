@@ -3,7 +3,7 @@
 ; a0=prepared, activated arena; d0=field budget 1..128,
 ; d1=world budget 1..8, d2=command budget per reader 1..128.
 ; Return 0 snapshot drained, 1 command-budget yield, 2 retained lifecycle
-; command, 3 script modal, 4 flight ended, -2 excess time, -1 fault,
+; command, 3 script modal, 4 flight ended, 5 render yield, -2 excess time, -1 fault,
 ; -3 invalid admission. Preserve all other registers.
 ; A retry after 1/2 resumes the delivered field, never a new snapshot.
 ; Fault/excess/end/modal stay latched until explicit lifecycle resolution.
@@ -73,7 +73,7 @@ timing_runtime_batch:
  tst.l d0
  beq .drained
  cmpi.l #-2,d0
- beq .excess
+ beq .budget
  cmpi.l #1,d0
  bne .failed
 .consume:
@@ -97,6 +97,17 @@ timing_runtime_batch:
  move.w #5,RT_BATCH(a6)
 .fault:
  moveq #-1,d0
+ bra .done
+.budget:
+ ; A world allowance is a fairness bound, not evidence of excess time.
+ ; Keep unread records and clock phase; the next batch resnapshots them
+ ; after drawing. Only an oversized field snapshot requires a rebase.
+ tst.w RT_SCHEDULER+TS_EXCESS(a6)
+ bne .excess
+ clr.w RT_SCHEDULER+TS_FIELDS(a6)
+ clr.w RT_SCHEDULER+TS_TICKS(a6)
+ clr.w RT_BATCH(a6)
+ moveq #5,d0
  bra .done
 .excess:
  move.w #6,RT_BATCH(a6)
