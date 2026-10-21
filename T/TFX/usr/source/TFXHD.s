@@ -3571,6 +3571,9 @@ isqrt_040:
 ; (rising) or does not (falling), so the walk is ADD.W/DBcc per pixel and the
 ; colour a byte counter. Rows spanning more than 8 + width/4 colours (many short
 ; runs per long) or stepping a colour per pixel keep the line buffer and c2p.
+; Within that span |rc-lc| < 2^23, so dcdx comes from the high long of
+; |rc-lc| * ceil(2^32/(width+1)) (gf_recip): with error e < width+1, the product
+; stays exact while |rc-lc| * e < 2^32, and the sign gives DIVS.L's truncation.
 
 ; Emit the run that ends with D1 = pixels left after it - 1 (or 0 to the end of
 ; the long): D0 = run mask, D5/D6 = start/L of the next run, D1 = gf_or offset.
@@ -3643,16 +3646,9 @@ GF_LONGS macro
         bra.w   .yloop
         endm
 
-gouraud_fill_040:
-        movem.l d0-d7/a0-a6,-(sp)
-        lea     64(sp),a2               ; scan table, inline after the return
-        move.w  ([_logbase_ptr,pc]),d4
-        move.l  ([_screen1_ptr,pc],d4.w),a3
-        move.w  a5,d4                   ; y
-        mulu.w  #rowbytes,d4
-        add.l   d4,a3                   ; a3 = row
-        lea     gf_or(pc),a0
-        lea     gf_offsets(pc),a4
+; The rows of one call: A2 = scan table, A3 = first row, A0/A4 = gf_or/gf_offsets,
+; and with \1 = 1 A5 = gf_recip (68060: \1 = 0, DIVU.L, as 64-bit MULU.L traps).
+GF_BODY macro
 .yloop:
         moveq   #16,d2
         move.l  (a2)+,d0
@@ -3663,29 +3659,41 @@ gouraud_fill_040:
         blt.w   .done
         move.l  (a2)+,d2                ; lc
         move.l  (a2)+,d3
-        sub.l   d2,d3
+        sub.l   d2,d3                   ; rc-lc
         move.l  d3,d4
         bpl.s   .abs
-        neg.l   d4
+        neg.l   d4                      ; |rc-lc|
 .abs:
-        clr.w   d4
-        swap    d4                      ; colour span |rc-lc| >> 16
-        move.l  d1,d5
-        lsr.l   #2,d5
-        addq.l  #8,d5
-        cmp.l   d5,d4
+        move.l  d4,d5
+        clr.w   d5
+        swap    d5                      ; colour span |rc-lc| >> 16
+        move.l  d1,d6
+        lsr.l   #2,d6
+        addq.l  #8,d6
+        cmp.l   d6,d5
         bhi.w   .steep                  ; more than 8 + width/4 colours
-        moveq   #1,d4
-        add.l   d1,d4
-        divs.l  d4,d3                   ; dcdx = (rc-lc)/(width+1)
-        move.l  d3,d4
+        ifne    \1
+        move.l  d1,d6
+        subq.l  #1,d6
+        cmp.l   #GF_WIDTHS-2,d6
+        bhi.w   .wide                   ; width 1, or wider than gf_recip
+        mulu.l  (a5,d1.l*4),d5:d4       ; |rc-lc|/(width+1), exact for this span
+        else
+        moveq   #1,d6
+        add.l   d1,d6
+        divu.l  d6,d4                   ; |rc-lc|/(width+1)
+        move.l  d4,d5
+        endc
+.quot:
+        move.l  d5,d4
+        tst.l   d3
+        bpl.s   .qpos
+        neg.l   d4                      ; truncated toward zero, as DIVS.L
+.qpos:
+        move.l  d4,d3                   ; dcdx
         asr.l   #1,d4
         add.l   d4,d2                   ; lc+dcdx/2
-        move.l  d3,d4
-        bpl.s   .dabs
-        neg.l   d4
-.dabs:
-        cmp.l   #$ffff,d4
+        cmp.l   #$ffff,d5
         bhi.w   .steepfill              ; a colour step per pixel or more
         moveq   #-32,d4
         and.l   d0,d4
@@ -3702,6 +3710,12 @@ gouraud_fill_040:
         GF_LONGS cs,addq
 .falling:
         GF_LONGS cc,subq
+        ifne    \1
+.wide:
+        move.l  d4,d5                   ; width 1: the quotient is |rc-lc|
+        tst.l   d1
+        beq.w   .quot
+        endc
 .steep:
         moveq   #1,d4
         add.l   d1,d4
@@ -3710,7 +3724,7 @@ gouraud_fill_040:
         asr.l   #1,d4
         add.l   d4,d2
 .steepfill:
-        movem.l a0/a2-a4,-(sp)
+        movem.l a0/a2-a5,-(sp)
         lea     linebuf(pc),a0
         lea     (a0,d0.l),a1
         move.l  d1,d5
@@ -3724,12 +3738,40 @@ gouraud_fill_040:
         add.l   d0,d1
         move.l  a3,a1
         bsr     copy_linebuf_part
-        movem.l (sp)+,a0/a2-a4
+        movem.l (sp)+,a0/a2-a5
         lea     -rowbytes(a3),a3
         bra.w   .yloop
 .done:
         movem.l (sp)+,d0-d7/a0-a6
         rts
+        endm
+
+; Entries: gouraud_runs for tfx.020 (scan stream inline at SP+4, y in A5) and
+; gouraud_runs_c for TFX (C arguments: y at 4(SP), scan table at 8(SP)), as the
+; gouraud_fill_new/gouraud_fill pair they replace.
+gouraud_runs:
+        movem.l d0-d7/a0-a6,-(sp)
+        lea     64(sp),a2               ; scan table, inline after the return
+        move.w  a5,d6                   ; y
+        bra.s   gr_start
+gouraud_runs_c:
+        movem.l d0-d7/a0-a6,-(sp)
+        move.l  68(sp),a2               ; scan table
+        move.w  66(sp),d6               ; y
+gr_start:
+        move.w  ([_logbase_ptr,pc]),d5
+        move.l  ([_screen1_ptr,pc],d5.w),a3
+        mulu.w  #rowbytes,d6
+        add.l   d6,a3                   ; a3 = row
+        lea     gf_or(pc),a0
+        lea     gf_offsets(pc),a4
+        btst.b  #AFB_68060,attnflags+3(pc)
+        bne.w   gr_body_div
+        lea     gf_recip(pc),a5
+gr_body_mul:
+        GF_BODY 1
+gr_body_div:
+        GF_BODY 0
 
 
 ; DoRotPt0's two-component delta point ($59748, about 1,100 per frame): the
@@ -4060,7 +4102,7 @@ pl_fpu_new_render_040:
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new
         PL_P    $500dc,draw_line_strip_new
-        PL_P    $4f840,gouraud_fill_040 ; Gouraud rows as runs of one colour
+        PL_P    $4f840,gouraud_runs     ; Gouraud rows as runs of one colour
         PL_P    $4f9f8,texture_fill
         PL_L    $6c534,$e9c136c5 ; bfextu d1{27:5},d3
         PL_L    $6c538,$78209843 ; moveq #32,d4 / sub.w d3,d4
@@ -4757,7 +4799,7 @@ needs_fpu_patches
     dc.b    0
     cnop    0,4
 
-; gouraud_fill_040: per colour, OR the run mask D0 into the planes of its set
+; gouraud_runs: per colour, OR the run mask D0 into the planes of its set
 ; bits and go back to (A6). Entries are 4 bytes per set bit (2 for plane 4, whose
 ; displacement is zero) plus the JMP.
 GF_SIZE macro
@@ -4789,6 +4831,19 @@ GF_C    set     0
         GF_PLANE 7
         jmp     (a6)
 GF_C    set     GF_C+1
+        endr
+
+; gouraud_runs: ceil(2^32/n) for n = width+1 = 2..GF_WIDTHS, indexed by
+; width-1 (entry 0 unused). vasm evaluates in 32 bits: with q, r = divmod($7fffffff, n),
+; floor((2^32-1)/n) = 2q + (2r+1)/n.
+GF_WIDTHS = 320
+        cnop    0,4
+gf_recip:
+        dc.l    0
+GF_N    set     2
+        rept    GF_WIDTHS-1
+        dc.l    2*($7fffffff/GF_N)+(2*($7fffffff-($7fffffff/GF_N)*GF_N)+1)/GF_N+1
+GF_N    set     GF_N+1
         endr
 ;============================================================================
 
