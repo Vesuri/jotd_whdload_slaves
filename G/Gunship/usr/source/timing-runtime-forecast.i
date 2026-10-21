@@ -75,6 +75,7 @@ timing_runtime_forecast_reset:
  adda.l #RT_FORECAST,a0
  clr.l RF_EVENT(a0)
  clr.w RF_ACTOR_SAFE(a0)
+ clr.w RF_PRESENT_SAFE(a0)
  adda.w #RF_TAPE,a0
  bsr forecast_tape_reset
  movea.l (sp)+,a0
@@ -406,6 +407,40 @@ timing_runtime_forecast_actors:
  bra .done
 .bad:
  moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d7/a0-a6
+ rts
+
+
+; a0=arena, same foreground contract. Return identity-checked predicted mask
+; or -3 rejected. RF_PRESENT_COORDS is renderer-only, never native publication.
+; Uses the completed-world AC anchor; guided-release replacement is separate.
+timing_runtime_forecast_present:
+ movem.l d1-d7/a0-a6,-(sp)
+ movea.l a0,a6
+ movea.l a0,a5
+ adda.l #RT_FORECAST,a5
+ clr.w RF_PRESENT_SAFE(a5)
+ bsr timing_runtime_forecast_actors
+ tst.l d0
+ bmi .done
+ move.l d0,d3
+ move.l RT_CLOCK+TC_TICKS(a6),d0
+ moveq #0,d1
+ move.w RT_CLOCK+TC_PHASE(a6),d1
+ moveq #0,d2
+ move.w RT_CLOCK+TC_RATE(a6),d2
+ lea RT_ACTOR_PRESENT(a6),a0
+ lea RT_ACTOR_GENERATIONS(a6),a1
+ lea RF_PRESENT_COORDS(a5),a2
+ lea RF_ACTOR_NEXT(a5),a3
+.present_base:
+ lea .present_base(pc),a4
+ adda.l #actor_present_build_forecast-.present_base,a4
+ jsr (a4)
+ tst.l d0
+ bmi .done
+ move.w d0,RF_PRESENT_SAFE(a5)
 .done:
  movem.l (sp)+,d1-d7/a0-a6
  rts

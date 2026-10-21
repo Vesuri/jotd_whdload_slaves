@@ -944,7 +944,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     and 37 injected selector disagreements reject. The combined runtime actor
     forecast reproduces 20 recorded Hellfire endpoints, including both known
     retargeting errors, and rejects seven ambiguous states in explicitly
-    normalized drained-boundary fixtures. Future input uncertainty,
+    normalized drained-boundary fixtures. A runtime presentation adapter now
+    applies certified endpoints through the existing identity/discontinuity
+    checks; 1,072 PAL/NTSC fractions and both retarget-path fixtures pass.
+    Future input uncertainty,
     frame-loop dispatch, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input

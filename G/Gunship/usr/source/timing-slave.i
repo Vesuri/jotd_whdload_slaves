@@ -10,7 +10,10 @@ timing_runtime_dispatch:
  bne .done
  movea.l a1,a0
  lea timing_runtime_hunk_table(pc),a1
- bsr timing_runtime_hunks
+.hunks_call:
+ lea .hunks_call(pc),a3
+ adda.l #timing_runtime_hunks-.hunks_call,a3
+ jsr (a3)
  tst.l d0
  bne .status
  movea.l 4.w,a6
@@ -43,7 +46,10 @@ timing_runtime_dispatch:
  bne .active
  lea timing_runtime_hunk_table(pc),a1
  move.l d7,d0
- bsr timing_runtime_prepare
+.prepare_call:
+ lea .prepare_call(pc),a3
+ adda.l #timing_runtime_prepare-.prepare_call,a3
+ jsr (a3)
  tst.l d0
  bne .status
  movea.l timing_runtime_arena(pc),a0

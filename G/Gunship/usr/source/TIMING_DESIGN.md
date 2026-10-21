@@ -8055,3 +8055,43 @@ is an integration replay, not proof of real frame-loop scheduling, visual
 near-pass quality or acceptable cost. All four builds pass: ordinary 6,088,
 experimental 46,144 and diagnostics 112,474 bytes (+102). The preview call
 uses a position-independent long displacement to stay valid on the 68000.
+
+
+### Identity-checked forecast presentation adapter (C6d)
+
+`actor_present_build_forecast` accepts a freshly certified endpoint array and
+safe-slot mask while retaining the existing completed-world capture. It
+shares the original forward-fraction implementation and every generation,
+allocation, eligibility, coordinate, vertical-state, actor-byte, lifecycle,
+tick and phase check. Only the old captured-selector comparison is bypassed: its
+replacement endpoint already used the certified future selector. The original
+`actor_present_build` retains that comparison. Neither entry modifies the
+capture or input endpoints; invalid external masks/null endpoints reject before
+output writes.
+
+`timing_runtime_forecast_present` combines forecast construction/certification,
+actor preview and this adapter. It writes only private `RF_PRESENT_COORDS` and
+`RF_PRESENT_SAFE`; the latter is cleared before attempts and on lifecycle
+retirement. The arena grows by 38 bytes to 56,906. The adapter uses the
+completed-world anchor; guided-release overrides and actual frame-loop
+publication remain separate and unfinished. Near-pass visual error and live
+cost have not yet been accepted.
+
+Both original and forecast presentation tests pass 1,072 PAL/NTSC fractions
+with repeated calls, 133 slot barriers, five stale-capture cases and clock
+rejections. The original rejects 72 changed-selector dependencies; the new
+entry uses the external endpoint in those 72 cases while preserving other
+checks. Four invalid mask/pointer cases reject atomically. Runtime fixtures
+for retarget worlds 27 and 45 advance held-control player motion between
+queries and verify the corrected actor path at initial, middle and last
+pre-deadline samples, repeat-call stability and generation-change suppression.
+Native data remains unchanged by presentation; fixture advancement is explicit
+and separate. Exact-range lifecycle retirement also passes. Evidence is
+`test_actor_present_c.py`, `test_actor_present_forecast_c.py`,
+`runtime-forecast-present-test.json` and retirement tests in the ignored harness.
+
+The added early presentation code exceeded two loader BSR displacement ranges.
+Those calls now use 68000-compatible position-independent long displacements.
+The loader-dispatch regression passes 19 calls, including allocation/gating
+and cleanup, without native writes. All four builds pass: ordinary 6,088, experimental 46,322 and diagnostics
+112,652 bytes (+178).

@@ -73,6 +73,30 @@ actor_present_capture:
 ; 20 NTSC), measured FROM the completed tick, never one tick behind.
 actor_present_build:
  movem.l d1-d7/a0-a6,-(sp)
+ clr.l -(sp)
+ clr.l -(sp)
+ bra actor_present_build_common
+
+; Same clock/capture/identity contract, plus a3=36 certified endpoint bytes
+; and d3=safe-slot mask from a freshly evaluated selector-fed actor preview.
+; Caller owns selector/impulse agreement and serialized immutable inputs.
+; Bypass ONLY the old captured-selector equality test: the new endpoint
+; already uses the forecast selector. All other discontinuity checks remain.
+; No AC or endpoint writes. Reject invalid masks before touching output.
+actor_present_build_forecast:
+ cmpa.w #0,a3
+ beq .bad_mask
+ cmpi.l #63,d3
+ bhi .bad_mask
+ movem.l d1-d7/a0-a6,-(sp)
+ move.l d3,-(sp)
+ move.l a3,-(sp)
+ bra actor_present_build_common
+.bad_mask:
+ moveq #-3,d0
+ rts
+
+actor_present_build_common:
  cmpi.l #50,d2
  beq .rate
  cmpi.l #60,d2
@@ -112,6 +136,10 @@ actor_present_build:
  divu.w #3,d2
  andi.l #$ffff,d2 ; interval length
  move.w AC_SAFE(a6),d7
+ tst.l (sp)
+ beq .mask_ready
+ move.w 6(sp),d7
+.mask_ready:
  movea.l AC_PREVIEW(a6),a0
  movea.l AP_H0(a0),a0
  adda.l #$ba08,a0
@@ -132,6 +160,8 @@ actor_present_build:
  move.l 0(a5,d5.w),d0
  cmp.l AC_GENERATIONS(a6,d5.w),d0
  bne .reject
+ tst.l (sp)
+ bne .selector_ready
  ; Native bit-7 steering reads AA0A..AA15 unless bit-3/4 modes win first.
  ; A different selector invalidates only dependent homing slots. Capture
  ; it in AC, not the shared AP workspace reused by guided-release previews.
@@ -181,6 +211,10 @@ actor_present_build:
  dbf d4,.bytes
  lea AC_CURRENT(a6,d5.w),a0
  lea AC_NEXT(a6),a1
+ tst.l (sp)
+ beq .endpoint_ready
+ movea.l (sp),a1
+.endpoint_ready:
  adda.w d5,a1
  lea 0(a4,d5.w),a2
  moveq #2,d4
@@ -213,5 +247,6 @@ actor_present_build:
 .bad:
  moveq #-3,d0
 .done:
+ addq.l #8,sp
  movem.l (sp)+,d1-d7/a0-a6
  rts
