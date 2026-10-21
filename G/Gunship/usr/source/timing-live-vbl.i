@@ -69,6 +69,7 @@ timing_vbl_install:
 ; Interrupt-only entries: MOVE SR is legal in the native VBL server.
 ; Return exactly the native SUBQ.B flags even when suppressing its store.
 ; Native zero guards remain before each site; no saturation is added here.
+; Historical label: +4296 is hit flash/audio response, not weapon reload.
 timing_vbl_timer_weapon:
  move.w sr,-(sp)
  movem.l d0/a0-a1,-(sp)

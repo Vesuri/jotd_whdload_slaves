@@ -6604,3 +6604,33 @@ match the independently replayed native field animation and rebased world
 schedule. No paused time advances animation. This is state/timing coverage,
 not pixel/scanout continuity, active reload timers, natural destructive hits,
 other effect types or full lifecycle acceptance.
+
+### Active guidance launch restriction across pause/resume
+
+The timer inventory distinguishes the native hit-response byte h6+$4296
+from the firing-related player byte +4A and the occupied guided slot. Neither
+of those first two bytes is established as an ammunition reload gate. The
+explicit projectile admission check at +09A84 requires h0+$BA0E=-1; guidance
+field state eventually releases that slot. See PLAYER_STATE_INVENTORY.md for
+writer/reader addresses and the still-incomplete wider admission audit.
+
+`anchor-guidance-pause-pal-020` and `anchor-guidance-pause-ntsc-060` pause the
+controlled rocket shortly after launch, with slot 5 occupied and guidance
+counter 8/10 respectively. For 120 emulator fields, guidance bytes, actor/
+player data, masks, sampled timers and prediction state remain frozen.
+Resume retains the guidance counter. Every subsequent consumed field is
+observed: the counter advances to 30, then 31, then $FF; only that last step
+clears the slot to $FFFF and disables guidance. Release takes exactly
+32-initial_counter fields: 24 PAL (0.48 s) / 22 NTSC (about 0.367 s) after
+resume. No paused field advances it and no history loss/scheduler fault is
+observed through release. This preserves native field counts, not an assumed
+video-independent duration in seconds.
+
+After release the runner presses fire. The next observed world tick, 21,
+allocates slot 4 alongside the existing slot 5 (mask $20→$30), and ammunition
+falls from six to five on both setups. Thus the released condition actually
+permits a new native world-owned launch; it is not only a changed counter.
+All observations use the current hash-checked controlled runtime, headless
+shared FS-UAE and disabled host mouse. This is one occupied-slot restriction
+and subsequent launch, not full weapon reload/arming, guidance collision,
+all weapons, scanout, or C9 duration acceptance.

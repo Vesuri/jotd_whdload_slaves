@@ -1010,6 +1010,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     controls agree, and that raw mismatch remains recorded. Natural guided
     hits, destructive damage, other effects, reload and the remaining
     duration/CPU/video matrix are still open.
+    The occupied-guidance-slot launch restriction now has live pause/resume
+    coverage on PAL 68020/NTSC 68060. Its counter freezes, releases after the
+    exact remaining 24/22 consumed fields, and permits a new launch at world
+    21 with one ammunition decrement. The earlier h6+4296 timer label means
+    hit response, not reload; other weapon admission/reload conditions remain
+    under audit. This does not close the overall weapon-duration requirement.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.

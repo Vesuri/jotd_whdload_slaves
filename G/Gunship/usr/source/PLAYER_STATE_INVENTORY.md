@@ -292,6 +292,29 @@ runs once per delivered field. Installation must remove the original VBL
 writes and coordinate cosmetic readers, which can need pre-decrement values.
 No native VBL hook is changed yet. See TIMING_DESIGN.md for comparison scope.
 
+### Firing restrictions: distinguish counters from reload timing
+
+The three VBL bytes above are hit/ground responses, not ammunition reload
+counters. In particular, the runtime label `timing_vbl_timer_weapon` for
+hunk 6 +4296 is historical naming; its native writers are hit-response code.
+
+Player +4A is set to 50/114 by firing at +0996C..+09976, decremented once
+per world at +05644..+0564C, and added to a damage-path comparison at
++09D0C..+09D2E. This inspected use does not establish a weapon reload gate.
+The ammunition path +07C1C reads/decrements the selected byte in hunk 6
++1558, returning failure at zero; this is a quantity check, not a timer.
+
+One explicit projectile-launch restriction is hunk 0 +BA0E: +09A84 requires
+it to be -1 before the selected projectile path proceeds. Construction sets
+it to the occupied slot at +0BBB4. Field-driven guidance at +0A1C8 uses
++A44D as its counter; at 30 it advances to 31 and requests completion, then
+clears +BA0E to -1, disables guidance and sets the counter to -1 after the
+pending handshake clears. `field_guidance_advance` supplies that handshake
+on the next consumed field independently of drawing. This is a shared
+occupied-slot restriction, not proof of a generic fixed reload delay for
+all weapons. The weapon entry also checks +9C42 at +097A8; its full writer
+catalogue and remaining firing/arming restrictions still need auditing.
+
 ### Render-produced flight-end flag: plane reduction checkpoint
 
 The shared byte at hunk 6 +3958 is cleared by render +05C28 and overwritten
