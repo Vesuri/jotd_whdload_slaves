@@ -922,10 +922,18 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C9d. **Player path:** C4e's equivalence on every CPU, over all input combinations at
     several initial rates.
   - C9e. **Durations in play:** fuel, mission clock, weapon reload, lamp blink and effect
-    lifetimes, per second. Live fire probes verify that a rising edge reaches
-    the due native weapon callback, but the current diagnostic routes have
-    not demonstrated an allocated projectile. Weapon duration/combat gates
-    remain unproven; CRT/map transitions must be accounted for explicitly.
+    lifetimes, per second. A CRT ordering defect is fixed: automatic map
+    fallback now follows world-owned target selection, so intervening draws
+    cannot undo pending targeting transitions. A PAL type-8 projectile route
+    now matches motion, lifetime, allocation/generation and selected world
+    state across 68020/060 for worlds 20..80; both release it at world 64.
+    All 1,225 common retained input records match without loss or discards.
+    A 68020 field-wait repeat matches the same authoritative state and expiry
+    with 1,226 matching input records. Raw differences remain recorded for
+    unused animation countdowns (cross-CPU) and projection scratch (no-draw).
+    Impacts,
+    effect lifetimes, reload, slot reuse and the remaining duration/CPU/video
+    matrix are still open.
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.

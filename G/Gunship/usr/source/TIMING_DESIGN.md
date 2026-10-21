@@ -5732,3 +5732,45 @@ contains the native launch path rather than only the map transition. This is
 the first live occupied-slot evidence for this fixture, not yet weapon-impact,
 lifetime or cross-CPU acceptance. Diagnostic inputs and initialization remain
 in ignored harness files; the fix applies only to the enhanced runtime.
+
+### PAL occupied-projectile lifetime across CPUs and rendering policies
+
+`capture_launch_lifetime_c.py` stops the setup route at f:500, before the first
+scheduled input on either CPU. It selects FFAR at fields 240/244 and pulses
+fire at 300/304 and 320/324, without the CRT command. It captures every world
+20..80. Each run verifies the effective slave hash and records its listing
+hash. `world-fire-lifetime-020` and `world-fire-lifetime-060` share 1,225
+retained control records with exact equality, zero lost/discarded history or
+commands, zero dropped clock fields and zero scheduler faults.
+
+Across all 61 snapshots, the $2D6-byte player/split-object block, allocation
+masks, slot generations, RNG, mission payload, alive table and countermeasure
+bytes match. The full actor range agrees except the six countdown bytes at
++C724..+C729. Slot 5 has type 8 and lifetime 44 at world 20, lifetime 1 at
+world 63, and is released with type/lifetime zero at world 64 on both CPUs.
+Coordinates and lifetime agree throughout; no impact or effect morph occurs.
+The six countdowns decrement even for empty slots; type 8 does not enter the
+animator, which tests type bit 0. Their differing initial values therefore
+do not affect this fixture, but raw differences remain in launch-comparison.json.
+This is not an acceptance claim for odd-type effects or blanket permission to
+exclude countdown differences from later tests.
+
+`world-fire-lifetime-nodraw-020` uses the same initialized combat fixture,
+replacing only the main draw call with a field wait. Native world visibility
+rasterization remains active. Its 1,226 common control records match the drawn
+68020 run, with the same zero-loss checks. All listed authoritative ranges and
+projectile release at world 64 match. The only actor-range difference at some
+worlds is +C732: native renderer stores a drawing value there at +BCBE,
++BCDA or +BD10 and reads it at +BDB4 before masking to six bits. It is retained
+in the raw report rather than silently masked. The six countdowns also agree in this same-CPU comparison.
+
+The earlier `world-launch-matched-060` CRT-command route also matches selected
+state and allocation with `world-crt-fixed-020`, but both intentionally rebase
+and discard history during the CRT command; it is not the loss-free fixture.
+The first `world-crt-fixed-060` attempt stopped before input injection because
+setup had already passed field 240. It is not a comparison run.
+
+These checks establish one PAL projectile's motion and natural expiry across
+two CPUs and a field-wait presentation policy. They do not cover impact,
+effect conversion, slot reuse, reload, other weapons, NTSC, or the rendered
+68000 overload gate. No ordinary-build timing is enabled by this evidence.
