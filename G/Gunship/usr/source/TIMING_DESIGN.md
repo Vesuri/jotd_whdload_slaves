@@ -7161,3 +7161,16 @@ suite. Results are retained under ignored `tmp/dev/tmp/c/decoy-slot-*.json`.
 This removes an unrelated-projectile freeze in the private prediction path;
 live decoy visuals and the separate near-view homing/retarget gate remain
 open.
+
+The subsequent `test_decoy_presentation_c.py` covers these real contact sets
+through `actor_present_capture`, `actor_present_build` and `scene_state_build`,
+using independent native +0BED4 execution for expected movement endpoints.
+PAL/NTSC anchors 0/1/2/22 exercise normal deadline remainders and a partial
+release interval: 176 captures, 2,926 views and 5,852 repeated builds pass.
+All contacted coordinates stay committed, while 2,625 views contain motion
+in unrelated slots. Scene coordinates match the certified fractions. Memory
+hooks allow only the respective output (36-byte poses or 54-byte scene) and
+stack writes; no unexpected writes occur. Native state, capture cache and
+generations remain unchanged. This closes the assembled presentation-path
+check for mixed decoy contacts, without claiming live raster or scanout
+coverage. Result: `tmp/dev/tmp/c/decoy-presentation-pipeline-test.json`.
