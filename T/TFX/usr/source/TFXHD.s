@@ -962,17 +962,13 @@ copy_changed_blocks:
         dbf     d0,.init
         rts
 .compare:
-        move.w  #bplbytes*8/16-1,d0
+        move.w  #bplbytes*8/8-1,d0
 .block:
         cmpm.l  (a1)+,(a2)+
         bne.b   .diff1
         cmpm.l  (a1)+,(a2)+
         bne.b   .diff2
-        cmpm.l  (a1)+,(a2)+
-        bne.b   .diff3
-        cmpm.l  (a1)+,(a2)+
-        bne.b   .diff4
-        lea     16(a0),a0
+        lea     8(a0),a0
         dbf     d0,.block
         rts
 .diff1:
@@ -982,22 +978,16 @@ copy_changed_blocks:
 .diff2:
         subq.l  #8,a1
         subq.l  #8,a2
-        bra.b   .write
-.diff3:
-        lea     -12(a1),a1
-        lea     -12(a2),a2
-        bra.b   .write
-.diff4:
-        lea     -16(a1),a1
-        lea     -16(a2),a2
 .write:
-        rept 4
+        rept 2
         move.l  (a1)+,d1
         move.l  d1,(a0)+
         move.l  d1,(a2)+
         endr
         dbf     d0,.block
         rts
+        ; Keep all following code/data at the original addresses.
+        dcb.b   90-(*-.compare),0
 delta_shadow: dc.l 0
 delta_seen: ds.b 8
         even

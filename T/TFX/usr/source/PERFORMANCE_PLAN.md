@@ -497,3 +497,26 @@ This small emulator gain is not a hardware-speed claim. Enabled measurement has
 zero FPSP entries/cache flushes. Normal/CHIP_ONLY builds, CPU/render-option gates,
 unchanged FPSP binaries and original 060 edge/FPU instructions are verified.
 The 20 fps hardware objective remains open.
+
+
+Cache-balanced retained copy refinement: compare/write 8-byte units instead of
+16-byte units. First-use initialization and two-buffer shadow invalidation are
+unchanged. The shortened loop retains its old 90-byte footprint with unreachable
+padding; every other slave code/data byte is identical to the prior build.
+
+With exactly one same-address/same-length code write on BOTH sides, and identical
+startup game hunks plus reported CPU registers, the 2,000-field pair improves
+601 to 607 publications (+1.00%, 15.025 to 15.175 nominal fps). Its short prefix is
+80 to 81 (16.0 to 16.2). CPU chip writes fall 3,110,105 to 2,139,708; these are
+logical writes, not physical bus cycles. Both measured paths have zero FPSP
+entries and cache flushes during the window; setup flushing occurs before it.
+
+Verification: 80 full-buffer/history/guard/pointer cases, four checker negative
+controls, five full displayed-plane/PNG comparisons through 57 controlled updates
+with next-field DMA and shadow-coherence checks, CPU/render-option gates and
+normal/CHIP_ONLY builds. FPSP files and all code outside the copy loop are unchanged.
+Evidence: `balanced-eight-off/on`, `delta-eight-*` under `tmp/dev/tmp/opt20/`.
+The earlier 4-byte candidate remains discarded; it passed native correctness but
+its performance needs symmetric remeasurement before any hardware recommendation.
+Revalidation of the earlier retained edge/projection margins is still pending.
+The hardware target remains unverified.
