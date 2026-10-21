@@ -7025,3 +7025,41 @@ across views and distances. It neither certifies future selectors nor
 justifies declaring C6d complete. The next useful evidence is a rendered
 sequence spanning these retarget boundaries, including nearer projectiles;
 retain the two raw native-pose mismatches when judging continuity.
+
+
+### Completed rendered frames across Hellfire retargeting
+
+`capture_hellfire_frames_c.py` observes the current `selector-combat.slave`
+after the native draw returns, without screenshot commands that advance a
+field. The fixed seed and field-stamped key-6/fire route match the earlier
+Hellfire runs. Headless sessions have host mouse input disabled. Captures
+`hellfire-frames-pal-020` and `hellfire-frames-pal-060` retain respectively
+16 and 33 completed frames over worlds 24..30, including all five bitplanes,
+the arena and native hunks. The bitmap address is checked against native
+h0+$0BA2's table at `40*(h6:$4BB0 xor 1)`, the just-completed buffer after
+native +044C2 flips the index. This is completed-buffer evidence, not proof
+of the field in which scanout displays that buffer.
+
+`analyze_hellfire_frames_c.py` reprojects the saved presentation scene through
+native actor geometry; `audit_hellfire_frames_c.py` compares every result
+with the actual native actor draw coordinates left at h0+$A448/$A44A.
+All 49 frames match exactly. Native cell selection rebases camera X/Y, so
+replay must restore the original RT_PRESENT_SCENE before running +05C2E;
+reusing the already-rebased post-draw camera applies the conversion twice
+and produces invalid results. The earlier endpoint measurement started
+from the full native camera and did not make that mistake.
+
+Both CPUs' last world-27 frame draws at (159,60); the first world-28 frame
+returns to (157,62). Completed-frame spacing is 9 PAL fields (180 ms) on
+the 020 and 6 fields (120 ms) on the 060. The 060 world-27 sequence is
+(157,60), (157,60), (158,60), (158,60), (159,60), then the correction.
+Thus there is a measured two-pixel horizontal reversal, accompanied by a
+two-pixel vertical change, rather than an unverified claim of seamless
+motion. The captured bitplanes/contact sheet retain the surrounding scene.
+All sampled clock-discard, history-loss and command-loss/discard counters
+remain zero. Reports are `retarget-frame-audit.json` in each capture directory.
+
+This closes the uncertainty about what this recorded retarget boundary
+actually drew. It does not establish a general error bound, near-projectile
+behavior, NTSC continuity, or scanout latency; C6d and full C9 remain open.
+No production behavior or authoritative motion changed in this measurement.

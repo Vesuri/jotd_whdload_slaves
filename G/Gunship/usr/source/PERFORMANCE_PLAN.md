@@ -867,8 +867,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     retargeting or its visual continuity; both mismatches remain recorded.
     Native projection replay now measures a two-pixel horizontal endpoint
     correction at world 27 in both PAL 020/060 next-tick cameras; neither
-    world-45 pose reaches pixel drawing. Actual displayed-frame continuity
+    world-45 pose reaches pixel drawing. Scanout continuity
     and a bound across views/distances remain unverified.
+    Completed-frame captures now verify the world-27→28 transition at
+    (159,60)→(157,62) on both PAL CPUs, with 9/6 fields between completed
+    020/060 frames. All 49 projected poses match native draw coordinates;
+    this confirms a small reversal on this route, not general continuity.
   - C6d. **Ground vehicles move slowly; projectiles do not.** If a 333 ms prediction horizon
     shows visible errors for projectiles, move their free flight to field rate under C4's
     rules, keeping hits and damage on world ticks. Measure this before doing it.
