@@ -1,3 +1,45 @@
+## Separating input exposure from speed: proposed acceptance clarification
+
+The remaining one-, two- and three-field diagnostic cadences are now complete.
+Together with the earlier varying run, each matches the fixed-four reference
+on all 1595 common hashes, sound events and six captured regions. The one-field
+case skips drawing, as in earlier C tests. Normal candidate bytes are unchanged.
+Evidence: `c-approved-lane-motion-v3-period{1,2,3,4,0}-state` and
+`c-approved-lane-motion-cadence-summary.json`. Full lifecycle and visible response
+validation remain outstanding for this candidate.
+
+`c-approved-motion-exposure-comparison.json` independently accumulates applied
+throttle delta from the actor's throttle flag in the retained passive traces.
+It asserts normal riding before cursor 500 and compares 100 common exposures
+(4 through 400 fields), without altering inputs, game state or the test window.
+For the displacement candidate, the maximum absolute distance difference from
+corrected B across those checkpoints is 0.075772%. At 400 applied fields, B
+travels 2412512 units and the candidate 2410684; player speeds are 10384/10373.
+The committed control travels 2395125 (-0.720701% at that endpoint); its initial
+four-field distance is 37.5% below B's coarse endpoint convention.
+
+This distinguishes simulation integration from input exposure. At B cursor
+102 the new throttle has already affected four fields; at C cursor 102 it has
+affected two. C applies the first recorded throttle at cursor 101. Backdating
+C input to reproduce B would contradict the retained historical-input design.
+The result is limited to this player/normal-riding trace. It is not evidence
+that every CPU, braking transition, terrain path or crash duration is correct.
+
+**Proposal, awaiting user approval; A4a is not changed:** use the existing ±1%
+distance tolerance to compare completed simulation states after identical
+applied input durations, with documented start/end boundaries and no change
+to game input timing. Retain the original fixed-live-field measurements as
+reported regressions/diagnostics. Independently require the existing visible
+response safeguards, 50 Hz elapsed-time accounting, no dropped time, and exact
+cadence-invariant simulation outcomes. Repeat the relevant hardware and
+movement-path checks before accepting a corrected timing baseline.
+
+This would separate speed calibration from the intentionally corrected input
+semantics. It would not approve this private candidate automatically, relax
+latency, permit backdated input, or declare C complete. If the original live-field
+rule is retained as the sole gate, the candidate continues to fail default 020
+and NoCache, and further implementation work is required.
+
 ## Reference displacement after the lane-width correction
 
 A new private candidate applies the earlier compact four-field endpoint
@@ -53,8 +95,9 @@ changed bytes occupy file offsets $4f28..$4f33; all other bytes match. Default
 020 measures 12.4 fps and NoCache 8.3, with unchanged distances 3324779/3315004.
 There is no measured throughput gain, so this variant is not promoted.
 
-Both candidates remain private. Full handling/lifecycle/response checks and
-the other cadence intervals have not been run on them. Production remains
+Both candidates remain private. At this checkpoint full handling/lifecycle/response
+checks and the other cadence intervals had not been run; the later entry above
+records completion of the remaining cadence checks. Production remains
 7475cfc6, with its five failing distance cells; C remains incomplete.
 
 ## Approved lane-width correction: integration validation
