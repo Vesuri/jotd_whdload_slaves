@@ -407,7 +407,29 @@ This follows AmigaXDev `docs/playbooks/fixed-time-simulation.md` and
 the world kept its intended 10 Hz and the player's own motion became responsive (that
 project's `docs/timing-design.md`, design D, and its phase-9 gate in `docs/internals.md`).
 
-**Status: design selected; production timing unchanged, native input diagnostics tested.**
+**Status (2026-10-21): paused at user request; C remains incomplete.**
+
+The experimental runtime implements a 3 Hz world, field-rate input/player
+motion and forward presentation. The ordinary build still retains native
+timing; all enhancements remain behind the default-off **Enhanced framerate**
+CUSTOM1 option. The historical checkpoints below describe incremental work,
+not current release acceptance.
+
+Resume priority is an end-to-end playable, responsive 68020/68060 result.
+Forecast micro-optimization and the 68000 matrix have consumed too much effort
+without closing that result. Next, measure the current normal-startup flight
+experience on 020/060, consolidate the remaining release blockers, and simplify
+expensive prediction where native behavior can be preserved. The fresh
+normal-startup check was planned but has not run. Existing requirements,
+including 68000 validation, are not waived or marked complete.
+
+Current concrete limitations: guided prediction remains expensive; the NTSC
+68000 guided route first discards time at world 41 despite the latest
+constructor optimization. Broader collision, prediction/near-pass, lifecycle,
+input-to-scanout and full-world equality acceptance remains open. Do not
+interpret selected-state equality or lower instruction counts as completion
+of those gates. See the latest sections of TIMING_DESIGN.md for reproducible
+evidence and diagnostic-only controls.
 
 Implementation checkpoint: standalone clock/history cores are committed and
 tested, including instruction-boundary producer interruption. Diagnostic native

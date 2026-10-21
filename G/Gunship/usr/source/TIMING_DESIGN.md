@@ -8357,3 +8357,32 @@ builder-private-comparison}.json`, `forecast-ranges-combat-pal-060/
 installed-forecast-cold-profile.json`, and `guided-private-ntsc-000` in the
 ignored harness. All four builds pass: ordinary 6,088, experimental 46,636,
 diagnostics 112,966 bytes (+8 for runtime builds).
+
+
+### Pause and resumption priorities — 2026-10-21
+
+Work paused at the user's request after `ee9e1679`. C is not complete or
+production-enabled. The user questioned whether the work had become a rabbit
+hole or was being held to overly strict targets. The response acknowledged
+that guided-prediction machinery and 68000 optimization had displaced the
+original faster-Amiga usability objective. This changes work order, not the
+acceptance requirements or the native world-endpoint handling decision.
+
+On resumption, prioritize current normal-startup 68020/68060 responsiveness
+and frame rate, a concise release-blocker inventory, and a usable end-to-end
+enhanced mode. Keep 68000 failures visible rather than allowing them to
+consume every iteration. No fresh normal-startup run was launched before
+this pause; the previous live evidence uses the documented controlled routes.
+
+The last read-only hotspot replay of one installed PAL 060 frame (world 29)
+used 49,014 instructions, with 33,832 in two scene-collection calls. Frequent
+sites include the native coordinate transform loop at +5EC8 and vertex
+projection at +6642. That is an investigative lead, not proof that those
+calculations may be removed. No scene-collection optimization was committed.
+The ignored harness retains `profile_forecast_scene_c.py` and
+`forecast-ranges-combat-pal-060/scene-hotspot-profile.json`.
+
+The committed builder optimization, equality results and NTSC 000 overload
+remain as documented above. The T-74/68060 copy-protection graphics issue
+remains deferred. Commit each coherent change; use the same CUSTOM1 master
+gate for every future enhancement.
