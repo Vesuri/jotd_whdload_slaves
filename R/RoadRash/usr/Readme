@@ -45,6 +45,8 @@
  - collision checks avoid redundant writes to already-clear actor flags
  - simulation derives rider lean during pose selection, avoiding a second
    traversal of the actor list
+ - calibrates one-field displacement to the original four-field movement
+   convention without changing acceleration or backdating controller input
  - normalizes road movement for 50 Hz simulation, retaining fractional
    motion and resetting it across crashes, actor reuse and new races
  - collision checks skip road-width and edge drawing calculations; rendering

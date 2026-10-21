@@ -61,6 +61,17 @@ C_PHYSICS_FAST = 1
 	ENDC
 	ENDC
 
+; Match the reference four-field movement convention with one-field updates.
+; Diagnostics opt in explicitly; runtime selection uses the common C gate.
+	IFD VERIFY_C_REFERENCE_MOTION
+REFERENCE_MOTION = 1
+	ENDC
+	IFD C_RUNTIME_ONLY
+	IFND REFERENCE_MOTION
+REFERENCE_MOTION = 1
+	ENDC
+	ENDC
+
 ; The enhanced runtime uses an optional WHDLoad-managed Fast RAM stack.
 ; Keep the legacy diagnostic define as an explicit test-build opt-in.
 	IFD VERIFY_C_FAST_STACK
@@ -602,6 +613,10 @@ pl_c_simulation
 ; object's depth/lateral checks have accepted it.
 	PL_NOP $B2E8,6
 	PL_PSS $B326,step_object_width,2
+	ENDC
+	IFD REFERENCE_MOTION
+	PL_P $B4A4,reference_motion_begin
+	PL_P $B4D2,reference_motion_displacement
 	ENDC
 	IFD C_STEERING
 	IFD C_ROAD_TIMING

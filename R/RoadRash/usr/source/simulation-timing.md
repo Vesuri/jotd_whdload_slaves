@@ -1,18 +1,105 @@
-## Approved separation of speed and latency checks — 2026-10-21
+## Current displacement calibration and acceptance — 2026-10-21
 
-The user selected “Separate speed and latency checks” in response to the
-explicit A4a proposal. The plan now applies the unchanged ±1% speed tolerance
-at completed simulation boundaries after equal applied input durations.
-Original fixed-live-field results remain reported diagnostics. Input is not
-backdated; the visible-response safeguards, 50 Hz elapsed-time accounting,
-no-dropped-time rule and cross-cadence simulation comparisons remain required.
-This supersedes the pending-approval status in earlier entries, not their data.
+The user approved separating A4a speed calibration from latency. The unchanged
+±1% distance tolerance now compares completed simulation boundaries after
+identical applied input durations. Original fixed-live-field measurements remain
+diagnostics; input is never backdated. Visible-response safeguards, 50 Hz
+elapsed-time accounting, no dropped time and cadence invariance remain required.
+This acceptance supersedes earlier pending-approval and live-field-gate status
+statements below; the historical measurements retain their original scope.
 
-The default-020 exposure trace and candidate validation below do not by
-themselves establish every hardware cell's speed calibration. Those comparisons
-must be completed before promoting the displacement candidate. The approval
-also does not erase the distinction between controlled wreck-boundary coverage
-and an unmodified natural wreck. Production is unchanged; C remains open.
+The integrated normal runtime is 20,616 bytes, SHA-256
+`5f2484e2b880cd73a8334239f00139d33391d8e16baafa325abdbe97ae5eed19`.
+It is byte-identical to the displacement candidate validated below. The full
+fixed-period diagnostic also matches its tested candidate byte-for-byte.
+`VERIFY_C_REFERENCE_MOTION` selects the correction explicitly for diagnostics;
+the older `REFERENCE_MOTION` define remains compatible. Runtime selection follows
+the common CPU/Fast-RAM/CUSTOM2 gate. The new include is a Makefile dependency.
+
+Normal movement uses
+`max(0, new_speed + floor(3*new_speed/2) - floor(3*old_speed/2))`.
+For constant acceleration, four unit updates reproduce the original delta-4
+endpoint convention. This changes displacement only, with no new input delay,
+acceleration/gear changes or persistent fractional actor state. The two movement
+hooks save old speed on the stack and restore stack/register state before
+returning to the relocated physics. This does not claim exact agreement with
+every variable-delta B trajectory, especially during startup and collisions.
+
+### Equal-exposure hardware calibration
+
+Fresh normal-binary B/C traces use the passive-read debugger, corrected committed
+B (SHA `6892f327…ba10bf3`, CUSTOM2=3), the integrated C binary (CUSTOM2=1),
+and each cell's original cache policy. Input is applied at live field 100.
+At every completed movement boundary, player throttle flags determine accumulated
+applied fields. Position increments are checked against the saved displacement,
+including the first increment from position 524288; normal-riding flags are
+asserted throughout the comparison window. No input times are modified.
+
+The endpoint rule, set before the matrix completed, is the last common completed
+boundary at or before 400 applied throttle fields (8 seconds). B's variable steps
+produce endpoints at 398–400 fields; each pair has exactly equal exposure.
+This extends the earlier default-020 400-field calibration, before terrain
+interferes. All earlier common checkpoints are retained, not filtered for success.
+
+| Cell | Applied fields | B distance | C distance | Difference |
+|---|---:|---:|---:|---:|
+| `030-50` | 399 | 2401052 | 2400287 | -0.031861% |
+| `030-50+cache` | 399 | 2395872 | 2400287 | +0.184275% |
+| `040-25` | 399 | 2395852 | 2400287 | +0.185112% |
+| `040-25+cache` | 399 | 2395852 | 2400287 | +0.185112% |
+| `060-50` | 400 | 2402794 | 2410684 | +0.328368% |
+| `060-50+cache` | 400 | 2402794 | 2410684 | +0.328368% |
+| `a1200-fast` | 400 | 2412512 | 2410684 | -0.075772% |
+| `a1200-fast+cache` | 398 | 2387544 | 2389906 | +0.098930% |
+| `a1200-fast+nocache` | 400 | 2412512 | 2410684 | -0.075772% |
+
+All nine accelerated cells meet ±1% at these documented endpoints. The maximum
+absolute error is 0.328368%. The tolerance is a distance calibration over this
+window, not a promise that every startup checkpoint is within 1%: configurations
+whose first B step is three fields show a 16.667% relative difference at that
+small first displacement. The four-field reference matches the default/NoCache
+020 startup; the corrected C trajectory is independent of rendering cadence.
+The existing default-020 comparison still passes all 100 common 4–400-field
+checkpoints with maximum error 0.075772%.
+
+Evidence: ignored `c-approved-exposure-matrix/{cell}/{b,c}/result.json`,
+`comparison.json`, `summary.txt`; tools `approved_exposure_matrix_c.py` and
+`compare_exposure_matrix_c.py`. All 18 processes completed successfully.
+The original 490-live-field candidate diagnostics retain -1.1762% default-020
+and -1.4668% NoCache-020 differences; those were not changed into passes.
+
+### Response, throughput and cost
+
+The identical candidate's eight-phase visible response remains 180/160/140/120 ms
+repeated on cached 020 (median 150, maximum 180) and 140/120 ms repeated on 040
+(median 130). Each phase meets its same-cell B limit. These are captured-field
+estimates with one PAL-field boundary uncertainty, not exact host-input latency.
+No scheduler change was introduced to improve the old live-field diagnostic.
+
+Normal throughput remains A500 8.5, Chip-only 020 12.5, Fast 020 default/Cache
+12.5, NoCache 8.3, 030 16.7, 040 22.8 and 060 23.3 fps. This completes C's
+independent simulation, not D–F's performance targets; cached 020 and NoCache
+still render slower than B. A500/Chip fallbacks match B's sampled states,
+deltas, distance and throughput exactly. Both MMU functional cells pass with
+data-cache emulation disabled; real-hardware cache/timing claims remain excluded.
+
+Fresh read-only probes surround complete simulation steps near field 300:
+
+| CPU cell | Samples | Approximate median step | Observed range |
+|---|---:|---:|---:|
+| Fast 020 | 54 | 7.69 ms | 7.18–8.59 ms |
+| NoCache 020 | 63 | 8.91 ms | 8.53–9.74 ms |
+| 030/50 | 49 | 4.94 ms | 4.55–5.06 ms |
+| 040/25 | 39 | 3.91 ms | 3.46–4.81 ms |
+| 060/50 | 39 | 3.59 ms | 3.33–4.55 ms |
+
+These estimates convert PAL beam lines using 312 lines/20 ms and have line-level
+resolution. They are small-workload emulator observations, not worst-case bounds
+or hardware cycle measurements. Raw beam/field/cursor snapshots and provenance
+are retained in `c-approved-motion-{wait,cost-window}-*/windows.json` and
+`c-approved-motion-step-cost.json`. Native wait/swap/publication is unchanged.
+The field-590 040 B/C scenes were reviewed: road, rider, HUD and backdrop remain
+intact; road/opponent positions differ consistently with the corrected motion.
 
 ## Displacement candidate: controlled wreck-boundary coverage
 

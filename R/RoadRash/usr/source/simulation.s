@@ -349,6 +349,13 @@ step_hashes:
 
 	ENDC
 
+; Keep diagnostic patch targets within the WHDLoad signed-word reach and
+; the helper returns within PC-relative reach of the Fast RAM physics copy.
+	IFD VERIFY
+	IFD REFERENCE_MOTION
+	include reference_motion.s
+	ENDC
+	ENDC
 step_start_sprite:
 	move.w step_start_frame(pc),d0
 	move.w d0,8(a0)
@@ -1178,4 +1185,10 @@ step_geometry_reuse:
  rts
 .build:
  jmp step_collision_geometry_code(pc)
+	ENDC
+
+	IFND VERIFY
+	IFD REFERENCE_MOTION
+	include reference_motion.s
+	ENDC
 	ENDC
