@@ -907,7 +907,11 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     equivalent (2,048 cases). A selector-fed private actor entry now reproduces
     all next Hellfire poses in 44 admitted branches across worlds 27..46,
     including both original errors, without native writes. Neither helper is
-    installed in presentation yet. Broader input
+    installed in presentation yet. Forecast profiling verifies 64% fewer
+    player instructions with the existing exact cache; a new collection-only
+    scene entry saves another 3% of collection work with identical full
+    candidate blocks in 108 views. These are offline instruction counts,
+    not live frame-rate acceptance. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.

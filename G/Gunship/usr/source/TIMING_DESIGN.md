@@ -7594,3 +7594,39 @@ single-candidate pipeline. It does not change their behavior in the installed
 runtime, prove cheap online certification, or satisfy the field-rate
 projectile and near-view acceptance gates. Those remain required before
 production activation.
+
+
+### Forecast cost reference and collection-only scene entry (C6d)
+
+`measure_homing_forecast_cost_c.py` counts every executed guest instruction,
+including cloned/native helpers, over the 27 captured intervals. Setup is
+reported separately. Using the existing exact-input player cache reduces the
+54 forecast/oracle interval replays from 2,600,166 to 931,907 player-step
+instructions (64.16%). Both complete player outputs and all 108 compared
+camera/candidate views are identical with and without the cache. This is
+instruction work, not CPU cycles, elapsed Amiga time or an FPS claim.
+
+The new `scene_target_candidates_step` shares validation and collection with
+`scene_target_step`, but stops at the pre-overlay candidate boundary. It
+skips projectile overlay traversal and the save/restore of candidate state
+needed by the original helper's flight-end evaluation. It returns zero for
+successful collection, never a flight-end flag; errors retain the original
+contract. It uses private memory only and does not replace the original
+helper for callers needing that flag.
+
+On the 108 recorded views, collection instructions fall from 1,876,776 to
+1,817,472 (3.16%). Full 168-byte target blocks match the original helper on
+every view, including two-candidate cases. The native scene regression passes
+48 scenes, write isolation, reused workspaces and invalid layouts through
+both entries. Its injected late-overlay test confirms the new entry omits
+that overlay while returning the same candidate block; the original still
+reports the injected flight-end result. All four builds assemble: ordinary
+6,088, experimental 43,896, diagnostics 110,226 bytes. The new entry adds
+30 bytes and no arena storage.
+
+Reports: ignored `homing-forecast-cost-{uncached,cached,candidates-only}.json`.
+This cost reference still replays an entire interval and traverses a scene;
+certifying multiple impulse branches adds work beyond one forecast. It is
+not suitable evidence to install that entire workload every field. Cache
+reuse, dependency-triggered recomputation and measured live cost remain
+required, alongside C6d's motion/continuity gates.

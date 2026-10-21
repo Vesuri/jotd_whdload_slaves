@@ -89,6 +89,17 @@ scene_target_prepare:
 ; Only private scene/target/stack writes. Previous target identity is retained.
 scene_target_step:
  movem.l d1-d7/a0-a6,-(sp)
+ clr.l -(sp)
+ bra scene_target_common
+
+; Same inputs, but only collect pre-overlay target candidates. Return 0 on
+; success; never interpret it as a flight-end flag. No overlay traversal or
+; SCT_SELECTION copy is needed when the caller wants only the candidate list.
+; Geometry/visibility dependencies and private-write rules remain unchanged.
+scene_target_candidates_step:
+ movem.l d1-d7/a0-a6,-(sp)
+ move.l #1,-(sp)
+scene_target_common:
  movea.l a0,a6
  tst.l SCENE_H0(a6)
  beq .scene_bad
@@ -124,6 +135,8 @@ scene_target_step:
  jsr (a0)
  lea $60a8-SCENE_START(a6),a0
  jsr (a0)
+ tst.l (sp)
+ bne .candidates_done
  ; Native panel selection is at this boundary, before projectile overlays.
  movea.l SCT_TARGET(a6),a0
  lea WT_STATE(a0),a0
@@ -145,11 +158,15 @@ scene_target_step:
  move.b $62(a5),d0
  andi.w #1,d0
  bra .done
+.candidates_done:
+ moveq #0,d0
+ bra .done
 .scene_bad:
  moveq #-1,d0
  bra .done
 .bad:
  moveq #-3,d0
 .done:
+ addq.l #4,sp
  movem.l (sp)+,d1-d7/a0-a6
  rts
