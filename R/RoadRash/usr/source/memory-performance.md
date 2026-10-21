@@ -122,3 +122,59 @@ regions. Finish occurs at field 16,042 and exit at 16,231; both restart with
 clear capture/fraction state. A separate older tape ends in arrest and also
 matches across both cadences (7,006 hashes, 19 events); it is not the accepted
 finish tape and is not compared as though its inputs were identical.
+
+## Main-image relocation investigation (D3, not yet enabled)
+
+The native `rr.ice` output is a single HUNK_CODE image, not a flat binary
+without relocation information. Capturing it before the loader's relocation
+at `$4936` gives 267,508 bytes, SHA-256
+`f028a869b517fc31dfd57dfdffab0b742901b98b6d0b9cfc70322447a6d72924`.
+Its executable/data payload is `$3c3ec` bytes (246,764), with 5,173 unique,
+even, bounded HUNK_RELOC32 offsets. The sole target at the payload endpoint
+is the heap-start operand at offset 6. Keep that target at the original Chip
+heap `$bc3ec`; it must not follow the CPU image into public RAM.
+
+After native relocation, the relocation block remains at `$bc40c` and its
+offset array starts at `$bc418`. A private prototype copies the already
+patched image and remaps its typed relocation operands, the existing C code
+copies, and explicitly identified slave operands. It preserves the original
+heap and does not reclaim the old image. This is feasibility evidence, not
+a completed allocation, DMA, or module-lifetime audit.
+
+### Numeric alias in the opponent lane table
+
+The six signed coordinates at `$8d128` are followed by a function pointer
+at `$8d134`. Native lane searches permit index 6 (`$8d81e/$8d85a` reject
+indices >= 7). The lookups at `$8db42` and `$8db7e` consequently read the
+high word of that pointer as a seventh coordinate: originally `$0008`.
+Relocating the executable pointer changes that numeric value. The scalar
+lookup and executable pointer must therefore be separated while preserving
+the original seventh coordinate; treating every use as a pointer is wrong.
+
+The uncorrected prototype first differs at simulation tick 9,763, in the
+steering word (+`$46`) of actors 13 and 15. CPU write traces identify
+`$8dba6`, and paired state captures agree through tick 9,762. For actor 13,
+the following steering value changes from -101 to +28 while the divisor
+remains 287. This is a relocation defect, not acceptable RNG variance.
+
+The corrected private lookup preserves coordinate 8. Both fixed and varying
+render cadence reproduce the accepted 16,230 simulation hashes, 72 sound
+events, six terminal state regions, finish field 16,042 and exit field
+16,231. Restart clears the captured simulation/fraction state. No speed or
+latency acceptance criterion was relaxed.
+
+Local evidence: `d-original-hunk` (captured HUNK, typed relocation inventory,
+conservative control-flow inventory and short race DMA sample),
+`d-public-snapshot-{reference,public}` (tick 9,762),
+`d-public-snapshot-next-{reference,public}` (tick 9,763),
+`d-public-writers-{reference,public}` (CPU writes and source table), and
+`d-public-lane-finish-{fixed,vary}` (corrected full races). The earlier
+`d-public-finish-*` / `d-public-v2-finish-*` results are rejected prototypes.
+
+Remaining before promotion: validate the relocation block before changing
+anything; cover all supported slave/copy references; audit DMA over loading,
+menus and race transitions; audit all other modules and loaded assets;
+verify public-memory sizing, placement and fallback; remeasure blitter
+priority; and repeat the final normal-build and functional matrix. D3 is
+still open. Real-hardware cache/coherency validation remains pending by the
+user's explicit choice; emulator validation is the current scope.
