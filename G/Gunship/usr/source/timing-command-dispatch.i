@@ -35,7 +35,9 @@ control_command_class:
 	dc.w $06,CC_WORLD,$07,CC_WORLD,$08,CC_WORLD,$09,CC_WORLD
 	dc.w $0a,CC_WORLD,$0b,CC_WORLD,$804,CC_WORLD,$805,CC_WORLD
 	dc.w $806,CC_WORLD
-	dc.w $45,CC_BOUNDARY,$833,CC_BOUNDARY,$0c,CC_BOUNDARY
+	; Key $0c retires the old speed toggle: default tail-only consumption.
+	; It must not enter a lifecycle boundary or discard the current phase.
+	dc.w $45,CC_BOUNDARY,$833,CC_BOUNDARY
 	dc.w $40,CC_BOUNDARY,$1c,CC_BOUNDARY,$41,CC_BOUNDARY
 	dc.w $37,CC_BOUNDARY,$21,CC_BOUNDARY,$22,CC_BOUNDARY
 	dc.w $34,CC_BOUNDARY,$42,CC_BOUNDARY,$46,CC_BOUNDARY

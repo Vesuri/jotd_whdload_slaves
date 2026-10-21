@@ -7207,3 +7207,45 @@ Earlier `clock-ui-*` and `clock-ui-terminal-*` attempts using debugger-written
 exit flags did not terminate flight and were interrupted; they are excluded
 from UI acceptance. The guest-code exit fixture is the successful method.
 Full C9 scene/rate/latency coverage remains open.
+
+
+### Retired speed key no longer resets simulation phase (C7d)
+
+The old speed-toggle primary for full key word 12 was already suppressed,
+but command classification still called it a lifecycle boundary. The runtime
+therefore suspended and rebased on each press, resetting a partial world
+interval and potentially discarding later queued fields. That contradicted
+retirement with no effect on game speed.
+
+Key 12 now follows default ordinary tail-only consumption. The player reader
+runs the native yaw tail once; the world reader acknowledges it without a
+primary effect. It never enters the lifecycle adapter, whose unreachable
+special case is removed. Full-word modifier handling is unchanged. Ordinary
+native gameplay and the CUSTOM1-off path retain their existing behavior.
+Runtime payload shrinks by 16 bytes to 43,770; ordinary stays 6,088 bytes.
+All four build variants assemble.
+
+`test_retired_speed_clock_c.py` fails on an independently assembled pre-change
+core at the first key-12 command, returning a retained boundary instead of
+completing the batch. Current code passes PAL/NTSC and batch sizes 1/3/10:
+1,440 total fields, 720 retired-key commands, zero additional rebases or lost
+input/time, unchanged D1548/D154A, and identical player/endpoint/actor/clock
+state to ordinary tail-only commands. The world reader is checked at its
+last delivered deadline; unread commands after that deadline are legitimate.
+
+Command regressions pass 1,104 classifications, 2,240 native world-primary
+cases, 396 native lifecycle-command cases, command fault/phase checks,
+retained boundary and nested completion cases, and eight loop-owner cases.
+Boundary fixtures formerly using key 12 now use a real Space display command
+with the panel callback explicitly stubbed; they retain their suspend/resume
+coverage rather than disguising the retired key as a boundary.
+
+The headless installed `retired-speed-live-pal-060` route accepts exactly
+three raw key-$0C presses at producer fields 240/300/320. All 21 captured
+worlds 20..40 preserve the original epoch, have no active time/input loss or
+new rebases, and retain native speed words 6/3. Command records carry no
+lifecycle-completion marker. Evidence is retained in the ignored harness:
+`retired-speed-before.log`, `retired-speed-after.json`, command regression
+reports, and `retired-speed-live-pal-060/retired-speed-audit.json`.
+This resolves C7d's experimental command behavior; production activation and
+other C acceptance gates remain open.

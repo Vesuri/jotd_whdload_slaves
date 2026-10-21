@@ -31,7 +31,7 @@ boundary_commands_prepare:
 ; Return 0 completed, 4 flight ended, -3 not a boundary/invalid binding.
 ; Preserve non-result registers. Execute the native primary/return path,
 ; including its yaw tail where reached.
-; Enhanced key 12 retires only the old speed toggle; its yaw tail remains.
+; Retired speed key 12 is consumed by the ordinary field-owned tail path.
 boundary_command_step:
  movem.l d1-d7/a0-a6,-(sp)
  move.w d0,d7
@@ -41,8 +41,6 @@ boundary_command_step:
  move.l (a1),d0
  beq .bad
  movea.l d0,a1
- cmpi.w #12,d7
- beq .retired
  movea.l a0,a5
  movea.l a2,a4
  move.l a0,-(sp)
@@ -52,8 +50,6 @@ boundary_command_step:
  beq .normal
  moveq #4,d0
  bra .done
-.retired:
- bsr control_target_tail
 .normal:
  moveq #0,d0
  bra .done

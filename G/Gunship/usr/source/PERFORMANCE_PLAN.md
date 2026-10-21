@@ -905,8 +905,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     calls +0475A after committed field motion in map-panel mode 1 and excludes
     that render-prefix mutation while retaining sprite updates and the
     two-buffer drawing countdown. Production activation remains pending.
-  - C7d. Key code 12 (`+04EF2`, `D1548` toggle): retire it, or redefine it as the
-    prediction switch with no effect on game speed.
+  - C7d. **Implemented in the experimental runtime:** key code 12 (`+04EF2`,
+    `D1548` toggle) is retired. It consumes the ordinary field-owned yaw tail
+    and both command readers acknowledge it; it has no world primary or
+    lifecycle boundary. A discovered boundary classification had still reset
+    phase on each press; that is removed. PAL/NTSC assembled checks cover
+    720 presses, and the installed PAL 68060 route confirms three presses
+    with no rebase/loss or change to native speed words (6/3).
   - C7e. Leave the buffer-indexed dirty counters (2 frames = both buffers) as they are.
 - **C8. Catch-up, pause and modal screens.**
   - C8a. When a render takes longer than a tick (the 68000 in heavy scenes), run overdue
