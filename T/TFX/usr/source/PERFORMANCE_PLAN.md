@@ -663,6 +663,29 @@ Budget (estimated-040 savings, before interaction effects):
 
 The emulator total without step 1 is about 24-31%. The goal is achievable only if steps 2-5 deliver close to their estimates. If they don't, report the shortfall rather than reducing detail or simulation work.
 
+Status (2026-10-21). Every code step is complete or rejected; the records follow in the order the work was done.
+
+| Step | Outcome | Measured (est-040 per frame) | Commit |
+|---|---|---|---|
+| 0 | Done: fixtures, A/B method, calib040 ready | - | e60b94e9 |
+| 1 | Built behind CUSTOM1; default FPU until Apollo calibration | integer path -3.9% (emulator +4.2%) | 78330582 |
+| 2 | Done: mask_sprite8_040 | -7.2%, 606 -> 671 publications | 9ae51bb3 |
+| 3 | Rejected: 3b slower both ways; 3c and 3d do not pay off | +0.3% / +2.3% (3b) | 02b67bbf, 011fe90d, 36b55dd4 |
+| 4 | Done: sfd_span_040 | -8.3%, 708 -> 746 | a9b21fbb |
+| 5 | Rejected: fused edge walking | -0.33%, emulator +0.4% | 74953ec5 |
+| 6 | Done: copy compare per cache line | -3.7%, 671 -> 700 | b66a0657 |
+| 7 | Done: fade_cols_040 (cycle-count acceptance) | routine -30.4k (-1.6%) | 617899c7 |
+| 8 | Done: rot_delta2_040 | -1.3%, 689 -> 708 | c0aed2ff |
+| 9 | Done: isqrt_040 (cycle-count acceptance); rest of tail too small | routine -4.8k (-0.29%) | b99c3ca8 |
+| 10 | Emulator: 746/2,000 (18.7 nominal fps), est-040 1.69 M (target 2.0 M met; 800/2,000 not) | - | - |
+
+Open, all waiting for the Apollo:
+- Run calib040 and replace the cost model's constants.
+- Decide step 1's default from the calibrated figures and both settings.
+- Record hardware in-game FPS (CUSTOM4 bit 3) on both fixtures, with the frame-interval
+  distribution (step 10), then step 14.
+- 3c only if the copy loop proves bandwidth-bound on hardware.
+
 Step 0 done (method and fixtures):
 - The baseline profile is frozen: 608/2,000.
 - Same-build noise is ±1 publication, ±0.17% estimated-040 cycles per frame.
