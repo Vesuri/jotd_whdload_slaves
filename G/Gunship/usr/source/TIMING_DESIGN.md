@@ -7309,3 +7309,40 @@ the controlled landing initialization in `lifecycle-current.slave`, so this
 establishes rearm/reload ownership, not natural landing, fuel/ammunition
 accounting or repair acceptance. Those checks and remaining CPU/video
 combinations remain open; production code is unchanged.
+
+
+### Homing retarget dependency: candidate collection (C6d)
+
+A new headless PAL 68060 capture stops immediately before `target_select_step`
+and after each native world 20..47. This uses the earlier
+`selector-combat.slave` to retain comparability with the failing Hellfire
+route, not as validation of later runtime changes. Post-selection snapshots
+alone are insufficient: native +A66A/+A680 clear the candidate count, and
++A612..+A668 overwrite selection/list data. An initial attempt to replay the
+post-state correctly failed and is excluded from the evidence.
+
+The pre-selection snapshots replay through the prepared native selector with
+byte-identical 168-byte output on all 28 distinct worlds (54 baseline replays
+across 27 adjacent pairs). Another 54 replays exchange only the two worlds'
+pixel samples; native hunk memory remains unchanged throughout. At the two
+previously failing forecast intervals:
+
+| Selection world | Input candidate count | Candidate identities | Selected identity |
+| --- | --- | --- | --- |
+| 27 | 2 | 2, $FFFF | 2 |
+| 28 | 1 | $FFFF | $FFFF |
+| 45 | 0 | none | $FFFF retained, invalid status |
+| 46 | 1 | 2 | 2 |
+
+Exchanging the pixel samples across 27/28 or 45/46 does not change these
+results. Thus the observed switches already exist in the collected candidate
+set; refreshing only pixel visibility cannot fix them. This does not prove
+which projection/clipping dependency changes that set, nor that visibility
+pixels never matter on other routes. The next extraction must trace native
+candidate collection/clipping against field player/camera and object state
+before choosing a field-rate steering policy. No new selector is published
+and no projectile state or collision behavior is changed by this experiment.
+
+Evidence: ignored `capture_homing_selection_c.py`,
+`isolate_homing_selection_c.py`, `homing-selection-pal-060/world-*/` before/
+after snapshots, and `homing-selection-isolation.json`. C6d remains open.

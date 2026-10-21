@@ -889,7 +889,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     live route. This rejects using that distant route as general acceptance.
     Native motion extraction must preserve the near-target substep collision
     checks and next-tick selector dependency (inventory in TIMING_DESIGN.md);
-    field-rate projectile integration and near-pass validation remain open.
+    pre-selection captures now isolate both recorded retargets to candidate
+    collection (target 2 leaves/reenters the list), rather than pixel samples.
+    Tracing collection/clipping, field-rate projectile integration and
+    near-pass validation remain open.
 - **C7. Per-frame work that is not presentation.**
   - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation
     `+0BE5A` keeps its field-based timers. Replay countdowns and animation once per
