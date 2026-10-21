@@ -911,7 +911,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     player instructions with the existing exact cache; a new collection-only
     scene entry saves another 3% of collection work with identical full
     candidate blocks in 108 views. These are offline instruction counts,
-    not live frame-rate acceptance. Broader input
+    not live frame-rate acceptance. Read tracing also exposed live player
+    map-cell/view reads; an opt-in private-player binding now removes those
+    dependencies (48 poisoned-input scenes, six positive controls). Other
+    shared model/limit dependencies still need certification. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.

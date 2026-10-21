@@ -7630,3 +7630,47 @@ certifying multiple impulse branches adds work beyond one forecast. It is
 not suitable evidence to install that entire workload every field. Cache
 reuse, dependency-triggered recomputation and measured live cost remain
 required, alongside C6d's motion/continuity gates.
+
+
+### Bind forecast collection to the private player cell/view (C6d)
+
+Read tracing exposed a dependency absent from the explicit camera argument:
+private native collection still read live player X/Y map-cell bytes at
+h6+$3B88/$3B8A through +61C0/+61D2, and acquisition view mode at h6+$3BA2
+through +A4F6. The original committed-view helper correctly uses those shared
+inputs, but a future camera crossing a cell boundary could disagree with
+that player. The earlier recorded route did not exercise that crossing.
+
+`scene_target_player_prepare` now provides an opt-in preparation ABI: the
+original arguments plus A6 pointing to a stable private player record. It
+validates all three original instruction/operand signatures, invokes normal
+preparation, then binds those three cloned loads to the private record's
+bytes 0/2/$1A. The caller updates the record before each step and flushes
+cloned code after preparation. No live operand/player changes are made.
+Camera remains separate because view offsets need not equal player position.
+Original preparation and callers retain their existing committed-view ABI.
+
+Tests compare 48 native scenes against the new binding with the three live
+player bytes deliberately inverted. All candidate blocks remain equal and
+native state is unchanged. Six positive controls show different candidates
+with the old binding under the same inversion. Eighteen single-byte signature
+corruptions reject before destination writes; successful preparation preserves
+registers and binds all three operands exactly. The original 48-scene test
+also passes. All four builds assemble: ordinary 6,088, experimental 44,016,
+diagnostics 110,346 bytes; +120 bytes, no arena layout change.
+
+The captured forecast read audit covers 108 views over 27 intervals. Before
+this change, each interval reads 1,214..1,221 shared bytes (union 1,227):
+42 in h0, 30 in h4, 1,146 in h6, and nine through external pointers. After
+private-player binding the three live player bytes disappear from the trace;
+all recorded player forecasts and candidate views remain identical. Model
+and object data, targeting limits, viewport inputs and external pointed-to
+records remain shared dependencies. These observed reads are an inventory,
+not a complete cache key or proof for unvisited scenes. No cross-field
+collection cache is enabled by this change.
+
+Evidence: ignored `audit_homing_forecast_reads_c.py`,
+`audit_homing_forecast_player_reads_c.py`, their `homing-forecast-*-reads-`
+reports, `test_scene_target_player_c.py` and
+`test_scene_target_player_prepare_c.py`. Live integration, complete dependency
+certification and field-rate projectile acceptance remain open.

@@ -12,7 +12,7 @@ scene_target_prepare:
  suba.w #24,sp
  movem.l a0-a5,(sp)
  ; Validate drawing calls that this mode removes from point-object handling.
- lea .draw_sites(pc),a6
+ lea scene_target_draw_sites(pc),a6
  moveq #2,d7
 .check:
  move.w (a6)+,d1
@@ -58,7 +58,7 @@ scene_target_prepare:
  move.w #$4eb9,$6356-SCENE_START(a1)
  move.l 20(sp),$6358-SCENE_START(a1)
  move.l 20(sp),$63d6-SCENE_START(a1)
- lea .draw_sites(pc),a6
+ lea scene_target_draw_sites(pc),a6
  moveq #2,d7
 .remove:
  move.w (a6)+,d1
@@ -77,7 +77,48 @@ scene_target_prepare:
  adda.w #24,sp
  movem.l (sp)+,d1-d7/a0-a6
  rts
-.draw_sites:
+
+; Forecast preparation: original prepare ABI plus a6=stable, read-only player
+; record used by this private scene. Caller updates its contents between steps.
+; Bind map-cell X/Y and acquisition view mode to that record, not live player
+; bytes. Camera remains a separate explicit step input (including view offsets).
+; Other shared model/limit dependencies still require caller certification.
+; Flush cloned code after preparation, as for scene_target_prepare.
+scene_target_player_prepare:
+ movem.l d1/a0-a2,-(sp)
+ cmpi.w #$1439,$61c0(a0)
+ bne .bad
+ lea $3b88(a2),a1
+ cmpa.l $61c2(a0),a1
+ bne .bad
+ cmpi.w #$1439,$61d2(a0)
+ bne .bad
+ addq.l #2,a1
+ cmpa.l $61d4(a0),a1
+ bne .bad
+ adda.l #$a4f6,a0
+ cmpi.w #$4a39,(a0)
+ bne .bad
+ lea $3ba2(a2),a1
+ cmpa.l 2(a0),a1
+ bne .bad
+ movem.l (sp),d1/a0-a2
+ bsr scene_target_prepare
+ tst.l d0
+ bne .done
+ move.l a6,$61c2-SCENE_START(a3)
+ lea 2(a6),a0
+ move.l a0,$61d4-SCENE_START(a3)
+ lea $1a(a6),a0
+ move.l a0,$a4f8-$a450(a5)
+ moveq #0,d0
+ bra .done
+.bad:
+ moveq #-1,d0
+.done:
+ movem.l (sp)+,d1/a0-a2
+ rts
+scene_target_draw_sites:
  dc.w $63b0,$bc32,$63c4,$8208,$63ce,$8228
 
 
