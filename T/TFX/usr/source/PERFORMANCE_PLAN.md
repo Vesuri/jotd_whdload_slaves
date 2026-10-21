@@ -678,7 +678,7 @@ Status (2026-10-21). Every code step is complete or rejected; the records follow
 | 8 | Done: rot_delta2_040 | -1.3%, 689 -> 708 | c0aed2ff |
 | 9 | Done: isqrt_040 (cycle-count acceptance); rest of tail too small | routine -4.8k (-0.29%) | b99c3ca8 |
 | 10 | Emulator: 746/2,000 (18.7 nominal fps), est-040 1.69 M (target 2.0 M met; 800/2,000 not) | - | - |
-| 11 | Done: gouraud_fill_040 (follow camera, F5) | follow -17.5%, 313 -> 414; action unchanged | - |
+| 11 | Done: gouraud_fill_040 (follow camera, F5) | follow -17.5%, 313 -> 414; action unchanged | 7b933812 |
 
 Open, all waiting for the Apollo:
 - Run calib040 and replace the cost model's constants.
