@@ -1,6 +1,7 @@
 # Road Rash: race trace analysis and plan for smooth play on faster CPUs
 
-Status: A1–A5 and B1–B5 complete (2026-10-20); C–G remain open. Accepted A evidence
+Status: A1–A5 and B1–B5 complete (2026-10-20); C1–C3 complete (2026-10-21);
+D–G remain open. Accepted A evidence
 and limitations are in §9; B results and the 25 fps safety limit are in §10. Sections 1–6 retain the original exploratory measurements;
 they are not the fixed-field A baseline. Slave baseline: shipped v2.0
 (`RoadRash.slave`, SHA-256 `9d2f2302…a563`), identical to this source except for the date
@@ -364,76 +365,55 @@ a slave option whose default reproduces the original timing until G1 decides the
     following consumption. It is an intentional bounded delay, not an unbounded
     wait. No gate/drain patch is needed for the supported 25 fps target.
 
-### C. Consistent simulation with uncapped vsynced rendering
+### C. Consistent simulation with uncapped vsynced rendering — complete (2026-10-21)
 
-In progress. The integrated runtime uses 20 ms PAL simulation steps, queued
-field inputs and native vsync, selected only by the default-off Enhanced
-framerate boolean and the CPU/Fast RAM gate. Unsupported machines retain
-original timing. Normalization, state ownership and validation history are in
-the [dependency audit](simulation-timing.md).
+C1–C3 are implemented and validated under the approved A4 speed/handling rules.
+The 20,616-byte runtime uses 20 ms PAL simulation steps and historical field
+inputs, rendering the latest completed state through native vsync. The default-off
+`CUSTOM2` boolean selects this only on 68020+ with suitable Fast RAM. No frame
+limiter or delayed interpolation is added. B's optional floor/clamp is replaced
+only on this selected path; unsupported machines retain original timing.
 
-The current 20,532-byte runtime includes Fast RAM movement/collision,
-AI/acceleration and world projection, compact simulation-only road geometry,
-uncached-020 lane scanning, fused lean derivation, Fast raster edges and
-normalized road movement with fractional carry, plus Fast RAM collision/pose
-scratch words shared by native rendering and copied physics. Collision-pair
-flag clears avoid redundant Chip RAM writes. On 040/060, the first simulation
-tick after rendering reuses the existing road geometry; additional catch-up
-ticks rebuild it normally.
-Heading prediction uses the latest increment with a four-tick fallback when
-integer heading repeats; release/reversal guards and the measured four-field
-horizon bound remain. Prediction never changes authoritative gameplay state.
+The final movement correction preserves the original four-field displacement
+convention through one-field updates, without changing acceleration or backdating
+input. Road movement retains fractional carry. Actor-width lane occupancy replaces
+render-register residue; simulation owns AI, collisions, poses and sound events.
+Forward heading prediction affects presentation only. Fast code, scratch and stack
+reduce the cost of running consistent simulation. These intentional corrections
+can change opponent paths and crash outcomes relative to B; they are not RNG excuses.
 
-Current normal rates are A500 8.5 fps, Chip-only 020 12.5, Fast 020
-default/Cache 12.5, NoCache 8.3, 030 16.7, 040 22.9 and 060 23.1.
-All 11 normal hardware cells and both MMU functional cells pass. The MMU
-configuration disables CPU data-cache emulation, so it is not a hardware
-cache-performance claim. All eight measured response phases meet B's limits:
-140/120/180/160/140/120/180/160 ms (median 150 ms) on 020. Fresh 040
-response is 120/140 ms alternating (median 130), within every same-cell B
-phase (220/200 ms alternating).
+All nine accelerated cells meet A4a's ±1% distance tolerance at documented equal
+input durations of 398–400 fields; worst error is 0.328368%. Original live-field
+measurements remain diagnostics, including -1.1762% default-020 and -1.4668%
+NoCache-020. The new calibration does not claim every tiny startup displacement
+matches B's variable-step integration. The [dependency audit](simulation-timing.md)
+records the full trajectories, approved scope and exact executable hashes.
 
-The current build has fresh short replay equivalence at 1/2/3/4-field and
-varying 2/3/4/12/16-field render intervals; one-field coverage omits drawing.
-Full finish and arrest/restart comparisons, keyboard/CD32 controls,
-pause/resume, demo fire/timeout transitions and enhancement-off checks pass.
-A diagnostic starting at damage 31 verifies that a native collision reaches
-damage 33, takes the WRECKED exit and restarts identically across cadences.
-A full race from zero damage to native WRECKED now also matches across fixed
-and varying cadences: 23,509 hashes, 105 sound requests, terminal state and
-exit tick 23,510; both restarts clear all road history/carry. These results do
-not establish B-equivalent handling. Default and
-uncached 020 distance, and both 040 cells, fail the one-percent gate against
-the reproduced committed B build. Default 030 also fails: extra debugger
-ranking reads perturbed B's timing; a matched direct-RAM-read debugger pair
-restores the reference and gives C -1.181%. Six other cells passed the earlier
-distance comparison. The passive-read debugger now passes all eleven normal
-matrix pairs, both MMU checks and all five diagnostic cadence comparisons.
-It preserves the replay's handling outcome, though transient C state hashes
-differ across emulator builds; future passive runs must record that distinction. See the reference/observer audits in simulation-timing.md;
-do not mix pre-fix and committed B binaries or different observation schedules.
-Opponent trajectories/order still differ. The user now permits reviewed
-corrections to render-dependent handling; that approval does not establish a
-new baseline or validate existing experiments. Distance, latency, native vsync,
-50 Hz simulation and cadence-invariance requirements remain unchanged.
-C remains incomplete.
+Every measured visible-response phase meets its same-cell B limit: cached 020
+180/160/140/120 ms repeated (median 150, maximum 180); 040 140/120 ms repeated
+(median 130). These are field-capture estimates with one-field boundary uncertainty.
+No timing-policy change was made merely to improve the old live-field diagnostic.
 
-Road normalization fixes proven loss of positive road-centre motion from
-one-field integer rounding. Current scene review restores the rider to the
-road where B also has it. The runtime retains explicit diagnostic selection
-through VERIFY_C_ROAD_TIMING for older references. It preserves fractional
-state across companion copies and clears it on reactivation, player crash
-and race reset. Moving the two shared collision/pose scratch words to Fast
-RAM restored the measured 040/060 rates to 20.2/23.0 fps; conditional
-collision flag clears raised 040 to 21.8 fps. Geometry reuse now raises it to
-22.9 fps (060 23.1) while preserving the tested simulation.
-Remaining performance work is open.
-The original B distance/opponent-order references are retained unchanged.
+Fresh short replays match all 1595 common state hashes, sound events and six capture
+regions at 1/2/3/4-field and varying 2/3/4/12/16-field render intervals. One-field
+coverage omits drawing. Full finish and arrest replays match across cadences and
+restart cleanly. A controlled damage-31 fixture reaches damage 33 through a native
+collision, displays WRECKED, exits and restarts identically. Natural crashes and
+recovery are exercised; an unmodified zero-damage-to-WRECKED run is not established
+for this final runtime. The earlier lane-only natural-wreck result is not reused
+as proof for the final binary.
 
-The native rank audit found that the old full-order verifier sorted stale
-off-screen positions. Use native lists and completed-state observations;
-matching the displayed final rank alone is insufficient. Future changes must
-retain the current response safeguard and the full requirements below.
+Keyboard/CD32 controls, pause/resume, both demo exits and enhancement-off checks
+pass. All eleven normal hardware cells and two MMU functional cells pass; A500 and
+Chip-only fallbacks match B's sampled state, deltas, distance and rate exactly.
+MMU tests disable data-cache emulation and do not prove hardware cache coherence.
+
+Current rates: A500 8.5 fps; Chip-only 020 12.5; Fast 020 default/Cache 12.5,
+NoCache 8.3; 030 16.7; 040 22.8; 060 23.3. Sampled median simulation-step cost is
+approximately 7.69/8.91 ms on default/NoCache 020, 4.94 ms on 030, 3.91 ms on 040
+and 3.59 ms on 060. These are short emulator beam samples, not worst-case hardware
+bounds. C completes independent simulation; D–F still own further speedups and
+throughput targets, including the remaining 020 regression against B.
 
 Render as fast as the machine can, presenting completed frames at vsync. There are
 no fixed-rate or adaptive frame-limiter modes. Simulation speed and outcomes must
@@ -651,9 +631,9 @@ dictate the accelerated path's timestep.
   `Cache`; fps is unchanged. Actual data-cache emulation is disabled in these baseline
   configurations, so D1 still needs coherency and hardware validation.
 - B2 resolved the reproduced 030 crash as DMA overwriting a preloaded image.
-- What fixed simulation step preserves baseline gameplay while fitting the CPU
-  budget? C must resolve B4's cross-rate collision and integration differences
-  before removing the temporary safety floor.
+- C resolves the fixed-step choice at 20 ms, with documented displacement and
+  render-dependent handling corrections. D–F pursue the remaining throughput
+  targets without changing that step or adding a frame limiter.
 - What is the free chip RAM in the race on 1 MB machines? It decides E3 and the queue
   buffers.
 - Could an optional clock correction provide NTSC-correct timing? Out of scope here; noted
@@ -763,8 +743,8 @@ The older bit-0/bit-1 options documented in B's historical results are supersede
 Input/loading correctness fixes remain unconditional. The historical B safeguard
 permits at most 25 fps and limits a delayed simulation step to eight fields; it
 does not guarantee equal collision outcomes across frame rates. C replaces that
-mitigation in the normal beta with consistent simulation steps. C remains open
-until its full regression and latency validation is complete; D–G remain open.
+mitigation in the normal beta with consistent simulation steps. C is complete under the approved speed/handling criteria summarized in §7;
+D–G remain open.
 
 Small-delta functional tests use the same 68020 configuration with fast execution,
 render skipping and field-based waits; they establish correctness limits, not real

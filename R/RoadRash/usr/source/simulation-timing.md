@@ -101,6 +101,50 @@ are retained in `c-approved-motion-{wait,cost-window}-*/windows.json` and
 The field-590 040 B/C scenes were reviewed: road, rider, HUD and backdrop remain
 intact; road/opponent positions differ consistently with the corrected motion.
 
+## C completion audit — 2026-10-21
+
+C1–C3 are complete for the integrated normal hash stated above, within the
+explicit emulator/fixture limits. This is the current acceptance record;
+older entries below describe their named historical builds and superseded
+open-item status. D–G remain open, including real-hardware cache validation
+and further throughput work. The changed handling baseline is explicit and
+cadence invariant; it is not represented as exact B behavior or RNG variation.
+
+| Requirement | Final evidence |
+|---|---|
+| C1a: boundaries and delta consumers | Existing ownership/direct-delta audit identifies native simulation, input/clock, presentation and record publication. Final displacement adds two movement hooks, preserving the existing boundary split. |
+| C1b: fixed step, correct speed and cost | STEP_FIELDS=1; camera, steering, road carry and displacement normalization. Nine accelerated equal-exposure cells pass ±1%; fresh step-cost samples and end-of-phase profiles are retained. |
+| C1c: ownership and historical input | Simulation owns actors, AI, collision, pose/camera and sound requests. The field queue supplies historical input; rendering changes neither authoritative actor state nor sound events. Final cross-cadence hashes/events validate this split. |
+| C2a: elapsed-time consumption | Catch-up runs every due unit step; final full-race tests preserve completed-tick state through long frame intervals. Terminal state stops catch-up, pause freezes active time and restarts clear capture/fraction history. Existing exhaustion handling remains an explicit abort, never silent input/time loss. |
+| C2b: latest state and response | Latest completed state with isolated forward heading prediction; no delayed interpolation. Every tested normal 020/040 visible-response phase meets B. |
+| C2c: vsync without pacing | Native wait/swap/copper handoff remains; no normal frame-period setting or B floor/clamp. One-field diagnostic rendering omission demonstrates that the scheduler can present each field; full drawing remains cost limited. |
+| C2d: hardware gate/fallback | Default-off CUSTOM2 boolean, CPU/Fast selection, original instructions when disabled, A500/Chip sampled states/deltas/distance/rate identical to B. |
+| C3a: cadence independence | Final 1/2/3/4/varying short traces match 1595 common hashes, sound events and six state regions. Fixed/varying full finish matches 16230 hashes/72 events; arrest 7977/19; controlled native wreck transition 2463/3. Exit ticks and resets agree. |
+| C3b: controls, scenes, transitions and latency | Normal keyboard/CD32/pause/resume, demo fire/timeout, disabled path, paired visible-response tests and B/C scene review pass. Native crash/recovery, finish/arrest and controlled low-health wreck/restart are covered. No claim of a final-binary natural zero-damage-to-wreck run. |
+| C3c: matrix and cost | Eleven normal cells, two functional MMU cells, current step-cost probes and 020/030/040/060 profiles. A500 remains on its original path. Rates and emulator limits are stated above; D–F throughput targets remain open. |
+
+### End-of-phase profiles
+
+`c-complete-profile-020` captures race fields 100–600 from the final normal
+binary through the passive debugger. The five 100-field Barto chunks contain
+495 complete recorded fields, 284204 cycles per recorded field and no missing
+PC samples. DMA shares are CPU 25.5%, free 34.4%, blitter 13.5%, bitplane 22.5%,
+refresh 1.8%, copper 0.9%, audio 0.8% and sprite 0.7% (rounded).
+Raw chunks are compressed with decompressed SHA-256 verification; reduced
+profile, placement symbols and provenance remain in the ignored harness.
+
+`c-complete-profiles/{030-50+cache,040-25,060-50}` each captures 500 vsyncs,
+fields 100–600, with zero profile overflow. Native vsync polling remains the
+largest single reported chip-time PC. The profiles retain unmatched-return
+counts and gap units: use flat PC execution/chip-access data, not inclusive
+call costs or real 040/060 cycle claims. This completes the phase's A5 refresh.
+
+## Historical experiments and validation records
+
+The entries below retain the data and conclusions for their named builds.
+Their statements that C is open, a candidate is private or approval is pending
+are historical; the acceptance and completion audit above supersede that status.
+
 ## Displacement candidate: controlled wreck-boundary coverage
 
 A VERIFY-only fixture sets damage to 31 at simulation cursor 1000, one point
