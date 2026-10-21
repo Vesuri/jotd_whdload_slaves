@@ -891,7 +891,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     checks and next-tick selector dependency (inventory in TIMING_DESIGN.md);
     pre-selection captures now isolate both recorded retargets to candidate
     collection (target 2 leaves/reenters the list), rather than pixel samples.
-    Tracing collection/clipping, field-rate projectile integration and
+    Native collector replay now identifies the altitude-derived range limit
+    at +A4B0 as the exact gate in all four boundary captures; the next limit
+    is already written by the preceding world weapons update. Forecasting
+    collection with endpoint geometry, field-rate projectile integration and
     near-pass validation remain open.
 - **C7. Per-frame work that is not presentation.**
   - C7a. Effect spawning `+09B9A` (gameplay RNG) moves to the world tick; effect animation

@@ -7346,3 +7346,47 @@ and no projectile state or collision behavior is changed by this experiment.
 Evidence: ignored `capture_homing_selection_c.py`,
 `isolate_homing_selection_c.py`, `homing-selection-pal-060/world-*/` before/
 after snapshots, and `homing-selection-isolation.json`. C6d remains open.
+
+
+### Native collector range gate behind both homing switches (C6d)
+
+Live collector-entry captures on PAL 68060 now locate the exact rejection.
+`capture_homing_collector_c.py` stops at native +A450 for target identity 2,
+only during deadline target collection, at worlds 27/28/45/46. Replaying the
+original collector with captured hunks and A5 accepts worlds 27/46 and
+rejects 28/45 specifically at +A4B0. This is the signed comparison of
+arithmetic-half projected depth (h0+$768E) against h0+$A99C, after screen
+bounds checks. It is not the horizontal acquisition-window or pixel gate.
+
+| World | Projected depth | Half depth | Collection limit | Result |
+| --- | --- | --- | --- | --- |
+| 27 | 532 | 266 | 512 | accept |
+| 28 | 531 | 265 | 256 | reject |
+| 45 | 515 | 257 | 0 | reject |
+| 46 | 505 | 252 | 256 | accept |
+
+Eight native-code controls replace only the limit with half-depth minus one
+or exactly half-depth: every lower value rejects, and every equal value
+accepts. The collector otherwise passes the recorded target through all
+later tests. Evidence is `homing-collector-pal-060/world-*/`,
+`replay_homing_collector_c.py` and `homing-collector-decisions.json` in the
+ignored harness. This is four captured native cases, not general clipping
+or field-rate projectile acceptance.
+
+The native writer +9B7E..+9B92 derives A99C from player height P+$1C with
+word shifts, byte addition/sign clamp, then a left shift by eight. It lives
+at the end of the native weapons update. The live ordering is consequential:
+world 27 collects with limit 512, then stores 256; world 28 collects with
+256. World 45 collects with zero, then stores 256; world 46 collects with
+256. Heights at world 27/28/45/46 are 15/13/9/11. Thus the new range limit
+already exists after the preceding world, although the selected target still
+reflects the preceding collection. Using only that stale selector misses a
+known next-collection dependency. In the reacquisition case, future projected
+depth also matters: world 45's half-depth 257 still exceeds the new limit 256,
+whereas world 46's half-depth 252 passes.
+
+Next, test a private next-collection forecast using the already-updated
+range limit and endpoint camera/object geometry, preserving native order and
+visibility certification. These observations do not justify publishing an
+early authoritative target or omitting field-rate projectile handling required
+by C6d; they identify inputs that its steering forecast must respect.
