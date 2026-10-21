@@ -1086,3 +1086,66 @@ gave the same publications and est-040 -0.54%):
   without showing a real dependency. Poison only the bytes the original writes.
 - Evidence: `tmp/dev/tmp/poly5/` (`poly-rejected.s`, `poly-rejected.diff`, twins,
   gates, scenes, poison scenes, `poly-ab.json`, the first run in `first-run/`).
+
+Step 9 done (re-ranked tail; integer square root, isqrt_040):
+- Re-profile of production (a9b21fbb, the step 5 control): 746/2,000 publications,
+  emulator 2.17 M and estimated 040 1.69 M cycles per frame. Tail ranked by est-040
+  cycles per frame:
+
+| Routine | Est-040 | Ceiling of a rewrite |
+|---|---:|---|
+| xTranslate ($5fff4) | 54.7k | none: 48.7k is nine 64-bit MULS.L |
+| _DrawSpriteImage ($4f54e) | 26.0k | about 6k: the byte loop is 19.7k |
+| slave draw_line_new + plot | 42.5k | about 3-7k: per-pixel JSR and address setup |
+| _DrawMonoImage ($4e6b4) | 20.2k | about 5k |
+| @SquareRoot ($4bdca) + distance caller | 14.3k + 4.4k | measured below |
+| ConeCheck ($60b7c) | 13.5k | about 3k: two DIVS.W on some calls |
+| clipline ($5f86c) | 9.6k | small: compare/branch chains |
+
+- xTranslate sums the high longs of nine 32x32->64 products. An FPU version needs a
+  separate floor per product (fmul plus a conversion under round-to-minus), which costs
+  about the same as MULS.L under the 040 table, adds FPCR and register saves, and loses
+  in the emulator. Not implemented.
+- The other items are under 0.4% each and were not implemented. The unnamed hot code
+  next in the list (the generated cockpit-overlay blitter, the terrain grid loop at
+  $38236) is already tight.
+- Implemented: @SquareRoot returns floor(sqrt(D0)) with 16 fixed bit-by-bit iterations.
+  While the bit exceeds D0 and the root is zero an iteration changes nothing but the
+  bit, so isqrt_040 finds the highest power of 4 <= D0 with BFFFO and jumps into the
+  same iterations, unrolled with constant bits. D1-D7/A0-A6 and CCR (X/V/C clear, N/Z
+  from the root) match the original; only dead stack below SP differs.
+- Accepted by cycle count: on every input it executes fewer instructions (at most 122
+  against at least 135) and fewer est-040 cycles (at most about 172 against at least
+  about 215).
+
+Verification:
+- **Native twins:** 4,922 inputs pass against a verbatim copy of the original, with
+  junk in D1-D7/A0-A6 and X set and clear. They hit all 17 entry blocks (every
+  leading-bit position, 0 and 2^32-1), squares and their neighbours, powers of two
+  and four and their neighbours, and pseudo-random values of every magnitude. An
+  independent model (floor(sqrt), kept registers, CCR) agrees. Five negative controls
+  are rejected: a wrong root, a wrong register, a wrong X or Z flag, and an off-by-one
+  root on both sides.
+- **Controlled scenes:** cockpit and views pairs against the original routine give
+  identical displayed buffers and PNGs.
+- **Gates:** 040 and 040 CUSTOM5 jump to isqrt_040; 040 original, 030 and 060 keep
+  $48e70f002e00.
+- **Builds:** normal and CHIP_ONLY builds have no relocations, and the normal build
+  reproduces. FPSP files are unchanged.
+
+Balanced 2,000-field pair, for information:
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications | 746 | 731 | -2.0% |
+| Emulator cycles/frame | 2,167,299 | 2,211,772 | +2.1% |
+| Estimated 040 cycles/frame | 1,687,676 | 1,717,002 | +1.7% |
+
+- The square root fell by 14.1k est-040 cycles per frame and isqrt_040 costs 9.3k:
+  net -4.8k est-040 (-0.29%) and -8.5k emulator cycles (-0.39%).
+- As in step 7, the faster timing changed which frames the replay drew: about 4% more
+  ScanFillDown calls per frame (846 vs 816), so the fill, copy and plot code rose
+  (+8.8k, +8.5k, +5.5k est-040). The frame total is dominated by this divergence.
+- The 20 fps action plan's code steps are now complete or rejected. What remains is
+  step 1's default and the Apollo validation of step 10, both waiting for hardware.
+- Evidence: `tmp/dev/tmp/sqrt9/` (twins, gates, scenes, `sqrt-ab.json`).

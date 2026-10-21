@@ -3495,6 +3495,70 @@ FADE_COMPONENT MACRO
 fade_cols_body: dc.l 0                  ; $24a0
 fade_cols_exit: dc.l 0                  ; $258c
 
+; @SquareRoot ($4bdca, about 60 calls per frame, most from the 3D distance at
+; $4bd4c) returns floor(sqrt(D0)) for unsigned D0 with 16 fixed bit-by-bit
+; iterations, bit = 1<<30 down to 1. While bit > D0 and the root is still zero
+; an iteration changes nothing but the bit, so this enters the same unrolled
+; iterations at the highest power of 4 <= D0 (BFFFO) with constant bits.
+; Leaves D1-D7/A0-A6 and CCR (X/V/C clear, N/Z from the root) as the original.
+ISQRT_STEP macro
+.s\1:
+        move.l  d5,d4
+        add.l   #1<<\1,d4
+        lsr.l   #1,d5
+        cmp.l   d0,d4
+        bhi.s   .n\@
+        sub.l   d4,d0
+        or.l    #1<<\1,d5
+.n\@:
+        endm
+isqrt_040:
+        movem.l d4-d5,-(sp)
+        moveq   #0,d5
+        bfffo   d0{0:32},d4             ; 32 for D0 = 0
+        lsr.w   #1,d4                   ; first bit 1<<(30-2*D4)
+        move.w  .entry(pc,d4.w*2),d4
+        jmp     .entry(pc,d4.w)
+.entry:
+        dc.w    .s30-.entry
+        dc.w    .s28-.entry
+        dc.w    .s26-.entry
+        dc.w    .s24-.entry
+        dc.w    .s22-.entry
+        dc.w    .s20-.entry
+        dc.w    .s18-.entry
+        dc.w    .s16-.entry
+        dc.w    .s14-.entry
+        dc.w    .s12-.entry
+        dc.w    .s10-.entry
+        dc.w    .s8-.entry
+        dc.w    .s6-.entry
+        dc.w    .s4-.entry
+        dc.w    .s2-.entry
+        dc.w    .s0-.entry
+        dc.w    .done-.entry
+        ISQRT_STEP 30
+        ISQRT_STEP 28
+        ISQRT_STEP 26
+        ISQRT_STEP 24
+        ISQRT_STEP 22
+        ISQRT_STEP 20
+        ISQRT_STEP 18
+        ISQRT_STEP 16
+        ISQRT_STEP 14
+        ISQRT_STEP 12
+        ISQRT_STEP 10
+        ISQRT_STEP 8
+        ISQRT_STEP 6
+        ISQRT_STEP 4
+        ISQRT_STEP 2
+        ISQRT_STEP 0
+.done:
+        moveq   #0,d0
+        add.l   d5,d0                   ; X/V/C clear, N/Z from the root
+        movem.l (sp)+,d4-d5
+        rts
+
 ; DoRotPt0's two-component delta point ($59748, about 1,100 per frame): the
 ; running sums A2-A4 gain M * (D0,D1) through six MULS.W, then the tail at
 ; $59778 stores the point and dispatches the next command. The same shapes are
@@ -3818,6 +3882,7 @@ pl_fpu_new_render_040:
         PL_GA   $6c4b8,sfd_exit
         PL_GA   $6c520,sfd_loop
         PL_GA   $6c528,sfd_line
+        PL_P    $4bdca,isqrt_040        ; @SquareRoot from the first useful bit
         PL_P    $4dba0,box_new
         PL_P    $4dbc8,box_new
         PL_P    $4de00,draw_line_normal_new
