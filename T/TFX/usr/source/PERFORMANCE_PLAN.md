@@ -662,3 +662,14 @@ Budget (estimated-040 savings, before interaction effects):
 | **Total** | **23-33%** |
 
 The emulator total without step 1 is about 24-31%. The goal is achievable only if steps 2-5 deliver close to their estimates. If they don't, report the shortfall rather than reducing detail or simulation work.
+
+Step 0 done (method and fixtures):
+- The baseline profile is frozen: 608/2,000.
+- Same-build noise is ±1 publication, ±0.17% estimated-040 cycles per frame.
+- Second fixture: the views tape (F2/F3/F5/F6, then back to F1).
+  - It gives 464/2,000 (11.6 nominal fps).
+  - In external views, cost shifts to the Gouraud/texture C2P path: c2p_32pixels_masked 13.3%, the three fills about 13%.
+  - _MaskSprite is only 1.4% there.
+- A/B reports now include estimated-040 cycles and an input-identity check.
+- Balanced-profile pitfall: the harness's hunk image is unrelocated. Control bytes containing an absolute address must be rebuilt from the live base.
+- An Apollo calibration program, calib040, is ready. It times the instructions the cost model depends on, plus the old and new mask loops. It has been checked functionally in the emulator. Hardware numbers are pending: the Amiga is not available.
