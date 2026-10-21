@@ -5953,3 +5953,18 @@ controls, commands and impulses; its hit rate and benefit are not yet proven.
 Any optimization still requires native-endpoint, transaction/failure and live
 rate/state regressions. This profile does not justify dropping input, changing
 the world rate, removing checks indiscriminately or claiming C4f/C9 complete.
+
+### Gauge-hook call range
+
+Adding the ignored preview-input probe exposed a signed-word BSR overflow
+from timing_render_gauges to timing_runtime_gauge_draw. The hook now uses a
+local PC-relative base plus a long displacement and indirect JSR, preserving
+A1. This is the same position-independent 68000 strategy as the target-panel
+hook; it does not change gauge ownership or animation.
+
+The assembled gauge-hook test passes 64 native comparisons, 448 enhanced
+ownership/retained-boundary cases and eight signature rejections, including
+register preservation. The runtime gauge test passes 800 PAL/NTSC fields,
+296 draws and 296 repeated draws across batches 1/3/10/25. Ordinary, runtime,
+VERIFY/runtime, input/runtime and the larger diagnostic probe assemble. The
+ordinary slave remains 6,088 bytes; the runtime variants grow by 12 bytes.

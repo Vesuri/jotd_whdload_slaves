@@ -57,7 +57,13 @@ timing_render_gauges:
  movem.l (sp)+,d0/a0
  bra timing_gauges_native
 .draw:
- bsr timing_runtime_gauge_draw
+ ; The timing core may exceed a 68000 signed-word call displacement.
+ move.l a1,-(sp)
+.gauge_call:
+ lea .gauge_call(pc),a1
+ adda.l #timing_runtime_gauge_draw-.gauge_call,a1
+ jsr (a1)
+ movea.l (sp)+,a1
  movem.l (sp)+,d0/a0
  rts
  even
