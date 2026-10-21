@@ -71,6 +71,7 @@
 	include "timing-forecast-tape.i"
  include "timing-scheduled-endpoint.i"
  include "timing-endpoint-ground.i"
+ include "timing-forecast-build.i"
  include "timing-endpoint-camera.i"
  include "timing-endpoint-impulse.i"
  include "timing-scheduled-impulses.i"

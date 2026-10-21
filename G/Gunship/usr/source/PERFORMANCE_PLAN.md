@@ -923,7 +923,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     passes those pairs and 8,890 byte-mutation rejections. A private 20-checkpoint
     tape now passes all 35 lookups, 840 context-byte rejections, capacity,
     partial-publication, retirement and field-wrap checks with bounded memory
-    access. Each captured hit takes 293 guest instructions. Runtime allocation,
+    access. Each captured hit takes 293 guest instructions. Private construction
+    now runs the integrator and ground resolver into that tape, reproducing all
+    49 captured endpoints and every checkpoint while rejecting five invalid
+    construction cases per frame. Runtime allocation,
     lifecycle/dependency gates and unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and

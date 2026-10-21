@@ -7804,3 +7804,34 @@ a live framerate measurement. All four builds assemble: ordinary 6,088,
 experimental 44,448, diagnostics 110,778 bytes. Storage routines add 376 bytes;
 existing runtime layout is unchanged. Evidence is `test_forecast_tape_c.py` and
 `forecast-tape-test.json` in the ignored harness.
+
+
+### Private forecast construction (C6d)
+
+`forecast_player_build` in `timing-forecast-build.i` connects the tape to the
+endpoint player integrator and deferred ground resolver. It clones the active
+owner/player into 272 bytes of caller-provided scratch, holds the four input
+direction bytes, and supplies zero future random impulses. It appends the
+initial and all subsequent pre-deadline checkpoints, resolves the final
+ground state, then publishes the tape. The caller supplies the empty private
+event already bound to the prepared ground clone; this routine never commits
+that event. The source owner, player, controls and context remain immutable.
+
+Every attempt retires the old tape. Nonzero impulse policy, pending events,
+completed intervals, invalid context and integrator failures leave it invalid.
+Scratch and the private event may change on failure and must be discarded or
+reset by the caller. The caller must begin a new interval after world effects
+when the previous interval is complete, and must certify code/data epochs.
+This constructor is not installed in the runtime or a general scene cache.
+
+`test_forecast_build_c.py` compares all 49 captured PAL 020/060 frames against
+the independent field-by-field replay: every endpoint and stored checkpoint
+matches. Five rejection cases per frame cover zero epoch, unsupported impulse
+policy, pending event, completed interval and invalid controls after initial
+append. Register preservation, source immutability and private-only guest
+writes are checked. The resulting `forecast-builder-audit.json` files reside
+in each capture directory in the ignored harness. These captures do not cover
+all input, collision or NTSC paths. All four builds assemble: ordinary 6,088,
+experimental 44,680 and diagnostics 111,010 bytes; the constructor adds 232
+bytes without allocating runtime storage. Live lifecycle integration and
+performance acceptance remain open.
