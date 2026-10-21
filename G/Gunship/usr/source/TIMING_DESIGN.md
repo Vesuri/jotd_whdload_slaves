@@ -6431,3 +6431,46 @@ the new 030/040 evidence fills this workload's CPU gaps. The broader PAL,
 input/collision, lifecycle, duration and heavy-scene matrices remain open,
 as does 68000 responsiveness. Existing pulse-to-scanout evidence remains
 separate; these completion probes do not replace it.
+
+### Matching PAL draw/state probe across five CPUs
+
+The same diagnostic binary and controlled rocket route now run in PAL on
+all five configurations (`anchor-draw-probe-pal-{000,020,030,040,060}`).
+Field-stamped controls use the established PAL schedule and the reference
+is `cache-world-fire-020`. Selected authoritative state matches at all 61
+world boundaries on every CPU. All release the rocket at world 64 and match
+43 eligible native next poses, with no lost/discarded input, time discard,
+rebase after activation or scheduler fault. Raw common controls match across
+1,226/1,226/1,225/1,226/1,225 fields respectively, including TR_RELATIVE.
+Actor comparison exclusions remain only inactive countdowns/C732 scratch.
+
+| CPU | Actual world Hz | World completion lag, fields | Draw completion fps | Completed-frame age, fields | Same-world camera changes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 68000 | 3.03337 | 8..20 | 1.11 | 10..22 | 0 |
+| 68020 | 3.00300 | 3..8 | 7.43 | 5..7 | 88 |
+| 68030 | 3.00300 | 2..5 | 12.59 | 3..4 | 188 |
+| 68040 | 2.99700 | 1..5 | 12.80 | 3..4 | 188 |
+| 68060 | 3.00000 | 1..5 | 12.91 | 3..4 | 192 |
+
+Worlds 20..80 take 989/999/999/1,001/1,000 actual PAL fields respectively.
+Logical deadlines remain the exact ceil(world*50/3) sequence; differing
+actual finite-window rates reflect completion lag and do not change the
+clock's tick rate. The 000's 3.03337 Hz average includes draining backlog;
+its ten-world rolling rates range from 2.85714 to 3.18471 Hz, not a tight
+rate guarantee. Frame statistics use the same window/definitions as NTSC,
+with 50 fields/s. These are completion times, not DMA or input-response
+latency. No direct PAL-versus-NTSC state-equivalence claim is made.
+
+The PAL 000 draws every two or three world ticks, with no same-world camera
+changes. Drawing costs 9..12 fields and completed-frame age is 10..22
+fields (200..440 ms). It still fails responsiveness despite sustaining the
+logical simulation without loss. The faster CPUs have pre-draw state age
+0..1/0/0/0 fields and changing camera samples within world intervals.
+The 030/040/060 camera-change counts are lower than same-world frame-pair
+counts because some successive camera values remain identical; unchanged
+pairs are not counted as motion.
+
+This fills the PAL counterpart of the current controlled five-CPU workload,
+not the broader input/collision, lifecycle, duration, heavy-scene or scanout
+matrix. Production timing remains gated behind the experimental build flag;
+C is still not accepted, especially the 68000 responsiveness case.

@@ -976,6 +976,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     age 28..46 fields. Replacing its drawing with a field wait narrows world
     completion lag from 24..43 to 10..11 fields while preserving selected
     state. Its responsiveness gate still fails despite near-3-Hz throughput.
+    The matching PAL five-CPU probe also preserves all 61 selected world
+    states and all common raw controls without loss or rebase. 020/030/040/
+    060 complete 7.43/12.59/12.80/12.91 fps with 88/188/188/192 same-world
+    camera changes; completed-frame age is 5..7/3..4/3..4/3..4 PAL fields.
+    The PAL 000 completes 1.11 fps, drawing every two or three worlds with
+    10..22-field frame age and no same-world camera changes. This controlled
+    PAL/NTSC workload is covered; broader C9 acceptance remains open.
   - C9d. **Player path:** C4e's equivalence on every CPU, over all input combinations at
     several initial rates.
   - C9e. **Durations in play:** fuel, mission clock, weapon reload, lamp blink and effect
