@@ -5458,3 +5458,26 @@ frames observed on 68020/060. These are field-resolution measurements of
 emulated scanout, not host-display or input-device latency. Instrumentation
 adds overhead. NTSC scanout, heavy scenes and the remaining C9 gates are still
 open; this does not establish a worst-case latency bound or complete C.
+
+
+### NTSC scanout correlation (68020/68060)
+
+The same compiled scanout probe and four-pulse route now also run with the
+runtime field rate verified as 60 Hz. Evidence is in
+`tmp/dev/tmp/c/scanout-probe-{020,060}-ntsc`. Every captured display plane
+passes the consecutive 4,000-word DMA check; 68020 instruction-trace input
+stamps agree with all capture-end field anchors. The 68060 uses the same
+capture-end anchoring described above.
+
+| NTSC CPU | Input-to-first changed buffer scanout, in fields | Nominal time |
+| --- | --- | --- |
+| 68020 | 11, 13, 11, 7..8 | 183, 217, 183, 117..133 ms |
+| 68060 | 4, 5, 5, 4 | 67, 83, 83, 67 ms |
+
+The final 68020 transition is bounded by the single-field capture gap.
+All other transitions include the immediately preceding old-buffer scanout.
+All four pulses contribute on each CPU, with zero history loss/discards and
+zero scheduler faults. The 22/42 completed frames include 12/31 adjacent
+same-world camera changes on 68020/060. This extends emulated scanout evidence
+to NTSC at field resolution. It does not cover host-display latency, heavy
+scenes, worst-case delay or C9's cross-CPU world-state equality gate.
