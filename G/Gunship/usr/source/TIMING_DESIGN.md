@@ -7765,3 +7765,42 @@ ordinary 6,088 bytes, experimental 44,072, diagnostics 110,402. The matcher
 adds 56 bytes, with no runtime arena allocation or live cache activation.
 Next integrate bounded checkpoint storage and its lifecycle/dependency gates;
 these admission tests do not yet establish a live performance improvement.
+
+
+### Bounded private player forecast tape (C6d)
+
+`timing-forecast-tape.i` now implements storage around the exact checkpoint
+matcher. A tape has at most 20 pre-deadline checkpoints and one resolved
+86-byte endpoint, requiring 5,194 bytes when allocated. Twenty slots cover
+an initial state plus the remaining pre-deadline fields of an NTSC interval;
+the final state is stored separately. No runtime arena allocation or live
+lookup is installed yet.
+
+The serialized construction protocol is begin, append consecutive field
+states with identical held directions, then finish after private simulation
+and ground resolution succeed. Begin clears publication; lookup cannot
+read a partial build. Finish copies the endpoint before setting validity.
+Reset clears count, validity and the context epoch, so append cannot silently
+reuse an old lifecycle context. Full/published tapes, skipped field stamps
+and changed held directions reject appends without modifying storage.
+
+Lookup compares a 24-byte context (lifecycle epoch, world epoch, prepared
+motion stages, sine helper, ground clone, impulse policy), indexes by field
+stamp, then applies the full owner/player/control matcher. Only a successful
+match copies the private endpoint. A miss leaves both output and tape
+unchanged. The caller must advance epochs when code/data changes at reused
+addresses, retire storage on lifecycle changes, and supply valid simulation
+checkpoints. Context comparison is not proof that the caller assigned epochs
+correctly, and this tape does not certify scene/selector dependencies.
+
+The captured-frame tests build actual checkpoint tails and obtain the correct
+endpoint in all 35 later-frame lookups. All 840 single-byte context mutations
+miss; changed player state, partial construction and retired tapes also miss.
+Capacity, invalid counts, zero epoch, nonconsecutive insertion, changed held
+input and all 20 lookups across a 32-bit field-counter wrap are covered.
+Guest hooks verify bounded reads/writes, canaries and register preservation.
+Each captured successful lookup executes 293 guest instructions; this is not
+a live framerate measurement. All four builds assemble: ordinary 6,088,
+experimental 44,448, diagnostics 110,778 bytes. Storage routines add 376 bytes;
+existing runtime layout is unchanged. Evidence is `test_forecast_tape_c.py` and
+`forecast-tape-test.json` in the ignored harness.

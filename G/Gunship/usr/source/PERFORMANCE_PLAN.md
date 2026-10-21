@@ -920,9 +920,12 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     and their full 256-byte record block across 35 pairs, with no sampled
     input/time loss. Remaining-interval forecasts and intermediate owner/
     player checkpoints now match in all 35 pairs. An exact read-only matcher
-    passes those pairs and 8,890 byte-mutation rejections; bounded storage,
-    lifecycle/dependency gates and unvisited paths remain open, so cross-field
-    forecast reuse is not enabled. Broader input
+    passes those pairs and 8,890 byte-mutation rejections. A private 20-checkpoint
+    tape now passes all 35 lookups, 840 context-byte rejections, capacity,
+    partial-publication, retirement and field-wrap checks with bounded memory
+    access. Each captured hit takes 293 guest instructions. Runtime allocation,
+    lifecycle/dependency gates and unvisited paths remain open, so live
+    cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.
