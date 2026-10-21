@@ -276,8 +276,15 @@ a slave option whose default reproduces the original timing until G1 decides the
     for A/B equivalence.
 - **A4 Equivalence check.**
   - A4a Distance at fixed race fields within ±1% of the reference cell.
-  - A4b A1b tape: same rank order and the same crash count at the end.
-  - A4c Visual: screenshots at fixed race fields show the same scene.
+  - A4b A1b tape: compare native rank order and crash count against B. For C,
+    the user approved intentional differences caused by documented corrections
+    to render-dependent logic (2026-10-21). Establish and review the corrected
+    handling baseline; require identical outcomes across render cadences at
+    identical simulation boundaries. Do not attribute unexplained differences
+    to RNG or accept a changed outcome merely because a test passes.
+  - A4c Visual: review screenshots at fixed race fields against B. Document
+    scene differences arising from approved handling corrections; require
+    correct rendering of the resulting state, with no unexplained artifacts.
 - **A5 Profiles.**
   - A5a Repeat the 020 Barto trace after each phase.
   - A5b Use aprof without an MMU for flat per-PC execution counts and chip-access time
@@ -398,7 +405,11 @@ matrix pairs, both MMU checks and all five diagnostic cadence comparisons.
 It preserves the replay's handling outcome, though transient C state hashes
 differ across emulator builds; future passive runs must record that distinction. See the reference/observer audits in simulation-timing.md;
 do not mix pre-fix and committed B binaries or different observation schedules.
-Opponent trajectories/order still differ. C remains incomplete.
+Opponent trajectories/order still differ. The user now permits reviewed
+corrections to render-dependent handling; that approval does not establish a
+new baseline or validate existing experiments. Distance, latency, native vsync,
+50 Hz simulation and cadence-invariance requirements remain unchanged.
+C remains incomplete.
 
 Road normalization fixes proven loss of positive road-centre motion from
 one-field integer rounding. Current scene review restores the rider to the

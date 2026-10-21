@@ -1,3 +1,22 @@
+## Approved handling acceptance clarification — 2026-10-21
+
+The user approved intentional opponent-trajectory and crash-outcome changes
+when correcting render-dependent logic, after being told these can be noticeable
+and are not explained solely by RNG. A4b now permits a documented, reviewed C
+handling baseline in place of exact B opponent order/crash count for such fixes.
+A4c still requires visual review of the resulting scene and no rendering defects.
+This supersedes the exact-B handling rejection criterion in historical entries;
+it does not promote any previously rejected experiment automatically.
+
+The fixed-field ±1% distance gate, input/display latency safeguards, native vsync,
+50 Hz steps, original fallback and default-off master toggle remain unchanged.
+Corrected simulation must produce the same outcomes across render cadences at
+identical simulation boundaries. The goal has resumed; C is not complete.
+The next candidate isolates lane occupancy's explicit table half-width from
+leftover graphics-register data, without combining unvalidated NPC rounding or
+attack-damage changes. Its intended-width interpretation and gameplay effects
+must remain explicit in review and validation.
+
 ## Passive movement audit and rejected all-CPU world reuse
 
 Fresh normal traces `b-passive-completed-motion` and
