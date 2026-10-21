@@ -1,7 +1,8 @@
 # Road Rash: race trace analysis and plan for smooth play on faster CPUs
 
-Status: A1–A5 and B1–B5 complete (2026-10-20); C1–C3 complete (2026-10-21);
-D–G remain open. Accepted A evidence
+Status: A–C complete; D, E and F1–F5 complete under the agreed emulator scope
+(2026-10-21). D1d real-hardware coherency, F6a–F6d future relocation work, and G
+remain open. Accepted A evidence
 and limitations are in §9; B results and the 25 fps safety limit are in §10. Sections 1–6 retain the original exploratory measurements;
 they are not the fixed-field A baseline. Slave baseline: shipped v2.0
 (`RoadRash.slave`, SHA-256 `9d2f2302…a563`), identical to this source except for the date
@@ -628,29 +629,38 @@ Measured rates are 18.4 fps on 020+Fast, 39.4 on 030/50, 49.4 on 040/25 and
 All changes remain behind default-off **Enhanced framerate**; hardware validation
 remains pending as agreed. See [results and evidence](blitter-performance.md).
 
-### F. CPU work reduction (all CPUs; the 68000 depends on it)
-- **F1 Road rasteriser** (`$b10d0`/`$b1994`, 21.7%).
-  - F1a Remove the duplicated loads (`$b19aa/$b19b0`, `$b19b6/$b19bc`, `$b13d2/$b13d8`,
-    `$b13dc/$b13e2`).
-  - F1b Replace the per-word flag tests and `movem` in `$b1994` with a precomputed
-    edge-word table per stripe state.
-  - F1c Merge the plane 0/1 span loops.
-  - **Expected:** 4–6%.
-- **F2 Road geometry** (`$89a9c`/`$89ac8`/`$89656`/`$89048`/`$8970e`, 13.3%).
-  - F2a Merge the four edge passes and the per-line pass into one scanline walk.
-  - F2b Unroll the DDA.
-  - F2c Use one reciprocal per segment in `$8970e` instead of 5 `divu`.
-  - **Expected:** 4–6% on 020, more on the 68000.
-- **F3 HUD** (`$88610` + `$88cea`, 6.2%). Redraw digits, needles, dials and position only
-  when the value changes (per buffer, so twice). Clear the mirrors with the blitter or skip
-  unchanged mirrors. **Expected:** 2–4%.
-- **F4 Object dispatcher** (`$afe12`). Replace the type `cmpi`/`bcc` cascade with a table.
-  **Expected:** 1.5–2%.
+### F. CPU work reduction
+F1–F5 are complete under emulator validation (2026-10-21). [CPU work evidence](cpu-performance.md) records retained changes and
+measured rejections. The original speculative percentage estimates are withdrawn.
+
+- **F1 Road rasteriser.**
+  - F1a Evaluated packed palette reads. Native repeated reads duplicate word
+    patterns; the exact replacement did not improve measured throughput.
+  - F1b Preselect edge routines from the palette/stripe flags, removing repeated
+    per-scanline flag tests.
+  - F1c Merge the two plane span ladders, retaining native clipping.
+- **F2 Road geometry — evaluated; native routines retained.**
+  - F2a Fused four edge passes and the width/shift pass: exact pixels, no gain.
+  - F2b Unrolled DDA: exact pixels, slower on 020/030.
+  - F2c Exact reciprocal projection: correction/helper overhead made it slower.
+- **F3 HUD.** Cache each buffer's displayed needle angles and dedicated clock/rank
+  glyphs. Keep the overlapping odometer redraw, existing dial/position change
+  checks and mirror blitter clears required by moving overlays.
+- **F4 Object dispatcher.** Use a direct table for the positive type namespace;
+  retain negative-type overlays and native per-object flag handling.
 - **F5 Small items.**
-  - F5a Trim full-register `movem` in per-actor helpers (`$8bbe6`, `$8a716`, `$8c48e`,
-    `$8b9aa`, `$8b02e`, `$8b37e`): 1.5%.
-  - F5b Collision early-out on the track-position difference: 1–2%.
-  - F5c Seed the depth sort with last frame's order: 0.5%.
+  - F5a Trim audited leaf projection/sort register saves; retain saves around
+    collision callbacks and helpers with deeper calls.
+  - F5b Audited the existing distance early-out. Keep its scratch/flag side
+    effects and asymmetric bounds; an additional early-out is unnecessary.
+  - F5c Seed the stable depth sort with the previous permutation; reset on count
+    changes and use the native fallback for unsupported counts/overflow ranges.
+The final samples are 9.4 fps on 68000+Fast, 18.6 on 020+Fast, 39.5 on 030/50,
+and 49.6 on 040/25 and 060/50; Chip-only paths retain E behavior. Full-race,
+framebuffer, restart, controls, cache/MMU and latency checks pass. All retained
+work remains behind default-off **Enhanced framerate**. F6 stays future work by
+explicit agreement; physical cache/coherency validation remains D1d.
+
 - **F6 Investigate relocating fixed-address CPU globals** (future/stretch).
   The approved D3d exception retains globals referenced by at least 1,035
   absolute-short instruction sites (249 addresses in `$400..$467b`); these
