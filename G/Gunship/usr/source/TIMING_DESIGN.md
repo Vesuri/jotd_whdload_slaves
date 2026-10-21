@@ -6996,3 +6996,32 @@ actor's world-anchored fraction. Reports are retained in the ignored harness:
 `tmp/dev/tmp/c/selector-release-test.json` and
 `tmp/dev/tmp/c/selector-before-release-repaired-test.json`.
 The future Hellfire retargeting discrepancy remains unchanged and open.
+
+
+### Native screen projection of the recorded Hellfire retarget errors
+
+`measure_hellfire_projection_c.py` replays the two recorded mismatches from
+both `hellfire-pal-020` and `hellfire-pal-060` through the next world's
+committed camera. It restores the saved native hunks, builds the native
+camera (`+057E2`) and scene vector, executes the transform prefix
+`+05C2E..+05C5C`, then projects the allocated actor with native `+06224`.
+The probe records coordinates before clipping at `+063A0` and admission to
+the actor pixel call at `+063B0`. The final pixel call is omitted; the
+unrelated scripted object is disabled to avoid its installed heading hook.
+The descriptor is checked against `+05AD2+6*slot`, identifying slot 5.
+
+For world 27's forecast versus native world 28, both CPUs project the
+forecast to (159,62) and the native pose to (157,62), both admitted for
+drawing: a two-pixel horizontal endpoint correction in that camera.
+A positive control adds 256 to the native X coordinate and projects to
+(173,62), confirming that the measurement responds to actor position.
+For world 45 versus 46, neither pose reaches the point-projection or
+pixel-call probes. The result is retained in the ignored harness at
+`tmp/dev/tmp/c/hellfire-projection-errors.json`.
+
+This measures the endpoint discrepancy in the captured next-tick camera,
+not the last displayed fraction, framebuffer pixels, scanout, or a bound
+across views and distances. It neither certifies future selectors nor
+justifies declaring C6d complete. The next useful evidence is a rendered
+sequence spanning these retarget boundaries, including nearer projectiles;
+retain the two raw native-pose mismatches when judging continuity.
