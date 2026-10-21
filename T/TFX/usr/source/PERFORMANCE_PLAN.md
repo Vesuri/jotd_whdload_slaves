@@ -715,3 +715,30 @@ Balanced 2,000-field pair:
 - One candidate start was rejected before timing (a one-vblank clock origin); the bounded retry was accepted.
 - Hardware speed is unmeasured.
 - Evidence: `tmp/dev/tmp/prof20/mask-*`, `mask-final-checks.json`.
+
+Step 1 built behind a switch (project_int_040, CUSTOM1):
+- New boolean `C1:B:68040 integer projection`. With CUSTOM1 set, the 040 new-renderer patch at $55e32 jumps to project_int_040 instead of project_fpu_040.
+- project_int_040 is the same slave loop with the original DIVS.W/BVS per coordinate and no FPU save/restore. Outputs, registers and the final point's packed return values are identical.
+- The default stays FPU (CUSTOM1 clear) until the Apollo calibration decides. CUSTOM5, original rendering, 030 and 060 keep the game's projection bytes either way.
+
+Verification:
+- **Native twins:** the 275 projection cases pass against the integer path, with full register and FP state. The independent integer oracle agrees, and four negative controls are rejected.
+- **Controlled scenes:** cockpit and views pairs (CUSTOM1 clear/set), each with five identical complete displayed buffers and PNGs. The end states differ in the patch target, the clocks, and audio/interrupt-driven bytes at $4d72e-$4d850. Those come from the different emulated speed and are not claimed as equal.
+- **Gates:**
+  - 040 with CUSTOM1 jumps to project_int_040; without it, to project_fpu_040.
+  - 040 original rendering, 040 CUSTOM5, 030 and 060 keep the original bytes.
+- **Builds:** normal and CHIP_ONLY builds have no relocations; the normal build reproduces; FPSP files are unchanged.
+
+Balanced 2,000-field pair (both boot CUSTOM1 clear; the candidate selects project_int_040 with one same-address, same-length JMP write):
+
+| | FPU (default) | Integer (CUSTOM1) | Change |
+|---|---:|---:|---:|
+| Publications (nominal fps) | 671 (16.78) | 644 (16.10) | -4.0% |
+| Emulator cycles/frame | 2,409,545 | 2,510,567 | +4.2% |
+| Estimated 040 cycles/frame | 1,923,934 | 1,849,151 | -3.9% |
+
+- As the plan predicted, the emulator loses (it charges DIVS.W 48 cycles, FDIV 2.8) and the 040 estimate gains (projection -236k, +139k per frame).
+- The startup matched on the first attempt. Zero FPSP entries.
+- Harness pitfall: the seed disk bakes the WHDLoad command line at enrolment. A run that reuses a seed boots with that seed's CUSTOM arguments, so a CUSTOM option cannot be A/B'd on a shared seed. Three earlier "integer" runs did this, silently ran the FPU path, and are discarded.
+- Decision pending: run calib040 and both settings on the Apollo, then set the default and record it here.
+- Evidence: `tmp/dev/tmp/prof20/intproj-*`, `intproj-ab.json`.
