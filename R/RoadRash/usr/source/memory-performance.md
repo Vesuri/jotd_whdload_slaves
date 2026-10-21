@@ -540,6 +540,9 @@ would require changing instruction sizes/control flow or adding execution
 stubs, rather than adjusting relocation operands. The user explicitly approved
 retaining these globals as a D3d exception on 2026-10-21. This exception is not
 presented as a DMA requirement or as a completed instruction-rewriting project.
+Future plan item [F6](performance-plan.md#f-cpu-work-reduction-all-cpus-the-68000-depends-on-it)
+tracks investigating instruction rewriting or stubs and measuring whether moving
+this CPU-only state is worthwhile. It does not reopen the completed D scope.
 
 The same low region contains DMA structures and image storage. Vectors and
 native shared loader entry `$4c98` retain their fixed interfaces. Loader copper

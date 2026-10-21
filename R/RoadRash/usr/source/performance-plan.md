@@ -472,6 +472,8 @@ dictate the accelerated path's timestep.
 D1a–D1d, D2a–D2d and D3a–D3g are complete in emulation. Real-hardware
 D1d coherency testing remains pending by agreement. D3d retains the explicitly
 approved fixed-address-global exception (1,035 audited short-address sites).
+Future item F6 investigates whether this exception can usefully be reduced; it
+does not reopen completed D.
 See [memory-performance.md](memory-performance.md) and [memory-assets.json](memory-assets.json)
 for final placement, measurements, validation and the complete 67-file inventory.
 
@@ -623,6 +625,23 @@ for final placement, measurements, validation and the complete 67-file inventory
     `$8b9aa`, `$8b02e`, `$8b37e`): 1.5%.
   - F5b Collision early-out on the track-position difference: 1–2%.
   - F5c Seed the depth sort with last frame's order: 0.5%.
+- **F6 Investigate relocating fixed-address CPU globals** (future/stretch).
+  The approved D3d exception retains globals referenced by at least 1,035
+  absolute-short instruction sites (249 addresses in `$400..$467b`); these
+  operands cannot encode the supported Fast RAM addresses. See the
+  [residency audit](memory-performance.md#final-residency-audit-and-approved-exception).
+  - F6a Complete the reference/alias audit, including indirect paths, and separate
+    CPU-only state from DMA storage and required fixed interfaces.
+  - F6b Prototype instruction widening/control-flow rewriting or execution stubs.
+    Account for branches, PC-relative references and function pointers; preserve
+    one authoritative copy of each global and required loader/vector interfaces.
+  - F6c Measure CPU-specific speed, Chip bus traffic, code/memory cost and latency.
+    Decide whether relocation is worthwhile; retain the documented exception
+    unless the measured benefit justifies the complexity.
+  - F6d If adopted, gate it behind `CUSTOM2` "Enhanced framerate" and repeat A2/A4,
+    full-race/restart, controls and cache/MMU validation. Preserve simulation
+    speed, vsync and latency safeguards, plus native 68000, option-off and
+    Chip-only fallback paths. Keep DMA storage in Chip RAM.
 
 ### G. Integration and release
 - **G1 Options and defaults.**
