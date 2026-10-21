@@ -602,6 +602,7 @@ pl_messages_main
 
 pl_main
 	PL_START
+	PL_PS $2874E,enable_border_blank
 	PL_IFC2
 	IFD VERIFY_C_SEED_RNG
 	PL_PS $657C,step_seed_rng
@@ -656,6 +657,24 @@ pl_main
 	PL_NOP	$2F116,2
 	PL_END
 	
+
+; Enable ECS/AGA border blanking whenever the main display is installed.
+; Both BPLCON0 copper moves must retain ECSENA, including the bottom blank.
+; BPLCON3 is write-only: retain the standard $0c00 palette-offset defaults.
+; OCS Denise does not implement these display controls.
+enable_border_blank:
+	lea $dff000,a0 ; displaced native instruction
+	move.l d0,-(a7)
+	move.l _chip_rev(pc),d0
+	andi.b #$0a,d0 ; GFXF_HR_DENISE | GFXF_AA_LISA
+	beq.b .done
+	ori.w #1,$1480.w
+	ori.w #1,$1814.w
+	move.w #$0c20,$106(a0) ; BRDRBLNK
+.done:
+	move.l (a7)+,d0
+	rts
+
 
 
 	IFD VERIFY_C_SEED_RNG
@@ -1098,6 +1117,8 @@ _tags
 _password		dc.l	0
 	dc.l	WHDLTAG_CUSTOM2_GET
 _enhanced_framerate	dc.l	0
+	dc.l WHDLTAG_CHIPREVBITS_GET
+_chip_rev dc.l 0
 	IFD C_STEP_BUILD
 	dc.l WHDLTAG_ATTNFLAGS_GET
 verify_attn dc.l 0

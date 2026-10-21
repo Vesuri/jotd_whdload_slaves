@@ -31,6 +31,7 @@
  Version 2.1 beta (21.10.2026):
  - fixed idle joystick steering recentring and keyboard/CD32 pause handling
  - wait for screen DMA before loading files, fixing the uncached 68030 crash
+ - enable ECSENA and BRDRBLNK during play on ECS/AGA to blank the border
  - single boolean option "Enhanced framerate" (CUSTOM2=1); off by default
  - on 68020+ with Fast RAM, advances simulation in 20 ms PAL steps and renders
    completed frames as fast as possible while retaining vsync
