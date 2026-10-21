@@ -1,3 +1,42 @@
+## Approved lane-width candidate: cadence and hardware checks
+
+The first candidate under the clarified handling criteria changes only the two
+lane-boundary operands in relocated `$8da5c` from D4 to D2. D2 is the native
+half-width loaded from `$9414e`; the intervening `$8db0a` lane-list writer
+preserves it. No NPC lateral normalization or attack-damage adjustment is added.
+This removes the proven graphics-register dependency. The table's use as the
+intended lane width remains an explicit interpretation of the native code.
+
+`c-approved-lane-width-period{1,2,3,4,0}-state` validates intervals 1/2/3/4 and
+varying (0), with period 1's diagnostic drawing skipped. Each non-reference run
+matches the period-4 reference on 1595 common completed tick hashes, all sound
+requests and all six field-1457 capture regions. This establishes a new model's
+cadence invariance, not equivalence to the old model's captured state.
+
+The initial 20548-byte candidate completes all eleven normal matrix cells.
+Default/Cache 020 throughput is 12.1 fps versus current production's 12.5;
+NoCache is 8.3, 030 is 16.7, 040 is 23.0 and 060 is 23.1. Unsupported A500 and
+Chip-only 020 retain 8.5/12.5 fps and their original distances. The same five
+distance gates remain failing; default 020 now measures 3311794 (-1.562%).
+
+A second candidate places the 16-byte initialization in existing reserved
+space, retaining every hot-code address and the production size of 20532 bytes.
+It changes only one jump-displacement byte and 14 previously zero bytes.
+SHA-256: `e64caab08e23e2f0ac55cf9441501d376502d06f6cc373a3a45c7b9d91035c4c`.
+Its six-cell matrix still gives 12.1 fps on default/Cache 020; NoCache/030/040/060
+are 8.3/16.7/22.9/23.3. Thus moving hot code is not necessary for the 020 slowdown;
+no specific AI or drawing subroutine is yet assigned that cost.
+The layout-preserving period-4 diagnostic also matches the first candidate's
+1595 hashes, all sound requests and six captured regions exactly.
+
+`c-approved-lane-layout-lap` confirms the normal handling change: no crash
+through field 1600, lateral -974 and displayed rank 13, versus B's one crash,
+-931 and rank 15. The user's approval permits this difference to be reviewed;
+it does not prove collisions, difficulty or race exits correct. Evidence and
+source diff are retained under `c-approved-lane-{width,layout}-*`. Both candidates
+remain private pending full-race, collision/lifecycle, response and visual
+validation. Production is unchanged; no failure is silently waived.
+
 ## Approved handling acceptance clarification — 2026-10-21
 
 The user approved intentional opponent-trajectory and crash-outcome changes
