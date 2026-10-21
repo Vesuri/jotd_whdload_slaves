@@ -950,7 +950,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     The experimental frame loop now overlays only certified homing slots; a
     headless PAL 060 combat run publishes all 27 sampled frames without sampled
     timing/input faults, but draws fall to 11.71/s versus 14.29 in the earlier
-    baseline window. Future input uncertainty, cost optimization, scene dependency gates and
+    baseline window. Exact caching inside construction cuts its replay instruction
+    count by 58–60% with identical outputs; the live 060 frame schedule and
+    bitplanes remain identical, so no measured framerate gain yet. Future input
+    uncertainty, further cost optimization, scene dependency gates and
     unvisited paths remain open, so live
     cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and

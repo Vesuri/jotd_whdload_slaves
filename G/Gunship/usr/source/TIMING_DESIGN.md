@@ -8134,3 +8134,31 @@ Near-pass screenshots, control changes, other CPUs/video rates, natural
 weapon events and full state-isolation acceptance remain open. The fallback
 for rejected forecasts retains earlier limitations. All four builds pass:
 ordinary 6,088, experimental 46,508 and diagnostics 112,838 bytes (+186).
+
+
+### Exact cache inside forecast construction (C6d)
+
+The constructor now uses `endpoint_player_step_cached` with a dedicated
+`PC_SIZE` cache in its own scratch. It clears validity before every construction,
+so no cached result crosses prepared-code lifetimes. The existing complete
+player/state/packet/tick/code-pointer key is unchanged; checkpoints, final
+ground resolution and publication order are unchanged. Scratch grows from
+272 to 620 bytes and runtime arena size from 56,918 to 57,266 bytes.
+
+Across the same captured inputs, build instructions fall from 226,646 to
+96,293 on the PAL 020 set (57.51%) and from 294,034 to 118,992 on the PAL 060
+set (59.53%). All endpoints, checkpoints, cameras and complete candidate
+blocks remain identical. These are guest instruction counts, not cycle or
+framerate estimates. Construction rejection, poisoned-native-sine isolation,
+retarget overlay and exact-range retirement tests pass. Evidence is
+`forecast-construction-cost-comparison.json`, the per-run
+`runtime-forecast-cost-{uncached,cached}.json` and ignored harness tests.
+
+A new headless PAL 060 combat capture (`forecast-cache-combat-pal-060`) has
+the same 27-frame schedule, every bitplane byte, accepted/rejected forecast
+counters and zero sampled timing/input faults as the immediately preceding
+overlay run. The observed rate remains 11.71 draws/s: this optimization has
+not improved that live window. `cache-live-comparison.json` records exact
+visual/schedule equality. Remaining frame cost still requires profiling.
+All four builds pass: ordinary 6,088, experimental 46,516 and diagnostics
+112,846 bytes (+8).

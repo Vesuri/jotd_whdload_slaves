@@ -6,7 +6,8 @@ FB_EVENT equ 8
 FB_OWNER equ 12
 FB_PLAYER equ FB_OWNER+EP_SIZE
 FB_PACKET equ FB_PLAYER+MP_RECORD_SIZE
-FB_SIZE equ FB_PACKET+PS_INPUT_SIZE
+FB_CACHE equ FB_PACKET+PS_INPUT_SIZE
+FB_SIZE equ FB_CACHE+PC_SIZE
 
 ; a0=tape, a1=active EP owner, a2=player, a3=held directions (4 bytes),
 ; a4=context, a5=FB_SIZE scratch, d0=empty event bound to context's ground clone.
@@ -34,6 +35,8 @@ forecast_player_build:
  bls .bad
  cmpi.w #FCT_CAPACITY,d1
  bhi .bad
+ ; Per-construction cache: no prepared-code lifetime may cross this reset.
+ clr.w FB_CACHE+PC_VALID(a6)
  lea FB_OWNER(a6),a5
  moveq #EP_SIZE/2-1,d2
 .owner:
@@ -66,7 +69,8 @@ forecast_player_build:
  lea FB_PACKET(a6),a4
  move.l EP_DELAY+CD_FIELD(a0),d0
  addq.l #1,d0
- bsr endpoint_player_step
+ lea FB_CACHE(a6),a5
+ bsr endpoint_player_step_cached
  tst.l d0
  bne .bad
  subq.w #1,d1
