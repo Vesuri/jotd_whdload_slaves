@@ -92,7 +92,7 @@ public_menu_readers:
  dc.l $1d5e,$da7e
  dc.l -1
 
-; Joystick image is CPU-copied to the already-public portrait scratch before
+; Joystick image is CPU-copied to the Chip portrait scratch before
 ; drawing. Keep its 2224-byte stored source in an existing 3584-byte gap.
 public_menu_joystick:
 public_menu_joystick_call:

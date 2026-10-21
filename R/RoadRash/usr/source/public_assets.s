@@ -12,18 +12,40 @@
 ; Preserve native pixel pointers in Chip; translate a reload back to its
 ; original destination before native size/depack logic reads the owner again.
 public_asset_relocate:
- ; Exact native $afd9c descriptor relocation, including its register results.
+ ; Embedded SET headers follow the CPU image, but their pixel offsets must
+ ; resolve against the retained original Chip copy. Dynamic SETs already
+ ; arrive in Chip RAM (including the menu's temporary actor-storage overlay).
+ movem.l d1/a1,-(a7)
+ move.l a0,a1
+ move.l a0,d1
+ sub.l public_asset_image(pc),d1
+ cmpi.l #$39108,d1
+ beq .embedded
+ cmpi.l #$39c90,d1
+ beq .embedded
+ cmpi.l #$3a2a0,d1
+ beq .embedded
+ cmpi.l #$3ab02,d1
+ beq .embedded
+ cmpi.l #$3ad72,d1
+ bne .relocate
+.embedded:
+ addi.l #$80000,d1
+ move.l d1,a1
+.relocate:
+ ; Native $afd9c register/CCR results, with the correct DMA pixel base.
  move.w (a0),d7
  subq.w #1,d7
  bmi .native_done
  lea 2(a0),a2
 .native:
  move.l (a2),d0
- add.l a0,d0
+ add.l a1,d0
  move.l d0,(a2)
  lea 14(a2),a2
  dbf d7,.native
 .native_done:
+ movem.l (a7)+,d1/a1
  move.w sr,-(a7)
  movem.l d0-d2/a0-a3,-(a7)
  lea e_masks_dirty(pc),a1

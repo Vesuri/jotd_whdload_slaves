@@ -155,7 +155,8 @@ e_mask_set:
  move.l e_mask_cursor(pc),a4
  move.l a4,d0
  add.l d5,d0
- cmpi.l #$bc3ec,d0
+ ; Preserve menu image scratch and embedded pixels in the upper Chip image.
+ cmpi.l #$a5de0,d0
  bhi .skip
  lea e_mask_cursor(pc),a1
  move.l d0,(a1)

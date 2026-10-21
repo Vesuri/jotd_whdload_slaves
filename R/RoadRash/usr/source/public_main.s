@@ -77,6 +77,17 @@ public_main_init:
  bsr public_main_adjust
  bra .next_helper
 .publish:
+ ; Menu pictures reuse actor storage, but only their front-end operands must
+ ; remain Chip for blitter DMA. Race actor references still point to Fast RAM.
+ lea public_main_menu_dma(pc),a0
+.menu_dma:
+ move.w (a0)+,d0
+ bmi .menu_dma_done
+ move.l a5,a1
+ adda.w d0,a1
+ sub.l d7,(a1)
+ bra .menu_dma
+.menu_dma_done:
  bsr f_cpu_init
  bsr e_blitter_init
  bsr public_iff_init
@@ -214,3 +225,11 @@ public_main_lane_lookup:
 .normal:
  move.w (a6,d0.w),d0
  rts
+
+; Audited HUNK operand offsets: paired menu copy/depack destinations and SET
+; descriptor relocation inputs. No race actor operands belong in this list.
+public_main_menu_dma:
+ dc.w $172e,$1742,$3ba6,$3bb2,$3fa2,$3fba,$4174,$418c
+ dc.w $54c2,$54ce,$5768,$5774,$57b0,$57bc
+ ; Descriptor readers point two bytes past the same count word.
+ dc.w $1fb4,$3bc0,$3fc8,$419a,$54dc,$5790,$57ca,-1

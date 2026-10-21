@@ -42,9 +42,11 @@ original estimated 0.55% saving does not apply.
 
 ## Cached bob masks (E3)
 
-After public relocation, `$80010..$bc3eb` is no longer executable/data storage
-for the running main image. E3 reuses that Chip area for masks, preserving the
-entry trampoline at `$80000` and the native heap beginning at `$bc3ec`.
+After public relocation, E3 reuses `$80010..$a5ddf` for masks (155,088 bytes).
+The entry trampoline at `$80000`, menu image scratch at `$a5de0`, embedded
+image pixels in the upper original image, and the native heap at `$bc3ec`
+remain protected. The upper Chip image is deliberately reserved as a whole;
+its CPU simulation state lives in the relocated Fast copy.
 A bounded 2,048-entry CPU-only lookup table adds 32 KiB to the optional public
 reservation (436 KiB at this checkpoint, 564 KiB with E5 below). Cache/table exhaustion keeps the native bob path.
 No 2 MiB Chip requirement or additional player option is needed.
@@ -159,3 +161,28 @@ Evidence: `e-visible-{020,040}/results.json`.
 
 Step E is complete under emulator validation. Real 040/060 hardware cache and
 coherency checks remain pending under the existing agreement.
+
+## Graphics relocation correction (2026-10-21)
+
+User screenshots exposed colored rectangles in small menu pictures and race
+footprint/smoke graphics. These were already present at the D checkpoint:
+comparison with an enhanced reference and traces of resolved DMA addresses
+had missed illegal programmed source pointers into Fast RAM.
+
+Twenty-one audited front-end operands now retain the original Chip scratch:
+fourteen load/copy/SET-relocation operands reference `$a5de0`, and seven
+picture readers reference `$a5de2`. Race actor operands remain in Fast RAM.
+The five embedded SET headers at `$b9108`, `$b9c90`, `$ba2a0`, `$bab02`, and
+`$bad72` remain public, but all 27 pixel offsets resolve against their original
+Chip bases. The mask pool now stops before the menu scratch rather than
+reclaiming these live DMA sources. This correction remains behind CUSTOM2.
+
+The normal production build was checked on cached 040/25 and 040 with MMU/data
+caches, plus 040/25 with NoCache: menu pictures render correctly, all 27 embedded source pointers are
+Chip addresses, and race captures cover acceleration and crashes through
+field 2,000. The option-off path also reaches a race. All 1,400 first-race masks
+still fit (152,966 bytes), with every mask word and cached CPU pixel copy matching
+its Chip source at fields 101, 300, 600 and 1,001. Thus this workload loses no
+cache entries; larger sets retain the existing bounded native fallback.
+Evidence: `tmp/dev/tmp/graphics-menu-{corrected,mmu-cache,nocache,reference}` and
+`tmp/dev/tmp/graphics-mask-audit`. Physical hardware remains untested.

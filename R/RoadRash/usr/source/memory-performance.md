@@ -2,7 +2,9 @@
 
 The allocation figures below describe the D checkpoint. Step E increases the
 optional public reservation from 404 to 564 KiB and reuses the abandoned Chip
-main image for blitter masks. The approved fixed-address exception is unchanged.
+main image below `$a5de0` for blitter masks. Menu scratch and embedded DMA
+pixels retain Chip storage; see the graphics relocation correction in the
+rendering document. The approved fixed-address exception is unchanged.
 See [current rendering memory and validation](blitter-performance.md).
 
 Step D is complete for the agreed emulator scope, with the explicitly approved
