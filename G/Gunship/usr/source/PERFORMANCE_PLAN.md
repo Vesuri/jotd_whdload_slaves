@@ -916,8 +916,10 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     dependencies (48 poisoned-input scenes, six positive controls). Other
     shared model/limit dependencies still need certification. The observed
     1,215 shared hunk bytes are stable in 35 same-world completed-frame pairs
-    on PAL 020/060; external records and unvisited paths remain unverified,
-    so cross-field forecast reuse is not enabled. Broader input
+    on PAL 020/060. Fresh captures also verify all nine external input bytes
+    and their full 256-byte record block across 35 pairs, with no sampled
+    input/time loss. Unvisited paths and intra-interval forecast equivalence
+    remain unverified, so cross-field forecast reuse is not enabled. Broader input
     uncertainty, runtime cost, multi-candidate visibility and
     steering certification, field-rate projectile integration and near-pass
     validation remain open.

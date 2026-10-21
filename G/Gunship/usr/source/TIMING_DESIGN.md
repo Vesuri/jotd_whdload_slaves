@@ -7699,3 +7699,32 @@ The report `tmp/dev/tmp/c/forecast-frame-dependency-audit.json` lists every
 compared pair, checked byte count and any changes (none in these pairs).
 Both captures predate the forecast helper additions and establish shared
 native-data behavior only; they are not live validation of the new helpers.
+
+
+### External-record stability captured with completed frames (C6d)
+
+Fresh headless PAL 68020/68060 runs now close the external-data gap in the
+preceding same-world audit. `capture_forecast_dependencies_c.py` follows the
+same controlled Hellfire route and records the full 256-byte block addressed
+by h6+$45E2 alongside each completed frame. The nine external collector reads
+map to offsets $4A..$4C, $5A..$5C and $6A..$6C in that block. Capture saves the
+pointer separately, so pointer movement is checked rather than assuming a
+fixed allocation address across runs.
+
+`audit_forecast_external_dependencies_c.py` verifies all 1,224 observed shared
+input bytes: 1,215 hunk bytes plus those nine external bytes. All are stable
+across nine same-world pairs from 16 PAL 020 frames and 26 pairs from 33 PAL
+060 frames, worlds 24..30. The whole 256-byte block and its pointer also stay
+unchanged within every pair. All 49 frame snapshots retain active capture,
+one initial rebase, zero scheduler/clock faults, and zero sampled time/input
+loss or discard. The original host-mouse-disabled, headless fixture is used.
+
+Evidence is under `forecast-dependencies-pal-020` and
+`forecast-dependencies-pal-060`, with `forecast-external-dependency-audit.json`.
+The established `selector-combat.slave` is intentionally retained for route
+comparability; these runs verify native data behavior, not installation of
+the new forecast helpers. This closes the missing external snapshots for
+this route only. Other scenes/writers, command-induced changes, release and
+lifecycle transitions still need certification. No cross-field forecast
+cache is enabled. Next compare forecasts made at different consumed-field
+positions within one world interval, preserving the actual endpoint owner.
