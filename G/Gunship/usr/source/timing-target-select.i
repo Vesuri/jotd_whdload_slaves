@@ -105,6 +105,39 @@ target_select_step:
  movem.l (sp)+,d1-d7/a0-a6
  rts
 
+; Visibility-independent homing dependency for zero/one collected candidate.
+; a0=WT candidate workspace, a1=distinct private 12-byte output.
+; Return 0 copied, -3 ambiguous/invalid layout (output unchanged).
+; Native selection leaves AA0A..AA15 unchanged with no candidates. With one,
+; acceptance only copies its first identity/generation onto themselves;
+; rejection leaves them intact. Status/selected-panel state is NOT certified.
+; Caller must separately certify the forecast geometry and world dependencies.
+; Never publishes a native target or supplies collision/AI state.
+target_selector_single:
+ movem.l d1-d2/a0-a2,-(sp)
+ cmpi.w #1,WT_STATE+2(a0)
+ bhi .uncertain
+ lea WT_STATE+8(a0),a2
+ moveq #4,d2
+.validate:
+ move.w (a2)+,d1
+ cmpi.w #72,d1
+ bhi .uncertain
+ btst #0,d1
+ bne .uncertain
+ dbf d2,.validate
+ lea WT_STATE+$6c(a0),a2
+ move.l (a2)+,(a1)+
+ move.l (a2)+,(a1)+
+ move.l (a2),(a1)
+ moveq #0,d0
+ bra .done
+.uncertain:
+ moveq #-3,d0
+.done:
+ movem.l (sp)+,d1-d2/a0-a2
+ rts
+
 ; Native ReadPixel ABI replacement: A0 is the candidate list cursor.
 ; A6 is private workspace retained by the selector. Preserve other registers.
 target_select_pixel:

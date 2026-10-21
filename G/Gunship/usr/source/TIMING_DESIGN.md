@@ -7507,3 +7507,44 @@ are stable; selection, projectile steering and near-view continuity are not
 certified. Runtime feasibility and broader controls/damage states remain
 open. The next gate is visibility/selection across this same admitted envelope,
 not publishing a selector merely because the candidate identities agree.
+
+
+### Visibility-independent single-candidate homing dependency (C6d)
+
+The admitted-impulse candidate envelope now feeds the original private target
+selector with every combination of accepted/rejected visibility pixels.
+The pixel predicate has two equivalence classes: either of the two palette
+rejection colors, or any other byte. Across 157 selector cases, worlds 27..46
+have one invariant AA0A..AA15 result, equal to the next recorded selector.
+Worlds 20..26 have two candidates and remain ambiguous. The actual next
+selector is contained in every computed envelope. No raster simulation or
+assumption that a target is visible is used in this check.
+
+This exposes a useful native invariant: with zero candidates, the selector
+leaves those 12 homing bytes unchanged; with one candidate, acceptance copies
+the first identity/generation onto themselves, while rejection leaves them
+unchanged. Panel selection/status can still differ. The new private
+`target_selector_single` helper in `timing-target-select.i` implements only
+this invariant. It validates the native descriptor layout, copies 12 bytes
+for count 0/1, and returns -3 without output writes for ambiguous or invalid
+input. It preserves non-result registers. It does not publish a native
+selector, certify forecast geometry, or alter collision/AI input.
+
+The helper is not wired into runtime presentation yet. A caller must first
+establish that candidate collection is stable across its relevant world,
+control and impulse dependencies. Multi-candidate visibility uncertainty
+still needs a policy; this helper does not discard or freeze those actors.
+Evidence: ignored `audit_homing_visibility_envelope_c.py` and
+`homing-visibility-envelope.json`. Both original problematic retarget
+intervals fall inside the single-candidate visibility-independent cases.
+
+
+`test_target_selector_single_c.py` passes 2,048 native-selector comparisons
+(count 0/1, four prior statuses, every pixel byte, randomized remaining
+candidate state), seven atomic rejection cases, output canaries, register
+preservation and exact guest write boundaries. The existing target-selector
+regression also passes 2,048 native cases, 62 signature rejections and five
+invalid-state rejections. All four builds assemble: ordinary payload remains
+6,088 bytes; experimental runtime is 43,836 and diagnostic variants 110,166
+(+66 bytes). Arena layout is unchanged. These checks establish the isolated
+helper, not a runtime homing correction or field-rate projectile acceptance.
