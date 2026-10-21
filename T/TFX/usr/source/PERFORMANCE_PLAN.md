@@ -783,3 +783,37 @@ The control column shows the two control runs' estimated-040 values; each candid
 Harness pitfall: balanced-pair startup mismatches came from the boot's 1-4 vblank jitter. Only the vblank clock (_vblank_clock $4d884) and four copies differ. `CLOCK_NORMALIZE=1` writes the same fixed values on both sides before the entry comparison, which stays exact.
 
 Evidence: `tmp/dev/tmp/step3/` (probe, `clip-ab.json`, `skip-ab.json`, the rejected sources and diff).
+
+Step 6 done (copy compare loop, copy_changed_blocks):
+- The compare loop handles one 32-byte cache line (four 8-byte units) per iteration with a single DBF.
+- Each unit position has its own handler: a changed unit is written to the shadow and chip buffer, then the loop continues with the next unit. There is no rewind and no second pass.
+- The destination is addressed relative to the source, so the loop no longer advances A0. A0 is set on return as before.
+- Unchanged units cost about 4.25 instructions, down from 6; changed units cost the same as before.
+- The 8-byte granularity and chip-write pattern are unchanged.
+- The loop lives in a fixed 150-byte slot (`COPY_SLOT`), so an A/B swaps it with same-length writes.
+- The delta copy exists only on the 040 new-renderer path (the shadow is allocated nowhere else), so CUSTOM5, original rendering, 030 and 060 are unaffected.
+
+A first version is rejected. It rewound a line containing any change and redid it unit by unit, and it lost 2.5% estimated-040 cycles per frame (654 vs 671 publications). Changes cluster: about 31% of units but 55% of lines change per frame, so most lines paid for the rewind.
+
+Verification:
+- **Native twins:** the 80-frame copy test passes on two chip buffers, checking destination, shadow, pointers and guards. Its edits now also cover every longword of a 32-byte line, two units in one line, and the last longword. Four corruptions are rejected.
+- **Controlled scenes:** cockpit (400 updates) and views pairs against the production loop give 7 and 5 identical complete displayed buffers and PNGs. The end states are identical apart from the clocks.
+- **Gates and builds:**
+  - The 040, 040 original, 040 CUSTOM5, 030 and 060 gates pass.
+  - Normal and CHIP_ONLY builds have no relocations, and the normal build reproduces.
+  - FPSP files are unchanged.
+
+Balanced 2,000-field pair (the control runs the production 90-byte loop zero-padded to the slot):
+
+| | Control | Candidate | Change |
+|---|---:|---:|---:|
+| Publications (nominal fps) | 671 (16.78) | 700 (17.50) | +4.3% |
+| Emulator cycles/frame | 2,409,545 | 2,309,721 | -4.1% |
+| Estimated 040 cycles/frame | 1,922,824 | 1,852,629 | -3.7% |
+| Intervals (2/3/4 fields) | 44/594/32 | 107/584/8 | |
+
+- The copy routine itself saves 32k estimated-040 cycles per frame (1.7%). The rest of the drop is per-frame work that changes with the faster cadence, mainly ScanFillDown and PlotColour.
+- The startup matched on the first attempt, with the vblank clock normalized on both sides. Zero FPSP entries.
+- Harness pitfall: monitor writes longer than about 90 bytes time out, so the tools split the 150-byte slot into equal chunks, the same calls on both sides.
+- Hardware speed is unmeasured.
+- Evidence: `tmp/dev/tmp/copy6/` (`copy-ab.json`, the scenes, twins, gates and the rejected version).

@@ -941,6 +941,8 @@ reset_copy_shadows:
         JMPPTR play_level_body
 play_level_body_ptr: dc.l 0
 
+COPY_SLOT = 150                         ; compare loop bytes (A/B swaps the slot)
+
 ; Compare against the last copy to each chip buffer. Only changed blocks
 ; need chip writes; first use always initializes both destination and shadow.
 copy_changed_blocks:
@@ -950,6 +952,9 @@ copy_changed_blocks:
         mulu.w  #16000,d0
         adda.l  d0,a2
         lea     delta_seen(pc),a3
+        move.l  a0,d4
+        sub.l   a1,d4                   ; destination - source
+        move.w  #bplbytes*8/32-1,d0
         tst.b   (a3,d2.w)
         bne.b   .compare
         st      (a3,d2.w)
@@ -962,33 +967,76 @@ copy_changed_blocks:
         endr
         dbf     d0,.init
         rts
-.compare:
-        move.w  #bplbytes*8/8-1,d0
-.block:
-        cmpm.l  (a1)+,(a2)+
-        bne.b   .diff1
-        cmpm.l  (a1)+,(a2)+
-        bne.b   .diff2
-        lea     8(a0),a0
-        dbf     d0,.block
-        rts
-.diff1:
-        subq.l  #4,a1
-        subq.l  #4,a2
-        bra.b   .write
-.diff2:
-        subq.l  #8,a1
-        subq.l  #8,a2
-.write:
+; One 32-byte cache line (four 8-byte units) per iteration. A changed unit
+; is written by its position's handler, which continues with the next unit.
+; The destination is addressed relative to the source (D4), so A0 is set
+; only on return.
+COPY_UNIT macro
         rept 2
         move.l  (a1)+,d1
-        move.l  d1,(a0)+
         move.l  d1,(a2)+
+        move.l  d1,-4(a1,d4.l)
         endr
-        dbf     d0,.block
+        endm
+.compare:
+.u0:
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d0a
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d0b
+.u1:
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d1a
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d1b
+.u2:
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d2a
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d2b
+.u3:
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d3a
+        cmpm.l  (a1)+,(a2)+
+        bne.b   .d3b
+.next:
+        dbf     d0,.u0
+        lea     (a1,d4.l),a0
         rts
-        ; Keep all following code/data at the original addresses.
-        dcb.b   90-(*-.compare),0
+.d0b:
+        subq.l  #4,a1
+        subq.l  #4,a2
+.d0a:
+        subq.l  #4,a1
+        subq.l  #4,a2
+        COPY_UNIT
+        bra.b   .u1
+.d1b:
+        subq.l  #4,a1
+        subq.l  #4,a2
+.d1a:
+        subq.l  #4,a1
+        subq.l  #4,a2
+        COPY_UNIT
+        bra.b   .u2
+.d2b:
+        subq.l  #4,a1
+        subq.l  #4,a2
+.d2a:
+        subq.l  #4,a1
+        subq.l  #4,a2
+        COPY_UNIT
+        bra.b   .u3
+.d3b:
+        subq.l  #4,a1
+        subq.l  #4,a2
+.d3a:
+        subq.l  #4,a1
+        subq.l  #4,a2
+        COPY_UNIT
+        bra.b   .next
+        ; Fixed-size slot: an A/B swaps the loop with one same-length write.
+        dcb.b   COPY_SLOT-(*-.compare),0
 delta_shadow: dc.l 0
 delta_seen: ds.b 8
         even
