@@ -5563,7 +5563,7 @@ cover selected authoritative state, not all pointer-backed objects. Combat,
 ### Render-budget yield versus excess-time recovery
 
 The field-scheduled active-flight route on 68000 fails C9a: at world 100,
-153 input-history records had been discarded, TC_DROPPED was 242 fields,
+153 input-history records had been discarded, TC_DROPPED was 242 phase units,
 and player position/reserves differed from the 68020. No producer overflow
 was reported. Inspection found that a world-budget stop inside a snapshot
 was handled like an oversized field backlog: both scheduler outcomes returned
@@ -5587,7 +5587,7 @@ cases retain their documented discard behavior. Ordinary, runtime,
 VERIFY/runtime and input/runtime builds assemble.
 
 The live 68000 rerun still fails the equality gate: at world 100, history
-discards are 109 and TC_DROPPED is 89 fields. This removes unnecessary
+discards are 109 and TC_DROPPED is 89 phase units. This removes unnecessary
 world-budget rebases but does not solve sustained overload. Evidence is in
 `tmp/dev/tmp/c/world-active-{000,yield-000}`. The 68020 regression run,
 `world-active-yield-020`, retains all input with no scheduler fault; 818
@@ -6088,3 +6088,45 @@ eligible next poses against the following native world update.
 This extends the natural projectile-expiry and free-motion forecast evidence
 to rendered 68000 play after caching. It does not close the full input,
 collision/damage, effect, lifecycle, heavy-scene, NTSC or scanout matrix.
+
+### Cached NTSC rocket repeat and remaining 68000 overload
+
+The corrected active-epoch rocket runner now scales the PAL input tape to
+60 fields/s (weapon keys 288/293, fire 360/365 and 384/389). The unchanged
+`cache-combat` fixture completes worlds 20..80 on 68020/060 and on 68020 with
+main drawing replaced by a field wait. Selected world state and all actor
+bytes except the previously identified inactive animation countdowns/drawing
+scratch agree. All three release the rocket at world 64; each deadline is
+exactly world*20 fields from activation, without dropped time/history or
+scheduler faults. The 60-interval window spans 1,200 fields, exactly 3 Hz.
+The field-wait comparison matches raw controls; cross-CPU raw inputs differ
+only in TR_RELATIVE across 1,444 common records. The failed raw comparison is
+retained, and the separate consumed-control/state audit passes.
+
+`cache-world-fire-ntsc-000` is a real overload failure, not an epoch error.
+Worlds 20..26 have exact deadlines and no discarded fields. At world 27 the
+clock has rebased: 77 history records are discarded and nine phase units (three field-equivalents)
+are reported dropped. The runner stops on that changed epoch. This leaves
+68000 NTSC acceptance open even though the corresponding PAL route passes.
+
+`cache-cost-ntsc-000` profiles 100 fields around world 23 using the shared
+fs-uae-aprof build. It records 11,966,468 cycles, 97 player-field entries,
+97 cache requests but only ten native interval calls, five target passes,
+four world-completion entries and one main draw. The sample can straddle
+callbacks, so these counts are not a long-run world-rate measurement. Self
+costs include blitter_wait 10.26%, player_step_cached_interval 4.94%, endpoint
+owner 4.10%, scene check 3.98%, scheduler bridge 3.44%, fractional distribution
+3.01%, motion distribution 2.45% and scheduler_check 2.03%. Native geometry
+and raster work also remain substantial. The sample ends with the same 77
+discarded records. Cache reuse works; remaining per-field and rendering cost
+still needs reduction.
+
+The ignored `backlog128` diagnostic raises only the loop's field snapshot
+limit from 64 to 128. It retains the four-world render allowance and all
+checks. It reaches world 42 without rebasing, then the producer fills the
+128-record history ring: TH_FAULT=1, TH_LOST=1 and scheduler fault=1. The
+failure path pauses/discards the 128 retained records. This is sustained
+backlog on this route, not a reason to raise the production threshold. The
+normal 64-field limit is unchanged. Failure captures and both diagnostic
+binaries/listings remain in the ignored harness; no overload is hidden or
+accepted by these experiments.

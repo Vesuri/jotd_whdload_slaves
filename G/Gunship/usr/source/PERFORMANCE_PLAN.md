@@ -916,7 +916,13 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
     the emulated clock, on PAL and NTSC, in all windows. The cached PAL rocket
     comparison has exact deadline fields on all three CPUs and field-wait
     rendering; worlds 20..80 span 1,000 fields (3.000 Hz). Broader windows,
-    scenes and NTSC coverage remain open.
+    scenes remain open. The cached NTSC rocket repeat matches selected state
+    and exact 3 Hz deadlines on 68020/060 and 68020 field-wait rendering.
+    The 68000 NTSC route still overloads at world 27 (77 discarded history
+    records, nine discarded phase units). A diagnostic 128-field limit only
+    postpones failure until the history ring fills after world 42; the normal
+    64-field limit remains unchanged. Profiling confirms cache reuse but
+    identifies remaining field-owner, copy, distribution and raster cost.
   - C9c. **Responsiveness:** renders inside one world tick show a changing player pose and
     camera; count them, as Wing Commander's phase-9 gate did. Measure the delay from an
     input field to the first displayed frame that reflects it. A compiled PAL
