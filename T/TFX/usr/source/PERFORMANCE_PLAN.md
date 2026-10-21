@@ -874,4 +874,10 @@ Verification:
   keep $594f48e73f34.
 - **Builds:** normal and CHIP_ONLY builds have no relocations, and the normal build
   reproduces. FPSP files are unchanged.
+- Final balanced pair, for information:
+  - Publications: 699 control vs 689 candidate. Est-040 per frame: +0.52%.
+  - The palette code fell by 30.4k est-040 cycles per frame (1.6%): the original
+    loop -35.8k, fade_cols_040 +5.4k. Emulator cycles fell by 24.4k.
+  - The same divergence as the copy-only run (ScanFillDown +17k, copy +7k,
+    PlotColour +5k) outweighs the saving in the frame total.
 - Evidence: `tmp/dev/tmp/fade7/` (the copy-only run in `copy-only/`).
