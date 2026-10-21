@@ -1,3 +1,47 @@
+## Object reuse disposition and lane-width handling evidence
+
+Do not promote the current D4-preserving object-reuse layout. It improves the
+normal 040 result only from 22.9 to 23.0 fps, leaves 020/060 fps unchanged,
+and worsens explicit-Cache 020 fixed-field distance from 3321603 to 3311794.
+Passing same-boundary simulation tests does not override that live checkpoint
+regression. The accepted production geometry-only reuse remains unchanged.
+
+`c-world-reuse-d4-visible-040` completes all eight neutral/right pairs at
+injection fields 300–307: upper estimates are 140/120/140/120/140/120/140/120 ms,
+median 130. Current production has the opposite phase pattern with the same
+median; each candidate phase remains below its same-cell B reference
+(220/200/220/200/220/200/220/200 ms, median 210).
+
+The 020 batch accepts phases 300–305, then rejects phase 306 because the
+initial-state SHA differs between its neutral/right runs. The saved player
+bytes and other reported initial scalar fields match, but the broader state
+hash does not; the cause is unresolved. No response estimate is accepted from
+that pair. Fresh `c-world-reuse-d4-visible-020-tail` pairs at 306/307 satisfy the
+original equality prerequisite and report 180/160 ms. Together the eight
+accepted pairs give 140/120/180/160/140/120/180/160 ms, median 150, matching
+production. `c-world-reuse-d4-visible-020-combined.json` retains the excluded
+pair explicitly. This retry is not proof that the original mismatch is harmless.
+
+The discovered D4 dependency also affects the open B handling investigation.
+`c-lane-width-real-{b,c}` uses the same normal cycle-exact Fast-020 configuration
+as the handling reference, replays the lap tape through field 1200, then samples
+lane-builder entries. B receives D4 words 0/1 across cursors 1202–1220; production
+C receives 453/517 across cursors 1199–1208. The earlier functional probes
+`c-lane-width-baseline-{b,c}` show the same value sets. These are observations
+of differing lane construction inputs, not proof of the entire handling cause.
+
+Two private sensitivity fixtures (`c-lane-d4-{0,1}-source/build/lap`) explicitly
+set D4 to 0 or 1 immediately before simulation's native body. Both follow the
+unchanged field-timed lap on the reference machine and produce no crash through
+field 1600, final position 13802410, lateral -974, displayed rank 13 and the
+same native ahead order. B crashes at 1376 and ends at position 13031078,
+lateral -931, rank 15 with a different ahead order. Thus replacing the wide
+projection residue with either sampled narrow value materially changes AI but
+does not satisfy the B handling gate. Neither fixture is a proposed production
+constant or an accepted physics change. Future work must establish explicit
+lane-input ownership and its interaction with per-tick AI before changing it;
+matching the short sampled D4 range alone is insufficient. C remains open.
+
 ## World-object reuse: lifecycle, cadence and hardware checks
 
 The D4-preserving candidate remains private. Its normal binary is unchanged
