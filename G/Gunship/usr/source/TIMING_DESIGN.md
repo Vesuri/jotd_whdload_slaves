@@ -7674,3 +7674,28 @@ Evidence: ignored `audit_homing_forecast_reads_c.py`,
 reports, `test_scene_target_player_c.py` and
 `test_scene_target_player_prepare_c.py`. Live integration, complete dependency
 certification and field-rate projectile acceptance remain open.
+
+
+### Same-world stability of observed collection dependencies (C6d)
+
+`audit_forecast_frame_dependencies_c.py` compares the union of shared hunk
+bytes observed by the private-player collector against consecutive completed
+frames in the existing PAL 68020/68060 captures. It compares only frame pairs
+with equal runtime world counts, avoiding a false claim across world updates.
+All 1,215 observed hunk bytes remain equal in nine 68020 and 26 68060 pairs
+(worlds 24..30). The private player/camera inputs are deliberately excluded:
+they change with field motion and must participate in forecast reuse decisions.
+
+This evidence supports stability on the recorded route, not a complete cache
+key or universal world ownership. The nine external pointed-to bytes in the
+read inventory were not captured at each completed frame, so their stability
+is unverified. The observed read union is also path-dependent; other scene,
+object, camera, mode or command paths may access additional inputs. No
+cross-field forecast cache is enabled. Before enabling reuse, account for
+external records and certify writers/invalidation across the relevant modes,
+including field-owned projectile release and lifecycle transitions.
+
+The report `tmp/dev/tmp/c/forecast-frame-dependency-audit.json` lists every
+compared pair, checked byte count and any changes (none in these pairs).
+Both captures predate the forecast helper additions and establish shared
+native-data behavior only; they are not live validation of the new helpers.
