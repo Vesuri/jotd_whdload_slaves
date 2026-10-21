@@ -937,6 +937,14 @@ the field-rate player step and snapshots add work, priced in C4f. The ignored ha
   - C9f. **Prediction:** zero-fraction poses equal committed state; predicted endpoints match
     the next native update in free motion. Exercise spawn, impact, slot reuse, pause/resume,
     death and landing. Extra frames must not change world state or gameplay RNG.
+    A controlled PAL target-reposition fixture now releases and reuses slot 5
+    on 68020/060: generation advances from 1 to 2, and the two natural expiries
+    occur at worlds 64/116. Selected world state matches through world 130,
+    with 2,058 matching retained control records and no losses/discards.
+    Each CPU's 87 eligible cached forecasts match the next native update;
+    19 live 68060 draw inputs after reuse use generation 2 and the correct
+    forward fractions. Pixel/scanout, impact, other slots/weapons and lifecycle
+    discontinuity coverage remain open.
 - **C10. Option.** `CUSTOM1=1`, exposed as the boolean **Enhanced framerate**,
   is the master opt-in for all framerate enhancements. Omitted/zero retains
   original timing and rendering paths. All future C/D/E optimizations must

@@ -5774,3 +5774,55 @@ These checks establish one PAL projectile's motion and natural expiry across
 two CPUs and a field-wait presentation policy. They do not cover impact,
 effect conversion, slot reuse, reload, other weapons, NTSC, or the rendered
 68000 overload gate. No ordinary-build timing is enabled by this evidence.
+
+### Controlled live slot reuse and post-reuse draw inputs
+
+A second pulse after natural expiry alone did not exercise reuse: the target
+had left the forward view and native targeting had returned to the map. The
+`world-slot-reuse-020/060` routes therefore remain negative fixtures, not reuse
+acceptance. The subsequent controlled fixture changes only ignored harness
+assembly: immediately before world 66 target selection it places scripted
+helicopter 5 directly ahead of the current player (same X, Y+$600), restores
+its known active metadata/heading, and records its changed script generation.
+It does not modify projectile state, expiry, allocator logic or generations.
+The reposition is executed by guest code; debugger memory writes are ignored
+by this emulator and an attempted write was rejected by read-back verification.
+
+The successful `reuse.slave` fixture is 108,836 bytes, with its effective
+binary and listing hashes recorded by each run. It keeps the initial FFAR
+selection/fire inputs, pulses fire at 1090/1094 to leave the map after target
+reacquisition, and at 1180/1184 to launch again. The second pulse is scheduled
+after world 70, allowing for the foreground's lag behind the input producer.
+The earlier off-center/too-early-input attempt ended before a valid reuse
+capture and is excluded.
+
+`world-slot-reuse-centered-020` and `world-slot-reuse-draws-060` capture every
+world 20..130. Slot 5 expires at world 64 with generation 1, is allocated again
+at world 71 with generation 2, and expires at world 116. Across all 111
+snapshots, player/split objects, projectile coordinates/type/lifetime,
+allocation masks, generations, RNG, mission payload, alive table and
+countermeasures agree. All 2,058 common retained control records match, with
+zero dropped fields, lost/discarded input or commands, and scheduler faults.
+As in the prior natural-expiry fixture, the only raw actor-block differences
+are the six unused animation countdown bytes +C724..+C729.
+
+For each CPU, all 111 post-world caches carry the current tick, coordinates
+and generation. All 87 eligible next-pose forecasts match the next original
+native actor update; expiry predictions are ineligible rather than presented
+as free flight. The new occupant's cache contains generation 2 and its new
+launch coordinates, not the expired occupant's distant final position.
+
+The 68060 run also captures 19 entries to original draw +05C04 during worlds
+71..74, after presentation publication. Every capture has generation 2 in
+both the live identity and cached forecast, unchanged committed coordinates,
+and exactly the expected signed, wrapped, floor-rounded forward fraction in
+RT_ACTOR_COORDS and RT_PRESENT_SCENE. All 19 positions advance beyond the
+committed pose. For example, at world 71 plus two fields (a 16-field interval),
+the new rocket's committed Y is 16738 and its presented Y is 16769. This
+checks live renderer inputs, not pixels or scanout. Reports are retained as
+launch-comparison.json, actor-forecast-comparison.json and
+reuse-draw-comparison.json in the respective harness output directories.
+
+This controlled target reposition makes reuse repeatable; it is not evidence
+for natural target reacquisition, projectile impacts/effect conversion, every
+slot/weapon type, NTSC or 68000 rendering. Those acceptance gates remain open.
