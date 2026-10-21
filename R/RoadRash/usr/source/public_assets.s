@@ -42,6 +42,7 @@ public_asset_relocate:
  move.w #2044,d2
  bra .copy_header
 .fixed:
+ bsr public_menu_relocate
  move.l public_asset_image(pc),d0
  beq .done
  lea public_asset_fixed(pc),a3

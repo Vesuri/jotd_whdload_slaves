@@ -498,3 +498,26 @@ reservation is 404 KiB. No old Chip storage is reclaimed.
 `d-public-recolor-finish-*` preserves the complete fixed/varying race results;
 `d-public-recolor-matrix-tail` measures 8.5/16.7/28.1 fps on A500/Fast020/060.
 Normal slave SHA-256: `b8068b883910c9ee34bbac836de48d44f0379cd4530937e0111f97e2ac5b413a`.
+
+## D3 menu descriptions and joystick image
+
+`public_menu.s` copies small-picture/shop and local-player descriptions into
+two 128-byte slots at public `$4e080/$4e100`. Three typed renderer operands
+are validated before use and updated only after complete copies. The local
+player reader retains its native size addition through a corresponding base
+adjustment. A count that exceeds a slot restores native readers. Pixels,
+load/depack destinations and blitter scratch remain Chip.
+
+The 2,224-byte joystick image is CPU-copied into portrait scratch before
+rendering. Its stored source now uses `$4e180..$4ea2f`, within a reserved
+3,584-byte gap, after native depacking. This hook preserves the native register
+and CCR results and publishes the `$4e6` owner only after a bounded copy.
+These changes do not increase the 404 KiB allocation.
+
+`d-public-menu-final-finish-*` preserves all accepted race hashes/events,
+finish/exit state and restart. `d-public-menu-final-proof` verifies both menu
+descriptors byte-for-byte, joystick placement and size, and a 99-field trace
+without DMA addressing their public slots, then reaches the race. The shop's
+three-image set uses the same bounded first slot; its reader is statically
+audited, not separately exercised by that menu trace.
+Normal build SHA-256: `139996716e0fbc345040fbac60bfcef3cf86e6e22824442ae949d27d6ebd35ac`.

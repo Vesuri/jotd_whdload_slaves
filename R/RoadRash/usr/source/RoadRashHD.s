@@ -1022,6 +1022,7 @@ enhanced_decrunch_done:
  IFD C_PUBLIC_MAIN
  include public_loader.s
  include public_boot.s
+ include public_menu.s
  include public_recolor.s
  include public_audio.s
  include public_assets.s
