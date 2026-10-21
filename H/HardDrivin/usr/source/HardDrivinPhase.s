@@ -194,6 +194,7 @@ _phase_steering_call:
  link a5,#-6
 _phase_steering_continue:
  clr.b -$870(a4)
+_phase_steering_site equ *
  move.b -$66f0(a4),d0
  move.l _phase_steering_body(pc),-(a7)
  rts
@@ -369,6 +370,7 @@ _phase_frame:
  move.w PH_DT(a6),(a0)
  move.w PH_CURRENT_V(a6),-$66d8(a4)
  bsr _phase_steering_call
+_phase_neutral_site equ *
  move.w _dispatch_state+28(pc),d0
  subi.w #301,d0
  cmpi.w #38,d0
@@ -933,6 +935,7 @@ _phase_published:
  clr.w (a0)+
  dbf d4,.whole_axis
 .vector_done:
+_phase_vector_site equ *
  lea _drivetrain_state(pc),a0
  clr.w 6(a0)
  move.w (a7)+,d0

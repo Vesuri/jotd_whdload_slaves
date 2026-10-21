@@ -137,6 +137,13 @@ _time_install:
 	IFD VERIFY_TIME_PHANTOM
 	bsr _phantom_install
 	ENDC
+	IFD VERIFY_HANDLING
+	; beyond BSR range from here
+	lea .handling(pc),a0
+.handling:
+	adda.l #_handling_install-.handling,a0
+	jsr (a0)
+	ENDC
 	ENDC
 .restore:
 	movem.l (a7)+,d0-d1/a0-a2
@@ -894,4 +901,8 @@ _time_q16_results: dcb.l 7*9*7*2,0
 	IFD VERIFY_DRIVETRAIN_PHASE
 	INCLUDE "HardDrivinTerrain.s"
 	INCLUDE "HardDrivinCheckpoint.s"
+	ENDC
+
+	IFD VERIFY_HANDLING
+	INCLUDE "HardDrivinHandling.s"
 	ENDC
