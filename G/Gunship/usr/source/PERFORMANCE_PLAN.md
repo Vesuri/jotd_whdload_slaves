@@ -453,7 +453,13 @@ with 55 completed world ticks and no lost/discarded input; exact tails,
 rollback and 360 native boundary comparisons pass. A validated zero-motion fraction fast path then sustains 188 worlds over
 62.68 emulated seconds (2.99936 Hz) in the longer PAL 68000 idle run, with
 no lost/discarded history and sampled backlog 4..16 fields. Heavy-scene,
-NTSC, display latency and cross-CPU state gates remain open. Native world opening and the complete periodic
+NTSC, display latency and cross-CPU state gates remain open.
+Subsequent NTSC 68020 idle and 68060 takeoff runs sustain approximately
+3 Hz without time loss, but NTSC 68000 runs at 2.574 Hz and discards
+371 fields over 50.5 seconds. Critically, the PAL catch-up/copy/zero-motion
+100-field profiles contain zero completed renders: catching up can starve
+drawing despite near-3-Hz simulation. C8/C9 are not accepted; bounded
+render progress and measured display latency must accompany rate checks. Native world opening and the complete periodic
 reserve/housekeeping/flight-end tail are now extracted and tested separately;
 the weapon block also has a private-input extraction with native launch
 comparisons. Active-actor sequences and scheduler-bound guided release are

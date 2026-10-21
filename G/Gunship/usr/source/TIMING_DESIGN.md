@@ -5299,3 +5299,38 @@ This establishes near-3-Hz throughput only for this PAL idle scene on the
 68000 configuration. It does not establish display/input latency, continuous
 rendering, heavy-scene throughput, NTSC rate, or cross-CPU world equality.
 Those C9 gates remain open.
+
+### NTSC live rates and a rendering-starvation failure
+
+The live runner now explicitly passes NTSC mode through to the shared
+FS-UAE setup. The run log confirms both `ntsc_mode=1` and `uae_ntsc=true`,
+and the runtime clock selects rate 60 from Exec's VBlankFrequency. Read-only
+samples verify the clock phase identity when no time was discarded and
+permit at most one executing world deadline ahead of completed worlds.
+The nominal-rate measurements are:
+
+| Configuration / window | Emulated seconds | Completed ticks | Ticks/s | Discarded fields | Sampled backlog |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 68020 NTSC idle | 50.50 | 151 | 2.99010 | 0 | 0..8 |
+| 68060 NTSC takeoff | 52.50 | 157 | 2.99048 | 0 | 0..3 |
+| 68000 NTSC idle | 50.50 | 130 | 2.57426 | 371 | 4..72 |
+
+Evidence: `tmp/dev/tmp/c/live-loop-020-ntsc-long`,
+`live-loop-060-ntsc-takeoff`, `live-loop-000-ntsc-long`; each has
+`result.json`, `rate-summary.json`, memory snapshots and final screen.
+No scheduler fault or history overflow occurred. The first two rates are
+within one tick/window of 3 Hz; this is count/phase quantization, not proof
+of sub-field timing or display latency. The 68000 NTSC rate fails explicitly.
+
+A further audit of the PAL instruction profiles finds a more serious limit:
+the original `live-loop-000-profile` records four native +05C04 renders and
+four +04496 swaps in 100 fields, but `live-loop-000-catchup`,
+`live-loop-000-copy` and `live-loop-000-zero-long` each record zero renders
+and zero swaps in their 100-field captures. The near-3-Hz PAL result above
+therefore does NOT establish usable enhanced gameplay: processing continuously
+arriving input can starve drawing. The catch-up loop starts a fresh bounded
+snapshot repeatedly, so the per-snapshot world limit alone does not bound
+the interval between rendered frames. Do not accept C8/C9 from simulation
+throughput alone or solve this by dropping responsive field input silently.
+The next integration gate must measure completed renders alongside tick
+rate and input-to-display delay, and resolve this workload/scheduling limit.
