@@ -5916,3 +5916,40 @@ and drawing scratch/pointers. This completes this controlled effect-timing
 repeat on 68020/060 and field-wait presentation under NTSC; it does not close
 the remaining natural-hit, destructive-damage, lifecycle, pixel/scanout or
 68000 acceptance gates.
+
+### Current 68000 overload profile
+
+`current-cost-000` profiles the current ordinary VERIFY/runtime binary (no
+combat fixture) on a500-fast using the shared fs-uae-aprof build. The runner
+checks the effective slave hash, completes the engine-start route, sends ten
+F1 pulses, waits 100 fields, then reduces four consecutive 25-field Barto
+captures. The reduced profile, entry counts, loaded addresses and provenance
+are retained. Host mouse input is disabled and the run is headless.
+
+The 100-field sample contains 14,210,070 recorded cycles. It visits
+endpoint_player_step, player_step_init and player_step_interval 85 times
+each, but timing_runtime_draw only once. There are four target-pass entries
+and five world-completion entries (the window can straddle a world call).
+This is sampled work, not a claim that exact long-run tick rate is 2.5 Hz.
+The later checkpoint still has 70 discarded history records, confirming that
+the rendered overload is unresolved.
+
+Self-cycle attribution reports blitter_wait at 9.22%, endpoint_player_step
+3.08%, scheduled_endpoint_common 2.48%, endpoint_fraction_step 1.91%,
+endpoint_motion_step 1.77%, kinematics_prepare_fractional 1.57%,
+scheduler_check 1.51%, player_step 1.45%, fraction_scale 1.40%,
+kinematics_complete 1.33% and flight_rates_check 1.29%. These are self costs,
+not additive inclusive call times. There are 1,549 blitter-wait entries,
+825 scheduler checks and 252 flight-rate checks. Native geometry/raster work
+also remains substantial; no single listed function explains all overload.
+The local report now includes labels from all source .i files so it correctly
+identifies the wait helper instead of attributing it to the preceding loader
+symbol. Call-stack reconstruction is not relied upon for this fast-RAM code.
+
+The next bounded experiment is to measure repeated native motion-preview
+inputs before adding a cache. A full-input-key cache could avoid recomputing
+identical anchored contributions while retaining immediate response to changed
+controls, commands and impulses; its hit rate and benefit are not yet proven.
+Any optimization still requires native-endpoint, transaction/failure and live
+rate/state regressions. This profile does not justify dropping input, changing
+the world rate, removing checks indiscriminately or claiming C4f/C9 complete.
