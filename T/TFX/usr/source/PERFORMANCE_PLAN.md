@@ -541,3 +541,124 @@ verified 8-byte-copy build intact. The best corrected extended result remains
 607/2,000 (15.175 nominal fps), with 81/250 (16.2) in the short prefix. The 20 fps
 objective is unfinished; Apollo hardware measurements remain postponed. Local
 handoff, frozen builds and evidence remain under ignored tmp/dev/.
+
+
+## 20 fps action plan (profile of e0cd1fe7, 2026-10-21)
+
+This supersedes the four-step list under "Further optimization" above. Details,
+tables and reproduction commands: `tmp/dev/docs/profile-20fps.md`.
+
+Baseline: strict 040 NOMMU profile of the production build, action flight, fields
+[2,2002): 608 publications (15.2 nominal fps), intervals 13 x 2, 406 x 3, 189 x 4
+fields. Zero FPSP entries and no busy-wait: the game is entirely CPU-bound, so
+the frame rate is 40 MHz divided by cycles per frame. 20 fps needs 800/2,000, i.e.
+24.8% fewer cycles per frame (2.66 M emulated cycles -> 2.0 M).
+
+Key finding: the emulator's 040 model charges a flat ~2.84 cycles for almost every
+instruction, including FDIV, FMOVE, MULS.L, DIVS.L and memory bitfield operations.
+Only MULS.W (20), DIVS.W (48) and chip RAM writes (~31) cost extra. The emulator
+therefore measures instruction count, and it favours FPU-for-integer trades that
+real 040 hardware does not reward. An approximate MC68040 re-weighting of the same
+profile (`prof20_cost040.py`) is used alongside emulator A/B to rank candidates.
+
+Hot spots (emulator % / estimated 040 %):
+
+- ScanFillDown: 16.9 / 16.2
+- _MaskSprite cookie-cut: 11.8 / 8.2
+- Changed-block screen copy: 9.1 / 9.2
+- DoRotPt0: 9.0 / 8.3
+- Native projection: 5.8 / 11.5
+- Polygon bounds/backface: 5.8 / 4.6
+- MakeScanTable/GenLeft/GenRight: 5.9 / 5.0
+- PlotColour: 3.0 / 3.0
+- Cockpit and instrument images: 5.4 / 4.3
+- Palette blend: 1.35 / 2.0
+
+The scene has about 510 small polygons per frame (319 drawn, about 11 scanlines each), so per-polygon and per-scanline overhead dominates over pixel filling.
+
+Rules for every step:
+
+- One change at a time, gated to the new-renderer 040 path. CUSTOM5, original
+  rendering and the 020/030/060 paths stay unchanged.
+- Native original/replacement twin tests with guards, plus negative controls.
+- Five or more complete displayed-buffer/PNG comparisons in controlled scenes.
+- A balanced same-build 2,000-field A/B: exactly one same-address, same-length code write on each side, and matched startup hunks and registers.
+- The estimated-040 delta from both profiles.
+- CPU/option gates; normal/CHIP_ONLY builds with no relocations; FPSP files unchanged; 060 FPU sites unchanged.
+
+Accept a change only if the estimated-040 cost falls. The emulator A/B must also not regress, except where step 1 explicitly attributes the difference to emulator FPU bias. Commit each accepted change.
+
+0. Method and fixtures.
+   - Freeze `tmp/prof20/current` as the baseline.
+   - Add a second 2,000-field fixture. It uses the existing view tape, with external and cockpit views, so that changes do not overfit the cockpit flight.
+   - Script `prof20_cost040.py` into every A/B report.
+   - Prepare an Apollo calibration program for when the Amiga is available. It times DIVS.W, MULS.W/L, FDIV with FMOVE in/out, BFINS on memory, chip longword writes and fast-RAM CMPM streams, then replaces the model's constants.
+   - Also record the hardware in-game FPS (CUSTOM4 bit 3) on the action flight.
+1. Projection arithmetic.
+   - Add an integer path for the 040 projection loop: the original DIVS.W/BVS per coordinate, the streamlined slave loop, and no FP save/restore.
+   - Its outputs equal the FDIV path's, as already proven against the integer oracle, so reuse the 275 twin cases.
+   - The emulator will report a loss (about 6%, from its DIVS.W 48 versus FDIV 2.8 charges). The 040 estimate is a gain of about 5% (2 x 27 versus about 2 x 50 cycles per point).
+   - Keep both paths behind a switch. Default to integer once calibration confirms it, and record the decision.
+2. _MaskSprite inner loop (`$4e53a`, from `$4e420`).
+   - Restructure as row, then word, then plane.
+   - Load and shift each mask word once and apply it to all 8 planes.
+   - Move the first/last-word edge masks out of the inner loop (peeled edge words).
+   - Make the read-modify-write longword-aligned.
+   - Target about 8 instructions per word-plane, down from 19.
+   - Expected gain: about 6% emulator, about 4% estimated 040.
+   - Unlike the rejected sprite-on/sprite-zero trials, this removes per-plane mask work. Measure it on the 2,000-field window, not the 250-field window.
+3. Cockpit-aware work avoidance. Measure first, then implement only the parts the data supports.
+   - a) Trace one controlled flight and record:
+     - the opaque/masked columns of the per-frame cockpit overlay (loaded code at game:$3816);
+     - each _MaskSprite/_DrawSpriteImage/_DrawMonoImage call's rectangle and source;
+     - the y and x range of every ScanFillDown span.
+     Quantify 3D pixels drawn under fully opaque cockpit columns, and how often each instrument image changes.
+   - b) If overdraw exceeds about 5% of raster work, clip 3D spans to per-scanline visible extents derived from the overlay's opaque columns. Output stays exact because those pixels are overwritten. Disable it when the overlay is not drawn, as in external views.
+   - c) Skip comparing copy units known to hold unchanged opaque cockpit data in both the fast buffer and that chip buffer's shadow. Invalidate on overlay change and on PlayLevel.
+   - d) Skip redrawing instrument images whose call arguments and underlying area are unchanged since the last frame, only if (a) shows it is safe.
+   - Expected gain: 3-8% in total (unmeasured).
+4. Scanline span setup.
+   - About 24 instructions per scanline go into swap/BFEXTU/shift/sub before plotting.
+   - Have GenLeft/GenRight, or a 320-entry left/right lookup, provide the word offset and edge masks directly.
+   - Keep the colour-specialised narrow-span tables.
+   - Expected gain: about 3% emulator, about 2% estimated 040.
+5. Fused edge walking for convex polygons.
+   - Replace three steps with stepping both edges in the fill loop, using the identical DDA arithmetic for exact edges:
+     - MakeScanTable's vertex-list duplication;
+     - the separate GenLeft/GenRight table passes;
+     - the table re-read.
+   - Keep the original path for any case the fused path does not cover.
+   - Expected gain: about 4% on both measures. Highest effort.
+6. Copy compare loop.
+   - Unroll to one 32-byte cache line (four 8-byte units) per iteration with a single DBF, keeping the 8-byte granularity and the rewind logic.
+   - Expected gain: about 2-2.5% emulator, less on hardware, where fast-RAM bandwidth bounds the loop.
+7. Palette blend (`$249a`).
+   - Skip the 256 x 3 blend when the factor and both source palettes are unchanged since the last call.
+   - Otherwise replace DIVSL by 50 with an exact reciprocal multiply over the proven operand range.
+   - Expected gain: about 1.3% emulator, about 2% estimated 040.
+8. DoRotPt0 two-component delta case (`$59748`, 1,106 points per frame).
+   - Measure how often a point's delta repeats the previous one within a shape. If common, reuse the three products.
+   - Do not use FPU rotation: the emulator cannot evaluate it, and the expected hardware gain is small.
+   - Expected gain: 0-4%, depending on the measurement.
+9. Remaining tail, re-ranked after re-profiling: _DrawSpriteImage/_DrawMonoImage, slave line/plot, integer sqrt, ConeCheck/clipline, xTranslate (MULS.L, undercharged by the emulator).
+10. Re-profile after every accepted step and update this budget.
+    - The software target is at least 800/2,000 in the emulator, together with an estimated-040 cost of at most 2.0 M cycles per frame.
+    - Then validate on the Apollo with calibrated constants: hardware FPS on both fixtures, and the frame-interval distribution.
+    - Report the achieved hardware rate; do not equate it with the emulator figure.
+
+Budget (estimated-040 savings, before interaction effects):
+
+| Step | Saving |
+|---|---:|
+| 1 | 5 |
+| 2 | 4 |
+| 3 | 3-8 |
+| 4 | 2 |
+| 5 | 4 |
+| 6 | 1-2 |
+| 7 | 2 |
+| 8 | 0-4 |
+| 9 | 2 |
+| **Total** | **23-33%** |
+
+The emulator total without step 1 is about 24-31%. The goal is achievable only if steps 2-5 deliver close to their estimates. If they don't, report the shortfall rather than reducing detail or simulation work.
