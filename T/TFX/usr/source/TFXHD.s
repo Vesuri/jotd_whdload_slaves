@@ -506,15 +506,15 @@ get_version
 .vfpu_new
     ; this version needs patching (data/bss hunks)
 
-        lea pl_fpu_new(pc),a0
+        lea pl_fpu_new_render(pc),a3
         btst.b #AFB_68040,attnflags+3(pc)
         beq.b .new_render_list
         btst.b #AFB_68060,attnflags+3(pc)
         bne.b .new_render_list
-        lea render_patchlist(pc),a0
         lea pl_fpu_new_render_040(pc),a3
-        move.l a3,(a0)
 .new_render_list:
+        lea render_patchlist(pc),a0
+        move.l a3,(a0)
         lea pl_fpu_new(pc),a0
         lea native_fpu_patches(pc),a1
         btst.b #AFB_68060,attnflags+3(pc)
@@ -533,11 +533,8 @@ new_AllocMem
 .chip
     IFD CHIP_ONLY
     ELSE
-    ; Keep the original placement on 020/030/060 and with original rendering.
-    btst.b  #AFB_68040,attnflags+3(pc)
-    beq.b   .keepchip
-    btst.b  #AFB_68060,attnflags+3(pc)
-    bne.b   .keepchip
+    ; All CPUs use the DMA-only chip layout with the new renderer.
+    ; Original rendering retains the executable's chip data/BSS.
     CHECK_NO_FAST_ALLOC
     bne.b   .keepchip
     and.w   #~MEMF_CHIP,d1
@@ -736,20 +733,29 @@ split_new_chip_data:
         jmp     resload_Abort(a0)
 .allocated:
         move.l  d0,a4
-        ; tfx.020: the fast shadows come with the new 040 data/render path
-        ; (TFX allocates its own in patch_main).
+        ; TFX allocates its shadows in patch_main. As there, skip the 020:
+        ; without a data cache comparison costs more than the writes saved.
         ; Allocation failure retains the complete screen-copy loop.
+        btst.b  #AFB_68030,attnflags+3(pc)
+        beq.b   .no_shadow
         move.l  #bplbytes*8*2,d0
         move.l  #MEMF_FAST!MEMF_CLEAR,d1
         jsr     _LVOAllocMem(a6)
         lea     delta_shadow(pc),a0
         move.l  d0,(a0)
-        ; DoRotPt0 delta table (rot_delta2_040); without it the handler multiplies.
+.no_shadow:
+        ; Rotation caching measured slower on 020/030/060. Only the full 040
+        ; render list calls the cached handler; do not allocate its table elsewhere.
+        btst.b  #AFB_68040,attnflags+3(pc)
+        beq.b   .no_rot_table
+        btst.b  #AFB_68060,attnflags+3(pc)
+        bne.b   .no_rot_table
         move.l  #ROT_SLOTS*ROT_BUCKETS*32,d0
         move.l  #MEMF_FAST!MEMF_CLEAR,d1
         jsr     _LVOAllocMem(a6)
         lea     rot_table(pc),a0
         move.l  d0,(a0)
+.no_rot_table:
         lea     new_chip_ranges(pc),a5
 .relocate:
         move.l  (a5)+,d1
@@ -959,7 +965,7 @@ reset_copy_shadows:
         clr.l   (a0)
         clr.l   4(a0)
         move.l  (sp)+,a0
-        dc.w    $f227,$6900 ; fmove.x fp2,-(sp), original 040-only prologue
+        dc.w    $f227,$6900 ; fmove.x fp2,-(sp), original tfx.020 prologue
         move.l  d2,-(sp)
         JMPPTR play_level_body
 play_level_body_ptr: dc.l 0
@@ -3089,7 +3095,7 @@ pl_fpu
 
         PL_END
 
-; The new fills are enabled only for the target 040, with an off path.
+; The new fills support 020+; original rendering remains the off path.
 ; Exact signed projection using native 040 division, with extended/RZ FPCR.
 ; For |numerator| <= 2^31 and denominator >= 17, rounding error is far
 ; below the minimum noninteger distance 1/32767: integer truncation is exact.
@@ -4108,7 +4114,17 @@ SFD_X   set     0
 SFD_X   set     SFD_X+1
         endr
 
+; Shared 020+ renderer; only rotation caching is specific to the full 040.
 pl_fpu_new_render_040:
+        PL_START
+        PL_IFC4X 2
+        PL_ELSE
+        PL_P    $59748,rot_delta2_040
+        PL_GA   $59778,rot_tail
+        PL_ENDIF
+        PL_NEXT pl_fpu_new_render
+
+pl_fpu_new_render:
         PL_START
         PL_IFC4X 2
         PL_ELSE
@@ -4128,8 +4144,6 @@ pl_fpu_new_render_040:
         PL_P    $0249a,fade_cols_040    ; @AltFadeColsMiss, factor 50 as a copy
         PL_GA   $024a0,fade_cols_body
         PL_GA   $0258c,fade_cols_exit
-        PL_P    $59748,rot_delta2_040   ; DoRotPt0 delta table
-        PL_GA   $59778,rot_tail
         PL_P    $6c514,sfd_span_040     ; ScanFillDown lines from per-x tables
         PL_GA   $6c4b8,sfd_exit
         PL_GA   $6c520,sfd_loop
@@ -4211,7 +4225,7 @@ pl_fpu_new
         PL_PSS  $016fe,enable_vsync_wait,2
         PL_ENDIF
 
-        ; Additional 040 rendering/timestep patches are in pl_fpu_new_render_040.
+        ; Additional rendering/timestep patches are in pl_fpu_new_render.
 
         PL_GA   $3f99e,@ThreeScreenSwap_ptr
         PL_GA   $4ce00,_screen1_ptr
