@@ -84,6 +84,8 @@ _motion_patches:
 	PL_PSS $ccd4,_motion_fall_airborne,2
 	; PERF_RANGE VERIFY_TIME_MOTION $0cc8a $0006: ground constraint dispatch
 	PL_PS $cc8a,_motion_fall_ground
+	; PERF_RANGE VERIFY_TIME_MOTION $0cc2e $0006: landing depth test
+	PL_PS $cc2e,_motion_landing_depth
 	; PERF_RANGE VERIFY_TIME_MOTION $0cca0 $0006: inverted constraint dispatch
 	PL_PS $cca0,_motion_fall_ground_end
 	; PERF_RANGE VERIFY_TIME_MOTION $0b62a $0012: native-rounded spin recovery
@@ -222,6 +224,16 @@ _motion_fall_inverted:
 	add.w d0,-$66f2(a4)
 	rts
 _motion_fall_airborne:
+	; the average wheel height of each pass in the air or on two wheels,
+	; for the landing test (_motion_fall_ground)
+	movem.l d0/a0,-(a7)
+	lea _motion_landing(pc),a0
+	move.w _time_scalar_fields(pc),d0
+	beq.s .unrecorded
+	move.w -8(a5),(a0)+
+	move.w #1,(a0)
+.unrecorded:
+	movem.l (a7)+,d0/a0
 	tst.b -1(a5)
 	bne.s .contact
 	move.l d0,-(a7)
@@ -257,28 +269,45 @@ _motion_fall_delta:
 	rts
 _motion_fall_ground:
 	IFND VERIFY_DISPATCH_NATIVE
-	; Native landing crashes require fall>50 plus >5 units of penetration.
-	; Small updates can reach full contact and reset fall speed before that
-	; penetration occurs. Test impact at full contact for variable intervals.
+	; Native landing crashes require fall>50 plus >5 units of penetration
+	; after a whole native step. Contact starts below 4 units, so a step that
+	; closes on the ground at u units lands 4-u..4 deep: a crash with chance
+	; (u-9)/u, half at u=18. Small updates reach full contact long before
+	; that depth (_motion_landing_depth drops the depth test), so variable
+	; intervals crash where the wheels closed on the ground faster than
+	; LANDING_U units per native step since the last pass in the air: the
+	; native median, and the ground's own slope counts as in the native depth.
 	; Keep native zero/eight-field behavior and the existing crash action.
+	movem.l d0-d1/a0,-(a7)
+	lea _motion_landing(pc),a0
+	move.w (a0)+,d1
+	move.w (a0),d0
+	clr.w (a0)
+	tst.w d0
+	beq.s .native
 	cmpi.w #50,-$66f2(a4)
-	ble.s _motion_fall_ground_native
+	ble.s .native
 	tst.b -$69fa(a4)
-	bne.s _motion_fall_ground_native
-	movem.l d0/a0,-(a7)
+	bne.s .native
 	move.w _time_scalar_fields(pc),d0
 	beq.s .native
 	cmpi.w #8,d0
 	beq.s .native
+	sub.w -8(a5),d1			; closing in this pass's fields
+	ext.l d1
+	asl.l #3,d1
+	mulu.w #LANDING_U,d0
+	cmp.l d0,d1
+	ble.s .native
 	; CC90 is the patched call's return address. Re-enter the native impact
 	; action at CC4A; its next visit here has crash=25 and resets fall state.
-	movea.l 8(a7),a0
+	movea.l 12(a7),a0
 	lea -$46(a0),a0
-	move.l a0,8(a7)
-	movem.l (a7)+,d0/a0
+	move.l a0,12(a7)
+	movem.l (a7)+,d0-d1/a0
 	rts
 .native:
-	movem.l (a7)+,d0/a0
+	movem.l (a7)+,d0-d1/a0
 	ENDC
 _motion_fall_ground_native:
 	tst.b -$86f(a4)
@@ -300,6 +329,28 @@ _motion_fall_ground_end:
 	bra.s _motion_fall_reset_fraction
 .done:
 	rts
+; Replaces CMPI.W #-5,-8(A5) at $CC2E, the native landing's depth test, whose
+; BLT follows. Variable intervals answer "not deeper": _motion_fall_ground
+; judges their landings by the closing speed instead.
+_motion_landing_depth:
+	IFND VERIFY_DISPATCH_NATIVE
+	move.l d0,-(a7)
+	move.w _time_scalar_fields(pc),d0
+	beq.s .native
+	subq.w #8,d0
+	beq.s .native
+	move.l (a7)+,d0
+	cmp.w d0,d0
+	rts
+.native:
+	move.l (a7)+,d0
+	ENDC
+	cmpi.w #-5,-8(a5)
+	rts
+LANDING_U equ 18		; units per native step, the native crash median
+; Average wheel height of the last pass in the air or on two wheels, and
+; nonzero while it is the latest pass's.
+_motion_landing: dc.w 0,0
 _motion_fall_reset_fraction:
 	move.l a0,-(a7)
 	lea _motion_state(pc),a0
@@ -1042,6 +1093,8 @@ _motion_reset:
 	bsr _motion_drift_reset
 	move.l a0,-(a7)
 	lea _motion_crash_state(pc),a0
+	clr.l (a0)
+	lea _motion_landing(pc),a0
 	clr.l (a0)
 	lea _motion_state(pc),a0
 	clr.l (a0)+
