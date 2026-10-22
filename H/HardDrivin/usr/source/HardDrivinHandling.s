@@ -124,6 +124,10 @@ _handling_install:
 	lea _handling_yaw_rate(pc),a1
 	move.l a0,(a1)
 	movea.l a3,a0
+	adda.l #_motion_state-_handling_install,a0
+	lea _handling_motion(pc),a1
+	move.l a0,(a1)
+	movea.l a3,a0
 	adda.l #_code_start-_handling_install,a0
 	move.l (a0),d0
 	addi.l #$b44e,d0
@@ -172,6 +176,7 @@ _handling_time: dc.l 0		; _time_state
 _handling_time_vbl: dc.l 0	; _time_vbl
 _handling_fields: dc.l 0	; _time_scalar_fields
 _handling_yaw_rate: dc.l 0	; _motion_yaw_rate
+_handling_motion: dc.l 0	; _motion_state
 
 ; Replaces _time_vbl at $50. The sample of field k is X after its VBL, so
 ; ring[TS_FIELDS] is written by the next VBL, before the native mouse update.
@@ -333,19 +338,10 @@ _handling_steer:
 	bne .field
 	bsr _handling_feedback
 .applied:
-	; whole heading units go through the native yaw-rate helper, which
-	; also keeps its pitch and roll coupling on slopes and in the loop
 	move.w HS_HEAD(a0),d0
 	beq.s .turned
 	clr.w HS_HEAD(a0)
-	movea.l _handling_fields(pc),a1
-	move.w (a1),-(a7)
-	move.w #8,(a1)
-	move.w d0,-(a7)
-	movea.l _handling_yaw_rate(pc),a1
-	jsr (a1)
-	movea.l _handling_fields(pc),a1
-	move.w (a7)+,(a1)
+	bsr _handling_turn
 	lea _handling_state(pc),a0
 .turned:
 	move.l HS_DX(a0),d0
@@ -359,6 +355,90 @@ _handling_steer:
 	move.w -$66b6(a4),HS_LAST_HEAD(a0)
 	movem.l (a7)+,d2-d7/a2-a3
 	move.l _handling_tail(pc),-(a7)
+	rts
+
+; D0 = whole heading units the model turned. The car turns about its own
+; vertical axis, which stays where it is: on a slope the tilt turns with the
+; car, as a pair (pitch, roll) rotated by the turn, and keeps its size. The
+; native yaw-rate helper ($B1D0) adds -r sin(roll) to pitch and -r sin(pitch)
+; to roll instead, which makes any tilt grow at the turn rate; the contact
+; code wins against that at the native turn rates, not at the model's. It is
+; kept above 60 degrees of pitch or roll, as in the loop, where its inverted
+; heading factor matters. Clobbers D0-D5/A0-A1.
+_handling_turn:
+	move.w -$66b4(a4),d2		; pitch G($994C)
+	bsr .wrap
+	move.w d2,d3
+	move.w -$66b2(a4),d2		; roll G($994E)
+	bsr .wrap
+	move.w d3,d1
+	bpl.s .pitch
+	neg.w d1
+.pitch:
+	cmpi.w #240,d1
+	bge.s .native
+	move.w d2,d1
+	bpl.s .roll
+	neg.w d1
+.roll:
+	cmpi.w #240,d1
+	bge.s .native
+	; the enhanced angle fractions stay, as for the native helper's adds
+	movea.l _handling_motion(pc),a1
+	add.w d0,-$66b6(a4)		; heading G($994A), wrapped by the tail
+	add.w d0,MS_YAW+4(a1)
+	; native sine and cosine, Q14; they clobber D0/D1/A0, and the cosine
+	; adds 360 to its argument in place, so it goes second
+	move.w d0,-(a7)
+	jsr -$7f26(a4)
+	move.w d0,d5
+	jsr -$7f2c(a4)
+	addq.w #2,a7
+	move.w d0,d4
+	; pitch' = pitch cos - roll sin, roll' = pitch sin + roll cos, rounded
+	move.w d3,d0
+	muls.w d4,d0
+	move.w d2,d1
+	muls.w d5,d1
+	sub.l d1,d0
+	addi.l #1<<13,d0
+	moveq #14,d1
+	asr.l d1,d0
+	sub.w d3,d0
+	add.w d0,-$66b4(a4)
+	add.w d0,MS_PITCH+4(a1)
+	move.w d3,d0
+	muls.w d5,d0
+	move.w d2,d1
+	muls.w d4,d1
+	add.l d1,d0
+	addi.l #1<<13,d0
+	moveq #14,d1
+	asr.l d1,d0
+	sub.w d2,d0
+	add.w d0,-$66b2(a4)
+	add.w d0,MS_ROLL+4(a1)
+	rts
+.native:
+	movea.l _handling_fields(pc),a1
+	move.w (a1),-(a7)
+	move.w #8,(a1)
+	move.w d0,-(a7)
+	movea.l _handling_yaw_rate(pc),a1
+	jsr (a1)
+	movea.l _handling_fields(pc),a1
+	move.w (a7)+,(a1)
+	rts
+; D2 = angle, returned within -720..720
+.wrap:
+	cmpi.w #720,d2
+	ble.s .wrap_high
+	subi.w #1440,d2
+.wrap_high:
+	cmpi.w #-720,d2
+	bge.s .wrap_low
+	addi.w #1440,d2
+.wrap_low:
 	rts
 
 ; A0 = state. Frame bookkeeping, resets and the step inputs other than the
