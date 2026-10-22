@@ -5,11 +5,12 @@ _projection_signature: dc.b 'HDVPROJ1'
 _projection_state: dcb.l 9,0
 ; Arcade flight (CUSTOM1=2): the arcade car flies ballistically under 1 g, the
 ; native one along its body's pitch under 0.27 g. The pitch sine and cosine of
-; the first pass with no wheel on the ground are held until three wheels or a
-; diagonal pair touch (the native ground pass), a crash or a reset. On two
-; wheels the car keeps the flight's direction: the native passes there move it
-; along the body and keep the fall, which doubles the landing's closing speed.
-; The movement projections use them, contact, landing and engine the body's.
+; the first pass with no wheel on the ground, upright and within 45 degrees of
+; level, are held until three wheels or a diagonal pair touch (the native
+; ground pass), a crash or a reset. On two wheels the car keeps the flight's
+; direction: the native passes there move it along the body and keep the fall,
+; which doubles the landing's closing speed. The movement projections use
+; them, contact, landing and engine the body's.
 _flight_held: dc.w 0		; nonzero while held
 _flight_trig: dc.w 0,16384	; held sine, cosine (Q14)
 _projection_reset:
@@ -29,24 +30,33 @@ _projection_reset:
 	rts
 ; Each pass with no wheel on the ground: holds the first one's pitch trig and
 ; returns the fall acceleration per native step in D0, the native 5 or
-; FLIGHT_G. Preserves the other registers.
+; FLIGHT_G. Preserves the other registers. Only a car upright and within 45
+; degrees of level takes off: the loop has no centripetal force to press the
+; car on, so where it loses contact (on the way up, and upside down at the
+; top) only the native fall along the body brings it back.
 _flight_fall:
-	move.l a0,-(a7)
+	movem.l d1/a0,-(a7)
 	move.w _contact_arcade(pc),d0
 	beq.s .native
 	lea _flight_held(pc),a0
 	tst.w (a0)
 	bne.s .held
+	move.w -$6bb4(a4),d1
+	bpl.s .positive
+	neg.w d1
+.positive:
+	cmp.w -$6bb2(a4),d1		; |sine| > cosine: steep or upside down
+	bgt.s .native
 	move.w d0,(a0)+
 	move.w -$6bb4(a4),(a0)+
 	move.w -$6bb2(a4),(a0)
 .held:
 	moveq #FLIGHT_G,d0
-	movea.l (a7)+,a0
+	movem.l (a7)+,d1/a0
 	rts
 .native:
 	moveq #5,d0
-	movea.l (a7)+,a0
+	movem.l (a7)+,d1/a0
 	rts
 FLIGHT_G equ 19		; 32.2 ft/s^2: 18.8 long units (0.0438 ft) per native step^2
 ; Each native ground pass (_motion_fall_ground). Preserves registers.
