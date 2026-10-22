@@ -906,3 +906,7 @@ _time_q16_results: dcb.l 7*9*7*2,0
 	IFD VERIFY_HANDLING
 	INCLUDE "HardDrivinHandling.s"
 	ENDC
+
+	IFD VERIFY_CLOCK
+	INCLUDE "HardDrivinClock.s"
+	ENDC

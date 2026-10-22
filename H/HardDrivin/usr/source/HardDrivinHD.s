@@ -256,6 +256,13 @@ _p0_OldOpenLibrary:
 	ENDC
 	IFD VERIFY_TIME
 	bsr _time_install
+	IFD VERIFY_CLOCK
+	; beyond BSR range from here
+	lea .clock_base(pc),a1
+.clock_base:
+	adda.l #_clock_install-.clock_base,a1
+	jsr (a1)
+	ENDC
 	ENDC
 
 	IFD VERIFY_RENDER
@@ -1870,6 +1877,10 @@ _ct_ct1:	dc.l 0
 	dc.l WHDLTAG_CUSTOM4_GET
 _ct_ct4:	dc.l 0
 	ENDC
+	IFD VERIFY_CLOCK
+	dc.l WHDLTAG_CUSTOM5_GET
+_ct_ct5:	dc.l 0
+	ENDC
 	dc.l	0
 
 _exec_OldOpenLibrary:
@@ -1892,7 +1903,8 @@ slv_copy:	dc.b	"1989 Tengen / Atari / Domark",0
 
 slv_config:
 	dc.b "C1:L:Simulation:Original,Enhanced framerate,Enhanced framerate with arcade handling;"
-	dc.b "C2:L:Frame delay:None,1,2,3,4,5,6,7,8,9;",0
+	dc.b "C2:L:Frame delay:None,1,2,3,4,5,6,7,8,9;"
+	dc.b "C5:L:Race timing:Amiga,Arcade;",0
 	EVEN
 
 slv_info:	dc.b	10,"Installer by Girv & JOTD",10,10
