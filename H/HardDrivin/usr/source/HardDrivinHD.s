@@ -851,6 +851,8 @@ _pl0_v1:	PL_START
 
 	PL_PSS	$11982,_fixbcd_v1,8	; patch bad bcd-add call
 
+	PL_PS	$39c8,_fixclip_v1	; skip polygons whose clipping overflowed
+
 	PL_PS	$7cbe,_cgear1_v1	; patch new gear selection
 	PL_PS	$7cc6,_cgear2_v1
 	PL_PS	$7cce,_cgear3_v1
@@ -1295,6 +1297,33 @@ _fixbcd_v4:	pea	-$6838(a4)
 	jsr	-$7f08(a4)
 	addq.l	#8,a7
 	rts
+
+;--------------------------------
+
+	; fix for polygons clipped against the screen window ($39c8): with
+	; vertices far outside it the clip's MULS/DIVS overflow, and the edge
+	; and span tables, which hold only the window, are indexed beyond their
+	; ends; the span fill then jumps into other code. Polygons drawn without
+	; clipping lie inside the window already.
+
+_fixclip_v1:	move.l	(a6),(a0)	; close the polygon (replaced)
+	movea.l	a6,a0
+	move.w	d0,d1	; vertices - 1
+.vertex:	move.w	(a0)+,d2	; x
+	cmp.w	-$69ee(a4),d2	; window left
+	blt.s	.outside
+	cmp.w	-$69f0(a4),d2	; window right
+	bgt.s	.outside
+	move.w	(a0)+,d2	; y
+	cmp.w	-$69f2(a4),d2	; window top
+	blt.s	.outside
+	cmp.w	-$69f4(a4),d2	; window bottom
+	bgt.s	.outside
+	dbf	d1,.vertex
+	movea.l	(a7),a0	; return address $39ce
+	lea	$329a-$39ce(a0),a0
+	jmp	(a0)	; draw (replaced bsr)
+.outside:	rts
 
 ;--------------------------------
 
