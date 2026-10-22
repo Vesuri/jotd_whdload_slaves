@@ -84,6 +84,11 @@ unconditional correctness fixes have zero cost. The final metadata-only `$VER`
 addition leaves executable offsets unchanged; the exact packaged binary was
 rechecked on 040 and A500 and produces the same throughput.
 
+A later matched off/on comparison of the visual-fix build, with `PRELOAD Cache`
+requested throughout, is recorded in [framerate-comparison.md](framerate-comparison.md).
+It includes exact CPU/memory/cache settings and repeated measurements; the table
+above retains its original release-validation settings.
+
 ## Release verification
 
 - A4a: 399 applied throttle fields on 040, completed simulation boundaries:
