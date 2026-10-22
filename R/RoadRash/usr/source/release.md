@@ -133,3 +133,22 @@ for implementation, replay equivalence and unchanged measured throughput.
 The updated installer is built under `tmp/dev/tmp/release-3.0b-visual-final/`;
 its manifest records the exact source and slave hashes. Earlier archive hashes
 in this document describe the preceding build.
+
+## Interactive A1200-030 playtest, 22 October
+
+The user played the current visual-fix build on the shared interactive
+`a1200-030` emulator preset and reported a very positive result. This provides
+user playtest confirmation alongside the automated comparisons; it does not
+claim exhaustive defect coverage or physical-hardware validation.
+
+The effective setup was a 50 MHz 68030 with 68030 MMU, 2 MiB Chip and 8 MiB
+Fast RAM, emulator data-cache support enabled, and WHDLoad
+`PRELOAD Cache CUSTOM2=1`. The normal 3.0b slave SHA-256 was
+`55f24917ce843bddef178283acc006c09183173b5adf4998bb8c4d3cb51a6a05`.
+The session's startup command, effective configuration and tested slave are
+retained locally in `tmp/dev/tmp/play-030-20261022-100742/`.
+
+No FPS measurement was taken during this interactive session. The repeated
+39.6 fps 030 result in [framerate-comparison.md](framerate-comparison.md) comes
+from the separate controlled, no-MMU benchmark. Physical cache/coherency
+validation (D1d) and future fixed-address-global work (F6) remain outstanding.

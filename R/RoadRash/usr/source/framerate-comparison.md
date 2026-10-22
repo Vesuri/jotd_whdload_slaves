@@ -65,3 +65,9 @@ Raw results: `tmp/dev/tmp/performance-comparison-3.0b/matrix.json`, plus the
 `<cell>-custom2-<0|1>-r<1|2>/result.json` files. These local files contain no
 changes to the game assets or installed interactive game. Hardware validation
 remains separate from these emulator results.
+
+The user subsequently playtested the same slave with the interactive
+MMU-enabled A1200-030/50 preset, `PRELOAD Cache CUSTOM2=1`, and reported a very
+positive result. See [release.md](release.md#interactive-a1200-030-playtest-22-october)
+for the recorded configuration. That session adds qualitative playtest evidence;
+it does not supply another FPS sample.
