@@ -529,6 +529,8 @@ _handling_sync:
 	bsr _handling_reset		; collision: the speed jumped
 .no_force:
 	moveq #0,d0
+	moveq #0,d3
+	moveq #0,d4
 	bra.s .limit
 .force:
 	move.w d0,d4			; the change in eighths, over d3 fields
@@ -540,16 +542,42 @@ _handling_sync:
 	asr.l #4,d0
 .limit:
 	moveq #0,d1
+	tst.b -$66ef(a4)
+	beq.s .no_brake
+	; The brake brakes at its limit, as the arcade's pedal does. The native
+	; one is the speed / 35 per step, with the drag beside it and the engine
+	; against it while the throttle closes at 2 per step: from 100 MPH
+	; 0.4 g, and 0.35 g below 20 MPH. Whatever the native engine did beyond
+	; the limit in the last call comes off again, as for the drive. In the
+	; air or reversing the native brake stays.
+	move.b -$66f0(a4),d1
+	andi.b #3,d1
+	beq.s .air_brake
+	tst.w d2
+	ble.s .air_brake
+	mulu.w #HANDLING_FX_BRAKE,d3
+	addi.l #HANDLING_K_FX/2,d3
+	divu.w #HANDLING_K_FX,d3	; eighths the limit takes
+	add.w d3,d4
+	muls.w #-HM_K_U,d4		; what the native change missed it by
+	asl.l #3,d4			; Q22 ft/s
+	move.l d4,HS_DU(a0)
+	move.w #-HANDLING_FX_BRAKE,d0
+	move.w d0,d1
+	bra.s .inputs
+.air_brake:
+	moveq #0,d1
 	tst.w d0
 	bpl.s .drive
-	tst.b -$66ef(a4)
-	beq.s .coast
 	cmpi.w #-HANDLING_FX_BRAKE,d0
 	bge.s .brake
 	move.w #-HANDLING_FX_BRAKE,d0
 .brake:
 	move.w d0,d1
 	bra.s .inputs
+.no_brake:
+	tst.w d0
+	bpl.s .drive
 .coast:
 	cmpi.w #-HANDLING_FX_COAST,d0
 	bge.s .inputs
@@ -831,12 +859,17 @@ _handling_step:
 	muls.w HS_BRAKE(a0),d3
 	asr.l d7,d3
 	move.w d3,d7
+	move.w d3,-(a7)
 	move.w HS_NF(a0),d6
 	lea _handling_front(pc),a2
 	bsr _handling_axle
+	move.w (a7)+,d5
 	; front force in body axes. The rear wheels get fx less the front
 	; wheel's own longitudinal force: fx is the native drive, and the drag
-	; of the steered front tyre is the model's (handling_fx fx_total=False)
+	; of the steered front tyre is the model's (handling_fx fx_total=False).
+	; While braking they get fx less the brake torque: the brake is on the
+	; front only, and what a front tyre past its limit cannot take is lost,
+	; not passed to the rear tyres, which would let go in a fast corner.
 	moveq #14,d7
 	move.w d0,d2
 	muls.w HS_CD(a0),d2
@@ -854,6 +887,11 @@ _handling_step:
 	move.w d0,HS_FYBF(a0)
 	move.w HS_FX(a0),d0
 	ext.l d0
+	tst.w HS_BRAKE(a0)
+	beq.s .rt_drive
+	move.w d5,d4
+	ext.l d4
+.rt_drive:
 	sub.l d4,d0
 	cmpi.l #HM_FX_MAX,d0
 	ble.s .rt_high
