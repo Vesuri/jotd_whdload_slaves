@@ -451,6 +451,8 @@ _handling_sync:
 	moveq #0,d0
 	bra.s .limit
 .force:
+	move.w d0,d4			; the change in eighths, over d3 fields
+	move.w d1,d3
 	ext.l d0
 	asl.l #4,d0
 	divs.w d1,d0
@@ -476,6 +478,25 @@ _handling_sync:
 .drive:
 	cmpi.w #HANDLING_FX_DRIVE,d0
 	ble.s .inputs
+	; What the native engine gained beyond the drive limit never went
+	; through the tyres. While they have grip to spare it stays, so the
+	; native car keeps its acceleration. While a tyre is past its peak it
+	; comes off again: the engine is power limited and pushes hardest when
+	; the model has taken speed away, and pushing a sliding car along its
+	; heading feeds v r a spin that never ends.
+	move.b HS_FRONT+AX_PEAK(a0),d1
+	or.b HS_REAR+AX_PEAK(a0),d1
+	beq.s .grip
+	mulu.w #HANDLING_FX_DRIVE,d3
+	addi.l #HANDLING_K_FX/2,d3
+	divu.w #HANDLING_K_FX,d3	; eighths the limit gives
+	sub.w d3,d4			; eighths beyond it
+	ble.s .grip
+	muls.w #-HM_K_U,d4
+	asl.l #3,d4			; Q22 ft/s
+	move.l d4,HS_DU(a0)
+.grip:
+	moveq #0,d1
 	move.w #HANDLING_FX_DRIVE,d0
 .inputs:
 	move.w d0,HS_FXIN(a0)
