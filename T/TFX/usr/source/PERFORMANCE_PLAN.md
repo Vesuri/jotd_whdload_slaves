@@ -362,6 +362,8 @@ Palette code remains unchanged; step 12 is still unreproduced.
 ## Open questions
 
 - Where the yellow colour appears; step 12 searches for it.
+- Which executable is fastest on an FPU-equipped 020, 030 and 060 (see the executable
+  comparison at the end of this plan).
 
 ## Further optimization: 20 fps target
 
@@ -1327,7 +1329,7 @@ with pl_020. Status per change:
 | Native FPU paths (original step 9) | done | not applicable without FPSP traps |
 
 Whether FPU-equipped 020/030/060 should instead run tfx.020 with the render list is
-open; it needs the render list to be measured on those CPUs.
+open; see "Open: executable comparison on FPU-equipped 020/030/060" below.
 
 Delta copy for plain TFX:
 - patch_main's TFX fast-RAM block (new rendering only) allocates delta_shadow, so
@@ -1389,3 +1391,31 @@ rot_delta2_040 on other CPUs (measured, not adopted):
   lookups and a 32 KB table against a 256-byte data cache cost more than six MULS.W;
   on the 060 MULS.W is cheap. The change stays in the 68040 list; TFX is not patched.
 - Evidence: `tmp/dev/tmp/rot/`.
+
+### Open: executable comparison on FPU-equipped 020/030/060
+
+Automatic selection today (TFXHD.s, `.legacy_auto` and `.vfpu_new`):
+- A full 68040 with FPU runs tfx.020 with pl_fpu_new, its native FPU list and
+  pl_fpu_new_render_040: paraj's renderer ported, data/BSS in fast RAM, every 040 change.
+- With fast RAM, every other CPU runs plain TFX (integer maths, soft-float) with pl_020,
+  even when it has an FPU.
+- Without fast RAM, CPUs with an FPU run tfx.020 without the render list: original
+  renderer, merged data/BSS in chip RAM. The 060 also gets FPSP emulation.
+
+So plain TFX's soft-float (about 18% of its time) is spent even where an FPU exists.
+tfx.020 has everything plain TFX has, but only the 68040 path gets the renderer port
+and fast-RAM placement.
+
+To decide:
+1. Make pl_fpu_new_render_040 and the step-8 placement run on a 68030 + 68882 and a
+   68060 (and a 68020 + 6888x). Find what is 040-only inside the list: rot_delta2 must
+   stay off (measured slower), and the 060 must take the DIVU.L Gouraud body (64-bit
+   MULU.L is unimplemented there). FINTRZ/FMOVECR and transcendentals are native on a
+   6888x, but the native replacements may still be faster.
+2. Measure plain TFX + pl_020 against tfx.020 + render list per CPU on the same tapes
+   (action flight and follow camera), with `cpu_profile.py`. Compare within one CPU
+   only: the emulator's timing models differ, and the 060 does not charge chip writes.
+3. Select per CPU whichever is faster; keep original rendering and explicit
+   executable choices working; run the step-13 selection regression.
+- Exit: per-CPU table in this plan, automatic selection updated only where measured
+  faster, every executable/option still boots on 020/030/040/060.
