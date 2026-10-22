@@ -120,7 +120,7 @@ slv_config
         dc.b    "C4:X:1-frame limit (unsupported):6;"
 
 	dc.b	"C5:B:no FPU direct fixes;"
-	dc.b	"C1:B:68040 integer projection;"
+	dc.b	"C1:B:integer projection;"
 	dc.b	0	
 	EVEN
 slv_name		dc.b	"TFX"
@@ -234,21 +234,8 @@ _bootdos
         move.l  executable(pc),d1
         bne   .noauto
     ;automatic mode
-        ; The newest build now has the fast renderer and native 040 maths.
-        ; Select it on full 040 only; preserve the 020/030/060 policy below.
-        move.l  attnflags(pc),d0
-        btst    #AFB_68040,d0
-        beq.b   .legacy_auto
-        btst    #AFB_68060,d0
-        bne.b   .legacy_auto
-        btst    #AFB_FPU40,d0
-        bne     .plain_040
-.legacy_auto
-        CHECK_NO_FAST_ALLOC
-        ; Preserve the existing preference for plain 020 in "fast" mode on other CPUs.
-        ; On 060 TFX.040 (the other candidate) was only marginally faster.
-        beq     .nofpu
-
+        ; The 1997 FPU build wins both measured tapes on 020+6888x,
+        ; 030+68882 and 060 too. Keep plain TFX for CPUs without an FPU.
         move.l  attnflags(pc),d0
         btst    #AFB_68040,d0
         beq   .test_fpu
@@ -270,8 +257,7 @@ _bootdos
         bra.b   .assume_fpu
 .plain_040
         ; 68040. Check if we have FPU available
-      ; check for 040 FPU, fails on 68060 atm there's no
-      ; way to make 060 run a FPU version anyway
+        ; The 060 has already been checked through PCR above.
         btst    #AFB_FPU40,d0
         beq.b   .nofpu
         ; 68040/060 with FPU, we can automatically select one of the FPU

@@ -1311,9 +1311,10 @@ Step 11c (Gouraud runs on every CPU):
 - Evidence: `tmp/dev/tmp/gouraud3/tfx-*`, `tmp/dev/tmp/gouraud4/`.
 
 CPU gating review (2026-10-22). Rule from the user: gate a change to the 68040 only if
-it helps only there; otherwise every CPU that runs the code gets it. Today only a full
-68040 runs tfx.020 with the 040 render list; 020/030/060 (with fast RAM) run plain TFX
-with pl_020. Status per change:
+it helps only there; otherwise every CPU that runs the code gets it. The table below
+records the plain-TFX ports, which remain useful for no-FPU CPUs and explicit TFX
+selection. The FPU-equipped executable comparison below broadens tfx.020 support.
+Status per change:
 
 | Change | 68040 (tfx.020) | 020/030/060 (TFX) |
 |---|---|---|
@@ -1328,8 +1329,8 @@ with pl_020. Status per change:
 | Chip/fast data split (original step 8) | done | TFX has its own fast-RAM relocation |
 | Native FPU paths (original step 9) | done | not applicable without FPSP traps |
 
-Whether FPU-equipped 020/030/060 should instead run tfx.020 with the render list is
-open; see "Open: executable comparison on FPU-equipped 020/030/060" below.
+FPU-equipped 020/030/060 measure faster with tfx.020 and the shared render list;
+see "Executable comparison on FPU-equipped 020/030/060" below.
 
 Delta copy for plain TFX:
 - patch_main's TFX fast-RAM block (new rendering only) allocates delta_shadow, so
@@ -1392,30 +1393,80 @@ rot_delta2_040 on other CPUs (measured, not adopted):
   on the 060 MULS.W is cheap. The change stays in the 68040 list; TFX is not patched.
 - Evidence: `tmp/dev/tmp/rot/`.
 
-### Open: executable comparison on FPU-equipped 020/030/060
+### Executable comparison on FPU-equipped 020/030/060
 
-Automatic selection today (TFXHD.s, `.legacy_auto` and `.vfpu_new`):
-- A full 68040 with FPU runs tfx.020 with pl_fpu_new, its native FPU list and
-  pl_fpu_new_render_040: paraj's renderer ported, data/BSS in fast RAM, every 040 change.
-- With fast RAM, every other CPU runs plain TFX (integer maths, soft-float) with pl_020,
-  even when it has an FPU.
-- Without fast RAM, CPUs with an FPU run tfx.020 without the render list: original
-  renderer, merged data/BSS in chip RAM. The 060 also gets FPSP emulation.
+The 1997 tfx.020 with the shared renderer and fast data/BSS wins both tapes on
+each tested FPU-equipped CPU. Automatic selection therefore uses it on 020+6888x,
+030+68882 and full 060, as already on full 040. CPUs without an FPU keep plain TFX;
+explicit CUSTOM3 choices bypass this policy. Original rendering (CUSTOM4 bit 2)
+keeps its original routines and chip data/BSS. CUSTOM1 selects integer projection
+on the shared renderer; its option label no longer says 68040.
 
-So plain TFX's soft-float (about 18% of its time) is spent even where an FPU exists.
-tfx.020 has everything plain TFX has, but only the 68040 path gets the renderer port
-and fast-RAM placement.
+Same candidate slave/emulator and tapes, separate cold-boot seeds for each
+executable because CUSTOM3 is baked into the boot disk. Counts are publications
+in 2,000 PAL fields, plain TFX + pl_020 -> tfx.020 + shared renderer:
 
-To decide:
-1. Make pl_fpu_new_render_040 and the step-8 placement run on a 68030 + 68882 and a
-   68060 (and a 68020 + 6888x). Find what is 040-only inside the list: rot_delta2 must
-   stay off (measured slower), and the 060 must take the DIVU.L Gouraud body (64-bit
-   MULU.L is unimplemented there). FINTRZ/FMOVECR and transcendentals are native on a
-   6888x, but the native replacements may still be faster.
-2. Measure plain TFX + pl_020 against tfx.020 + render list per CPU on the same tapes
-   (action flight and follow camera), with `cpu_profile.py`. Compare within one CPU
-   only: the emulator's timing models differ, and the 060 does not charge chip writes.
-3. Select per CPU whichever is faster; keep original rendering and explicit
-   executable choices working; run the step-13 selection regression.
-- Exit: per-CPU table in this plan, automatic selection updated only where measured
-  faster, every executable/option still boots on 020/030/040/060.
+| CPU configuration | Action flight | Follow camera | Automatic choice |
+|---|---|---|---|
+| 68020 14.19 MHz + 68881 | 128 -> 165 (+28.9%) | 93 -> 108 (+16.1%) | tfx.020 |
+| 68020 14.19 MHz + 68882 | 128 -> 165 (+28.9%) | 93 -> 108 (+16.1%) | tfx.020 |
+| 68030 50 MHz + 68882 | 899 -> 1,000 (+11.2%) | 567 -> 641 (+13.1%) | tfx.020 |
+| 68060 50 MHz + FPU | 502 -> 625 (+24.5%) | 327 -> 380 (+16.2%) | tfx.020 |
+
+Compare only within a CPU. These emulator figures do not establish physical CPU
+rankings or Apollo frame rates. The 060 is not cycle-exact and does not charge
+chip writes; per-PC profiling exists only on the 040 NOMMU core. The 030 action
+candidate reaches the 25 fps cap. Different executables and frame-dependent scene
+progression prevent an exact-state speedup claim. Margins here exceed the small
+frame-count difference in the 030 reference integer runs: 894 before renderer
+support and 899 in the comparison build. Those references are not a same-build,
+matched-start pair. The 040 path is preserved, not re-ranked against other CPUs.
+
+Audit and implementation (renderer support: 3802cfd5):
+- pl_fpu_new_render is common to every CPU. The full-040 list chains its rotation
+  hook into it. rot_delta2_040 and its table remain off on 020/030/060: measured
+  slower there. The DMA-only chip ranges and relocation tables are unchanged.
+- Delta shadows allocate only on 030/040/060, with full-copy fallback on allocation
+  failure. The 020 gets no shadow. Its lack of data cache made comparison slower.
+- Gouraud's existing CPU branch selects gr_body_div on 060, avoiding unimplemented
+  64-bit MULU.L. Shared renderer code contains no MOVE16/cache-control instructions.
+  Projection uses supported memory/control-register and word/register FPU forms.
+- The 6888x retain their native game FPU instructions. Full 040 retains its native
+  replacements. The 060 retains FPSP, the prior FPU patch list, and integer fixes;
+  all 246 checked FPU sites match the prior 060 build. Render/FPU/060 fix lists do
+  not overwrite each other's sites. CUSTOM5 still disables direct FPU fixes and
+  the projection replacement.
+
+Validation:
+- On each of 020+68882, 030+68882 and 060: 275 native projection comparisons against
+  the original and an independent integer oracle, including GPR/CCR/FPU state;
+  four deliberately corrupted results rejected.
+- On each CPU: Gouraud's 18 synthetic streams / 2,496 rows match the prior chunky
+  fill plus C2P and an independent pixel model; all six corruption checks rejected.
+  The 060 tests execute the division body.
+- Long flights check actual CPU/FPU, hooks, fast data/BSS, shadow/rotation gates and
+  FPU sites. Saved action/follow images are inspected, not claimed pixel-identical
+  across different executable versions. Normal and CHIP_ONLY builds assemble with
+  no HUNK relocations. Original-rendering gates pass on all four CPUs.
+- Final selection regression passes 68 flight boots: 14 cases on each FPU-equipped
+  020/030/040/060 (all four executable choices, automatic/original rendering,
+  FPS, frame-limit precedence, CUSTOM5 and CUSTOM1), ten no-FPU 020 cases, and two
+  additional 68881 automatic/original cases. All reach three publications with
+  expected CPU/FPU, code and placement. The no-FPU 020 still selects plain TFX.
+- Twenty startup cases (intro, menu, configuration and action-intro across the four
+  FPU-equipped CPUs plus no-FPU 020) pass CPU/build checks. All 68 flight images,
+  60 startup captures and 16 performance images were visually reviewed. The final
+  checker verifies the normal build and shipped FPSP bytes in every capture.
+- Exit met: measured per-CPU table, automatic policy updated where faster, and
+  executable/option regression complete. Hardware speed remains unmeasured.
+
+Evidence, rejected harness captures, tools and exact builds remain local under
+`tmp/dev/tmp/exe-compare/`; method and pitfalls in
+`tmp/dev/docs/executable-comparison.md`. The first final regression TFX.FPU capture
+on 040 failed hunk discovery because an auxiliary hunk fell below the harness's
+restricted address window. Widening discovery to the upper 8 MB preserves hunk
+validation; the rejected capture remains archived. This was before flight testing.
+The 020 TFX.FPU regression also needed the harness's longer legacy enrolment
+waits: its first attempt remained on the blank form before any flight swap.
+The archived capture and successful same-option retry distinguish this from a
+slave regression; performance fixtures and measured windows are unchanged.
