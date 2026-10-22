@@ -131,6 +131,10 @@ _handling_install:
 	lea _handling_motion(pc),a1
 	move.l a0,(a1)
 	movea.l a3,a0
+	adda.l #_projection_integer_components-_handling_install,a0
+	lea _handling_project(pc),a1
+	move.l a0,(a1)
+	movea.l a3,a0
 	adda.l #_code_start-_handling_install,a0
 	move.l (a0),d0
 	addi.l #$b44e,d0
@@ -173,6 +177,8 @@ _handling_patches:
 	PL_PS $8a1a,_handling_replay_skid
 	; PERF_RANGE VERIFY_HANDLING $0b61a $0006: the model's screech
 	PL_PS $b61a,_handling_skid_sound
+	; PERF_RANGE VERIFY_HANDLING $0b512 $0066: movement vector, held flight pitch
+	PL_PS $b512,_handling_flight_vector
 	PL_END
 _handling_tail: dc.l 0		; native angle and trig tail, B44E
 _handling_time: dc.l 0		; _time_state
@@ -180,6 +186,7 @@ _handling_time_vbl: dc.l 0	; _time_vbl
 _handling_fields: dc.l 0	; _time_scalar_fields
 _handling_yaw_rate: dc.l 0	; _motion_yaw_rate
 _handling_motion: dc.l 0	; _motion_state
+_handling_project: dc.l 0	; _projection_integer_components
 
 ; Replaces _time_vbl at $50. The sample of field k is X after its VBL, so
 ; ring[TS_FIELDS] is written by the next VBL, before the native mouse update.
@@ -226,6 +233,21 @@ _handling_skid_sound:
 ; even with the mouse centred. Makes CMPI #38 / BHI take the branch.
 _handling_neutral:
 	moveq #-1,d0
+	rts
+
+; Replaces B512..B577, the native movement vector (1.5v along the pitch and
+; heading), with the same words from _projection_integer_components, which
+; uses the held flight pitch (_flight_held). D0/D1/A0/A1 are scratch.
+_handling_flight_vector:
+	move.l d2,-(a7)
+	move.w -$66d8(a4),d0
+	movea.l _handling_project(pc),a0
+	jsr (a0)
+	move.w d0,-$66e2(a4)
+	move.w d1,-$66e0(a4)
+	move.w d2,-$66de(a4)
+	move.l (a7)+,d2
+	addi.l #$b578-$b518,(a7)
 	rts
 
 ; _phase_published: add the model's sideways velocity to the published

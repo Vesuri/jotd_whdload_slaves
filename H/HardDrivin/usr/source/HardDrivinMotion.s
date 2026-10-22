@@ -237,7 +237,7 @@ _motion_fall_airborne:
 	tst.b -1(a5)
 	bne.s .contact
 	move.l d0,-(a7)
-	moveq #5,d0
+	bsr _flight_fall
 	bsr _motion_fall_delta
 	add.w d0,-$66f2(a4)
 	move.l (a7)+,d0
@@ -268,6 +268,7 @@ _motion_fall_delta:
 	movem.l (a7)+,d1-d2/a0
 	rts
 _motion_fall_ground:
+	bsr _flight_land
 	IFND VERIFY_DISPATCH_NATIVE
 	; Native landing crashes require fall>50 plus >5 units of penetration
 	; after a whole native step. Contact starts below 4 units, so a step that
@@ -292,7 +293,12 @@ _motion_fall_ground:
 	move.w _time_scalar_fields(pc),d0
 	beq.s .native
 	cmpi.w #8,d0
+	bne.s .judge
+	; arcade gravity's falls always exceed the native 50: judge eight too
+	move.w _contact_arcade(pc),d0
 	beq.s .native
+	moveq #8,d0
+.judge:
 	sub.w -8(a5),d1			; closing in this pass's fields
 	ext.l d1
 	asl.l #3,d1
@@ -331,14 +337,18 @@ _motion_fall_ground_end:
 	rts
 ; Replaces CMPI.W #-5,-8(A5) at $CC2E, the native landing's depth test, whose
 ; BLT follows. Variable intervals answer "not deeper": _motion_fall_ground
-; judges their landings by the closing speed instead.
+; judges their landings by the closing speed instead. So do eight-field steps
+; at CUSTOM1=2, whose 1 g falls always exceed the native test's 50.
 _motion_landing_depth:
 	IFND VERIFY_DISPATCH_NATIVE
 	move.l d0,-(a7)
 	move.w _time_scalar_fields(pc),d0
 	beq.s .native
 	subq.w #8,d0
+	bne.s .variable
+	move.w _contact_arcade(pc),d0	; and eight fields with arcade gravity
 	beq.s .native
+.variable:
 	move.l (a7)+,d0
 	cmp.w d0,d0
 	rts
@@ -506,6 +516,8 @@ _motion_crash_start:
 	move.l a0,-(a7)
 	lea _motion_crash_state(pc),a0
 	clr.l (a0)
+	lea _flight_held(pc),a0
+	clr.w (a0)
 	movea.l (a7)+,a0
 	move.b #25,-$69fa(a4)
 	rts

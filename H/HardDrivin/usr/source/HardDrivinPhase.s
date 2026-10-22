@@ -949,6 +949,8 @@ _phase_project_core:
  ; Flat cardinal orientations need no multiply. For signed velocity,
  ; native p(v)=v+floor(v/2), and p(v+1)-p(v)=1+(v&1). Interpolate that
  ; exact staircase at the existing Q6 precision, including negative axes.
+ move.w _flight_held(pc),d2
+ bne .general
  tst.w -$6bb4(a4)
  bne .general
  cmpi.w #16384,-$6bb2(a4)
