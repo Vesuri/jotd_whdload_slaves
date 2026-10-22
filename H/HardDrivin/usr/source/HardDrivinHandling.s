@@ -1,10 +1,11 @@
 ; Arcade handling, CUSTOM1=2: a two-wheel car model replaces the native
-; steering and skid. It steps once per PAL field (dt 1/50 s); a frame that
-; took n fields runs n steps, each with its own field's mouse X. The native
-; engine drives the forward speed; the model turns the car, adds its
-; sideways motion and feeds its own forward speed change (tyre drag, slides,
-; v r) back to the native speed. Every hook is installed only for CUSTOM1=2,
-; so the other settings run exactly the release code.
+; steering and skid, and the arcade's drivetrain the native engine. It
+; steps once per PAL field (dt 1/50 s); a frame that took n fields runs n
+; steps, each with its own field's mouse X. The model turns the car, adds
+; its sideways motion and sets the forward speed from its tyres, drag and
+; gravity, publishing the speed, RPM, gear and speedometer the native engine
+; did. Every hook is installed only for CUSTOM1=2, so the other settings run
+; exactly the release code.
 
 	IFND VERIFY_DRIVETRAIN_PHASE
 	FAIL "VERIFY_HANDLING requires VERIFY_DRIVETRAIN_PHASE"
@@ -14,10 +15,7 @@ HANDLING_CAP equ 50		; steps a frame may catch up, 1 s
 HANDLING_RING equ 64		; mouse samples kept, a power of two
 HANDLING_V8_MAX equ 4160	; velocity eighths the model accepts, 145 MPH
 HANDLING_JUMP equ 40		; eighths per field: a faster change is a reset
-HANDLING_K_FX equ 295		; lb per eighth of velocity gained per field
-HANDLING_FX_DRIVE equ 2115	; drive force limit, lb (0.6 g)
-HANDLING_FX_BRAKE equ 2470	; front brake limit, lb (0.7 g)
-HANDLING_FX_COAST equ 705	; engine braking limit, lb (0.2 g)
+HANDLING_FX_BRAKE equ 2470	; front brake torque, lb ft (0.7 g)
 HANDLING_K_LAT equ 457		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 3653	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
@@ -43,6 +41,26 @@ HM_R_MAX equ 1610612736		; 12 rad/s, Q27
 HM_V_MAX equ 1073741824		; 256 ft/s, Q22
 HM_Y_MAX equ 536870912		; 4 ft, Q27
 HM_SLIP_MAX equ 8192		; 128 ft/s, Q6
+
+; The arcade's drivetrain ($730490, ARCADE_ROMS.md), per field. Engine and
+; driveline speeds are Q16 rad/s longs, torques lb ft.
+HE_DT_IE equ 3200		; lb ft -> Q16 rad/s of engine speed (inertia 0.4)
+HE_SLIP equ 686290		; 10.472 rad/s: the driveline overruns the engine
+HE_TAKEUP equ 10294362		; 157.08 rad/s: the clutch takes up over 1500-3000 rpm
+HE_CAP equ 600			; clutch capacity, lb ft
+HE_K_CAP equ 978		; Q8 rad/s past the take-up -> lb ft, after >> 16
+HE_K_RPM equ 39114		; Q4 rad/s -> rpm, after >> 16
+HE_UP equ 49327			; (throttle + 300) * 2 * HE_UP: up-shift, 602.1 (gas + 3) / 4
+HE_DOWN equ 60051		; (throttle + 300) * HE_DOWN: down-shift, 366.5 (gas + 3) / 4
+HE_SHIFT equ 51			; fields between shifts, one model second
+HE_WE_MAX equ 1000<<16		; engine speed limit
+HE_RPM_MAX equ 6500		; RPM the native gauges and sound take
+HE_K_DRAG equ 570		; (Q4 u)^2 >> 8 -> lb, after >> 16: 0.0087 u^2
+HE_ROLL equ 105			; rolling drag, lb
+HE_STOP equ 1500		; the forced stop, lb
+HE_K_STOP equ 87		; Q6 ft/s -> lb that stops the car in one field
+HE_WEIGHT equ 3525		; lb
+HE_K_MPH equ 682		; Q6 ft/s -> MPH, after >> 16
 
 ; Axle state
 AX_Y equ 0			; tyre deflection, Q27 ft
@@ -75,24 +93,37 @@ HS_FYBF equ 62
 HS_FYR equ 64
 HS_DUF equ 66			; output: forward speed the step adds beyond fx, Q22
 HS_FXBF equ 70
-HS_MODEL equ 72			; size of the part the step uses
+HS_TREAR equ 72			; input with HS_ENGINE: rear wheel torque, lb ft
+HS_FEXT equ 74			; input with HS_ENGINE: drag and gravity, lb
+HS_FXT equ 76			; output: the tyres' longitudinal force, lb
+HS_ENGINE equ 78		; the drivetrain's inputs replace fx's rear torque
+HS_MODEL equ 80			; size of the part the step uses
 ; Game coupling
-HS_HEAD equ 72			; heading not yet applied, Q16
-HS_DX equ 76			; sideways motion not yet applied, Q8 long units
-HS_DZ equ 80
-HS_INDEX equ 84			; next mouse sample, in TS_FIELDS counts
-HS_PASS equ 88			; TS_PASSES of the last steering call
-HS_SKIP equ 92			; steps this frame leaves out (catch-up cap)
-HS_V8 equ 94			; velocity eighths after the last steering call
-HS_NPREV equ 96			; fields the last steering call stepped
-HS_LAST_HEAD equ 98		; G($994A) after the last steering call
-HS_LOOP equ 100			; fields left in this call
-HS_SKID equ 102			; tyres screeched in this frame
-HS_PHASE equ 103		; the speed came from the phase solver
-HS_UBASE equ 104		; native forward speed of this call, Q6 ft/s
-HS_DU equ 106			; forward speed the model added in this call, Q22
-HS_CARRY equ 110		; native speed not yet applied, Q16 velocity
-HS_SIZE equ 114
+HS_HEAD equ 80			; heading not yet applied, Q16
+HS_DX equ 84			; sideways motion not yet applied, Q8 long units
+HS_DZ equ 88
+HS_INDEX equ 92			; next mouse sample, in TS_FIELDS counts
+HS_PASS equ 96			; TS_PASSES of the last steering call
+HS_SKIP equ 100			; steps this frame leaves out (catch-up cap)
+HS_V8 equ 102			; velocity eighths after the last steering call
+HS_NPREV equ 104		; fields the last steering call stepped
+HS_LAST_HEAD equ 106		; G($994A) after the last steering call
+HS_LOOP equ 108			; fields left in this call
+HS_SKID equ 110			; tyres screeched in this frame
+HS_PHASE equ 111		; the speed came from the phase solver
+HS_UBASE equ 112		; native forward speed of this call, Q6 ft/s
+HS_DU equ 114			; forward speed the model added in this call, Q22
+HS_CARRY equ 118		; native speed not yet applied, Q16 velocity
+; Drivetrain, kept through model resets
+HS_WE equ 122			; engine speed, Q16 rad/s
+HS_GEAR equ 126			; gear, -1: pick the automatic's for the speed
+HS_SHIFT equ 128		; fields until the automatic may shift again
+HS_LOCKED equ 130		; the clutch is locked
+HS_STOP equ 131			; the forced stop holds the car
+HS_MPH equ 132			; speedometer, MPH
+HS_TARGET equ 134		; the speed in native velocity units
+HS_GRASS equ 136		; the car is off the road
+HS_SIZE equ 138
 
 ; The slave's globals and Time.s lie beyond PC-relative range from this
 ; module: reach them from a local base with assembler-constant offsets.
@@ -133,6 +164,10 @@ _handling_install:
 	movea.l a3,a0
 	adda.l #_projection_integer_components-_handling_install,a0
 	lea _handling_project(pc),a1
+	move.l a0,(a1)
+	movea.l a3,a0
+	adda.l #_flight_held-_handling_install,a0
+	lea _handling_flight(pc),a1
 	move.l a0,(a1)
 	movea.l a3,a0
 	adda.l #_code_start-_handling_install,a0
@@ -179,6 +214,12 @@ _handling_patches:
 	PL_PS $b61a,_handling_skid_sound
 	; PERF_RANGE VERIFY_HANDLING $0b512 $0066: movement vector, held flight pitch
 	PL_PS $b512,_handling_flight_vector
+	; PERF_RANGE VERIFY_HANDLING $0b678 $0006: the drivetrain replaces the engine's speed and RPM
+	PL_PS $b678,_handling_engine_skip
+	; PERF_RANGE VERIFY_HANDLING $0b90c $0006: the drivetrain's automatic shifts
+	PL_PS $b90c,_handling_shift_skip
+	; PERF_RANGE VERIFY_HANDLING $0ba8a $0006: the drivetrain's speedometer
+	PL_PS $ba8a,_handling_speedo
 	PL_END
 _handling_tail: dc.l 0		; native angle and trig tail, B44E
 _handling_time: dc.l 0		; _time_state
@@ -187,6 +228,7 @@ _handling_fields: dc.l 0	; _time_scalar_fields
 _handling_yaw_rate: dc.l 0	; _motion_yaw_rate
 _handling_motion: dc.l 0	; _motion_state
 _handling_project: dc.l 0	; _projection_integer_components
+_handling_flight: dc.l 0	; _flight_held
 
 ; Replaces _time_vbl at $50. The sample of field k is X after its VBL, so
 ; ring[TS_FIELDS] is written by the next VBL, before the native mouse update.
@@ -248,6 +290,25 @@ _handling_flight_vector:
 	move.w d2,-$66de(a4)
 	move.l (a7)+,d2
 	addi.l #$b578-$b518,(a7)
+	rts
+
+; The native engine ($B662) after its crash test: the drivetrain has set the
+; speed, RPM and automatic gear, so go straight to the gear site at B904,
+; where the phase solver advances its phase and a manual gearbox takes the
+; player's shifts (B9BA). Its automatic shifts (B90C) give way to the
+; drivetrain's, and its speedometer from the RPM (BA8A) to the ground
+; speed; the tail from BAC6 clears the brake and sets the engine sound.
+_handling_engine_skip:
+	addi.l #$b904-$b67e,(a7)
+	rts
+_handling_shift_skip:
+	addi.l #$ba8a-$b912,(a7)
+	rts
+_handling_speedo:
+	lea _handling_state(pc),a0
+	move.w HS_MPH(a0),-$66d4(a4)	; G($992C)
+	move.w HS_TARGET(a0),-$66da(a4)	; G($9926)
+	addi.l #$bac6-$ba90,(a7)
 	rts
 
 ; _phase_published: add the model's sideways velocity to the published
@@ -317,17 +378,12 @@ _handling_steer:
 	muls.w -$6bb8(a4),d1
 	asr.l d2,d1
 	sub.l d1,HS_DZ(a0)
-	; the native speed plus what the model has added in this call; the
-	; speed stops at zero rather than changing sign
+	; the native speed plus what the model has added in this call
 	move.l HS_DU(a0),d0
 	swap d0
 	add.w HS_UBASE(a0),d0
-	move.w HS_UBASE(a0),d1
-	eor.w d0,d1
-	bpl.s .u_sign
-	moveq #0,d0
-.u_sign:
 	move.w d0,HS_U(a0)
+	bsr _handling_engine
 	move.l HS_PSI(a0),-(a7)
 	bsr _handling_step
 	move.l HS_DUF(a0),d0
@@ -361,6 +417,7 @@ _handling_steer:
 .next:
 	subq.w #1,HS_LOOP(a0)
 	bne .field
+	bsr _handling_publish
 	bsr _handling_feedback
 .applied:
 	move.w HS_HEAD(a0),d0
@@ -534,7 +591,8 @@ _handling_sync:
 	asr.l d1,d0
 	move.w d0,HS_UBASE(a0)
 	clr.l HS_DU(a0)
-	; the native net force over the last call's fields, held for this one
+	; only the model changes the speed now: a faster change than
+	; HANDLING_JUMP per field since the last call is a collision
 	move.w d2,d0
 	sub.w HS_V8(a0),d0
 	move.w d2,HS_V8(a0)
@@ -542,97 +600,22 @@ _handling_sync:
 	movea.l _handling_fields(pc),a1
 	move.w (a1),HS_NPREV(a0)
 	tst.w d1
-	beq.s .no_force
-	move.w d1,d3
-	mulu.w #HANDLING_JUMP,d3
-	move.w d0,d4
+	beq.s .inputs
+	mulu.w #HANDLING_JUMP,d1
+	tst.w d0
 	bpl.s .change
-	neg.w d4
+	neg.w d0
 .change:
-	cmp.w d3,d4
-	bls.s .force
-	bsr _handling_reset		; collision: the speed jumped
-.no_force:
-	moveq #0,d0
-	moveq #0,d3
-	moveq #0,d4
-	bra.s .limit
-.force:
-	move.w d0,d4			; the change in eighths, over d3 fields
-	move.w d1,d3
-	ext.l d0
-	asl.l #4,d0
-	divs.w d1,d0
-	muls.w #HANDLING_K_FX,d0
-	asr.l #4,d0
-.limit:
+	cmp.w d1,d0
+	bls.s .inputs
+	bsr _handling_reset
+.inputs:
+	; the brake brakes at its limit, on the front, as the arcade's pedal
 	moveq #0,d1
 	tst.b -$66ef(a4)
 	beq.s .no_brake
-	; The brake brakes at its limit, as the arcade's pedal does. The native
-	; one is the speed / 35 per step, with the drag beside it and the engine
-	; against it while the throttle closes at 2 per step: from 100 MPH
-	; 0.4 g, and 0.35 g below 20 MPH. Whatever the native engine did beyond
-	; the limit in the last call comes off again, as for the drive. In the
-	; air or reversing the native brake stays.
-	move.b -$66f0(a4),d1
-	andi.b #3,d1
-	beq.s .air_brake
-	tst.w d2
-	ble.s .air_brake
-	mulu.w #HANDLING_FX_BRAKE,d3
-	addi.l #HANDLING_K_FX/2,d3
-	divu.w #HANDLING_K_FX,d3	; eighths the limit takes
-	add.w d3,d4
-	muls.w #-HM_K_U,d4		; what the native change missed it by
-	asl.l #3,d4			; Q22 ft/s
-	move.l d4,HS_DU(a0)
-	move.w #-HANDLING_FX_BRAKE,d0
-	move.w d0,d1
-	bra.s .inputs
-.air_brake:
-	moveq #0,d1
-	tst.w d0
-	bpl.s .drive
-	cmpi.w #-HANDLING_FX_BRAKE,d0
-	bge.s .brake
-	move.w #-HANDLING_FX_BRAKE,d0
-.brake:
-	move.w d0,d1
-	bra.s .inputs
+	move.w #-HANDLING_FX_BRAKE,d1
 .no_brake:
-	tst.w d0
-	bpl.s .drive
-.coast:
-	cmpi.w #-HANDLING_FX_COAST,d0
-	bge.s .inputs
-	move.w #-HANDLING_FX_COAST,d0
-	bra.s .inputs
-.drive:
-	cmpi.w #HANDLING_FX_DRIVE,d0
-	ble.s .inputs
-	; What the native engine gained beyond the drive limit never went
-	; through the tyres. While they have grip to spare it stays, so the
-	; native car keeps its acceleration. While a tyre is past its peak it
-	; comes off again: the engine is power limited and pushes hardest when
-	; the model has taken speed away, and pushing a sliding car along its
-	; heading feeds v r a spin that never ends.
-	move.b HS_FRONT+AX_PEAK(a0),d1
-	or.b HS_REAR+AX_PEAK(a0),d1
-	beq.s .grip
-	mulu.w #HANDLING_FX_DRIVE,d3
-	addi.l #HANDLING_K_FX/2,d3
-	divu.w #HANDLING_K_FX,d3	; eighths the limit gives
-	sub.w d3,d4			; eighths beyond it
-	ble.s .grip
-	muls.w #-HM_K_U,d4
-	asl.l #3,d4			; Q22 ft/s
-	move.l d4,HS_DU(a0)
-.grip:
-	moveq #0,d1
-	move.w #HANDLING_FX_DRIVE,d0
-.inputs:
-	move.w d0,HS_FXIN(a0)
 	move.w d1,HS_BRAKE(a0)
 	; wheels 0-1 are the front pair, as native steering tests them
 	moveq #0,d1
@@ -649,14 +632,13 @@ _handling_sync:
 	move.w d1,HS_CONTACT(a0)
 	rts
 
-; A0 = state. The forward speed the model added in this call (cornering
-; drag, slides, wheelspin, v r) goes back to the native speed: a phase
-; solver that is current gets it in its anchor and current velocity, so
-; the native engine goes on from the new speed; otherwise it goes into
-; G($9928). The native engine steps from the anchor's whole speed word and
-; a phase ends on its whole endpoint, so only whole units are applied and
-; the fraction waits for later calls. The speed stops at zero rather than
-; changing sign. Clobbers D0-D2/A1.
+; A0 = state. The forward speed the model added in this call goes to the
+; native speed: a phase solver that is current gets it in its current
+; velocity, with its anchor moved there too, since the native engine adds
+; nothing now (an anchor with a fraction would make the solver step the
+; speed down to its whole word); otherwise it goes into G($9928). Only
+; whole units are applied and the fraction waits for later calls. The
+; speed may change sign: gravity rolls the car back. Clobbers D0-D2/A1.
 _handling_feedback:
 	move.l HS_DU(a0),d0
 	clr.l HS_DU(a0)
@@ -668,38 +650,34 @@ _handling_feedback:
 	swap d1
 	add.l d1,d0
 	add.l HS_CARRY(a0),d0
+	lea _phase_state(pc),a1
+	tst.b HS_PHASE(a0)
+	beq.s .split
+	moveq #0,d1
+	move.w PH_CURRENT_V+2(a1),d1
+	add.l d1,d0
+	clr.w PH_CURRENT_V+2(a1)
+.split:
 	moveq #0,d1
 	move.w d0,d1
 	move.l d1,HS_CARRY(a0)
 	clr.w d0
-	tst.l d0
-	beq.s .done
-	lea _phase_state(pc),a1
 	tst.b HS_PHASE(a0)
 	beq.s .word
-	move.l PH_CURRENT_V(a1),d1
-	bsr.s .add
-	add.l d0,PH_CURRENT_V(a1)
-	move.l PH_ANCHOR_V(a1),d1
-	bsr.s .add
-	add.l d0,PH_ANCHOR_V(a1)
-	move.w PH_CURRENT_V(a1),-$66d8(a4)
-	move.l PH_CURRENT_V(a1),d0
-	moveq #13,d1
-	asr.l d1,d0
-	bra.s .eighths
-.word:
-	move.w -$66d8(a4),d1
-	swap d1
-	clr.w d1
-	bsr.s .add
-	add.l d1,d0
+	add.l PH_CURRENT_V(a1),d0
+	move.l d0,PH_CURRENT_V(a1)
+	move.l d0,PH_ANCHOR_V(a1)
 	swap d0
 	move.w d0,-$66d8(a4)
+	bra.s .eighths
+.word:
+	swap d0
+	add.w d0,-$66d8(a4)
+	move.w -$66d8(a4),d0
+.eighths:
+	; the next call's collision test starts from the speed the model left
 	ext.l d0
 	asl.l #3,d0
-.eighths:
-	; the next force measurement starts from the speed the model left
 	cmpi.l #HANDLING_V8_MAX,d0
 	ble.s .eighths_high
 	move.l #HANDLING_V8_MAX,d0
@@ -709,17 +687,6 @@ _handling_feedback:
 	move.l #-HANDLING_V8_MAX,d0
 .eighths_low:
 	move.w d0,HS_V8(a0)
-.done:
-	rts
-; D1 = speed, D0 = change; returns in D0 the change that stops at zero
-.add:
-	move.l d1,d2
-	add.l d0,d2
-	eor.l d1,d2
-	bpl.s .same_sign
-	move.l d1,d0
-	neg.l d0
-.same_sign:
 	rts
 
 ; A0 = state. Clears the model and starts its bookkeeping from the current
@@ -739,6 +706,402 @@ _handling_reset:
 	clr.l HS_CARRY(a0)
 	move.w -$66b6(a4),HS_LAST_HEAD(a0)
 	movem.l (a7)+,d0/a1
+	rts
+
+; A0 = state with HS_U and HS_CONTACT set. One field of the arcade's
+; drivetrain ($730490): automatic shifts, the engine torque table, the
+; automatic clutch, and the rear wheel torque through the gear; then drag
+; and gravity. Sets HS_TREAR, HS_FEXT and the step's load transfer force
+; (the tyres' force of the last step). Clobbers D0-D7/A1.
+_handling_engine:
+	tst.b HS_ENGINE(a0)
+	bne.s .running
+	st HS_ENGINE(a0)		; after a model reset: pick the gear anew
+	clr.w HS_SHIFT(a0)
+	move.w #-1,HS_GEAR(a0)
+.running:
+	; the load transfer follows the tyres' force of the last step, and
+	; the brake's own while braking, as before the drivetrain: the lag
+	; would leave the front light enough to lock as the brake goes on
+	move.w HS_FXT(a0),d0
+	tst.w HS_BRAKE(a0)
+	beq.s .transfer
+	move.w HS_BRAKE(a0),d0
+.transfer:
+	move.w d0,HS_FXIN(a0)
+	tst.b -$16b6(a4)		; road G($E94A), else grass
+	seq HS_GRASS(a0)
+	; throttle 0..100; after the time ran out none and the forced stop,
+	; the arcade's engine cut. None while braking: the brake is both
+	; buttons, and the throttle they close at 2 per native step would
+	; drive against it for seconds.
+	moveq #0,d7
+	st HS_STOP(a0)
+	tst.b -$6864(a4)		; time out G($979C)
+	bne.s .gas
+	sf HS_STOP(a0)
+	tst.b -$66ef(a4)		; brake G($9911)
+	bne.s .gas
+	move.b -$66e4(a4),d7		; throttle G($991C)
+	bpl.s .gas_low
+	moveq #0,d7
+.gas_low:
+	cmpi.w #100,d7
+	bls.s .gas
+	moveq #100,d7
+.gas:
+	; the gear: the game's (the native start, manual shifts), the
+	; automatic's own shifts at most once a second
+	move.w -$66ca(a4),d6		; G($9936)
+	tst.b -$66c2(a4)		; automatic G($993E)
+	beq .manual
+	move.w d7,d4
+	addi.w #300,d4
+	move.w d4,d5
+	mulu.w #HE_UP,d4
+	add.l d4,d4			; up-shift engine speed
+	mulu.w #HE_DOWN,d5		; down-shift
+	tst.w HS_GEAR(a0)
+	bpl.s .auto
+	; the lowest gear that would not shift up at this speed
+	moveq #1,d6
+	lea _handling_ratio+2(pc),a1
+.pick:
+	cmpi.w #4,d6
+	beq.s .shifted
+	move.w HS_U(a0),d0
+	muls.w (a1)+,d0
+	cmp.l d4,d0
+	ble.s .shifted
+	addq.w #1,d6
+	bra.s .pick
+.auto:
+	cmpi.w #1,d6
+	bge.s .auto_low
+	moveq #1,d6
+.auto_low:
+	cmpi.w #4,d6
+	ble.s .auto_high
+	moveq #4,d6
+.auto_high:
+	tst.w HS_SHIFT(a0)
+	beq.s .may_shift
+	subq.w #1,HS_SHIFT(a0)
+	bra.s .shifted
+.may_shift:
+	move.l HS_WE(a0),d0
+	cmp.l d4,d0
+	bls.s .no_up
+	cmpi.w #4,d6
+	beq.s .shifted
+	addq.w #1,d6
+	bra.s .lockout
+.no_up:
+	cmp.l d5,d0
+	bhs.s .shifted
+	cmpi.w #1,d6
+	beq.s .shifted
+	subq.w #1,d6
+.lockout:
+	move.w #HE_SHIFT,HS_SHIFT(a0)
+	bra.s .shifted
+.manual:
+	tst.w d6
+	bpl.s .manual_low
+	moveq #0,d6
+.manual_low:
+	cmpi.w #4,d6
+	ble.s .shifted
+	moveq #4,d6
+.shifted:
+	move.w d6,HS_GEAR(a0)
+	cmp.w -$66ca(a4),d6
+	beq.s .same_gear
+	move.w d6,-$66ca(a4)
+	move.w d6,d0
+	lsl.w #3,d0
+	lea -$68c6(a4),a1		; the gear's entry, as B9AE/BA86 set it
+	adda.w d0,a1
+	move.l a1,-$66c0(a4)		; G($9940)
+.same_gear:
+	; engine torque: the table bilinear over rpm (1000 a column) and
+	; throttle (14 of 128 a row), times the gear's factor
+	move.l HS_WE(a0),d0
+	moveq #12,d1
+	lsr.l d1,d0
+	mulu.w #HE_K_RPM,d0
+	clr.w d0
+	swap d0
+	divu.w #1000,d0
+	cmpi.w #10,d0
+	blo.s .column
+	move.l #(999<<16)+10,d0
+.column:
+	move.l d0,d5			; column, its remainder high
+	move.w d7,d0
+	lsl.w #7,d0
+	ext.l d0
+	divu.w #100,d0
+	andi.l #$ffff,d0
+	divu.w #14,d0
+	cmpi.w #9,d0
+	blo.s .row
+	move.l #(13<<16)+8,d0
+.row:
+	move.l d0,d4			; row, its remainder high
+	lea _handling_torque(pc),a1
+	tst.b HS_GRASS(a0)
+	beq.s .road
+	lea _handling_torque_grass-_handling_torque(a1),a1
+.road:
+	mulu.w #24,d0
+	adda.w d0,a1
+	adda.w d5,a1
+	adda.w d5,a1
+	swap d5
+	bsr .lerp
+	move.w d0,d1
+	lea 24(a1),a1
+	bsr .lerp
+	sub.w d1,d0
+	swap d4
+	muls.w d4,d0
+	divs.w #14,d0
+	add.w d1,d0
+	move.w d6,d1
+	add.w d1,d1
+	lea _handling_factor(pc),a1
+	tst.b HS_GRASS(a0)
+	beq.s .road_factor
+	lea 10(a1),a1
+.road_factor:
+	muls.w (a1,d1.w),d0
+	asr.l #8,d0
+	asr.l #4,d0
+	move.w d0,d7			; engine torque
+	; driveline speed: the rear wheel's through the gear
+	move.w HS_U(a0),d0
+	tst.b HS_REAR+AX_SLIDE(a0)
+	beq.s .rolling
+	move.w HS_REAR+AX_W(a0),d0
+.rolling:
+	lea _handling_ratio(pc),a1
+	move.w (a1,d1.w),d2		; Q10, zero in neutral
+	beq .neutral
+	muls.w d2,d0
+	move.l d0,d3
+	; clutch capacity: full while the driveline overruns the engine,
+	; otherwise taking up between 1500 and 3000 rpm
+	move.l HS_WE(a0),d1
+	subi.l #HE_SLIP,d0
+	cmp.l d1,d0
+	ble.s .takeup
+	move.w #HE_CAP,d4
+	bra.s .capacity
+.takeup:
+	move.l d3,d0
+	asr.l #2,d0
+	sub.l d0,d1
+	subi.l #HE_TAKEUP,d1
+	bgt.s .partial
+	moveq #0,d4
+	bra.s .capacity
+.partial:
+	cmpi.l #HE_TAKEUP,d1
+	blt.s .ramp
+	move.w #HE_CAP,d4
+	bra.s .capacity
+.ramp:
+	lsr.l #8,d1
+	mulu.w #HE_K_CAP,d1
+	swap d1
+	move.w d1,d4
+.capacity:
+	; the clutch slips at its capacity towards the driveline's speed and
+	; locks when the engine reaches it; locked it passes the engine torque
+	sf HS_LOCKED(a0)
+	move.l HS_WE(a0),d1
+	cmp.l d3,d1
+	ble.s .slower
+	move.w d4,d5
+	move.w d7,d0
+	sub.w d4,d0
+	muls.w #HE_DT_IE,d0
+	add.l d1,d0
+	cmp.l d3,d0
+	bge.s .clutched
+	move.w d4,d0
+	neg.w d0
+	cmp.w d7,d0
+	ble.s .lock
+	move.w d0,d5			; engine braking beyond the capacity
+	move.w d7,d0
+	add.w d4,d0
+	muls.w #HE_DT_IE,d0
+	add.l d1,d0
+	bra.s .clutched
+.slower:
+	move.w d4,d5
+	neg.w d5
+	move.w d7,d0
+	add.w d4,d0
+	muls.w #HE_DT_IE,d0
+	add.l d1,d0
+	cmp.l d3,d0
+	ble.s .clutched
+	cmp.w d4,d7
+	ble.s .lock
+	move.w d4,d5
+	move.w d7,d0
+	sub.w d4,d0
+	muls.w #HE_DT_IE,d0
+	add.l d1,d0
+	bra.s .clutched
+.lock:
+	st HS_LOCKED(a0)
+	move.l d3,d0
+	move.w d7,d5
+.clutched:
+	bsr .engine_speed
+	; the rear wheel's torque; locked, the engine's inertia through the
+	; gear joins the wheel's, as a share of the torque
+	muls.w d2,d5
+	asr.l #8,d5
+	asr.l #2,d5
+	tst.b HS_LOCKED(a0)
+	beq.s .torque
+	move.w d6,d1
+	add.w d1,d1
+	lea _handling_inertia(pc),a1
+	muls.w (a1,d1.w),d5
+	moveq #15,d1
+	asr.l d1,d5
+.torque:
+	move.w d5,HS_TREAR(a0)
+	bra.s .resist
+.neutral:
+	move.w d7,d0
+	muls.w #HE_DT_IE,d0
+	add.l HS_WE(a0),d0
+	bsr .engine_speed
+	clr.w HS_TREAR(a0)
+.resist:
+	; drag 0.0087 u^2 + 105 lb, 10 u more on grass, and the forced stop;
+	; none of it takes the car past standstill
+	moveq #0,d1
+	move.w HS_U(a0),d0
+	beq.s .gravity
+	bpl.s .u_abs
+	neg.w d0
+.u_abs:
+	cmpi.w #16383,d0
+	bls.s .u_high
+	move.w #16383,d0
+.u_high:
+	move.w d0,d2
+	lsr.w #2,d2
+	mulu.w d2,d2
+	lsr.l #8,d2
+	mulu.w #HE_K_DRAG,d2
+	clr.w d2
+	swap d2
+	addi.w #HE_ROLL,d2
+	tst.b HS_GRASS(a0)
+	beq.s .paved
+	move.w d0,d1
+	mulu.w #5,d1
+	lsr.l #5,d1
+	add.l d1,d2
+.paved:
+	tst.b HS_STOP(a0)
+	beq.s .stop_done
+	addi.l #HE_STOP,d2
+.stop_done:
+	move.w d0,d1
+	mulu.w #HE_K_STOP,d1
+	cmp.l d1,d2
+	bhi.s .limit
+	move.l d2,d1
+.limit:
+	tst.w HS_U(a0)
+	bpl.s .gravity
+	neg.w d1
+.gravity:
+	; 1 g along the car on the ground, unless the native slope term is
+	; off (G($F791)) or a flight holds its pitch
+	tst.w HS_CONTACT(a0)
+	beq.s .external
+	tst.b -$86f(a4)
+	bne.s .external
+	movea.l _handling_flight(pc),a1
+	tst.w (a1)
+	bne.s .external
+	move.w -$6bb4(a4),d0		; pitch sine, Q14
+	muls.w #HE_WEIGHT,d0
+	moveq #14,d2
+	asr.l d2,d0
+	add.w d0,d1
+.external:
+	move.w d1,HS_FEXT(a0)
+	rts
+; D0 = new engine speed, clamped and stored
+.engine_speed:
+	tst.l d0
+	bpl.s .we_low
+	moveq #0,d0
+.we_low:
+	cmpi.l #HE_WE_MAX,d0
+	ble.s .we_high
+	move.l #HE_WE_MAX,d0
+.we_high:
+	move.l d0,HS_WE(a0)
+	rts
+; A1 = the row's entry, D5 = the column's remainder: D0 = the torque
+.lerp:
+	move.w 2(a1),d0
+	sub.w (a1),d0
+	muls.w d5,d0
+	divs.w #999,d0
+	add.w (a1),d0
+	rts
+
+; A0 = state, after a call's steps. The speedometer and the native target
+; speed from the ground speed, for BA8A; the RPM, which a current phase
+; solver keeps as a whole number so its phase steps leave it alone.
+; Clobbers D0-D1/A1.
+_handling_publish:
+	move.l HS_DU(a0),d0
+	swap d0
+	add.w HS_UBASE(a0),d0
+	bpl.s .u_abs
+	neg.w d0
+.u_abs:
+	move.w d0,d1
+	mulu.w #HE_K_MPH,d0
+	swap d0
+	move.w d0,HS_MPH(a0)
+	move.w d0,-$66d4(a4)		; G($992C)
+	mulu.w #HANDLING_K_PH,d1
+	swap d1
+	move.w d1,HS_TARGET(a0)
+	move.l HS_WE(a0),d0
+	moveq #12,d1
+	lsr.l d1,d0
+	mulu.w #HE_K_RPM,d0
+	swap d0
+	cmpi.w #HE_RPM_MAX,d0
+	bls.s .rpm
+	move.w #HE_RPM_MAX,d0
+.rpm:
+	move.w d0,-$66d6(a4)		; G($992A)
+	tst.b HS_PHASE(a0)
+	beq.s .done
+	lea _phase_state(pc),a1
+	swap d0
+	clr.w d0
+	move.l d0,PH_CURRENT_R(a1)
+	move.l d0,PH_ANCHOR_R(a1)
+.done:
 	rts
 
 ; One field of the model; the same arithmetic as handling_fx.FxCar.step.
@@ -910,6 +1273,12 @@ _handling_step:
 	add.l d1,d0
 	asr.l d7,d0
 	move.w d0,HS_FYBF(a0)
+	; with the drivetrain the rear wheels get its torque
+	tst.b HS_ENGINE(a0)
+	beq.s .rt_fx
+	move.w HS_TREAR(a0),d7
+	bra.s .rt_axle
+.rt_fx:
 	move.w HS_FX(a0),d0
 	ext.l d0
 	tst.w HS_BRAKE(a0)
@@ -929,6 +1298,7 @@ _handling_step:
 	muls.w #HM_K_UNROLL,d0
 	asr.l d7,d0
 	move.w d0,d7
+.rt_axle:
 	move.w HS_U(a0),d4
 	move.w HS_VCR(a0),d5
 	move.w HS_NR(a0),d6
@@ -936,9 +1306,17 @@ _handling_step:
 	lea _handling_rear(pc),a2
 	bsr _handling_axle
 	move.w d1,HS_FYR(a0)
-	; forward speed beyond fx: the tyres' deviation from it, and v r
+	; forward speed beyond fx: the tyres' deviation from it, and v r;
+	; with the drivetrain the tyres' force less drag and gravity
 	add.w HS_FXBF(a0),d0
+	tst.b HS_ENGINE(a0)
+	beq.s .du_fx
+	move.w d0,HS_FXT(a0)
+	sub.w HS_FEXT(a0),d0
+	bra.s .du_v
+.du_fx:
 	sub.w HS_FX(a0),d0
+.du_v:
 	muls.w #HM_K_DT_M,d0
 	move.w HS_V(a0),d1
 	muls.w HS_RW(a0),d1
@@ -1360,6 +1738,40 @@ _handling_isqrt:
 	movem.l (a7)+,d1-d3
 	rts
 
+; The arcade's engine torque, lb ft ($7529F0, grass $753170): rows for
+; throttle 0, 1/9 .. 1, columns for 0, 1000 .. 11000 rpm
+_handling_torque:
+	dc.w 75,-10,-30,-50,-70,-80,-80,-80,-80,-80,-80,-80
+	dc.w 75,100,1,-12,-29,-41,-49,-60,-71,-76,-78,-80
+	dc.w 75,150,32,26,12,-2,-18,-40,-62,-71,-76,-80
+	dc.w 75,150,63,63,53,37,13,-20,-53,-67,-73,-80
+	dc.w 75,150,94,101,94,76,44,0,-44,-62,-71,-80
+	dc.w 75,175,126,139,136,114,76,20,-36,-58,-69,-80
+	dc.w 75,175,157,177,177,153,107,40,-27,-53,-67,-80
+	dc.w 75,175,188,214,218,192,138,60,-18,-49,-64,-80
+	dc.w 75,177,219,252,259,231,169,80,-9,-44,-62,-80
+	dc.w 75,200,250,290,300,270,200,100,0,-40,-60,-80
+_handling_torque_grass:
+	dc.w 75,-10,-30,-30,-40,-40,-40,-40,-40,-40,-40,-40
+	dc.w 75,100,1,-12,-29,-41,-40,-40,-40,-40,-40,-40
+	dc.w 75,150,60,26,12,-2,-18,-40,-40,-40,-40,-40
+	dc.w 75,150,94,63,53,37,13,-10,-40,-40,-40,-40
+	dc.w 75,150,94,101,94,76,44,0,-40,-40,-40,-40
+	dc.w 75,150,94,101,94,76,44,0,-40,-40,-40,-40
+	dc.w 75,150,94,101,150,76,44,0,-40,-40,-40,-40
+	dc.w 75,150,150,150,150,76,44,0,-40,-40,-40,-40
+	dc.w 75,150,150,150,150,76,44,0,-40,-40,-40,-40
+	dc.w 75,150,150,150,150,76,44,0,-40,-40,-40,-40
+; Torque factors by gear (neutral, 1-4), Q12: 1.2, 1.25 and 1.3 times 0.925
+; in 1st-3rd and 1.3 in top, as the arcade's C1a run shows them; on grass
+; 1.1, times 0.925 in 1st-3rd
+_handling_factor: dc.w 5325,4547,4736,4925,5325
+	dc.w 4506,4168,4168,4168,4506
+; Overall ratios (gear times final drive 3.5), Q10
+_handling_ratio: dc.w 0,8602,6093,4480,3405
+; Locked clutch: the share of the wheel torque left with the engine's
+; inertia (0.4 ratio^2) beside the wheel's (10) and the car's (109.47), Q15
+_handling_inertia: dc.w 32767,26506,29296,30795,31598
 _handling_front: dc.w 19661,1549,4494,7191
 _handling_rear: dc.w 21299,3099,2247,3595
 ; sqrt(1 - x^2) at x = i/256, Q14
