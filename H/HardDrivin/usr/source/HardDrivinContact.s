@@ -355,6 +355,8 @@ _contact_pitch:
 _contact_pitch_rate_only:
 	movem.l d1-d2/a0-a1,-(a7)
 	IFND VERIFY_DISPATCH_NATIVE
+	move.w _contact_arcade(pc),d1
+	bne.s .arcade
 	; Native arcsine returns zero outside its domain. At variable intervals
 	; a rendered end face can supply that invalid input; retain angular motion
 	; instead of treating the sentinel as a real zero-rate constraint.
@@ -382,6 +384,32 @@ _contact_pitch_rate_only:
 .done:
 	movem.l (a7)+,d1-d2/a0-a1
 	rts
+	IFND VERIFY_DISPATCH_NATIVE
+	; Arcade handling: the arcade car on its rear wheels alone pitches nose
+	; down under the rear spring's load, 1741 lb at 5 ft less an 850 lb
+	; drive force at 1.567 ft, over 2000 slug ft^2: 3.7 rad/s^2, for its
+	; 10 ft wheelbase. The Amiga car stays on its rear wheels for about
+	; 30 ft, so a third of that per field gives the arcade's take-off rate,
+	; 3.7 x 10 ft / speed, at any speed. In the air the rate carries on.
+.arcade:
+	move.w _time_scalar_fields(pc),d1
+	beq.s .done
+	lea _contact_rates+8(pc),a0
+	lea -$66ea(a4),a1
+	bsr _contact_read_rate
+	mulu.w #CONTACT_TIP,d1
+	sub.l d1,d0
+	cmpi.l #-CONTACT_TIP_MAX<<16,d0
+	bge.s .tip
+	move.l #-CONTACT_TIP_MAX<<16,d0
+.tip:
+	move.l d0,d1
+	bsr _contact_write_rate
+	bra.s .done
+	ENDC
+CONTACT_TIP equ 59280		; Q16 quarter-degrees per native step, per field
+CONTACT_TIP_MAX equ 45		; the native rate's range, asin(180)/4
+_contact_arcade: dc.w 0		; nonzero for CUSTOM1=2 (_handling_install)
 ; Do not snap roll to zero while its integer rate is zero but fraction is not.
 _contact_roll_active:
 	movem.l d0/a0-a1,-(a7)

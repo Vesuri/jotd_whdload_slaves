@@ -108,6 +108,9 @@ _handling_install:
 	cmpi.l #2,d0
 	bne .done
 	movea.l a3,a0
+	adda.l #_contact_arcade-_handling_install,a0
+	move.w #1,(a0)
+	movea.l a3,a0
 	adda.l #_time_state-_handling_install,a0
 	lea _handling_time(pc),a1
 	move.l a0,(a1)
