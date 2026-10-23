@@ -334,6 +334,9 @@ _dispatch_held_ramps:
 	movem.l (a7)+,d0-d2/a0
 	rts
 _dispatch_after_physics:
+	IFD VERIFY_HANDLING
+	bsr _loop_step
+	ENDC
 	IFD VERIFY_DRIVETRAIN_PHASE
 	bsr _checkpoint_post
 	ENDC

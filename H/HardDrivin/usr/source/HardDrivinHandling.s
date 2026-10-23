@@ -505,8 +505,15 @@ _handling_steer:
 ; to roll instead, which makes any tilt grow at the turn rate; the contact
 ; code wins against that at the native turn rates, not at the model's. It is
 ; kept above 60 degrees of pitch or roll, as in the loop, where its inverted
-; heading factor matters. Clobbers D0-D5/A0-A1.
+; heading factor matters. While the loop holds the car, the turn is its
+; heading relative to the road there (HardDrivinLoop.s). Clobbers D0-D5/A0-A1.
 _handling_turn:
+	lea _loop_state(pc),a1
+	tst.w LP_ACTIVE(a1)
+	beq.s .free
+	add.w d0,LP_PSI(a1)
+	rts
+.free:
 	move.w -$66b4(a4),d2		; pitch G($994C)
 	bsr .wrap
 	move.w d2,d3
@@ -1151,12 +1158,21 @@ _handling_engine:
 	; off (G($F791)) or a flight holds its pitch
 	tst.w HS_CONTACT(a0)
 	beq.s .external
+	; on the loop, the sine of its pitch: the native sine lags a pass
+	; behind and the native fall it leaves the slope to is dropped there
+	lea _loop_state(pc),a1
+	tst.w LP_ACTIVE(a1)
+	beq.s .slope
+	move.w LP_SINE(a1),d0
+	bra.s .weight
+.slope:
 	tst.b -$86f(a4)
 	bne.s .external
 	movea.l _handling_flight(pc),a1
 	tst.w (a1)
 	bne.s .external
 	move.w -$6bb4(a4),d0		; pitch sine, Q14
+.weight:
 	muls.w #HE_WEIGHT,d0
 	moveq #14,d2
 	asr.l d2,d0

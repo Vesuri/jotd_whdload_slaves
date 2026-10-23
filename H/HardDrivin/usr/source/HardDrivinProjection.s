@@ -33,7 +33,9 @@ _projection_reset:
 ; FLIGHT_G. Preserves the other registers. Only a car upright and within 45
 ; degrees of level takes off: the loop has no centripetal force to press the
 ; car on, so where it loses contact (on the way up, and upside down at the
-; top) only the native fall along the body brings it back.
+; top) only the native fall along the body brings it back. The loop module
+; holds the car on the loop and, when it lets go, sets _flight_release for
+; one pass: that take-off flies at any pitch.
 _flight_fall:
 	movem.l d1/a0,-(a7)
 	move.w _contact_arcade(pc),d0
@@ -46,7 +48,8 @@ _flight_fall:
 	neg.w d1
 .positive:
 	cmp.w -$6bb2(a4),d1		; |sine| > cosine: steep or upside down
-	bgt.s .native
+	bgt.s .steep
+.take:
 	move.w d0,(a0)+
 	move.w -$6bb4(a4),(a0)+
 	move.w -$6bb2(a4),(a0)
@@ -54,10 +57,18 @@ _flight_fall:
 	moveq #FLIGHT_G,d0
 	movem.l (a7)+,d1/a0
 	rts
+.steep:
+	lea _flight_release(pc),a0
+	tst.w (a0)
+	beq.s .native
+	clr.w (a0)
+	lea _flight_held(pc),a0
+	bra.s .take
 .native:
 	moveq #5,d0
 	movem.l (a7)+,d1/a0
 	rts
+_flight_release: dc.w 0		; set by the loop for the pass after it lets go
 FLIGHT_G equ 37		; 32.2 ft/s^2: 36.8 long units (0.0224 ft) per native step^2
 ; Each native ground pass (_motion_fall_ground). Preserves registers.
 _flight_land:
