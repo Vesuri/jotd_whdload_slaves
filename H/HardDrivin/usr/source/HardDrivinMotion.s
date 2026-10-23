@@ -302,7 +302,14 @@ _motion_fall_ground:
 	sub.w -8(a5),d1			; closing in this pass's fields
 	ext.l d1
 	asl.l #3,d1
+	lea _contact_arcade(pc),a0
+	tst.w (a0)
+	beq.s .native_u
+	mulu.w #LANDING_U_ARCADE,d0
+	bra.s .closing
+.native_u:
 	mulu.w #LANDING_U,d0
+.closing:
 	cmp.l d0,d1
 	ble.s .native
 	; CC90 is the patched call's return address. Re-enter the native impact
@@ -358,6 +365,7 @@ _motion_landing_depth:
 	cmpi.w #-5,-8(a5)
 	rts
 LANDING_U equ 18		; units per native step, the native crash median
+LANDING_U_ARCADE equ 35		; the same closing speed at arcade handling's scale
 ; Average wheel height of the last pass in the air or on two wheels, and
 ; nonzero while it is the latest pass's.
 _motion_landing: dc.w 0,0

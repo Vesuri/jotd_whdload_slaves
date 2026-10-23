@@ -389,8 +389,9 @@ _contact_pitch_rate_only:
 	; down under the rear spring's load, 1741 lb at 5 ft less an 850 lb
 	; drive force at 1.567 ft, over 2000 slug ft^2: 3.7 rad/s^2, for its
 	; 10 ft wheelbase. The Amiga car stays on its rear wheels for about
-	; 30 ft, so a third of that per field gives the arcade's take-off rate,
-	; 3.7 x 10 ft / speed, at any speed. In the air the rate carries on.
+	; 86 units (15.3 ft), so two thirds of that per field gives the arcade's
+	; take-off rate, 3.7 x 10 ft / speed, at any speed. In the air the rate
+	; carries on.
 .arcade:
 	move.w _time_scalar_fields(pc),d1
 	beq.s .done
@@ -398,6 +399,7 @@ _contact_pitch_rate_only:
 	lea -$66ea(a4),a1
 	bsr _contact_read_rate
 	mulu.w #CONTACT_TIP,d1
+	add.l d1,d1
 	sub.l d1,d0
 	cmpi.l #-CONTACT_TIP_MAX<<16,d0
 	bge.s .tip
@@ -407,7 +409,7 @@ _contact_pitch_rate_only:
 	bsr _contact_write_rate
 	bra.s .done
 	ENDC
-CONTACT_TIP equ 59280		; Q16 quarter-degrees per native step, per field
+CONTACT_TIP equ 57985		; half the Q16 quarter-degrees per native step, per field
 CONTACT_TIP_MAX equ 45		; the native rate's range, asin(180)/4
 _contact_arcade: dc.w 0		; nonzero for CUSTOM1=2 (_handling_install)
 ; Do not snap roll to zero while its integer rate is zero but fraction is not.

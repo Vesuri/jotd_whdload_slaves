@@ -15,14 +15,18 @@
 
 HANDLING_CAP equ 50		; steps a frame may catch up, 1 s
 HANDLING_RING equ 64		; mouse samples kept, a power of two
-HANDLING_V8_MAX equ 4160	; velocity eighths the model accepts, 145 MPH
-HANDLING_JUMP equ 40		; eighths per field: a faster change is a reset
+HANDLING_V8_MAX equ 8138	; velocity eighths the model accepts, 145 MPH
+HANDLING_JUMP equ 78		; eighths per field (3.2 g): a faster change is a reset
 HANDLING_FX_BRAKE equ 2470	; front brake torque, lb ft (0.7 g)
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
-HANDLING_K_LAT equ 457		; Q6 ft/s -> Q16 long position units per field
-HANDLING_K_STEP equ 3653	; Q6 ft/s -> Q16 long position units per native step
+HANDLING_K_LAT equ 893		; Q6 ft/s -> Q16 long position units per field
+HANDLING_K_STEP equ 7146	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
-HANDLING_K_PH equ 2435		; Q22 ft/s -> Q16 native velocity, after >> 16
+HANDLING_K_PH equ 4764		; Q22 ft/s -> Q16 native velocity, after >> 16
+
+; Lengths: a world unit is 0.1791 ft, the arcade road's 41.2 ft over the
+; Amiga road's 230 units, so v = 1 is 0.2099 ft/s; the native speedometer,
+; 0.28 v MPH, reads about twice that.
 
 ; Model constants for one field, from tmp/arcade/tools/handling_fx.py.
 ; Speeds are Q6 ft/s words, the yaw rate and tyre deflection Q11 words
@@ -36,7 +40,7 @@ HM_K_ROLL equ 30025		; share of a torque that reaches the road, Q15
 HM_K_UNROLL equ 17881		; its inverse, Q14
 HM_K_Y equ 16448		; lb -> Q27 ft of tyre deflection
 HM_K_DELTA equ 32029		; mouse count -> Q14 rad, after >> 10
-HM_K_U equ 27559		; velocity eighth -> Q6 ft/s, after >> 13
+HM_K_U equ 14087		; velocity eighth -> Q6 ft/s, after >> 13
 HM_K equ 8160			; tyre lateral spring, lb/ft
 HM_N0 equ 7050			; static axle load, Q2 lb
 HM_FX_MAX equ 8000		; longitudinal force input limit, lb

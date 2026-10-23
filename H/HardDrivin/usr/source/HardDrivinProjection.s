@@ -58,7 +58,7 @@ _flight_fall:
 	moveq #5,d0
 	movem.l (a7)+,d1/a0
 	rts
-FLIGHT_G equ 19		; 32.2 ft/s^2: 18.8 long units (0.0438 ft) per native step^2
+FLIGHT_G equ 37		; 32.2 ft/s^2: 36.8 long units (0.0224 ft) per native step^2
 ; Each native ground pass (_motion_fall_ground). Preserves registers.
 _flight_land:
 	move.l a0,-(a7)

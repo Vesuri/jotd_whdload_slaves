@@ -6,24 +6,28 @@
 ; and the race ends below 3.4 MPH or 10 s later, while a checkpoint reached
 ; meanwhile still counts; a crash and its replay slow time left to 5/16 and
 ; leave the lap time out; the off-road limit is 11 s. The arcade's limits
-; (MAME's operator defaults, difficulty presets from the options menu) are
-; doubled for the longer Amiga course. The Phantom race has no time limit.
+; (MAME's operator defaults, difficulty presets from the options menu) hold
+; with arcade handling (CUSTOM1=2), whose car crosses the Amiga course at the
+; arcade's scale; the other settings' car crosses it at half its speedometer,
+; so for them the limits are doubled. The Phantom race has no time limit.
 ; Outside races the native clocks run unchanged.
 
 ; A PAL field is 142102 CPU clocks at 7093790 Hz: 2 + 2262/709379 hundredths.
 CLOCK_FIELD_DIVISOR equ 709379
 CLOCK_FIELD_REMAINDER equ 2262
-; Times in hundredths of a second: the arcade's limits, doubled.
-CLOCK_CHECKPOINT_SPEED equ 6400	; arcade 32 s (speed route), 29 s (stunt)
-CLOCK_CHECKPOINT_STUNT equ 5800
-CLOCK_CHAMPION equ 18600		; the arcade's Phantom Photon, 1:33.00
-CLOCK_HANDICAP equ 1000		; qualifying allowance, arcade 5 s (EASY)
-CLOCK_HANDICAP_STEP equ 100	; arcade 0.5 s more after each game that did not qualify
-CLOCK_HANDICAP_MAX equ 2000	; arcade 10 s
-; Per incident, not scaled.
+; Per incident, never doubled (the limits are in _clock_limits).
 CLOCK_OFFROAD equ 1100		; the arcade's 2750 ticks counted as 11 s
 CLOCK_GRACE equ 1000		; the race ends 10 s after zero
-CLOCK_STOP_SPEED equ 12		; |G($9928)| below this is below 3.4 MPH
+; _clock_limits: words, the times in hundredths of a second
+CL_CHECKPOINT_SPEED equ 0
+CL_CHECKPOINT_STUNT equ 2
+CL_CHAMPION equ 4
+CL_HANDICAP equ 6
+CL_HANDICAP_STEP equ 8
+CL_HANDICAP_MAX equ 10
+CL_PRESETS equ 12		; 3 rows of 4
+CL_TIMES equ 6+12		; time words
+CL_STOP_SPEED equ 36		; |G($9928)| below this is below 3.4 MPH
 
 CS_FRACTION equ 0		; long, field remainder in 1/709379 hundredth
 CS_OVERTIME equ 4		; long, hundredths past zero
@@ -51,6 +55,21 @@ _clock_install:
 	adda.l #_ct_ct5-_clock_install,a0
 	tst.l (a0)
 	beq .done
+	; the other settings' car is half as fast: double the limits; arcade
+	; handling's speed words are twice theirs: double the stop speed
+	lea _clock_limits(pc),a1
+	movea.l a3,a0
+	adda.l #_ct_ct1-_clock_install,a0
+	cmpi.l #2,(a0)
+	bne.s .double
+	lsl.w CL_STOP_SPEED(a1)
+	bra.s .limits
+.double:
+	moveq #CL_TIMES-1,d0
+.times:
+	lsl.w (a1)+
+	dbf d0,.times
+.limits:
 	movea.l a3,a0
 	adda.l #_code_start-_clock_install,a0
 	movea.l (a0),a1
@@ -60,8 +79,11 @@ _clock_install:
 	move.l d0,CS_NATIVE_LAP(a0)
 	addi.l #$2c8a-$2c4c,d0
 	move.l d0,CS_NATIVE_LEFT(a0)
-	move.l #CLOCK_CHAMPION,CS_CHAMPION(a0)
-	move.w #CLOCK_HANDICAP,CS_HANDICAP(a0)
+	lea _clock_limits(pc),a2
+	moveq #0,d0
+	move.w CL_CHAMPION(a2),d0
+	move.l d0,CS_CHAMPION(a0)
+	move.w CL_HANDICAP(a2),CS_HANDICAP(a0)
 	lea _clock_patches(pc),a0
 	movea.l a3,a2
 	adda.l #_resload-_clock_install,a2
@@ -116,7 +138,7 @@ _clock_vbl:
 	tst.b -$16cf(a4)		; G($e931) Phantom race
 	beq.s .race
 	; the arcade resets the qualifying allowance for the championship lap
-	move.w #CLOCK_HANDICAP,CS_HANDICAP(a0)
+	move.w _clock_limits+CL_HANDICAP(pc),CS_HANDICAP(a0)
 	bra.s .gate
 .race:
 	tst.b -$522c(a4)		; G($add4) race
@@ -337,7 +359,7 @@ _clock_preset:
 	moveq #0,d0
 .row:
 	lsl.w #3,d0
-	lea _clock_presets(pc),a1
+	lea _clock_limits+CL_PRESETS(pc),a1
 	adda.w d0,a1
 	move.l (a7)+,d0
 	rts
@@ -387,10 +409,11 @@ _clock_award:
 ; Replaces the checkpoint bonus (34 s less the difficulty) and its addition.
 _clock_checkpoint:
 	move.l d0,-(a7)
-	move.l #CLOCK_CHECKPOINT_SPEED,d0
+	moveq #0,d0
+	move.w _clock_limits+CL_CHECKPOINT_SPEED(pc),d0
 	tst.b -$66b0(a4)		; G($9950) stunt road
 	beq.s .award
-	move.l #CLOCK_CHECKPOINT_STUNT,d0
+	move.w _clock_limits+CL_CHECKPOINT_STUNT(pc),d0
 .award:
 	bsr _clock_award
 	move.l (a7)+,d0
@@ -450,10 +473,10 @@ _clock_race_init:
 	tst.b CS_QUALIFIED(a0)
 	bne.s .first
 	move.w CS_HANDICAP(a0),d0
-	addi.w #CLOCK_HANDICAP_STEP,d0
-	cmpi.w #CLOCK_HANDICAP_MAX,d0
+	add.w _clock_limits+CL_HANDICAP_STEP(pc),d0
+	cmp.w _clock_limits+CL_HANDICAP_MAX(pc),d0
 	bls.s .handicap
-	move.w #CLOCK_HANDICAP_MAX,d0
+	move.w _clock_limits+CL_HANDICAP_MAX(pc),d0
 .handicap:
 	move.w d0,CS_HANDICAP(a0)
 .first:
@@ -519,7 +542,7 @@ _clock_expired:
 	bpl.s .speed
 	neg.w d0
 .speed:
-	cmpi.w #CLOCK_STOP_SPEED,d0
+	cmp.w _clock_limits+CL_STOP_SPEED(pc),d0
 	blo.s .end
 	move.l _clock_state+CS_OVERTIME(pc),d0
 	cmpi.l #CLOCK_GRACE,d0
@@ -544,11 +567,16 @@ _clock_champion:
 	move.l (a7)+,d0
 	rts
 
-; Arcade presets EASY, MEDIUM, HARD ($3A3D8 in the arcade ROM), doubled.
-_clock_presets:
-	dc.w 19200,9600,9400,9200
-	dc.w 18000,8800,8800,9000
-	dc.w 16800,8600,8600,8800
+; The arcade's limits, doubled by _clock_install for the other settings.
+_clock_limits:
+	dc.w 3200,2900			; checkpoint, speed route 32 s, stunt route 29 s
+	dc.w 9300			; the Phantom Photon's lap, 1:33.00
+	dc.w 500,50,1000		; qualifying allowance (EASY), its step and limit
+	; presets EASY, MEDIUM, HARD ($3A3D8 in the arcade ROM)
+	dc.w 9600,4800,4700,4600
+	dc.w 9000,4400,4400,4500
+	dc.w 8400,4300,4300,4400
+	dc.w 12				; the stop speed, doubled for arcade handling
 
 	CNOP 0,4
 _clock_state:

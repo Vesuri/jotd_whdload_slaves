@@ -48,6 +48,14 @@ _traffic_bias: dc.l 0
 _traffic_frame:
 	movem.l d0/a0,-(a7)
 	move.w _time_scalar_fields(pc),d0
+	; Arcade handling (CUSTOM1=2) drives the course at its real scale, a
+	; world unit 0.1791 ft, where the traffic's speeds, set at the native
+	; speedometer's twice as large scale, are half: twice the time.
+	lea _contact_arcade(pc),a2
+	tst.w (a2)
+	beq.s .fields
+	add.w d0,d0
+.fields:
 	lea _traffic_fields(pc),a2
 	move.w d0,(a2)+
 	lsl.w #4,d0
