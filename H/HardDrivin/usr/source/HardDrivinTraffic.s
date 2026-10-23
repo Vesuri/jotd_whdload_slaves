@@ -43,14 +43,19 @@ _traffic_valid: dc.l 0
 _traffic_fields: dc.w VERIFY_SCALAR_FIELDS
 _traffic_factor: dc.w VERIFY_SCALAR_FIELDS*16
 _traffic_hot: dc.w 0
+_traffic_accel_fields: dc.w VERIFY_SCALAR_FIELDS
 _traffic_world_return: dc.l 0
 _traffic_bias: dc.l 0
 _traffic_frame:
 	movem.l d0/a0,-(a7)
 	move.w _time_scalar_fields(pc),d0
+	lea _traffic_accel_fields(pc),a2
+	move.w d0,(a2)
 	; Arcade handling (CUSTOM1=2) drives the course at its real scale, a
 	; world unit 0.1791 ft, where the traffic's speeds, set at the native
-	; speedometer's twice as large scale, are half: twice the time.
+	; speedometer's twice as large scale, are half: twice the distance per
+	; field. Its speed still changes over the native time, or it would reach
+	; its speed in half the time and pull away at twice its acceleration.
 	lea _contact_arcade(pc),a2
 	tst.w (a2)
 	beq.s .fields
@@ -303,7 +308,7 @@ _traffic_speed_step:
 	cmp.w d2,d0
 	beq.s .terminal
 	bgt.s .publish
-	move.w _traffic_fields(pc),d3
+	move.w _traffic_accel_fields(pc),d3
 	tst.b 11(a1)
 	beq.s .fields
 	moveq #8,d3
@@ -849,6 +854,7 @@ _traffic_math_test:
 	dbf d7,.speed
 	lea _traffic_fields(pc),a5
 	clr.w (a5)
+	clr.w _traffic_accel_fields-_traffic_fields(a5)
 	bsr _traffic_clear
 	clr.b 23(a0)
 	move.b #2,21(a0)
@@ -904,6 +910,7 @@ _traffic_speed_math_test:
 	move.b d0,22(a0)
 	move.l a0,-(a7)
 	lea _traffic_fields(pc),a0
+	move.w (a3),_traffic_accel_fields-_traffic_fields(a0)
 	move.w (a3)+,(a0)
 	movea.l (a7)+,a0
 	move.w (a3)+,d0
@@ -918,6 +925,7 @@ _traffic_speed_math_test:
 	dbf d7,.case
 	lea _traffic_fields(pc),a0
 	move.w #VERIFY_SCALAR_FIELDS,(a0)
+	move.w #VERIFY_SCALAR_FIELDS,_traffic_accel_fields-_traffic_fields(a0)
 	movem.l (a7)+,d0-d7/a0-a3
 	rts
 _traffic_speed_fake_record: dcb.b 46,0
