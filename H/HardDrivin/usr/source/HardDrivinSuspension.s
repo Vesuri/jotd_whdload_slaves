@@ -1,0 +1,487 @@
+; Arcade handling's suspension (CUSTOM1=2): the arcade car's pitch on its
+; springs ($70D590, ARCADE_ROMS.md). Its body pitches on a front and a rear
+; spring and damper, 5 ft either side of the centre of gravity: N = k x + c x'
+; for compression x, the damper doubled while compressing, the load doubled
+; past 1.5 ft of compression (the bump stop), none with the wheel off the
+; ground and at most the car's weight. The tyre forces act 1.567 ft below the
+; centre of gravity, so braking and driving pitch the car, and the spring
+; loads are the tyres' loads. There is no roll dynamics: the arcade sets roll
+; from the wheel contact, as the native contact code does.
+;
+; The native contact pass ($CAB6) snaps the car to the ground instead: it
+; pushes it out along its normal by the wheels' average depth and turns its
+; pitch to the wheels' height difference. Here, on its ground branch (three
+; wheels down or a diagonal pair), the springs turn the pitch instead, from
+; the body's pitch against the ground (the native wheel heights' difference,
+; the four corner points 90 units apart, interpolated to the arcade's
+; axles); they step the pitch velocity for each field, and the displacement
+; turns the car for the coming pass. The height stays native: the native
+; wheel heights are whole units (0.18 ft, 540 lb on a spring), too coarse
+; for the springs' heave, so the native push keeps the car on the ground and
+; the native landing test judges a touchdown. The native motion moves the
+; car along its body, so the springs' pitch against the ground would climb
+; it off the ground (or into it): that part of the motion is taken back, and
+; what is left (the native heights' rounding) falls back under gravity, as
+; the native push only lifts. With fewer wheels down the native pair contact
+; turns the car (on a jump's lip, the take-off rotation) and the native
+; flight carries on: the pitch velocity becomes the native pitch rate, and
+; comes back on the ground branch. The crash, the loop and the model's
+; resets stand it down.
+; See ARCADE_HANDLING_PLAN.md, H3 round 11.
+
+SU_VALID equ 0		; w: nonzero while the springs hold the car, 1 on the first pass
+SU_P equ 2		; l: pitch velocity at the axles (5 ft x rate), nose up, Q22 ft/s
+SU_EF equ 6		; l: front axle's clearance, Q22 ft
+SU_ER equ 10		; l: rear axle's
+SU_PP equ 14		; l: this pass's pitch displacement at the axles, Q22 ft
+SU_FX equ 18		; w: the tyres' longitudinal force, lb
+SU_NF equ 20		; w: front load, lb
+SU_NR equ 22		; w: rear load, lb
+SU_PITCH equ 24		; l+w: pitch not yet applied, Q16, and the angle it was for
+SU_YREM equ 30		; w: height not yet applied, Q8 long units
+SU_W equ 32		; l: fall velocity while above the ground, up, Q22 ft/s
+SU_REL equ 36		; w: sine of the body's pitch against the ground, Q14
+SU_GD equ 38		; l: the ground's pitch as the axles' displacement, Q22 ft, smoothed
+SU_SIZE equ 42
+
+SUSP_KF equ 3000	; springs, lb/ft
+SUSP_KR equ 3500
+SUSP_CF equ 400		; dampers, lb s/ft
+SUSP_CR equ 500
+SUSP_W equ 3525		; weight, lb: the load limit
+SUSP_K_PX equ 321	; lb at 1.567 ft -> Q22 ft/s at the axles per field: 5 h dt / I
+			; (axle loads: 25 dt / I = 1024 per lb, a shift by 10)
+SUSP_BUMP equ 24576	; bump stop, 1.5 ft of compression in Q14
+SUSP_LF equ 3215414	; unloaded clearance, Q22 ft: the static sag (1762.5 lb
+SUSP_LR equ 2863495	; on the spring) plus a ride height of 1 unit
+SUSP_V_MAX equ 268435456	; 64 ft/s, Q22
+SUSP_STEPS equ 50	; fields one pass steps at most, as the model
+SUSP_RIDE equ 751232	; ride height, 1 unit in Q22 ft
+SUSP_G equ 2634478	; gravity, Q22 ft/s per field (32.17 x 5 / 256)
+
+	cnop 0,4
+_suspension_state: dcb.b SU_SIZE,0
+
+; The rest of the slave is out of PC-relative reach: \2 = address of \1.
+SUSP_FAR macro
+	lea _suspension_state(pc),\2
+	adda.l #\1-_suspension_state,\2
+	endm
+
+; Replaces CMPI.B #3,-2(A5) at $CB52 of the native contact pass, after the
+; contact mask (-1(A5)) and the wheel heights G($947E..$9484) are known; the
+; flags are the displaced instruction's. Preserves all registers.
+_suspension_contact:
+	movem.l d0-d7/a0-a3,-(a7)
+	lea _suspension_state(pc),a2
+	SUSP_FAR _contact_arcade,a0
+	tst.w (a0)
+	beq .done
+	tst.b -$69fa(a4)		; crash countdown
+	bne .drop
+	lea _loop_state(pc),a0
+	tst.w LP_ACTIVE(a0)
+	bne .drop
+	; only on the ground branch (three wheels or a diagonal pair, as the
+	; native pass): with fewer, the native rear- or front-pair contact
+	; turns the car, the take-off rotation on a jump's lip
+	cmpi.b #3,-2(a5)		; wheels down
+	bhs.s .ground
+	cmpi.b #9,-1(a5)
+	beq.s .ground
+	cmpi.b #6,-1(a5)
+	bne .air
+.ground:
+	tst.w SU_VALID(a2)
+	bne.s .held
+	bsr _suspension_touch
+.held:
+	bsr _suspension_measure
+	SUSP_FAR _time_scalar_fields,a0
+	move.w (a0),d7
+	beq.s .owned
+	cmpi.w #SUSP_STEPS,d7
+	bls.s .steps
+	moveq #SUSP_STEPS,d7
+.steps:
+	bsr _suspension_steps
+	bsr _suspension_apply
+.owned:
+	moveq #1,d0
+	bra.s .own
+.air:
+	tst.w SU_VALID(a2)
+	beq.s .drop
+	bsr _suspension_release
+.drop:
+	moveq #0,d0
+	move.w d0,SU_VALID(a2)
+.own:
+	SUSP_FAR _suspension_own,a0
+	move.w d0,(a0)
+.done:
+	movem.l (a7)+,d0-d7/a0-a3
+	cmpi.b #3,-2(a5)
+	rts
+
+; Replaces TST.W -4(A5) / BEQ.S $CBBC at $CB94, the ground pass's pitch snap,
+; while the springs hold the car: on to the push out of the ground at $CBBC
+; (the native path for level wheels).
+_suspension_ground:
+	move.l a0,-(a7)
+	SUSP_FAR _suspension_own,a0
+	tst.w (a0)
+	movea.l (a7)+,a0
+	bne.s .level
+	tst.w -4(a5)
+	bne.s .pitch
+.level:
+	addi.l #$cbbc-$cb9a,(a7)
+.pitch:
+	rts
+
+; A2 = state. The first pass with a wheel down: the native pitch rate
+; becomes the pitch velocity. Clobbers D0-D1/A0-A1/A3.
+_suspension_touch:
+	SUSP_FAR _contact_rates+8,a0
+	lea -$66ea(a4),a1		; pitch rate G($9916)
+	SUSP_FAR _contact_read_rate,a3
+	jsr (a3)
+	asr.l #8,d0			; Q8 quarter degrees per native step
+	bsr _suspension_word
+	muls.w #2288,d0			; -> Q22 ft/s at the axles
+	move.l d0,SU_P(a2)
+	moveq #0,d1
+	SUSP_FAR _contact_write_rate,a3
+	jsr (a3)
+	clr.l SU_PITCH(a2)
+	move.w -$66b4(a4),SU_PITCH+4(a2)
+	clr.w SU_YREM(a2)
+	clr.l SU_W(a2)
+	clr.w SU_REL(a2)
+	move.w #1,SU_VALID(a2)
+	rts
+
+; A2 = state. The last pass with a wheel down is over: the pitch velocity
+; becomes the pitch rate, for the native flight. Clobbers D0-D1/A0-A1/A3.
+_suspension_release:
+	move.l SU_P(a2),d0
+	moveq #10,d1
+	asr.l d1,d0			; Q12 ft/s
+	bsr _suspension_word
+	muls.w #115,d0			; -> Q16 quarter degrees per native step
+	move.l d0,d1
+	SUSP_FAR _contact_rates+8,a0
+	lea -$66ea(a4),a1
+	SUSP_FAR _contact_write_rate,a3
+	jsr (a3)
+	clr.w SU_NF(a2)
+	clr.w SU_NR(a2)
+	rts
+
+; D0.L clamped to a signed word.
+_suspension_word:
+	cmpi.l #32767,d0
+	ble.s .high
+	move.l #32767,d0
+.high:
+	cmpi.l #-32768,d0
+	bge.s .low
+	move.l #-32768,d0
+.low:
+	rts
+
+; A2 = state. The axles' clearances: the ride height and the body's pitch
+; against the ground, from the native wheel heights' difference, wheels 0-1
+; the front pair 45 units ahead, 2-3 the rear, interpolated to the arcade's
+; axles 5 ft (27.9 units) either side. Also the tyres' force. Clobbers
+; D0-D3/A0.
+_suspension_measure:
+	lea -$6b82(a4),a0		; G($947E)
+	moveq #3,d3
+	moveq #0,d1
+.wheel:
+	move.w (a0)+,d0
+	cmpi.w #1000,d0
+	ble.s .wheel_high
+	move.w #1000,d0
+.wheel_high:
+	cmpi.w #-1000,d0
+	bge.s .wheel_low
+	move.w #-1000,d0
+.wheel_low:
+	cmpi.w #2,d3
+	blt.s .rear
+	add.w d0,d1
+	bra.s .next
+.rear:
+	sub.w d0,d1
+.next:
+	dbf d3,.wheel
+	muls.w #20329,d1		; front less rear sum, units: half the pairs'
+	moveq #14,d2			; difference x 4 is twice it in Q3 units,
+	asr.l d2,d1			; x 5 ft / 8.06 ft
+	; the ground's pitch: the body's (5 ft x the pitch word) less that,
+	; smoothed over the native heights' rounding (a quarter a pass); the
+	; body's own pitch then against it, with its fraction
+	move.w d1,d0
+	bsr .feet
+	move.l d0,d2
+	move.w -$66b4(a4),d0		; pitch G($994C)
+	muls.w #22877,d0		; x 5 ft x pi / 720 / 4, Q22 ft
+	asl.l #2,d0
+	sub.l d2,d0
+	cmpi.w #1,SU_VALID(a2)
+	bne.s .smooth
+	move.w #2,SU_VALID(a2)
+	move.l d0,SU_GD(a2)
+	bra.s .ground
+.smooth:
+	sub.l SU_GD(a2),d0
+	asr.l #2,d0
+	add.l d0,SU_GD(a2)
+.ground:
+	move.l SU_PITCH(a2),d0		; the pitch's fraction, Q16
+	asr.l #4,d0
+	muls.w #22877,d0
+	asr.l #8,d0
+	asr.l #2,d0
+	move.w -$66b4(a4),d1
+	muls.w #22877,d1
+	asl.l #2,d1
+	add.l d1,d0
+	sub.l SU_GD(a2),d0		; the front's displacement
+	move.l d0,d1
+	addi.l #SUSP_RIDE,d0
+	move.l d0,SU_EF(a2)
+	move.l #SUSP_RIDE,d0
+	sub.l d1,d0
+	move.l d0,SU_ER(a2)
+	lea _handling_state(pc),a0
+	move.w HS_FXIN(a0),SU_FX(a2)
+	rts
+; D0.W Q3 units -> D0.L Q22 ft (x 0.1791 / 8 x 2^22 = 93904). Preserves D1.
+.feet:
+	move.l d1,-(a7)
+	move.w d0,d1
+	muls.w #28368,d1
+	ext.l d0
+	swap d0
+	clr.w d0
+	add.l d1,d0
+	move.l (a7)+,d1
+	rts
+
+; A2 = state, D7 = fields (1..SUSP_STEPS). The springs and the body for
+; each field, explicit for the loads and with the new velocity for the
+; displacement, as the arcade's step. Clobbers D0-D7/A0.
+_suspension_steps:
+	clr.l SU_PP(a2)
+	subq.w #1,d7
+.field:
+	; front: compression and its velocity
+	move.l SU_EF(a2),d0
+	add.l SU_PP(a2),d0
+	move.l #SUSP_LF,d1
+	sub.l d0,d1
+	move.l SU_P(a2),d2
+	neg.l d2
+	move.w #SUSP_KF,d3
+	move.w #SUSP_CF,d4
+	bsr _suspension_spring
+	move.w d0,d5			; front load
+	; rear
+	move.l SU_ER(a2),d0
+	sub.l SU_PP(a2),d0
+	move.l #SUSP_LR,d1
+	sub.l d0,d1
+	move.l SU_P(a2),d2
+	move.w #SUSP_KR,d3
+	move.w #SUSP_CR,d4
+	bsr _suspension_spring
+	move.w d0,d6			; rear load
+	move.w d5,SU_NF(a2)
+	move.w d6,SU_NR(a2)
+	; pitch: the loads' moment and the tyres' force below the centre of
+	; gravity (braking pitches the nose down)
+	move.w d5,d0
+	sub.w d6,d0
+	ext.l d0
+	moveq #10,d1
+	asl.l d1,d0
+	move.w SU_FX(a2),d1
+	muls.w #SUSP_K_PX,d1
+	add.l d1,d0
+	add.l SU_P(a2),d0
+	move.l #SUSP_V_MAX,d1
+	bsr _suspension_limit
+	move.l d0,SU_P(a2)
+	; displacement: v dt = v x 5 / 256
+	move.l d0,d1
+	asl.l #2,d0
+	add.l d1,d0
+	asr.l #8,d0
+	add.l d0,SU_PP(a2)
+	dbf d7,.field
+	rts
+
+; D0.L limited to +-D1.L.
+_suspension_limit:
+	cmp.l d1,d0
+	ble.s .high
+	move.l d1,d0
+.high:
+	neg.l d1
+	cmp.l d1,d0
+	bge.s .low
+	move.l d1,d0
+.low:
+	rts
+
+; D1.L compression Q22 ft, D2.L its velocity Q22 ft/s, D3.W spring lb/ft,
+; D4.W damper lb s/ft. Returns D0.W the load, lb. Clobbers D1-D2/D4.
+_suspension_spring:
+	moveq #0,d0
+	tst.l d1
+	ble.s .done
+	asr.l #8,d1			; Q14 ft
+	cmpi.l #32767,d1
+	ble.s .deep
+	move.l #32767,d1
+.deep:
+	move.w d1,d0
+	muls.w d3,d0
+	move.l d1,-(a7)
+	moveq #14,d1
+	asr.l d1,d0
+	asr.l d1,d2			; Q8 ft/s
+	move.l d0,d1
+	move.l d2,d0
+	bsr _suspension_word
+	tst.w d0
+	ble.s .damp
+	add.w d4,d4			; doubled while compressing
+.damp:
+	muls.w d4,d0
+	asr.l #8,d0
+	add.l d1,d0
+	move.l (a7)+,d1
+	cmpi.w #SUSP_BUMP,d1
+	ble.s .stop
+	add.l d0,d0
+.stop:
+	tst.l d0
+	bpl.s .positive
+	moveq #0,d0
+.positive:
+	cmpi.l #SUSP_W,d0
+	ble.s .done
+	move.l #SUSP_W,d0
+.done:
+	rts
+
+; A2 = state, A5 = the native pass's frame. This pass's displacement turns
+; the car about its roll axis, as the native pitch helper ($B194), and its
+; height follows the ground. Clobbers D0-D4/A0-A1/A3.
+_suspension_apply:
+	; the axles' displacement over 5 ft, Q16 quarter degrees
+	move.l SU_PP(a2),d0
+	move.w #23469,d1		; x 229.18 / 5 / 64, Q15
+	bsr _suspension_mulq15
+	move.w -$6bae(a4),d1		; x cos roll, Q14
+	SUSP_FAR _contact_project_q16,a3
+	jsr (a3)
+	lea SU_PITCH(a2),a0
+	lea -$66b4(a4),a1		; pitch G($994C)
+	SUSP_FAR _contact_add_angle,a3
+	jsr (a3)
+	; the native motion's rise along the pitch against the ground over the
+	; pass's fields, taken back: u n dt (front displacement) / 5 ft
+	SUSP_FAR _time_scalar_fields,a0
+	move.w (a0),d3
+	cmpi.w #SUSP_STEPS,d3
+	bls.s .fields
+	moveq #SUSP_STEPS,d3
+.fields:
+	move.l SU_EF(a2),d0
+	subi.l #SUSP_RIDE,d0
+	add.l SU_PP(a2),d0
+	asr.l #8,d0			; Q14 ft
+	bsr _suspension_word
+	move.w d0,d1			; / 5 ft: the pitch's sine for the
+	muls.w #13107,d1		; handling's slope force
+	swap d1
+	move.w d1,SU_REL(a2)
+	lea _handling_state(pc),a0
+	muls.w HS_U(a0),d0		; Q20 ft x ft/s
+	asr.l #8,d0			; / 256: dt / 5 ft = 1 / 256
+	move.w d3,d1
+	bsr _suspension_mulw		; Q20 ft
+	asr.l #6,d0			; Q14 ft
+	neg.l d0
+	move.l d0,-(a7)
+	; above the ground (the wheels' average height -8(A5) of the native
+	; pass), the car falls under gravity, to the ground at most
+	moveq #0,d0
+	move.w -8(a5),d1
+	ble.s .grounded
+	move.l SU_W(a2),d2
+	subq.w #1,d3
+.fall:
+	subi.l #SUSP_G,d2
+	move.l d2,d4
+	asl.l #2,d4
+	add.l d2,d4
+	asr.l #8,d4			; v dt = v x 5 / 256
+	add.l d4,d0
+	dbf d3,.fall
+	move.l d2,SU_W(a2)
+	asr.l #8,d0			; Q14 ft
+	muls.w #2934,d1			; the height, Q14 ft
+	neg.l d1
+	cmp.l d1,d0
+	bge.s .falling
+	move.l d1,d0
+.grounded:
+	clr.l SU_W(a2)
+.falling:
+	add.l (a7)+,d0
+	bsr _suspension_word
+	muls.w #22873,d0		; x 44.67 long units per ft
+	moveq #15,d1
+	asr.l d1,d0			; Q8 long units
+	add.w SU_YREM(a2),d0
+	ext.l d0
+	move.l d0,d1
+	asr.l #8,d0
+	andi.w #255,d1
+	move.w d1,SU_YREM(a2)
+	add.l d0,-$6700(a4)		; Y long G($9900)
+	move.l -$6700(a4),d0
+	asr.l #3,d0
+	move.w d0,-$6708(a4)		; Y word G($98F8)
+	rts
+
+; D0.L signed x D1.W unsigned -> D0.L, the low 32 bits. Clobbers D1-D2.
+_suspension_mulw:
+	move.l d0,d2
+	swap d0
+	muls.w d1,d0			; high word, signed
+	swap d0
+	clr.w d0
+	mulu.w d1,d2			; low word, unsigned
+	add.l d2,d0
+	rts
+
+; D0.L signed x D1.W positive Q15 -> D0.L, rounded down. Clobbers D1-D2.
+_suspension_mulq15:
+	move.l d0,d2
+	swap d0
+	muls.w d1,d0			; high word, signed
+	add.l d0,d0
+	andi.l #$ffff,d2
+	mulu.w d1,d2			; low word, unsigned
+	moveq #15,d1
+	lsr.l d1,d2
+	add.l d2,d0
+	rts

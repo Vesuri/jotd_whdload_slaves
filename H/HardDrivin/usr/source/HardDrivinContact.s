@@ -329,6 +329,9 @@ _contact_roll:
 	rts
 _contact_pitch:
 	movem.l d1-d4/a0-a2,-(a7)
+	lea _suspension_own(pc),a0	; the springs pitch the car
+	tst.w (a0)
+	bne.s .done
 	IFD VERIFY_CONTACT_TRACE
 	lea _contact_rates(pc),a0
 	move.w d0,14(a0)
@@ -354,6 +357,9 @@ _contact_pitch:
 	rts
 _contact_pitch_rate_only:
 	movem.l d1-d2/a0-a1,-(a7)
+	lea _suspension_own(pc),a0	; the springs pitch the car
+	tst.w (a0)
+	bne.s .done
 	IFND VERIFY_DISPATCH_NATIVE
 	move.w _contact_arcade(pc),d1
 	bne.s .arcade
@@ -412,6 +418,7 @@ _contact_pitch_rate_only:
 CONTACT_TIP equ 57985		; half the Q16 quarter-degrees per native step, per field
 CONTACT_TIP_MAX equ 45		; the native rate's range, asin(180)/4
 _contact_arcade: dc.w 0		; nonzero for CUSTOM1=2 (_handling_install)
+_suspension_own: dc.w 0		; nonzero while the springs hold the car (HardDrivinSuspension.s)
 ; Do not snap roll to zero while its integer rate is zero but fraction is not.
 _contact_roll_active:
 	movem.l d0/a0-a1,-(a7)

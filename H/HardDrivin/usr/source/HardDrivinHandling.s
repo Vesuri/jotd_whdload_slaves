@@ -234,6 +234,10 @@ _handling_patches:
 	PL_PS $b90c,_handling_shift_skip
 	; PERF_RANGE VERIFY_HANDLING $0ba8a $0006: the drivetrain's speedometer
 	PL_PS $ba8a,_handling_speedo
+	; PERF_RANGE VERIFY_HANDLING $0cb52 $0006: the springs, after the contact mask
+	PL_PS $cb52,_suspension_contact
+	; PERF_RANGE VERIFY_HANDLING $0cb94 $0006: no pitch snap or push while they hold the car
+	PL_PS $cb94,_suspension_ground
 	PL_END
 _handling_tail: dc.l 0		; native angle and trig tail, B44E
 _handling_time: dc.l 0		; _time_state
@@ -775,6 +779,8 @@ _handling_reset:
 	clr.l HS_DU(a0)
 	clr.l HS_CARRY(a0)
 	move.w -$66b6(a4),HS_LAST_HEAD(a0)
+	lea _suspension_state(pc),a1
+	clr.w SU_VALID(a1)
 	movem.l (a7)+,d0/a1
 	rts
 
@@ -1172,6 +1178,10 @@ _handling_engine:
 	tst.w (a1)
 	bne.s .external
 	move.w -$6bb4(a4),d0		; pitch sine, Q14
+	lea _suspension_state(pc),a1
+	tst.w SU_VALID(a1)
+	beq.s .weight
+	sub.w SU_REL(a1),d0		; the springs' pitch is not the slope
 .weight:
 	muls.w #HE_WEIGHT,d0
 	moveq #14,d2
@@ -1284,6 +1294,17 @@ _handling_step:
 	ble.s .nr_high
 	move.l #2*HM_N0,d2
 .nr_high:
+	; the springs' loads while they hold the car (HardDrivinSuspension.s)
+	lea _suspension_state(pc),a1
+	tst.w SU_VALID(a1)
+	beq.s .lagged
+	move.w SU_NF(a1),d1
+	ext.l d1
+	asl.l #2,d1
+	move.w SU_NR(a1),d2
+	ext.l d2
+	asl.l #2,d2
+.lagged:
 	btst #0,HS_CONTACT+1(a0)
 	bne.s .front_on
 	moveq #0,d1
