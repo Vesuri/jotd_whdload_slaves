@@ -62,8 +62,13 @@ _timeline_gameover_frame:
 	; Tail-call the second displaced JSR with its original return address.
 	move.l _timeline_scene_ptr(pc),-(a7)
 	rts
-; Publish min(floor(age/8),35). Long age handles slow frames without wrapping
-; the native signed-word animation counter. Preserve registers and X.
+; Publish the animation counter: the split text moves one column per pass and
+; stops at 20, so natively it slid a column per 8 fields, about 6 steps a
+; second. Slide a column per 2 fields instead (25 a second, 0.8 s), hold at
+; 20, and publish 35 once the native 280 fields have passed. Long age handles
+; slow frames without wrapping the native signed-word animation counter.
+; Preserve registers and X.
+TIMELINE_SLIDE equ 1		; fields per column, log2
 _timeline_gameover_phase:
 	movem.l d0-d1/a0,-(a7)
 	moveq #0,d1
@@ -73,10 +78,15 @@ _timeline_gameover_phase:
 	move.l _replay_state+RP_WALL(pc),d0
 	sub.l TL_START(a0),d0
 	move.l d0,TL_AGE(a0)
-	lsr.l #3,d0
-	cmpi.l #35,d0
-	bls.s .bounded
+	cmpi.l #35*8,d0
+	blo.s .sliding
 	moveq #35,d0
+	bra.s .bounded
+.sliding:
+	lsr.l #TIMELINE_SLIDE,d0
+	cmpi.l #20,d0
+	bls.s .bounded
+	moveq #20,d0
 .bounded:
 	move.w d0,-2(a5)
 	move.w (a7)+,d1
