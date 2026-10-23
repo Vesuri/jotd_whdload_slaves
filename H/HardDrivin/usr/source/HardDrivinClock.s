@@ -113,6 +113,8 @@ _clock_patches:
 	PL_PSS $b178,_clock_offroad,8
 	; PERF_RANGE CUSTOM5 $104e4 $0006: automatic start, time left
 	PL_PS $104e4,_clock_auto_start
+	; PERF_RANGE CUSTOM5 $105dc $0008: off-road time left
+	PL_PSS $105dc,_clock_offroad_left,2
 	; PERF_RANGE CUSTOM5 $10edc $0014: time out
 	PL_PSS $10edc,_clock_expired,14
 	; PERF_RANGE CUSTOM5 $11878 $000e: Phantom off-road deadline
@@ -530,6 +532,27 @@ _clock_offroad:
 	bsr _clock_to_bcd
 	move.l d0,-$5228(a4)
 	move.l (a7)+,d0
+	rts
+
+; Replaces the BCD subtraction deadline - lap clock (via $2c30) for "OFF ROAD
+; n" and the load of its result. The native deadline never carries into the
+; minutes, so its display never subtracted across them; this one does, and
+; plain BCD would show 1:02 - 0:59 as 43. D0.l = BCD time left, from 0.
+_clock_offroad_left:
+	move.l d1,-(a7)
+	move.l -$5228(a4),d0		; G($add8)
+	bsr _clock_from_bcd
+	move.l d0,d1
+	move.l -$6870(a4),d0		; G($9790) lap clock
+	bsr _clock_from_bcd
+	sub.l d0,d1
+	bpl.s .left
+	moveq #0,d1
+.left:
+	move.l d1,d0
+	bsr _clock_to_bcd
+	move.l d0,-4(a5)
+	move.l (a7)+,d1
 	rts
 
 ; Replaces the race loop's time-out test, which stopped both clocks and ended
