@@ -151,9 +151,23 @@ _loop_enter:
 	beq .no
 	tst.w -$66d8(a4)
 	ble .no
+	; a native section search that finds no candidate ($de92) stores its
+	; uninitialised local, as _checkpoint_post notes: only a section in
+	; the road's list, with the two after it
 	move.l -$671c(a4),d0
-	beq .no
+	btst #0,d0
+	bne .no
 	movea.l d0,a0
+	cmpa.l -$6720(a4),a0		; first section G($98e0)
+	blo .no
+	movea.l -$50da(a4),a1
+	tst.b -$66b0(a4)
+	beq.s .list
+	movea.l -$50d6(a4),a1
+.list:
+	lea 60(a0),a3
+	cmpa.l a1,a3
+	bhi .no
 	tst.w 14(a0)
 	bne .no
 	cmpi.w #60,20+14(a0)
