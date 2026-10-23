@@ -44,6 +44,15 @@ _traffic_fields: dc.w VERIFY_SCALAR_FIELDS
 _traffic_factor: dc.w VERIFY_SCALAR_FIELDS*16
 _traffic_hot: dc.w 0
 _traffic_accel_fields: dc.w VERIFY_SCALAR_FIELDS
+; Arcade handling: the arcade's traffic pulls away from the start line at
+; about 0.45 g whatever its speed (MAME, 2026-10-23: 9.8 MPH/s), the Amiga's
+; at accel/8 of a speed unit a field, 1-3 g. A speed unit is 3.91 MPH at the
+; real scale (a 512-unit route segment is 200 phase units, the phase moves
+; v/4 a field), so 0.45 g is 0.404 eighths a field: 103/256, the remainder
+; carried from frame to frame.
+TRAFFIC_ARCADE_ACCEL equ 103
+_traffic_arcade_carry: dc.w 0
+_traffic_arcade_eighths: dc.w 0
 _traffic_world_return: dc.l 0
 _traffic_bias: dc.l 0
 _traffic_frame:
@@ -54,11 +63,19 @@ _traffic_frame:
 	; Arcade handling (CUSTOM1=2) drives the course at its real scale, a
 	; world unit 0.1791 ft, where the traffic's speeds, set at the native
 	; speedometer's twice as large scale, are half: twice the distance per
-	; field. Its speed still changes over the native time, or it would reach
-	; its speed in half the time and pull away at twice its acceleration.
+	; field. Its speed changes at the arcade's 0.45 g instead of its own
+	; acceleration (_traffic_arcade_eighths), from the native field count.
 	lea _contact_arcade(pc),a2
 	tst.w (a2)
 	beq.s .fields
+	move.w d0,d4
+	mulu.w #TRAFFIC_ARCADE_ACCEL,d4
+	lea _traffic_arcade_carry(pc),a2
+	add.w (a2),d4
+	move.w d4,(a2)
+	andi.w #255,(a2)
+	lsr.w #8,d4
+	move.w d4,_traffic_arcade_eighths-_traffic_arcade_carry(a2)
 	add.w d0,d0
 .fields:
 	lea _traffic_fields(pc),a2
@@ -308,12 +325,21 @@ _traffic_speed_step:
 	cmp.w d2,d0
 	beq.s .terminal
 	bgt.s .publish
-	move.w _traffic_accel_fields(pc),d3
 	tst.b 11(a1)
-	beq.s .fields
+	bne.s .first
+	move.w _contact_arcade(pc),d3
+	beq.s .native
+	moveq #0,d1
+	move.w _traffic_arcade_eighths(pc),d1
+	bra.s .increment
+.first:
 	moveq #8,d3
+	bra.s .fields
+.native:
+	move.w _traffic_accel_fields(pc),d3
 .fields:
 	mulu.w d3,d1
+.increment:
 	; Keep the complete acceleration increment until terminal-speed clamping.
 	; A long frame can exceed a signed word even with native accel1..3.
 	ext.l d0
