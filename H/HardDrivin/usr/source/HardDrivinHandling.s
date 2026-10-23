@@ -4,8 +4,10 @@
 ; steps, each with its own field's mouse X. The model turns the car, adds
 ; its sideways motion and sets the forward speed from its tyres, drag and
 ; gravity, publishing the speed, RPM, gear and speedometer the native engine
-; did. Every hook is installed only for CUSTOM1=2, so the other settings run
-; exactly the release code.
+; did. With mouse control the buttons are pedals: the right the gas, the
+; left the brake, each moving a tenth of its travel a field. Every hook is
+; installed only for CUSTOM1=2, so the other settings run exactly the
+; release code.
 
 	IFND VERIFY_DRIVETRAIN_PHASE
 	FAIL "VERIFY_HANDLING requires VERIFY_DRIVETRAIN_PHASE"
@@ -16,6 +18,7 @@ HANDLING_RING equ 64		; mouse samples kept, a power of two
 HANDLING_V8_MAX equ 4160	; velocity eighths the model accepts, 145 MPH
 HANDLING_JUMP equ 40		; eighths per field: a faster change is a reset
 HANDLING_FX_BRAKE equ 2470	; front brake torque, lb ft (0.7 g)
+HANDLING_PEDAL equ 10		; pedal travel per field, of 100
 HANDLING_K_LAT equ 457		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 3653	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
@@ -123,7 +126,10 @@ HS_STOP equ 131			; the forced stop holds the car
 HS_MPH equ 132			; speedometer, MPH
 HS_TARGET equ 134		; the speed in native velocity units
 HS_GRASS equ 136		; the car is off the road
-HS_SIZE equ 138
+HS_GAS equ 137			; mouse control: gas pedal, 0..100
+HS_PEDAL equ 138		; brake pedal, 0..100
+HS_HELD equ 139			; this field's buttons, bits 0 right, 2 left
+HS_SIZE equ 140
 
 ; The slave's globals and Time.s lie beyond PC-relative range from this
 ; module: reach them from a local base with assembler-constant offsets.
@@ -208,6 +214,10 @@ _handling_patches:
 	PL_START
 	; PERF_RANGE VERIFY_HANDLING $00050 $0006: per-field mouse samples
 	PL_PS $50,_handling_vbl
+	; PERF_RANGE VERIFY_HANDLING $07d28 $0006: mouse control: pedals, not the throttle buttons
+	PL_PS $7d28,_handling_controls
+	; PERF_RANGE VERIFY_HANDLING $07dca $001c: nor the brake on both buttons
+	PL_S $7dca,$7de6-$7dca
 	; PERF_RANGE VERIFY_HANDLING $08a1a $0006: replay records the model's screech
 	PL_PS $8a1a,_handling_replay_skid
 	; PERF_RANGE VERIFY_HANDLING $0b61a $0006: the model's screech
@@ -231,20 +241,60 @@ _handling_project: dc.l 0	; _projection_integer_components
 _handling_flight: dc.l 0	; _flight_held
 
 ; Replaces _time_vbl at $50. The sample of field k is X after its VBL, so
-; ring[TS_FIELDS] is written by the next VBL, before the native mouse update.
+; ring[TS_FIELDS] is written by the next VBL, before the native mouse update;
+; the buttons held then go to the same slot of _handling_held.
 _handling_vbl:
 	movea.l (a1),a4
 	move.w sr,-(a7)
-	movem.l d0/a0,-(a7)
+	movem.l d0-d1/a0,-(a7)
 	movea.l _handling_time(pc),a0
-	move.w TS_FIELDS+2(a0),d0
-	andi.w #HANDLING_RING-1,d0
-	add.w d0,d0
+	move.w TS_FIELDS+2(a0),d1
+	andi.w #HANDLING_RING-1,d1
+	bsr _handling_buttons
+	lea _handling_held(pc),a0
+	move.b d0,(a0,d1.w)
+	add.w d1,d1
 	lea _handling_ring(pc),a0
-	move.w -$6a06(a4),(a0,d0.w)
-	movem.l (a7)+,d0/a0
+	move.w -$6a06(a4),(a0,d1.w)
+	movem.l (a7)+,d0-d1/a0
 	move.w (a7)+,ccr
 	move.l _handling_time_vbl(pc),-(a7)
+	rts
+
+; D0 = the mouse buttons held now, as the native latch's bits: 0 the right
+; (POTGOR), 2 the left or the other port's fire (CIAA), less the native mask
+; G($8FC7) of buttons held since a click; with a test driver's _handling_pad.
+_handling_buttons:
+	move.l d1,-(a7)
+	moveq #0,d0
+	move.b $bfe001,d1
+	not.b d1
+	andi.b #$c0,d1
+	beq.s .right
+	moveq #4,d0
+.right:
+	move.w $dff016,d1
+	btst #10,d1
+	bne.s .mask
+	addq.b #1,d0
+.mask:
+	move.b -$7039(a4),d1
+	not.b d1
+	and.b d1,d0
+	or.b _handling_pad+1(pc),d0
+	move.l (a7)+,d1
+	rts
+
+; Native controls ($7D28): with mouse control G($95F8) = 3 the pedals
+; (_handling_pedals) replace the throttle buttons, so go on to $7D5E. The
+; other controls keep the native ones; flags as the displaced CMPI.
+_handling_controls:
+	cmpi.b #3,-$6a08(a4)
+	bne.s .native
+	addi.l #$7d5e-$7d2e,(a7)
+	rts
+.native:
+	cmpi.w #4,-$6a0a(a4)		; buttons G($95F6)
 	rts
 
 ; Native B3FC/B428 never start a skid now, so the flag the replay records
@@ -356,10 +406,14 @@ _handling_steer:
 	move.l TS_FIELDS(a1),d1
 	sub.l d0,d1
 	bgt.s .ring
+	bsr _handling_buttons
+	move.b d0,HS_HELD(a0)
 	move.w -$6a06(a4),d1
 	bra.s .mouse
 .ring:
 	andi.w #HANDLING_RING-1,d0
+	lea _handling_held(pc),a1
+	move.b (a1,d0.w),HS_HELD(a0)
 	add.w d0,d0
 	lea _handling_ring(pc),a1
 	move.w (a1,d0.w),d1
@@ -383,6 +437,7 @@ _handling_steer:
 	swap d0
 	add.w HS_UBASE(a0),d0
 	move.w d0,HS_U(a0)
+	bsr _handling_pedals
 	bsr _handling_engine
 	move.l HS_PSI(a0),-(a7)
 	bsr _handling_step
@@ -610,13 +665,17 @@ _handling_sync:
 	bls.s .inputs
 	bsr _handling_reset
 .inputs:
-	; the brake brakes at its limit, on the front, as the arcade's pedal
+	; the brake brakes at its limit, on the front, as the arcade's pedal;
+	; with mouse control _handling_pedals sets it each field
+	cmpi.b #3,-$6a08(a4)		; G($95F8)
+	beq.s .contact
 	moveq #0,d1
 	tst.b -$66ef(a4)
 	beq.s .no_brake
 	move.w #-HANDLING_FX_BRAKE,d1
 .no_brake:
 	move.w d1,HS_BRAKE(a0)
+.contact:
 	; wheels 0-1 are the front pair, as native steering tests them
 	moveq #0,d1
 	move.b -$66f0(a4),d0
@@ -708,6 +767,57 @@ _handling_reset:
 	movem.l (a7)+,d0/a1
 	rts
 
+; A0 = state, HS_HELD set. With mouse control the right button is the gas
+; and the left the brake, each a pedal that moves HANDLING_PEDAL of 100 a
+; field towards fully down while its button is held and back while not.
+; Until the engine has started the gas is the native throttle, which the
+; buttons do not move then either; it closes after the time ran out. Writes
+; the throttle G($991C) and brake byte G($9911) too. Clobbers D0.
+_handling_pedals:
+	cmpi.b #3,-$6a08(a4)		; mouse control G($95F8)
+	bne.s .done
+	move.b -$66e4(a4),d0		; throttle G($991C)
+	tst.b -$5224(a4)		; engine started G($ADDC)
+	beq.s .gas
+	move.b HS_GAS(a0),d0
+	tst.b -$6864(a4)		; time out G($979C)
+	bne.s .lift
+	btst #0,HS_HELD(a0)
+	beq.s .lift
+	addi.b #HANDLING_PEDAL,d0
+	cmpi.b #100,d0
+	bls.s .gas
+	moveq #100,d0
+	bra.s .gas
+.lift:
+	subi.b #HANDLING_PEDAL,d0
+	bcc.s .gas
+	moveq #0,d0
+.gas:
+	move.b d0,HS_GAS(a0)
+	move.b d0,-$66e4(a4)		; throttle G($991C)
+	move.b HS_PEDAL(a0),d0
+	btst #2,HS_HELD(a0)
+	beq.s .release
+	addi.b #HANDLING_PEDAL,d0
+	cmpi.b #100,d0
+	bls.s .brake
+	moveq #100,d0
+	bra.s .brake
+.release:
+	subi.b #HANDLING_PEDAL,d0
+	bcc.s .brake
+	moveq #0,d0
+.brake:
+	move.b d0,HS_PEDAL(a0)
+	sne -$66ef(a4)			; brake G($9911)
+	ext.w d0
+	muls.w #-HANDLING_FX_BRAKE,d0
+	divs.w #100,d0
+	move.w d0,HS_BRAKE(a0)
+.done:
+	rts
+
 ; A0 = state with HS_U and HS_CONTACT set. One field of the arcade's
 ; drivetrain ($730490): automatic shifts, the engine torque table, the
 ; automatic clutch, and the rear wheel torque through the gear; then drag
@@ -732,14 +842,20 @@ _handling_engine:
 	tst.b -$16b6(a4)		; road G($E94A), else grass
 	seq HS_GRASS(a0)
 	; throttle 0..100; after the time ran out none and the forced stop,
-	; the arcade's engine cut. None while braking: the brake is both
-	; buttons, and the throttle they close at 2 per native step would
-	; drive against it for seconds.
+	; the arcade's engine cut. With mouse control the gas pedal, braking
+	; or not; otherwise none while braking: the brake is both buttons,
+	; and the throttle they close at 2 per native step would drive
+	; against it for seconds.
 	moveq #0,d7
 	st HS_STOP(a0)
 	tst.b -$6864(a4)		; time out G($979C)
 	bne.s .gas
 	sf HS_STOP(a0)
+	cmpi.b #3,-$6a08(a4)		; mouse control G($95F8)
+	bne.s .buttons
+	move.b HS_GAS(a0),d7
+	bra.s .gas
+.buttons:
 	tst.b -$66ef(a4)		; brake G($9911)
 	bne.s .gas
 	move.b -$66e4(a4),d7		; throttle G($991C)
@@ -1796,6 +1912,8 @@ _handling_circle:
 _handling_signature: dc.b 'HDHAND01'
 _handling_state: dcb.b HS_SIZE,0
 _handling_ring: dcb.w HANDLING_RING,0
+_handling_held: dcb.b HANDLING_RING,0
+_handling_pad: dc.w 0		; buttons a test driver holds, as HS_HELD's bits
 
 	IFD VERIFY_HANDLING_MATH
 ; Boot fixture: HANDLING_MATH_RUNS sequences of HANDLING_MATH_FIELDS steps

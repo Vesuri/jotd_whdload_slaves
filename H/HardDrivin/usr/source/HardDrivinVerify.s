@@ -942,8 +942,23 @@ _verify_instructions_pause_key:
 ; Both input publishers call this; never write throttle or other dynamics.
 ; A coarse update may overshoot: measurements must report the actual plateau.
 ; EXACT_THROTTLE uses decrease input above target and latches only on equality.
+; Arcade handling's mouse pedals (CUSTOM1=2) take the held buttons from
+; _handling_pad: the gas whenever the throttle is below the target, so the
+; pedal settles within its 10 a field of it.
 _verify_throttle_hold_buttons:
 	move.l a0,-(a7)
+	IFD VERIFY_HANDLING
+	move.l d0,-(a7)
+	lea _verify_throttle_hold_state(pc),a0
+	adda.l #_handling_pad-_verify_throttle_hold_state,a0
+	moveq #0,d0
+	cmpi.b #VERIFY_STEPINPUT_HOLD_THROTTLE,-$66e4(a4)
+	bcc.s .pad
+	moveq #1,d0
+.pad:
+	move.w d0,(a0)
+	move.l (a7)+,d0
+	ENDC
 	lea _verify_throttle_hold_state(pc),a0
 	tst.w (a0)
 	bne.s .hold
