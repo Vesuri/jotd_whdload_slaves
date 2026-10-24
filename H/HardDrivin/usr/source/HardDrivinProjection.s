@@ -4,15 +4,20 @@ _projection_signature: dc.b 'HDVPROJ1'
 ; Current XYZ Q16 corrections, previous XYZ, then Q16 position carries.
 _projection_state: dcb.l 9,0
 ; Arcade flight (CUSTOM1=2): the arcade car flies ballistically under 1 g, the
-; native one along its body's pitch under 0.27 g. The pitch sine and cosine of
-; the first pass with no wheel on the ground, upright and within 45 degrees of
-; level, are held until three wheels or a diagonal pair touch (the native
-; ground pass), a crash or a reset. On two wheels the car keeps the flight's
-; direction: the native passes there move it along the body and keep the fall,
-; which doubles the landing's closing speed. The movement projections use
-; them, contact, landing and engine the body's.
+; native one along its body's pitch under 0.27 g. The arcade leaves a lip along
+; the ramp's slope, its body already turning nose down (the attract demo's jump:
+; 10 degrees of climb, 7 of body pitch). So the pitch sine and cosine of the
+; last pass with a wheel on the ground are held from the first pass with none,
+; upright and within 45 degrees of level, until three wheels or a diagonal
+; pair touch (the native ground pass), a crash or a reset: the pitch after the
+; first pass in the air has turned with the pass's length (6 degrees in ten
+; fields on a 68000, 1 in two on a 68020). On two wheels the car keeps the
+; flight's direction: the native passes there move it along the body and keep
+; the fall, which doubles the landing's closing speed. The movement projections
+; use them, contact, landing and engine the body's.
 _flight_held: dc.w 0		; nonzero while held
 _flight_trig: dc.w 0,16384	; held sine, cosine (Q14)
+_flight_lip: dc.w 0,0,16384	; nonzero after a pass on the ground, its sine, cosine
 _projection_reset:
 	move.l a0,-(a7)
 	lea _projection_state(pc),a0
@@ -26,9 +31,10 @@ _projection_reset:
 	clr.l (a0)+
 	clr.l (a0)+
 	clr.w (a0)			; _flight_held
+	clr.w 6(a0)			; _flight_lip
 	movea.l (a7)+,a0
 	rts
-; Each pass with no wheel on the ground: holds the first one's pitch trig and
+; Each pass with no wheel on the ground: holds the take-off's pitch trig and
 ; returns the fall acceleration per native step in D0, the native 5 or
 ; FLIGHT_G. Preserves the other registers. Only a car upright and within 45
 ; degrees of level takes off: the loop has no centripetal force to press the
@@ -37,36 +43,45 @@ _projection_reset:
 ; holds the car on the loop and, when it lets go, sets _flight_release for
 ; one pass: that take-off flies at any pitch.
 _flight_fall:
-	movem.l d1/a0,-(a7)
+	movem.l d1-d2/a0,-(a7)
 	move.w _contact_arcade(pc),d0
 	beq.s .native
 	lea _flight_held(pc),a0
 	tst.w (a0)
 	bne.s .held
+	lea _flight_lip(pc),a0
+	move.w (a0),d2			; the pass before this one was on the ground
+	clr.w (a0)
 	move.w -$6bb4(a4),d1
 	bpl.s .positive
 	neg.w d1
 .positive:
 	cmp.w -$6bb2(a4),d1		; |sine| > cosine: steep or upside down
 	bgt.s .steep
-.take:
-	move.w d0,(a0)+
-	move.w -$6bb4(a4),(a0)+
-	move.w -$6bb2(a4),(a0)
-.held:
-	moveq #FLIGHT_G,d0
-	movem.l (a7)+,d1/a0
-	rts
+	tst.w d2
+	beq.s .current
+	move.l 2(a0),d1			; the lip's sine, cosine
+	bra.s .hold
 .steep:
 	lea _flight_release(pc),a0
 	tst.w (a0)
 	beq.s .native
 	clr.w (a0)
+.current:
+	move.w -$6bb4(a4),d1
+	swap d1
+	move.w -$6bb2(a4),d1
+.hold:
 	lea _flight_held(pc),a0
-	bra.s .take
+	move.w d0,(a0)+
+	move.l d1,(a0)			; _flight_trig
+.held:
+	moveq #FLIGHT_G,d0
+	movem.l (a7)+,d1-d2/a0
+	rts
 .native:
 	moveq #5,d0
-	movem.l (a7)+,d1/a0
+	movem.l (a7)+,d1-d2/a0
 	rts
 _flight_release: dc.w 0		; set by the loop for the pass after it lets go
 FLIGHT_G equ 37		; 32.2 ft/s^2: 36.8 long units (0.0224 ft) per native step^2
@@ -75,6 +90,15 @@ _flight_land:
 	move.l a0,-(a7)
 	lea _flight_held(pc),a0
 	clr.w (a0)
+	movea.l (a7)+,a0
+; Each pass with a wheel on the ground: the take-off direction. Preserves
+; registers.
+_flight_ground:
+	move.l a0,-(a7)
+	lea _flight_lip(pc),a0
+	move.w #1,(a0)+
+	move.w -$6bb4(a4),(a0)+
+	move.w -$6bb2(a4),(a0)
 	movea.l (a7)+,a0
 	rts
 _projection_snapshot:

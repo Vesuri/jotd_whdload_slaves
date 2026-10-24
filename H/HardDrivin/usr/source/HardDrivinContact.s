@@ -396,7 +396,9 @@ _contact_pitch_rate_only:
 	; drive force at 1.567 ft, over 2000 slug ft^2: 3.7 rad/s^2, for its
 	; 10 ft wheelbase. The Amiga car stays on its rear wheels for about
 	; 86 units (15.3 ft), so two thirds of that per field gives the arcade's
-	; take-off rate, 3.7 x 10 ft / speed, at any speed. In the air the rate
+	; take-off rate, 3.7 x 10 ft / speed, at any speed. A pass counts all its
+	; fields on the rear wheels: the tip stops at that rate, or a 68000's ten
+	; fields over the lip turn the car half as fast again. In the air the rate
 	; carries on.
 .arcade:
 	move.w _time_scalar_fields(pc),d1
@@ -407,6 +409,25 @@ _contact_pitch_rate_only:
 	mulu.w #CONTACT_TIP,d1
 	add.l d1,d1
 	sub.l d1,d0
+	move.w -$66d8(a4),d2		; the speed
+	ble.s .range
+	moveq #0,d1
+	move.w #CONTACT_TIP_V,d1
+	divu.w d2,d1
+	cmpi.w #CONTACT_TIP_MAX,d1
+	bcc.s .range
+	move.w d1,-(a7)
+	clr.w d1
+	divu.w d2,d1
+	swap d1
+	move.w (a7)+,d1
+	swap d1				; the take-off rate, Q16
+	neg.l d1
+	cmp.l d1,d0
+	bge.s .range
+	move.l d1,d0
+	bra.s .tip
+.range:
 	cmpi.l #-CONTACT_TIP_MAX<<16,d0
 	bge.s .tip
 	move.l #-CONTACT_TIP_MAX<<16,d0
@@ -417,6 +438,7 @@ _contact_pitch_rate_only:
 	ENDC
 CONTACT_TIP equ 57985		; half the Q16 quarter-degrees per native step, per field
 CONTACT_TIP_MAX equ 45		; the native rate's range, asin(180)/4
+CONTACT_TIP_V equ 6464		; the take-off rate times the speed: 37 ft/s^2 rad
 _contact_arcade: dc.w 0		; nonzero for CUSTOM1=2 (_handling_install)
 _suspension_own: dc.w 0		; nonzero while the springs hold the car (HardDrivinSuspension.s)
 ; Do not snap roll to zero while its integer rate is zero but fraction is not.

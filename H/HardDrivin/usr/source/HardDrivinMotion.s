@@ -246,8 +246,9 @@ _motion_fall_airborne:
 	adda.l #$cd86,a0
 	move.l a0,4(a7)
 	movea.l (a7)+,a0
-.contact:
 	rts
+.contact:
+	bra _flight_ground
 _motion_fall_delta:
 	movem.l d1-d2/a0,-(a7)
 	lea _motion_state(pc),a0
