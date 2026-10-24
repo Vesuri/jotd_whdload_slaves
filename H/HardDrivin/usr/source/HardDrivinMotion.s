@@ -280,6 +280,9 @@ _motion_fall_ground:
 	; LANDING_U units per native step since the last pass in the air: the
 	; native median, and the ground's own slope counts as in the native depth.
 	; Keep native zero/eight-field behavior and the existing crash action.
+	; Arcade handling crashes no landing: the arcade's crash checks are speed,
+	; yaw, scenery and a force sum over 52,000 lb, and its springs bear at
+	; most the car's weight per axle (_motion_landing_depth drops the depth).
 	movem.l d0-d1/a0,-(a7)
 	lea _motion_landing(pc),a0
 	move.w (a0)+,d1
@@ -291,26 +294,16 @@ _motion_fall_ground:
 	ble.s .native
 	tst.b -$69fa(a4)
 	bne.s .native
+	move.w _contact_arcade(pc),d0
+	bne.s .native
 	move.w _time_scalar_fields(pc),d0
 	beq.s .native
 	cmpi.w #8,d0
-	bne.s .judge
-	; arcade gravity's falls always exceed the native 50: judge eight too
-	move.w _contact_arcade(pc),d0
 	beq.s .native
-	moveq #8,d0
-.judge:
 	sub.w -8(a5),d1			; closing in this pass's fields
 	ext.l d1
 	asl.l #3,d1
-	lea _contact_arcade(pc),a0
-	tst.w (a0)
-	beq.s .native_u
-	mulu.w #LANDING_U_ARCADE,d0
-	bra.s .closing
-.native_u:
 	mulu.w #LANDING_U,d0
-.closing:
 	cmp.l d0,d1
 	ble.s .native
 	; CC90 is the patched call's return address. Re-enter the native impact
@@ -346,7 +339,7 @@ _motion_fall_ground_end:
 ; Replaces CMPI.W #-5,-8(A5) at $CC2E, the native landing's depth test, whose
 ; BLT follows. Variable intervals answer "not deeper": _motion_fall_ground
 ; judges their landings by the closing speed instead. So do eight-field steps
-; at CUSTOM1=2, whose 1 g falls always exceed the native test's 50.
+; at CUSTOM1=2, where no landing crashes (_motion_fall_ground).
 _motion_landing_depth:
 	IFND VERIFY_DISPATCH_NATIVE
 	move.l d0,-(a7)
@@ -366,7 +359,6 @@ _motion_landing_depth:
 	cmpi.w #-5,-8(a5)
 	rts
 LANDING_U equ 18		; units per native step, the native crash median
-LANDING_U_ARCADE equ 35		; the same closing speed at arcade handling's scale
 ; Average wheel height of the last pass in the air or on two wheels, and
 ; nonzero while it is the latest pass's.
 _motion_landing: dc.w 0,0
