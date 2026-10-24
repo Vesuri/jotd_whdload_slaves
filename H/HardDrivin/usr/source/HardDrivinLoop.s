@@ -50,6 +50,7 @@ _loop_step:
 	LOOP_FAR _contact_arcade,a0
 	move.w (a0),d0
 	beq .done
+	bsr _loop_floor
 	tst.b -$69fa(a4)		; crash countdown
 	bne .release
 	tst.w LP_ACTIVE(a2)
@@ -831,6 +832,38 @@ _loop_lift:
 	move.w d0,-$6706(a4)
 	rts
 
+; A car let go upside down comes down on its roof. The crash keeps the fall,
+; and with the wheels up no pass meets the ground again: it fell through the
+; road until the replay. Hold a crashed car upside down at the height of its
+; last pass in the crash with a wheel on the ground. D0/A0.
+_loop_floor:
+	lea _loop_floor_y(pc),a0
+	tst.b -$69fa(a4)		; crash countdown
+	bne.s .crash
+	move.l #$80000000,(a0)		; none yet
+	rts
+.crash:
+	tst.b -$66f0(a4)		; contact mask G($9910)
+	beq.s .air
+	move.l -$6700(a4),(a0)
+	rts
+.air:
+	move.w -$66b4(a4),d0		; pitch
+	bpl.s .positive
+	neg.w d0
+.positive:
+	cmpi.w #360,d0
+	ble.s .out
+	move.l (a0),d0
+	cmp.l -$6700(a4),d0
+	ble.s .out
+	move.l d0,-$6700(a4)		; Y8
+	asr.l #3,d0
+	move.w d0,-$6708(a4)
+	clr.w -$66f2(a4)		; fall
+.out:
+	rts
+_loop_floor_y: dc.l $80000000
 ; D0 = angle: D0 within -720..720
 _loop_wrap:
 	cmpi.w #720,d0
