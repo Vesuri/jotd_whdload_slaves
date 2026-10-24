@@ -835,7 +835,11 @@ _loop_lift:
 ; A car let go upside down comes down on its roof. The crash keeps the fall,
 ; and with the wheels up no pass meets the ground again: it fell through the
 ; road until the replay. Hold a crashed car upside down at the height of its
-; last pass in the crash with a wheel on the ground. D0/A0.
+; last pass in the crash with a wheel on the ground. The crash also keeps the
+; speed, and the native motion carries the car along its body: crashed steep,
+; it climbed (87 ft at 65 degrees). Beyond 45 degrees a crashed car keeps its
+; horizontal direction of travel only (the flight's hold, levelled) and falls
+; at 1 g. D0/A0.
 _loop_floor:
 	lea _loop_floor_y(pc),a0
 	tst.b -$69fa(a4)		; crash countdown
@@ -843,15 +847,27 @@ _loop_floor:
 	move.l #$80000000,(a0)		; none yet
 	rts
 .crash:
+	move.w -$66b4(a4),d0		; pitch
+	bpl.s .positive
+	neg.w d0
+.positive:
+	cmpi.w #180,d0
+	ble.s .ground
+	LOOP_FAR _flight_held,a0
+	move.w #1,(a0)+
+	clr.w (a0)+			; _flight_trig: level
+	move.w #16384,(a0)
+	tst.w -$6bb2(a4)		; pitch cosine: facing back upside down
+	bpl.s .level
+	neg.w (a0)
+.level:
+	lea _loop_floor_y(pc),a0
+.ground:
 	tst.b -$66f0(a4)		; contact mask G($9910)
 	beq.s .air
 	move.l -$6700(a4),(a0)
 	rts
 .air:
-	move.w -$66b4(a4),d0		; pitch
-	bpl.s .positive
-	neg.w d0
-.positive:
 	cmpi.w #360,d0
 	ble.s .out
 	move.l (a0),d0
