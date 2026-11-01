@@ -5,7 +5,10 @@
 ; its sideways motion and sets the forward speed from its tyres, drag and
 ; gravity, publishing the speed, RPM, gear and speedometer the native engine
 ; did. With mouse control the buttons are pedals: the right the gas, the
-; left the brake, each moving a tenth of its travel a field. Every hook is
+; left the brake, the gas moving a tenth of its travel a field and the
+; brake a third. The brake is the arcade's, locking the front wheels at
+; full pedal; CUSTOM4=1 gives the earlier brake, just short of locking and
+; a tenth of its travel a field. Every hook is
 ; installed only for CUSTOM1=2, so the other settings run exactly the
 ; release code.
 
@@ -17,8 +20,11 @@ HANDLING_CAP equ 50		; steps a frame may catch up, 1 s
 HANDLING_RING equ 64		; mouse samples kept, a power of two
 HANDLING_V8_MAX equ 8138	; velocity eighths the model accepts, 145 MPH
 HANDLING_JUMP equ 78		; eighths per field (3.2 g): a faster change is a reset
-HANDLING_FX_BRAKE equ 2470	; front brake torque, lb ft (0.7 g)
+HANDLING_FX_BRAKE equ 4653	; front brake torque at full pedal, lb ft: the arcade's
+HANDLING_FX_SOFT equ 2470	; CUSTOM4=1: just short of locking, 0.73 g
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
+HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
+				; brakes near the lock point long enough to spin the car
 HANDLING_K_LAT equ 893		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 7146	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
@@ -151,6 +157,16 @@ _handling_install:
 	movea.l a3,a0
 	adda.l #_contact_arcade-_handling_install,a0
 	move.w #1,(a0)
+	IFND VERIFY_SLOW
+	movea.l a3,a0
+	adda.l #_ct_ct4-_handling_install,a0
+	tst.l (a0)
+	beq.s .brake
+	lea _handling_brake(pc),a0
+	move.w #HANDLING_FX_SOFT,(a0)+
+	move.b #HANDLING_PEDAL,(a0)
+.brake:
+	ENDC
 	movea.l a3,a0
 	adda.l #_time_state-_handling_install,a0
 	lea _handling_time(pc),a1
@@ -680,14 +696,15 @@ _handling_sync:
 	bls.s .inputs
 	bsr _handling_reset
 .inputs:
-	; the brake brakes at its limit, on the front, as the arcade's pedal;
+	; both buttons brake at full pedal, on the front, as the arcade's;
 	; with mouse control _handling_pedals sets it each field
 	cmpi.b #3,-$6a08(a4)		; G($95F8)
 	beq.s .contact
 	moveq #0,d1
 	tst.b -$66ef(a4)
 	beq.s .no_brake
-	move.w #-HANDLING_FX_BRAKE,d1
+	move.w _handling_brake(pc),d1
+	neg.w d1
 .no_brake:
 	move.w d1,HS_BRAKE(a0)
 .contact:
@@ -785,8 +802,9 @@ _handling_reset:
 	rts
 
 ; A0 = state, HS_HELD set. With mouse control the right button is the gas
-; and the left the brake, each a pedal that moves HANDLING_PEDAL of 100 a
-; field towards fully down while its button is held and back while not.
+; and the left the brake, each a pedal that moves HANDLING_PEDAL (the
+; brake _handling_brake_rate) of 100 a field towards fully down while its
+; button is held and back while not.
 ; Until the engine has started the gas is the native throttle, which the
 ; buttons do not move then either; it closes after the time ran out. Writes
 ; the throttle G($991C) and brake byte G($9911) too. Clobbers D0.
@@ -816,21 +834,21 @@ _handling_pedals:
 	move.b HS_PEDAL(a0),d0
 	btst #2,HS_HELD(a0)
 	beq.s .release
-	addi.b #HANDLING_PEDAL,d0
+	add.b _handling_brake_rate(pc),d0
 	cmpi.b #100,d0
 	bls.s .brake
 	moveq #100,d0
 	bra.s .brake
 .release:
-	subi.b #HANDLING_PEDAL,d0
+	sub.b _handling_brake_rate(pc),d0
 	bcc.s .brake
 	moveq #0,d0
 .brake:
 	move.b d0,HS_PEDAL(a0)
 	sne -$66ef(a4)			; brake G($9911)
 	ext.w d0
-	muls.w #-HANDLING_FX_BRAKE,d0
-	divs.w #100,d0
+	muls.w _handling_brake(pc),d0
+	divs.w #-100,d0
 	move.w d0,HS_BRAKE(a0)
 .done:
 	rts
@@ -1955,6 +1973,9 @@ _handling_state: dcb.b HS_SIZE,0
 _handling_ring: dcb.w HANDLING_RING,0
 _handling_held: dcb.b HANDLING_RING,0
 _handling_pad: dc.w 0		; buttons a test driver holds, as HS_HELD's bits
+_handling_brake: dc.w HANDLING_FX_BRAKE ; full pedal's torque, lb ft
+_handling_brake_rate: dc.b HANDLING_PEDAL_BRAKE ; brake pedal travel per field
+	EVEN
 
 	IFD VERIFY_HANDLING_MATH
 ; Boot fixture: HANDLING_MATH_RUNS sequences of HANDLING_MATH_FIELDS steps
