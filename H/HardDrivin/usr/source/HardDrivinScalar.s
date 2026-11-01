@@ -198,8 +198,14 @@ _time_collision_velocity:
 	clr.l SS_VELOCITY_CARRY(a0)
 	movea.l (a7)+,a0
 	clr.w -$66d8(a4)
-	cmpi.w #45,-$66d4(a4)
+	move.l d0,-(a7)
+	move.w -$66d4(a4),d0		; G($992C) against the object crash speed
+	cmp.w _time_object_mph(pc),d0
+	movem.l (a7)+,d0		; the flags stay
 	rts
+; MPH above which an object crashes: native 45, arcade handling's
+; HANDLING_OBJECT_MPH (_handling_install)
+_time_object_mph: dc.w 45
 _time_recovery_scalars:
 	IFD VERIFY_TIME_MOTION
 	bsr _motion_reset

@@ -28,6 +28,10 @@ HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
 HANDLING_K_LAT equ 893		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 7146	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
+HANDLING_WALL_CRASH equ 419	; 60 ft/s along a wall's normal, long position units per
+			; native step (HANDLING_K_STEP: 6.98 per ft/s): the arcade's
+			; scenery crash ($70CD40, 2400 at 40 per ft)
+HANDLING_OBJECT_MPH equ 41	; the same speed head on, for the native point objects
 HANDLING_K_PH equ 4764		; Q22 ft/s -> Q16 native velocity, after >> 16
 
 ; Lengths: a world unit is 0.1791 ft, the arcade road's 41.2 ft over the
@@ -188,6 +192,13 @@ _handling_install:
 	lea _handling_motion(pc),a1
 	move.l a0,(a1)
 	movea.l a3,a0
+	adda.l #_motion_contact_rates-_handling_install,a0
+	lea _handling_contact_rates(pc),a1
+	move.l a0,(a1)
+	movea.l a3,a0
+	adda.l #_time_object_mph-_handling_install,a0
+	move.w #HANDLING_OBJECT_MPH,(a0)
+	movea.l a3,a0
 	adda.l #_projection_integer_components-_handling_install,a0
 	lea _handling_project(pc),a1
 	move.l a0,(a1)
@@ -250,12 +261,15 @@ _handling_patches:
 	PL_PS $b90c,_handling_shift_skip
 	; PERF_RANGE VERIFY_HANDLING $0ba8a $0006: the drivetrain's speedometer
 	PL_PS $ba8a,_handling_speedo
+	; PERF_RANGE VERIFY_HANDLING $0bf80 $0008: walls crash as the arcade's scenery
+	PL_PSS $bf80,_handling_wall,2
 	; PERF_RANGE VERIFY_HANDLING $0cb52 $0006: the springs, after the contact mask
 	PL_PS $cb52,_suspension_contact
 	; PERF_RANGE VERIFY_HANDLING $0cb94 $0006: no pitch snap or push while they hold the car
 	PL_PS $cb94,_suspension_ground
 	PL_END
 _handling_tail: dc.l 0		; native angle and trig tail, B44E
+_handling_contact_rates: dc.l 0	; _motion_contact_rates
 _handling_time: dc.l 0		; _time_state
 _handling_time_vbl: dc.l 0	; _time_vbl
 _handling_fields: dc.l 0	; _time_scalar_fields
@@ -383,6 +397,155 @@ _handling_speedo:
 	move.w HS_MPH(a0),-$66d4(a4)	; G($992C)
 	move.w HS_TARGET(a0),-$66da(a4)	; G($9926)
 	addi.l #$bac6-$ba90,(a7)
+	rts
+
+; Replaces CLR.W G($9916) / CLR.W G($9914) at $BF80, where the pass's move
+; from G($98F0/$98F4) to G($98F6/$98FA) crosses the wall segment at A2 and
+; the native code crashes at any speed. As the arcade's scenery ($70B2D0):
+; the car crashes only when it meets the wall faster than 60 ft/s along the
+; wall's normal; slower, that part of its velocity is reversed at half, the
+; car is put 1 unit clear of the wall along its normal and the wall thumps,
+; so a glancing hit scrapes along it. The model's forward speed is the native velocity
+; G($9928), its sideways one HS_V, and the movement vector G($991E/$9922)
+; carries both (_handling_vector). The crash goes on as the native one
+; (_motion_contact_rates, then $BF88); the bounce returns -1 at $C00A, as a
+; native bounce, and the caller rebuilds the scene. D0 is scratch.
+_handling_wall:
+	movem.l d1-d6/a0-a1,-(a7)
+	; the wall's normal (-dz, dx), turned towards the pass's start
+	move.w 4(a2),d3
+	sub.w (a2),d3			; dx: the normal's z
+	move.w 6(a2),d4
+	sub.w 2(a2),d4
+	neg.w d4			; -dz: its x
+	move.w -$6710(a4),d0		; G($98F0)
+	sub.w (a2),d0
+	muls.w d4,d0
+	move.w -$670c(a4),d5		; G($98F4)
+	sub.w 2(a2),d5
+	muls.w d3,d5
+	add.l d5,d0
+	bpl.s .side
+	neg.w d3
+	neg.w d4
+.side:
+	move.w d4,d0
+	muls.w d0,d0
+	move.w d3,d5
+	muls.w d5,d5
+	add.l d5,d0
+	bsr _handling_isqrt
+	move.w d0,d5
+	beq .crash
+	; the unit normal, Q14
+	moveq #14,d6
+	move.w d4,d0
+	ext.l d0
+	asl.l d6,d0
+	divs.w d5,d0
+	move.w d0,d4
+	move.w d3,d0
+	ext.l d0
+	asl.l d6,d0
+	divs.w d5,d0
+	move.w d0,d3
+	; the movement vector along it, below 0 into the wall
+	move.w -$66e2(a4),d0		; G($991E)
+	muls.w d4,d0
+	move.w -$66de(a4),d5		; G($9922)
+	muls.w d3,d5
+	add.l d5,d0
+	asr.l d6,d0
+	cmpi.l #-HANDLING_WALL_CRASH,d0
+	blt .crash
+	tst.l d0
+	bpl .back
+	; reversed at half: 1.5 of it taken off along the normal
+	move.l d0,d5
+	asr.l #1,d5
+	add.l d5,d0
+	neg.l d0
+	move.w d0,d1
+	muls.w d4,d1
+	asr.l d6,d1			; x
+	muls.w d3,d0
+	asr.l d6,d0			; z
+	add.w d1,-$66e2(a4)
+	add.w d0,-$66de(a4)
+	; forward (G($9448), G($944A)): 1.5 x the native velocity
+	move.w d1,d2
+	muls.w -$6bb8(a4),d2
+	move.w d0,d5
+	muls.w -$6bb6(a4),d5
+	add.l d5,d2
+	asr.l d6,d2
+	; sideways (G($944A), -G($9448))
+	muls.w -$6bb6(a4),d1
+	muls.w -$6bb8(a4),d0
+	sub.l d0,d1
+	asr.l d6,d1
+	add.l d2,d2
+	divs.w #3,d2
+	add.w d2,-$66d8(a4)		; G($9928)
+	lea _handling_state(pc),a0
+	swap d1
+	clr.w d1
+	asr.l #1,d1			; the quotient's word: halved here,
+	divs.w #HANDLING_K_STEP/2,d1	; the divisor with it
+	swap d1
+	clr.w d1			; Q6 ft/s in the high word: Q22
+	add.l d1,HS_V(a0)
+	; the next call's collision test starts from this speed
+	move.w -$66d8(a4),d0
+	ext.l d0
+	asl.l #3,d0
+	cmpi.l #HANDLING_V8_MAX,d0
+	ble.s .v8_high
+	move.l #HANDLING_V8_MAX,d0
+.v8_high:
+	cmpi.l #-HANDLING_V8_MAX,d0
+	bge.s .v8_low
+	move.l #-HANDLING_V8_MAX,d0
+.v8_low:
+	move.w d0,HS_V8(a0)
+.back:
+	; out of the wall along its normal, 1 unit clear, keeping the
+	; pass's motion along it: the new position's distance from the wall
+	move.w -$670a(a4),d0		; G($98F6)
+	sub.w (a2),d0
+	muls.w d4,d0
+	move.w -$6706(a4),d5		; G($98FA)
+	sub.w 2(a2),d5
+	muls.w d3,d5
+	add.l d5,d0
+	asr.l d6,d0
+	neg.l d0
+	addq.l #1,d0			; how far to go, units
+	bmi.s .out
+	move.w d0,d1
+	muls.w d4,d1
+	asr.l d6,d1
+	add.w d1,-$670a(a4)
+	ext.l d1
+	asl.l #3,d1
+	add.l d1,-$6704(a4)		; G($98FC)
+	muls.w d3,d0
+	asr.l d6,d0
+	add.w d0,-$6706(a4)
+	ext.l d0
+	asl.l #3,d0
+	add.l d0,-$66fc(a4)		; G($9904)
+.out:
+	clr.b -$66ee(a4)		; G($9912)
+	move.w #7,-(a7)			; the native bounce's thump
+	jsr -32718(a4)
+	addq.w #2,a7
+	movem.l (a7)+,d1-d6/a0-a1
+	addi.l #$c00a-$bf86,(a7)
+	rts
+.crash:
+	movem.l (a7)+,d1-d6/a0-a1
+	move.l _handling_contact_rates(pc),-(a7)
 	rts
 
 ; _phase_published: add the model's sideways velocity to the published
