@@ -61,6 +61,9 @@ SUSP_V_MAX equ 268435456	; 64 ft/s, Q22
 SUSP_STEPS equ 50	; fields one pass steps at most, as the model
 SUSP_RIDE equ 751232	; ride height, 1 unit in Q22 ft
 SUSP_G equ 2634478	; gravity, Q22 ft/s per field (32.17 x 5 / 256)
+SUSP_GD_BAND equ 232810	; the ground's pitch is held within this, Q22 ft at
+			; the axles: a whole unit on both wheels of a pair
+			; (0.0555 ft, 0.64 degrees)
 SUSP_D_MAX equ 1258291	; travel stop: 0.3 ft at the axles (3.4 degrees), so
 			; each axle keeps 0.2 ft of its static compression
 			; (0.5 ft rear); 0.7 g of braking takes 0.12 ft
@@ -165,7 +168,7 @@ _suspension_touch:
 	clr.w SU_YREM(a2)
 	clr.l SU_W(a2)
 	clr.w SU_REL(a2)
-	move.w #1,SU_VALID(a2)
+	move.w #1,SU_VALID(a2)		; 1: the ground's pitch not yet taken
 	rts
 
 ; A2 = state. The last pass with a wheel down is over: the pitch velocity
@@ -236,7 +239,24 @@ _suspension_measure:
 	muls.w #22877,d0		; x 5 ft x pi / 720 / 4, Q22 ft
 	asl.l #2,d0
 	sub.l d2,d0
+	; held while within the wheel heights' rounding of it: taken every
+	; pass, the rounding of a pitch that the springs' displacement had
+	; moved went back into the next pass's pitch, which then climbed by
+	; the displacement's part of a step each pass and dropped by a step,
+	; a 1 degree shake at 5 Hz under power or braking
+	cmpi.w #1,SU_VALID(a2)
+	beq.s .ground_new
+	move.l d0,d1
+	sub.l SU_GD(a2),d1
+	bpl.s .ground_abs
+	neg.l d1
+.ground_abs:
+	cmpi.l #SUSP_GD_BAND,d1
+	ble.s .ground_held
+.ground_new:
 	move.l d0,SU_GD(a2)
+	move.w #2,SU_VALID(a2)
+.ground_held:
 	; the springs' displacement is their own state, moved only by their
 	; forces: the native wheel heights are whole units, and with the
 	; height native a ramp's foot or a landing would put the rear axle in
