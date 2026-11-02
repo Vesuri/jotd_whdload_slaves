@@ -880,6 +880,335 @@ _loop_floor:
 .out:
 	rts
 _loop_floor_y: dc.l $80000000
+
+; The road's floor (arcade handling). The native contact measures the
+; wheels against the road polygons near the camera, a plane taken from an
+; object's ground polygon within 25 units of it, kept until another
+; qualifies, or the flat ground. The native car never leaves the road, so
+; what it measures is under it; the arcade car does, and coming down into
+; the stunt road's dip under the main road (sections 63-65, 92 units down)
+; the wheels were measured against a plane under the floor: they found no
+; ground, the flight went on through the floor and the car hit the bridge
+; from inside. Replaces the contact call at $CDF2 (and the BRA.S $CDAE
+; after it): when the car's centre is over a road section (the road
+; cursor's segment or one either side, its edges an eighth of the width
+; out) and the wheels' mean height is more than ROAD_FLOOR_TOL units over
+; the height of the section's surface under the centre (the plane of the
+; quad's half it is in), the four heights come down by the difference, so
+; the native contact lands the car on the road and pushes it out. Not over
+; a section flagged $400 (the jump's gap between stunt sections 20 and 21),
+; on a surface steeper than 45 degrees, on the loop or in a crash. An
+; object's plane is no ground when it is steeper than 45 degrees
+; (_road_plane_steep) or, over a road section (the gap's too), more than
+; ROAD_FLOOR_TOL units above the section's surface: near the gap's left
+; edge the car took one 25-50 units above the deck for the ground.
+ROAD_FLOOR_TOL equ 6
+ROAD_NEAR equ 1700		; |dx| + |dz| from the cursor's section beyond which
+				; the car is over none of the four searched
+_road_contact:
+	movem.l d0-d7/a0-a3,-(a7)
+	lea _loop_state(pc),a2
+	tst.w LP_ACTIVE(a2)
+	bne.s .native
+	tst.b -$69fa(a4)		; crash countdown
+	bne.s .native
+	suba.l a2,a2
+	cmpi.b #3,-$6bb9(a4)		; heights from an object's plane ($CA14)
+	bne.s .road
+	addq.l #1,a2
+	bsr _road_plane_steep
+	bne.s .none
+.road:
+	bsr _road_surface
+	beq.s .native
+	lea -$6b82(a4),a0		; wheel heights G($947E..$9484)
+	move.w (a0)+,d1
+	add.w (a0)+,d1
+	add.w (a0)+,d1
+	add.w (a0)+,d1
+	asr.w #2,d1
+	add.w d0,d1			; the surface over what they were measured on
+	cmpi.w #-ROAD_FLOOR_TOL,d1
+	bge.s .under
+	move.l a2,d3			; an object's plane over the road
+	bne.s .none
+	bra.s .native
+.under:
+	tst.w d7			; not over the gap
+	bne.s .native
+	cmpi.w #ROAD_FLOOR_TOL,d1
+	ble.s .native
+	sub.w d1,-(a0)
+	sub.w d1,-(a0)
+	sub.w d1,-(a0)
+	sub.w d1,-(a0)
+	bra.s .native
+.none:
+	lea -$6b82(a4),a0		; no ground: the wheels far above it (their
+	move.l #$10001000,(a0)+		; sum still a word)
+	move.l #$10001000,(a0)
+.native:
+	movem.l (a7)+,d0-d7/a0-a3
+	move.l a0,-(a7)
+	LOOP_FAR _code_start,a0
+	movea.l (a0),a0
+	adda.l #$cdae,a0
+	move.l a0,4(a7)			; return to the native BRA.S target
+	lea $cab6-$cdae(a0),a0
+	move.l a0,-(a7)
+	movea.l 4(a7),a0
+	move.l (a7)+,(a7)
+	rts				; into the native contact
+; NE when the object plane G($E94E..$E95E) is steeper than 45 degrees.
+; Over the jump's gap there is no road polygon, and a car near its left edge
+; took a sloped face of the bridge's tower within 25 units of the camera for
+; the ground: two wheels touched it 25-50 units above the deck and the car
+; tipped nose up to 55 degrees, flying on so (the user's drive of r26). The
+; arcade has no such ground. Clobbers D0-D6/A0.
+_road_plane_steep:
+	lea -$16b2(a4),a0
+	movem.w (a0)+,d4-d6		; P0
+	movem.w (a0)+,d0-d2		; u = P1 - P0
+	sub.w d4,d0
+	sub.w d5,d1
+	sub.w d6,d2
+	movem.w (a0),d3-d5		; v = P2 - P0, P0 again from memory
+	sub.w -$16b2(a4),d3
+	sub.w -$16b0(a4),d4
+	sub.w -$16ae(a4),d5
+	; ny = uz vx - ux vz
+	move.w d2,d6
+	muls.w d3,d6
+	move.w d0,a0
+	muls.w d5,d0
+	sub.l d0,d6
+	bpl.s .ny
+	neg.l d6
+.ny:
+	; nx = uy vz - uz vy
+	move.w d1,d0
+	muls.w d5,d0
+	muls.w d4,d2
+	sub.l d2,d0
+	bpl.s .nx
+	neg.l d0
+.nx:
+	cmp.l d6,d0
+	bgt.s .steep
+	; nz = ux vy - uy vx
+	move.w a0,d0
+	muls.w d4,d0
+	muls.w d3,d1
+	sub.l d1,d0
+	bpl.s .nz
+	neg.l d0
+.nz:
+	cmp.l d6,d0
+	bgt.s .steep
+	moveq #0,d0
+	rts
+.steep:
+	moveq #1,d0
+	rts
+; NE with D0.W = the height of the road's surface over the car's centre
+; and D7.W nonzero over the jump's gap (flag $400), EQ when it is over no
+; road section. Clobbers D1-D7/A0-A1, A3.
+_road_surface:
+	tst.b -$66b0(a4)		; on the stunt road G($9950)
+	bne.s .stunt
+	movea.l -$6720(a4),a1		; main road sections G($98E0)
+	move.w -$6718(a4),d7		; and their count G($98E8)
+	bra.s .table
+.stunt:
+	movea.l -$66ae(a4),a1		; G($9952)
+	move.w -$66aa(a4),d7		; G($9956)
+.table:
+	subq.w #2,d7
+	bmi.s .none
+	mulu.w #20,d7
+	lea (a1,d7.l),a3		; the last segment's first section
+	movea.l -$671c(a4),a0		; road cursor G($98E4)
+	; far from its section (off the road on the open ground): none
+	move.w (a0),d0
+	sub.w -$670a(a4),d0
+	bpl.s .dx
+	neg.w d0
+.dx:
+	move.w 4(a0),d1
+	sub.w -$6706(a4),d1
+	bpl.s .dz
+	neg.w d1
+.dz:
+	add.w d1,d0
+	cmpi.w #ROAD_NEAR,d0
+	bhi.s .none
+	lea -40(a0),a0
+	moveq #3,d6
+.segment:
+	cmpa.l a1,a0
+	blo.s .next
+	cmpa.l a3,a0
+	bhi.s .none
+	bsr _road_quad
+	bne.s .found
+.next:
+	lea 20(a0),a0
+	dbf d6,.segment
+.none:
+	moveq #0,d1
+	rts
+.found:
+	btst #2,18(a0)			; flag $400: the jump's gap
+	sne d7
+	ext.w d7
+	moveq #1,d1
+	rts
+; A0 = section A (B follows). Returns NE with D0.W = the height of the
+; road's surface over the car's centre, EQ when the centre is outside the
+; quad or its plane is steeper than 45 degrees. Clobbers D0-D5.
+ROAD_CROSS macro
+	move.w \1(a3),\3		; A.x B.z - A.z B.x
+	muls.w \2+4(a3),\3
+	move.w \1+4(a3),d0
+	muls.w \2(a3),d0
+	sub.l d0,\3
+	endm
+_road_quad:
+	movem.l d6-d7/a1/a3,-(a7)
+	lea _road_points(pc),a3
+	move.w -$670a(a4),d2		; X, Y, Z G($98F6..$98FA)
+	move.w -$6708(a4),d3
+	move.w -$6706(a4),d4
+	movea.l a0,a1
+	moveq #1,d5
+.row:
+	moveq #1,d1
+.point:
+	move.w (a1)+,d0			; LA, RA, then LB, RB, relative
+	sub.w d2,d0
+	move.w d0,(a3)+
+	move.w (a1)+,d0
+	sub.w d3,d0
+	move.w d0,(a3)+
+	move.w (a1)+,d0
+	sub.w d4,d0
+	move.w d0,(a3)+
+	dbf d1,.point
+	addq.l #8,a1
+	dbf d5,.row
+	; the edges an eighth of the width out (29 units): a car sliding
+	; across the dip had its centre 18 units past the edge
+	lea _road_points(pc),a3		; LA 0, RA 6, LB 12, RB 18
+	moveq #5,d5
+.widen:
+	cmpi.w #2,d5
+	bne.s .side
+	lea 6(a3),a3			; from row A's to row B's
+.side:
+	move.w (a3),d0
+	sub.w 6(a3),d0
+	asr.w #3,d0
+	add.w d0,(a3)+
+	sub.w d0,4(a3)
+	dbf d5,.widen
+	lea _road_points(pc),a3
+	; inside: between the end lines and between the edges, by the
+	; signs of the crosses of their ends seen from the centre
+	ROAD_CROSS 0,6,d6		; LA x RA
+	ROAD_CROSS 12,18,d1		; LB x RB
+	eor.l d6,d1
+	bpl .out
+	ROAD_CROSS 0,12,d7		; LA x LB
+	ROAD_CROSS 6,18,d1		; RA x RB
+	eor.l d7,d1
+	bpl .out
+	; the half on LA's side of RA-LB: twice the signed area of RA, LB, LA
+	; against the centre's side, RA x LB
+	ROAD_CROSS 6,12,d1
+	move.l d1,d2
+	sub.l d7,d2
+	add.l d6,d2
+	eor.l d1,d2
+	bmi.s .far
+	moveq #0,d5			; LA, RA, LB
+	moveq #6,d6
+	moveq #12,d7
+	bra.s .plane
+.far:
+	moveq #18,d5			; RB, LB, RA
+	moveq #12,d6
+	moveq #6,d7
+.plane:
+	movem.w (a3,d5.w),d2-d4		; P0, relative
+	movem.w (a3,d6.w),d0-d1/d5	; u = P1 - P0
+	sub.w d2,d0
+	sub.w d3,d1
+	sub.w d4,d5
+	movem.w d0-d1/d5,24(a3)
+	movem.w (a3,d7.w),d0-d1/d5	; v = P2 - P0
+	sub.w d2,d0
+	sub.w d3,d1
+	sub.w d4,d5
+	movem.w d0-d1/d5,30(a3)
+	; n = u x v: nx = uy vz - uz vy, ny = uz vx - ux vz, nz = ux vy - uy vx
+	move.w 26(a3),d5		; uy vz - uz vy
+	muls.w 34(a3),d5
+	move.w 28(a3),d0
+	muls.w 32(a3),d0
+	sub.l d0,d5
+	move.w 28(a3),d6		; uz vx - ux vz
+	muls.w 30(a3),d6
+	move.w 24(a3),d0
+	muls.w 34(a3),d0
+	sub.l d0,d6
+	move.w 24(a3),d7		; ux vy - uy vx
+	muls.w 32(a3),d7
+	move.w 26(a3),d0
+	muls.w 30(a3),d0
+	sub.l d0,d7
+	; to words, together
+.scale:
+	move.l d6,d0
+	bpl.s .ny
+	neg.l d0
+.ny:
+	cmpi.l #16383,d0
+	ble.s .scaled
+	asr.l #1,d5
+	asr.l #1,d6
+	asr.l #1,d7
+	bra.s .scale
+.scaled:
+	tst.w d0
+	beq.s .out
+	move.l d5,d1			; within 45 degrees: |nx|, |nz| <= |ny|
+	bpl.s .nx
+	neg.l d1
+.nx:
+	cmp.l d0,d1
+	bgt.s .out
+	move.l d7,d1
+	bpl.s .nz
+	neg.l d1
+.nz:
+	cmp.l d0,d1
+	bgt.s .out
+	; y = y0 + (nx x0 + nz z0) / ny
+	muls.w d2,d5
+	muls.w d4,d7
+	add.l d7,d5
+	divs.w d6,d5
+	bvs.s .out
+	add.w d3,d5
+	move.w d5,d0
+	moveq #1,d1
+	movem.l (a7)+,d6-d7/a1/a3
+	rts
+.out:
+	moveq #0,d1
+	movem.l (a7)+,d6-d7/a1/a3
+	rts
+_road_points: dcb.w 18,0		; LA, RA, LB, RB, u, v
 ; D0 = angle: D0 within -720..720
 _loop_wrap:
 	cmpi.w #720,d0

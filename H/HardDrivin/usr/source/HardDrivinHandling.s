@@ -279,6 +279,8 @@ _handling_patches:
 	PL_W $bb18,$7000
 	; PERF_RANGE VERIFY_HANDLING $0bf80 $0008: walls crash as the arcade's scenery
 	PL_PSS $bf80,_handling_wall,2
+	; PERF_RANGE VERIFY_HANDLING $0cdf2 $0006: the wheels over the road's floor
+	PL_PS $cdf2,_road_contact
 	; PERF_RANGE VERIFY_HANDLING $0cb52 $0006: the springs, after the contact mask
 	PL_PS $cb52,_suspension_contact
 	; PERF_RANGE VERIFY_HANDLING $0cb94 $0006: no pitch snap or push while they hold the car
