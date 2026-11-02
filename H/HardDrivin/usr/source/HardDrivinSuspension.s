@@ -69,6 +69,8 @@ SUSP_GD_BAND equ 232810	; the ground's pitch is held within this, Q22 ft at
 			; (0.0555 ft, 0.64 degrees)
 SUSP_PITCH_HOLD equ 68631	; the pitch word is kept within 3/4 of a quarter
 			; degree of the body's pitch (Q22 ft at the axles)
+SUSP_LEVEL_HOLD equ 137262	; a level pitch word is kept up to 1.5 quarter
+			; degrees (Q22 ft at the axles)
 SUSP_PAIR_K equ 7282	; Q22 ft at the axles per corner unit / 64: the corner
 			; points 45 units out, 5 ft x 0.1791 ft / 8.06 ft = 1/9 ft
 SUSP_D_MAX equ 1258291	; travel stop: 0.3 ft at the axles (3.4 degrees), so
@@ -370,18 +372,35 @@ _suspension_measure:
 	; the body's pitch: the ground's and the displacement (the pass's
 	; steps add theirs in _suspension_apply)
 	; to the nearest quarter degree, kept while within SUSP_PITCH_HOLD of
-	; it: the springs' small motions flipped it by a quarter degree
+	; it: the springs' small motions flipped it by a quarter degree.
+	; Level within a quarter degree: the cruise's squat and the held
+	; ground's error made it a quarter degree on flat ground, and the
+	; native renderer's X rotation runs its multiplies for any pitch but
+	; 0 (1.7 ms a frame on the A500). A level word is kept up to
+	; SUSP_LEVEL_HOLD, so the springs' small motions do not flip it
 	move.l d0,d1
 	add.l SU_GD(a2),d1
-	move.w -$66b4(a4),d2
-	muls.w #22877,d2
-	asl.l #2,d2
-	sub.l d1,d2
-	bpl.s .pitch_abs
+	move.l d1,d2
+	bpl.s .pitch_mag
 	neg.l d2
-.pitch_abs:
-	cmpi.l #SUSP_PITCH_HOLD,d2
+.pitch_mag:
+	move.w -$66b4(a4),d3
+	bne.s .pitch_tilted
+	cmpi.l #SUSP_LEVEL_HOLD,d2
 	blt.s .pitch_kept
+	bra.s .pitch_new
+.pitch_tilted:
+	cmpi.l #4*22877,d2
+	blt.s .pitch_level
+	muls.w #22877,d3
+	asl.l #2,d3
+	sub.l d1,d3
+	bpl.s .pitch_abs
+	neg.l d3
+.pitch_abs:
+	cmpi.l #SUSP_PITCH_HOLD,d3
+	blt.s .pitch_kept
+.pitch_new:
 	asr.l #2,d1
 	bmi.s .pitch_neg
 	addi.l #11438,d1
@@ -391,6 +410,9 @@ _suspension_measure:
 .pitch_round:
 	divs.w #22877,d1
 	move.w d1,-$66b4(a4)
+	bra.s .pitch_kept
+.pitch_level:
+	clr.w -$66b4(a4)
 .pitch_kept:
 	clr.l SU_PITCH(a2)
 	move.w -$66b4(a4),SU_PITCH+4(a2)
