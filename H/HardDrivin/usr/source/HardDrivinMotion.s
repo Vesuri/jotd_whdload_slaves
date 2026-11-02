@@ -602,6 +602,11 @@ _motion_crash_state: dc.l 0
 ; may cross one boundary, so at most two segments are integrated. This avoids
 ; a continuous Euler approximation reversing drift at the end of the envelope.
 ; The car still advances on every substep, with signed eighth-position carries.
+; With arcade handling the drift is level: it carries the move of the crash's
+; pass, and the arcade car's move climbs and falls. Crashed into a car just
+; after a bounce off the ground, the car drifted up over the loop and into the
+; sky; crashed falling, it drifted into the ground, its tail 50-90 units under
+; until the recovery (the user's drive of r29). The fall stays the motion's.
 _motion_drift_start:
 	bsr _motion_drift_reset
 	move.b #30,-$66ee(a4)
@@ -661,6 +666,12 @@ _motion_drift:
 	muls.w d4,d0
 	divs.w #30,d0
 	; Low quotient is the original signed native drift rate.
+	cmpi.w #1,d5			; height: with arcade handling none
+	bne.s .rate
+	move.w _contact_arcade(pc),d1	; (D1 is the step's fields next)
+	beq.s .rate
+	moveq #0,d0
+.rate:
 	move.w d6,d1
 	move.w (a2),d2
 	ext.l d2

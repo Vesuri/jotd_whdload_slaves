@@ -31,6 +31,8 @@ LP_SIZE equ 36
 LOOP_HALF equ 115*16	; half the road's width, Q4
 LOOP_LIFT equ 24*8	; off the surface when it lets go, X8 units: past the wheels
 			; of a pitch up to 15 degrees off the facet's
+LOOP_REENTER equ 300	; |facet pitch| (4 units a degree) the car is taken back on
+LOOP_REENTER_PITCH equ 180	; within 45 degrees of the facet's pitch
 LOOP_HOLD equ 253	; (ft/s per v)^-2 x 1 g x ft per unit x r/G, see below
 
 _loop_state: dcb.b LP_SIZE,0
@@ -146,12 +148,15 @@ _loop_step:
 	rts
 
 ; A2 = state. Return Z clear when the car has just reached the loop: on the
-; ground, going forward, past halfway along the flat section before it.
+; ground, going forward, past halfway along the flat section before it; or
+; back on it, on a facet below the loop's axis (within 90 degrees of level),
+; upright and facing along it, at any speed. Let go too slow on the climb,
+; the car rolled back onto the lower facets and the native contact, which has
+; no centripetal test, drove it up past the vertical again at walking pace
+; (to 170 degrees, 110 ft up) before it dropped (the user's drive of r29).
 _loop_enter:
 	tst.b -$66f0(a4)		; contact mask G($9910)
 	beq .no
-	tst.w -$66d8(a4)
-	ble .no
 	; a native section search that finds no candidate ($de92) stores its
 	; uninitialised local, as _checkpoint_post notes: only a section in
 	; the road's list, with the two after it
@@ -161,6 +166,39 @@ _loop_enter:
 	movea.l d0,a0
 	cmpa.l -$6720(a4),a0		; first section G($98e0)
 	blo .no
+	moveq #0,d4			; the facet
+	move.w 14(a0),d0		; its pitch
+	beq.s .flat
+	bpl.s .facet_pitch
+	neg.w d0
+.facet_pitch:
+	cmpi.w #60,d0
+	blt .no
+	cmpi.w #LOOP_REENTER,d0
+	bgt .no
+	move.w 14(a0),d0		; upright on it
+	sub.w -$66b4(a4),d0
+	bsr _loop_wrap
+	bpl.s .pitch_off
+	neg.w d0
+.pitch_off:
+	cmpi.w #LOOP_REENTER_PITCH,d0
+	bgt .no
+.back:
+	addq.w #1,d4
+	cmpi.w #12,d4
+	bhi .no
+	lea -20(a0),a0
+	cmpa.l -$6720(a4),a0
+	blo .no
+	tst.w 14(a0)
+	bne.s .back
+	bra.s .based
+.flat:
+	tst.w -$66d8(a4)
+	ble .no
+.based:
+	move.w d4,LP_J(a2)
 	movea.l -$50da(a4),a1
 	tst.b -$66b0(a4)
 	beq.s .list
@@ -211,7 +249,8 @@ _loop_enter:
 	move.w 12(a1),d0		; the road's heading
 	bsr _loop_wrap
 	move.w d0,LP_H0(a2)
-	clr.w LP_J(a2)
+	tst.w LP_J(a2)
+	bne.s .on_facet
 	bsr _loop_facet
 	; how far along the flat section, Q16
 	bsr _loop_offset		; D0-D2 = car - centre line start, Q4
@@ -220,9 +259,38 @@ _loop_enter:
 	move.l d2,d5
 	bsr _loop_along
 	cmpi.l #$8000,d0
-	blt.s .no
+	blt .no
 	cmpi.l #$ffff,d0
-	bgt.s .no
+	bgt .no
+	bra.s .along
+.on_facet:
+	; the road cursor's facet, or the one either side of it
+	move.w -$66b6(a4),d0		; facing along the loop
+	sub.w LP_H0(a2),d0
+	bsr _loop_wrap
+	bpl.s .psi
+	neg.w d0
+.psi:
+	cmpi.w #360,d0
+	bgt .no
+	subq.w #1,LP_J(a2)
+	moveq #2,d7
+.try:
+	bsr _loop_facet
+	bsr _loop_offset
+	move.l d0,d3
+	move.l d1,d4
+	move.l d2,d5
+	bsr _loop_along
+	tst.l d0
+	bmi.s .next
+	cmpi.l #$ffff,d0
+	bls.s .along
+.next:
+	addq.w #1,LP_J(a2)
+	dbf d7,.try
+	bra .no
+.along:
 	move.w d0,LP_FRAC(a2)
 	; across: what is left of the offset, along the edges
 	move.l d3,d0
@@ -839,7 +907,14 @@ _loop_lift:
 ; speed, and the native motion carries the car along its body: crashed steep,
 ; it climbed (87 ft at 65 degrees). Beyond 45 degrees a crashed car keeps its
 ; horizontal direction of travel only (the flight's hold, levelled) and falls
-; at 1 g. D0/A0.
+; at 1 g. The crash keeps the pitch of its pass: a car that came down on its
+; roof stood on its nose (-100 degrees) or its tail (33-67) until the
+; recovery, its view all sky. The pitch eases to level or upside down,
+; whichever is nearer, LOOP_SETTLE units a field, and the height held is at
+; least the ground's (the road's surface over a section): landing at 208 a
+; step it was held 42 under (the user's drive of r29). D0/A0; in a crash
+; D0-D7/A0-A1/A3.
+LOOP_SETTLE equ 24		; 6 degrees a field
 _loop_floor:
 	lea _loop_floor_y(pc),a0
 	tst.b -$69fa(a4)		; crash countdown
@@ -847,7 +922,40 @@ _loop_floor:
 	move.l #$80000000,(a0)		; none yet
 	rts
 .crash:
+	LOOP_FAR _time_scalar_fields,a0
+	move.w (a0),d1
+	mulu.w #LOOP_SETTLE,d1
 	move.w -$66b4(a4),d0		; pitch
+	move.w d0,d2
+	bpl.s .settle
+	neg.w d2
+.settle:
+	moveq #0,d3			; level
+	cmpi.w #360,d2
+	ble.s .target
+	move.w #720,d3			; or upside down
+	tst.w d0
+	bpl.s .target
+	neg.w d3
+.target:
+	sub.w d0,d3			; the turn left
+	bpl.s .nose_up
+	neg.w d1
+	cmp.w d1,d3
+	bge.s .settled
+	bra.s .turn
+.nose_up:
+	cmp.w d1,d3
+	ble.s .settled
+.turn:
+	move.w d1,d3
+.settled:
+	add.w d3,d0
+	bsr _loop_wrap
+	move.w d0,-$66b4(a4)		; pitch G($994C)
+	move.w d0,-$66ba(a4)		; G($9946)
+	lea _loop_floor_y(pc),a0
+	move.w -$66b4(a4),d0
 	bpl.s .positive
 	neg.w d0
 .positive:
@@ -866,11 +974,32 @@ _loop_floor:
 	tst.b -$66f0(a4)		; contact mask G($9910)
 	beq.s .air
 	move.l -$6700(a4),(a0)
+	cmpi.w #180,d0			; steep, on the native contact's wheels
+	bgt.s .air			; (it meets the roof as wheels): floored too
 	rts
 .air:
-	cmpi.w #360,d0
+	cmpi.w #180,d0
 	ble.s .out
+	bsr _road_surface		; the ground's height, Y8
+	beq.s .open
+	add.w -$6708(a4),d0
+	ext.l d0
+	asl.l #3,d0
+	bra.s .ground_y
+.open:
+	moveq #0,d0
+.ground_y:
+	move.w -$66b4(a4),d1		; upside down: at least the last pass's
+	bpl.s .upside
+	neg.w d1
+.upside:
+	cmpi.w #360,d1
+	ble.s .floor
+	lea _loop_floor_y(pc),a0
+	cmp.l (a0),d0
+	bgt.s .floor
 	move.l (a0),d0
+.floor:
 	cmp.l -$6700(a4),d0
 	ble.s .out
 	move.l d0,-$6700(a4)		; Y8
