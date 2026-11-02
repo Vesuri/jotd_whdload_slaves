@@ -270,6 +270,13 @@ _handling_patches:
 	PL_PS $b90c,_handling_shift_skip
 	; PERF_RANGE VERIFY_HANDLING $0ba8a $0006: the drivetrain's speedometer
 	PL_PS $ba8a,_handling_speedo
+	; PERF_RANGE VERIFY_HANDLING $0bb0a $0002: the object box's half-width
+	; and height stay 30 units (native: 30 + MPH/8, 43 at 110 MPH, which
+	; crashed the car passing a vehicle 40 units away); the arcade meets
+	; the object's faces, and the car's width does not grow with speed
+	PL_W $bb0a,$7000		; MOVEQ #0,D0 for ASR.W #3,D0
+	; PERF_RANGE VERIFY_HANDLING $0bb18 $0002
+	PL_W $bb18,$7000
 	; PERF_RANGE VERIFY_HANDLING $0bf80 $0008: walls crash as the arcade's scenery
 	PL_PSS $bf80,_handling_wall,2
 	; PERF_RANGE VERIFY_HANDLING $0cb52 $0006: the springs, after the contact mask
