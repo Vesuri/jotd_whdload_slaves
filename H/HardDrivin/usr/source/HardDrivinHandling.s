@@ -5,8 +5,9 @@
 ; its sideways motion and sets the forward speed from its tyres, drag and
 ; gravity, publishing the speed, RPM, gear and speedometer the native engine
 ; did. With mouse control the buttons are pedals: the right the gas, the
-; left the brake, the gas moving a tenth of its travel a field and the
-; brake a third. A press of the left button brakes at 35% pedal; a press
+; left the brake, the gas going down a tenth of its travel a field and
+; up a twentieth (a lift at once unloads the rear mid-corner), the brake
+; a third. A press of the left button brakes at 35% pedal; a press
 ; within half a second of the last one (a double click held) at full. The
 ; brake is the arcade's, locking the front wheels at full pedal; CUSTOM4=1
 ; gives the earlier brake, just short of locking and a tenth of its travel
@@ -25,6 +26,8 @@ HANDLING_JUMP equ 78		; eighths per field (3.2 g): a faster change is a reset
 HANDLING_FX_BRAKE equ 4653	; front brake torque at full pedal, lb ft: the arcade's
 HANDLING_FX_SOFT equ 2470	; CUSTOM4=1: just short of locking, 0.73 g
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
+HANDLING_GAS_LIFT equ 5		; the gas pedal's coming back: full to closed in
+				; 0.4 s, which lifted the rear out of corners
 HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
 				; brakes near the lock point long enough to spin the car
 HANDLING_PEDAL_HALF equ 35	; a single press's brake pedal, of 100: under the
@@ -985,9 +988,9 @@ _handling_reset:
 ; A0 = state, HS_HELD set. With mouse control the right button is the gas
 ; and the left the brake, each a pedal that moves HANDLING_PEDAL (the
 ; brake _handling_brake_rate) of 100 a field towards fully down while its
-; button is held and back while not. The brake goes down to
-; HANDLING_PEDAL_HALF on a press, all the way on a press after at most
-; HANDLING_DOUBLE released fields, or while a test driver's
+; button is held and back while not, the gas HANDLING_GAS_LIFT. The
+; brake goes down to HANDLING_PEDAL_HALF on a press, all the way on a press
+; after at most HANDLING_DOUBLE released fields, or while a test driver's
 ; _handling_pad holds bit 3 with the left button.
 ; Until the engine has started the gas is the native throttle, which the
 ; buttons do not move then either; it closes after the time ran out. Writes
@@ -1009,7 +1012,7 @@ _handling_pedals:
 	moveq #100,d0
 	bra.s .gas
 .lift:
-	subi.b #HANDLING_PEDAL,d0
+	subi.b #HANDLING_GAS_LIFT,d0
 	bcc.s .gas
 	moveq #0,d0
 .gas:
