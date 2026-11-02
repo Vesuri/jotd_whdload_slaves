@@ -6,7 +6,7 @@
 ; gravity, publishing the speed, RPM, gear and speedometer the native engine
 ; did. With mouse control the buttons are pedals: the right the gas, the
 ; left the brake, the gas moving a tenth of its travel a field and the
-; brake a third. A press of the left button brakes at half pedal; a press
+; brake a third. A press of the left button brakes at 35% pedal; a press
 ; within half a second of the last one (a double click held) at full. The
 ; brake is the arcade's, locking the front wheels at full pedal; CUSTOM4=1
 ; gives the earlier brake, just short of locking and a tenth of its travel
@@ -27,7 +27,8 @@ HANDLING_FX_SOFT equ 2470	; CUSTOM4=1: just short of locking, 0.73 g
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
 HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
 				; brakes near the lock point long enough to spin the car
-HANDLING_PEDAL_HALF equ 50	; a single press's brake pedal, of 100
+HANDLING_PEDAL_HALF equ 35	; a single press's brake pedal, of 100: under the
+				; front's lock point (about 45%), so the car still turns
 HANDLING_DOUBLE equ 25		; released fields after which a new press still
 				; brakes at full pedal: half a second
 HANDLING_K_LAT equ 893		; Q6 ft/s -> Q16 long position units per field
@@ -975,8 +976,8 @@ _handling_reset:
 ; A0 = state, HS_HELD set. With mouse control the right button is the gas
 ; and the left the brake, each a pedal that moves HANDLING_PEDAL (the
 ; brake _handling_brake_rate) of 100 a field towards fully down while its
-; button is held and back while not. The brake goes down half way
-; (HANDLING_PEDAL_HALF) on a press, all the way on a press after at most
+; button is held and back while not. The brake goes down to
+; HANDLING_PEDAL_HALF on a press, all the way on a press after at most
 ; HANDLING_DOUBLE released fields, or while a test driver's
 ; _handling_pad holds bit 3 with the left button.
 ; Until the engine has started the gas is the native throttle, which the
