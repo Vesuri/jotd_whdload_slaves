@@ -18,6 +18,17 @@ _render_install:
 	lea _render_options(pc),a0
 	move.l d0,(a0)
 	ENDC
+	; Road and objects in depth order: every CPU, with CUSTOM1 nonzero.
+	lea _render_install(pc),a1
+	adda.l #_ct_ct1-_render_install,a1
+	tst.l (a1)
+	beq.s .rotation
+	lea _depth_patches(pc),a0
+	lea _render_install(pc),a1
+	adda.l #_code_start-_render_install,a1
+	movea.l (a1),a1
+	jsr resload_Patch(a2)
+.rotation:
 	move.l _render_options(pc),d0
 	btst #1,d0
 	beq .wait
@@ -107,6 +118,7 @@ _render_options: dc.l 0
 	ENDC
 
 	INCLUDE "HardDrivinRotation.s"
+	INCLUDE "HardDrivinDepth.s"
 
 ; These sites already contain the original slave's JSR _blitwait + two NOPs.
 ; Their disabled baseline is that existing patch, not pristine game bytes.
