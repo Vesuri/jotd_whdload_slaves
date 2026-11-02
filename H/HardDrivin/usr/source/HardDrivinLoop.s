@@ -903,16 +903,28 @@ _loop_floor_y: dc.l $80000000
 ; (_road_plane_steep) or, between a road section's edges (the gap's too),
 ; more than ROAD_FLOOR_TOL units above its surface: near the gap's left
 ; edge the car took one 25-50 units above the deck for the ground.
+; Off the loop (in a crash too), a wheel measured more than ROAD_DEEP
+; units under the ground is no ground at all: a car let go on the loop's
+; climb fell back standing on its tail, its front pair measured on a
+; near-vertical facet 3,300 under, and the contact threw it 1,700 units
+; into the sky with its pitch at 695 degrees (the user's drive of r28).
 ROAD_FLOOR_TOL equ 6
+ROAD_DEEP equ 256
 ROAD_NEAR equ 1700		; |dx| + |dz| from the cursor's section beyond which
 				; the car is over none of the four searched
 _road_contact:
 	movem.l d0-d7/a0-a3,-(a7)
 	lea _loop_state(pc),a2
 	tst.w LP_ACTIVE(a2)
-	bne.s .native
+	bne .native
+	lea -$6b82(a4),a0		; a wheel ROAD_DEEP under: no ground
+	moveq #3,d0
+.deep:
+	cmpi.w #-ROAD_DEEP,(a0)+
+	blt .none
+	dbf d0,.deep
 	tst.b -$69fa(a4)		; crash countdown
-	bne.s .native
+	bne .native
 	suba.l a2,a2
 	cmpi.b #3,-$6bb9(a4)		; heights from an object's plane ($CA14)
 	bne.s .road
@@ -1075,7 +1087,7 @@ _road_surface:
 	rts
 ; A0 = section A (B follows). Returns NE with D0.W = the height of the
 ; road's surface over the car's centre, EQ when the centre is outside the
-; quad or its plane is steeper than 45 degrees. Clobbers D0-D5.
+; quad or its plane faces down or is steeper than 45 degrees. Clobbers D0-D5.
 ROAD_CROSS macro
 	move.w \1(a3),\3		; A.x B.z - A.z B.x
 	muls.w \2+4(a3),\3
@@ -1199,8 +1211,11 @@ _road_quad:
 	asr.l #1,d7
 	bra.s .scale
 .scaled:
-	tst.w d0
-	beq.s .out
+	; facing up: every section's ny is negative but the loop's top
+	; (stunt 42-45), a ceiling; a car let go under it was taken 2,000
+	; units through the ground (the user's drive of r28)
+	tst.l d6
+	bpl.s .out
 	move.l d5,d1			; within 45 degrees: |nx|, |nz| <= |ny|
 	bpl.s .nx
 	neg.l d1
