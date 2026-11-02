@@ -47,7 +47,8 @@ SU_GD equ 38		; l: the ground's pitch as the axles' displacement, Q22 ft
 SU_D equ 42		; l: the springs' displacement at the front axle, Q22 ft
 SU_GE equ 46		; l: this pass's estimate of the ground's pitch, Q22 ft
 SU_GS equ 50		; w: the direction the ground's pitch last moved, +-1, 0 held
-SU_SIZE equ 52
+SU_PAIR equ 52		; w: this pass's pair contact is the springs' own pitch
+SU_SIZE equ 54
 
 SUSP_KF equ 3000	; springs, lb/ft
 SUSP_KR equ 3500
@@ -68,6 +69,8 @@ SUSP_GD_BAND equ 232810	; the ground's pitch is held within this, Q22 ft at
 			; (0.0555 ft, 0.64 degrees)
 SUSP_PITCH_HOLD equ 68631	; the pitch word is kept within 3/4 of a quarter
 			; degree of the body's pitch (Q22 ft at the axles)
+SUSP_PAIR_K equ 7282	; Q22 ft at the axles per corner unit / 64: the corner
+			; points 45 units out, 5 ft x 0.1791 ft / 8.06 ft = 1/9 ft
 SUSP_D_MAX equ 1258291	; travel stop: 0.3 ft at the axles (3.4 degrees), so
 			; each axle keeps 0.2 ft of its static compression
 			; (0.5 ft rear); 0.7 g of braking takes 0.12 ft
@@ -103,7 +106,12 @@ _suspension_contact:
 	cmpi.b #9,-1(a5)
 	beq.s .ground
 	cmpi.b #6,-1(a5)
-	bne .air
+	beq.s .ground
+	tst.w SU_VALID(a2)
+	beq .air
+	bsr _suspension_pair
+	beq .air
+	move.w #1,SU_PAIR(a2)		; the native pass: as three wheels down
 .ground:
 	tst.w SU_VALID(a2)
 	bne.s .held
@@ -133,8 +141,50 @@ _suspension_contact:
 	SUSP_FAR _suspension_own,a0
 	move.w d0,(a0)
 .done:
+	tst.w SU_PAIR(a2)
+	bne.s .pair
 	movem.l (a7)+,d0-d7/a0-a3
 	cmpi.b #3,-2(a5)
+	rts
+.pair:
+	clr.w SU_PAIR(a2)
+	movem.l (a7)+,d0-d7/a0-a3
+	cmp.b d0,d0			; GE: the native ground branch
+	rts
+
+; A2 = state, while the springs hold the car, on a pass with only a wheel
+; pair down. Under hard braking the springs' nose-down pitch puts the rear
+; corner points about 2 units above the road, where the native contact
+; still has them down; its rounding put them out now and then, and the
+; pass turned on the front pair, the springs started again at rest and the
+; nose jumped up by the dive for a frame. So the front pair alone with the
+; springs nose down is ground while the rear is no higher than that pitch
+; puts it, and a unit. (Not the rear pair under a squat: on a lip under
+; power that held the take-off rotation back a pass on the 68000.) Returns
+; D0 nonzero (and NE) then. Clobbers D0-D3.
+_suspension_pair:
+	move.l SU_D(a2),d2
+	bpl.s .no
+	cmpi.b #3,-1(a5)		; the front pair alone
+	bne.s .no
+	; the rear's height above the front, units, both wheels
+	move.w -$6b7e(a4),d1		; rear G($9482), G($9484)
+	add.w -$6b7c(a4),d1
+	sub.w -$6b82(a4),d1		; less the front G($947E), G($9480)
+	sub.w -$6b80(a4),d1
+	cmpi.w #2000,d1
+	bgt.s .no
+	muls.w #SUSP_PAIR_K,d1		; Q22 ft at the axles / 64, two wheels
+	neg.l d2			; |D|: each wheel moved by twice it
+	asl.l #2,d2			; against the other pair, two wheels, and
+	addi.l #2*466034,d2		; a unit each for the rounding; / 64 below
+	asr.l #6,d2
+	cmp.l d2,d1
+	bgt.s .no
+	moveq #1,d0
+	rts
+.no:
+	moveq #0,d0
 	rts
 
 ; Replaces TST.W -4(A5) / BEQ.S $CBBC at $CB94, the ground pass's pitch snap,
