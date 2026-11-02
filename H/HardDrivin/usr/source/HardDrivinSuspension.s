@@ -45,7 +45,9 @@ SU_W equ 32		; l: fall velocity while above the ground, up, Q22 ft/s
 SU_REL equ 36		; w: sine of the body's pitch against the ground, Q14
 SU_GD equ 38		; l: the ground's pitch as the axles' displacement, Q22 ft
 SU_D equ 42		; l: the springs' displacement at the front axle, Q22 ft
-SU_SIZE equ 46
+SU_GE equ 46		; l: this pass's estimate of the ground's pitch, Q22 ft
+SU_GS equ 50		; w: the direction the ground's pitch last moved, +-1, 0 held
+SU_SIZE equ 52
 
 SUSP_KF equ 3000	; springs, lb/ft
 SUSP_KR equ 3500
@@ -64,6 +66,8 @@ SUSP_G equ 2634478	; gravity, Q22 ft/s per field (32.17 x 5 / 256)
 SUSP_GD_BAND equ 232810	; the ground's pitch is held within this, Q22 ft at
 			; the axles: a whole unit on both wheels of a pair
 			; (0.0555 ft, 0.64 degrees)
+SUSP_PITCH_HOLD equ 68631	; the pitch word is kept within 3/4 of a quarter
+			; degree of the body's pitch (Q22 ft at the axles)
 SUSP_D_MAX equ 1258291	; travel stop: 0.3 ft at the axles (3.4 degrees), so
 			; each axle keeps 0.2 ft of its static compression
 			; (0.5 ft rear); 0.7 g of braking takes 0.12 ft
@@ -244,17 +248,49 @@ _suspension_measure:
 	; moved went back into the next pass's pitch, which then climbed by
 	; the displacement's part of a step each pass and dropped by a step,
 	; a 1 degree shake at 5 Hz under power or braking
+	; beyond it, up to twice the band, the ground's pitch moves to the
+	; band's edge: moved further, a quarter degree of pitch moved the
+	; wheel heights' rounding by a unit and the estimate back past the
+	; band, a pitch that alternated by a quarter degree each field.
+	; Further out it is taken whole (a ramp's foot, a lip), unless that
+	; reverses the last pass's move: where the ground's slope changes the
+	; estimate moved by up to twice the body's pitch, and taken whole it
+	; swung back each pass, a pitch alternating by 1-1.5 degrees on hills
+	move.l d0,SU_GE(a2)
 	cmpi.w #1,SU_VALID(a2)
 	beq.s .ground_new
+	sub.l SU_GD(a2),d0
+	moveq #1,d2			; the direction
 	move.l d0,d1
-	sub.l SU_GD(a2),d1
 	bpl.s .ground_abs
 	neg.l d1
+	moveq #-1,d2
 .ground_abs:
+	subi.l #SUSP_GD_BAND,d1
+	bgt.s .ground_out
+	clr.w SU_GS(a2)
+	bra.s .ground_held
+.ground_out:
 	cmpi.l #SUSP_GD_BAND,d1
-	ble.s .ground_held
+	ble.s .ground_edge
+	move.w SU_GS(a2),d3
+	add.w d2,d3
+	bne.s .ground_whole		; not a reversal
+.ground_edge:
+	tst.w d2
+	bpl.s .ground_move
+	neg.l d1
+.ground_move:
+	add.l d1,SU_GD(a2)
+	move.w d2,SU_GS(a2)
+	bra.s .ground_held
+.ground_whole:
+	add.l d0,SU_GD(a2)
+	move.w d2,SU_GS(a2)
+	bra.s .ground_held
 .ground_new:
 	move.l d0,SU_GD(a2)
+	clr.w SU_GS(a2)
 	move.w #2,SU_VALID(a2)
 .ground_held:
 	; the springs' displacement is their own state, moved only by their
@@ -283,13 +319,31 @@ _suspension_measure:
 	move.l d0,SU_D(a2)
 	; the body's pitch: the ground's and the displacement (the pass's
 	; steps add theirs in _suspension_apply)
+	; to the nearest quarter degree, kept while within SUSP_PITCH_HOLD of
+	; it: the springs' small motions flipped it by a quarter degree
 	move.l d0,d1
 	add.l SU_GD(a2),d1
+	move.w -$66b4(a4),d2
+	muls.w #22877,d2
+	asl.l #2,d2
+	sub.l d1,d2
+	bpl.s .pitch_abs
+	neg.l d2
+.pitch_abs:
+	cmpi.l #SUSP_PITCH_HOLD,d2
+	blt.s .pitch_kept
 	asr.l #2,d1
+	bmi.s .pitch_neg
+	addi.l #11438,d1
+	bra.s .pitch_round
+.pitch_neg:
+	subi.l #11438,d1
+.pitch_round:
 	divs.w #22877,d1
 	move.w d1,-$66b4(a4)
+.pitch_kept:
 	clr.l SU_PITCH(a2)
-	move.w d1,SU_PITCH+4(a2)
+	move.w -$66b4(a4),SU_PITCH+4(a2)
 	move.l d0,d1
 	addi.l #SUSP_RIDE,d0
 	move.l d0,SU_EF(a2)
@@ -448,7 +502,14 @@ _suspension_apply:
 	SUSP_FAR _contact_add_angle,a3
 	jsr (a3)
 	; the native motion's rise along the pitch against the ground over the
-	; pass's fields, taken back: u n dt (front displacement) / 5 ft
+	; pass's fields, taken back: u n dt (pitch against the ground at the
+	; axles) / 5 ft, the pitch word less this pass's estimate of the
+	; ground: the springs' displacement, the held ground pitch's error (up
+	; to SUSP_GD_BAND) and the word's rounding. With the displacement
+	; alone the car climbed off the road or sank into it, which the native
+	; push undid by a whole unit, a saw-tooth in the height. (The pitch
+	; the pass's motion had, before the measure, less the estimate lifted
+	; the whole car at a ramp's foot: the rear axle came off the ground.)
 	SUSP_FAR _time_scalar_fields,a0
 	move.w (a0),d3
 	cmpi.w #SUSP_STEPS,d3
@@ -464,6 +525,12 @@ _suspension_apply:
 	muls.w #13107,d1		; handling's slope force
 	swap d1
 	move.w d1,SU_REL(a2)
+	move.w -$66b4(a4),d0
+	muls.w #22877,d0
+	asl.l #2,d0
+	sub.l SU_GE(a2),d0
+	asr.l #8,d0			; Q14 ft
+	bsr _suspension_word
 	lea _handling_state(pc),a0
 	muls.w HS_U(a0),d0		; Q20 ft x ft/s
 	asr.l #8,d0			; / 256: dt / 5 ft = 1 / 256
