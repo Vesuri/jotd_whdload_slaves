@@ -891,16 +891,17 @@ _loop_floor_y: dc.l $80000000
 ; ground, the flight went on through the floor and the car hit the bridge
 ; from inside. Replaces the contact call at $CDF2 (and the BRA.S $CDAE
 ; after it): when the car's centre is over a road section (the road
-; cursor's segment or one either side, its edges an eighth of the width
-; out) and the wheels' mean height is more than ROAD_FLOOR_TOL units over
+; cursor's segment or one either side; in a cutting, below the ground,
+; up to half the width past its edges, where the banks rise) and the
+; wheels' mean height is more than ROAD_FLOOR_TOL units over
 ; the height of the section's surface under the centre (the plane of the
 ; quad's half it is in), the four heights come down by the difference, so
 ; the native contact lands the car on the road and pushes it out. Not over
 ; a section flagged $400 (the jump's gap between stunt sections 20 and 21),
 ; on a surface steeper than 45 degrees, on the loop or in a crash. An
 ; object's plane is no ground when it is steeper than 45 degrees
-; (_road_plane_steep) or, over a road section (the gap's too), more than
-; ROAD_FLOOR_TOL units above the section's surface: near the gap's left
+; (_road_plane_steep) or, between a road section's edges (the gap's too),
+; more than ROAD_FLOOR_TOL units above its surface: near the gap's left
 ; edge the car took one 25-50 units above the deck for the ground.
 ROAD_FLOOR_TOL equ 6
 ROAD_NEAR equ 1700		; |dx| + |dz| from the cursor's section beyond which
@@ -928,9 +929,12 @@ _road_contact:
 	add.w (a0)+,d1
 	asr.w #2,d1
 	add.w d0,d1			; the surface over what they were measured on
+	lea _road_inside(pc),a1
 	cmpi.w #-ROAD_FLOOR_TOL,d1
 	bge.s .under
 	move.l a2,d3			; an object's plane over the road
+	beq.s .native
+	tst.b (a1)			; between its edges
 	bne.s .none
 	bra.s .native
 .under:
@@ -938,6 +942,12 @@ _road_contact:
 	bne.s .native
 	cmpi.w #ROAD_FLOOR_TOL,d1
 	ble.s .native
+	tst.b (a1)
+	bne.s .floor
+	move.w d0,d3			; past an edge only in a cutting: the
+	add.w -$6708(a4),d3		; surface at or below the ground
+	bgt.s .native
+.floor:
 	sub.w d1,-(a0)
 	sub.w d1,-(a0)
 	sub.w d1,-(a0)
@@ -1096,22 +1106,9 @@ _road_quad:
 	dbf d1,.point
 	addq.l #8,a1
 	dbf d5,.row
-	; the edges an eighth of the width out (29 units): a car sliding
-	; across the dip had its centre 18 units past the edge
 	lea _road_points(pc),a3		; LA 0, RA 6, LB 12, RB 18
-	moveq #5,d5
-.widen:
-	cmpi.w #2,d5
-	bne.s .side
-	lea 6(a3),a3			; from row A's to row B's
-.side:
-	move.w (a3),d0
-	sub.w 6(a3),d0
-	asr.w #3,d0
-	add.w d0,(a3)+
-	sub.w d0,4(a3)
-	dbf d5,.widen
-	lea _road_points(pc),a3
+	lea _road_inside(pc),a1
+	st (a1)
 	; inside: between the end lines and between the edges, by the
 	; signs of the crosses of their ends seen from the centre
 	ROAD_CROSS 0,6,d6		; LA x RA
@@ -1121,7 +1118,30 @@ _road_quad:
 	ROAD_CROSS 0,12,d7		; LA x LB
 	ROAD_CROSS 6,18,d1		; RA x RB
 	eor.l d7,d1
+	bmi.s .half
+	; past an edge: within half the width of it (the dip's banks rise
+	; from there; a car sliding across the dip had its centre 18 units
+	; past the edge, one landing off its crest 45-65)
+	sf (a1)
+	moveq #5,d5
+.widen:
+	cmpi.w #2,d5
+	bne.s .side
+	lea 6(a3),a3			; from row A's to row B's
+.side:
+	move.w (a3),d0
+	sub.w 6(a3),d0
+	asr.w #1,d0
+	add.w d0,(a3)+
+	sub.w d0,4(a3)
+	dbf d5,.widen
+	lea _road_points(pc),a3
+	ROAD_CROSS 0,12,d7		; LA x LB
+	ROAD_CROSS 6,18,d1		; RA x RB
+	eor.l d7,d1
 	bpl .out
+	ROAD_CROSS 0,6,d6		; LA x RA, moved
+.half:
 	; the half on LA's side of RA-LB: twice the signed area of RA, LB, LA
 	; against the centre's side, RA x LB
 	ROAD_CROSS 6,12,d1
@@ -1209,6 +1229,8 @@ _road_quad:
 	movem.l (a7)+,d6-d7/a1/a3
 	rts
 _road_points: dcb.w 18,0		; LA, RA, LB, RB, u, v
+_road_inside: dc.b 0			; nonzero: between the edges
+	even
 ; D0 = angle: D0 within -720..720
 _loop_wrap:
 	cmpi.w #720,d0
