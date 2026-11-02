@@ -6,9 +6,11 @@
 ; gravity, publishing the speed, RPM, gear and speedometer the native engine
 ; did. With mouse control the buttons are pedals: the right the gas, the
 ; left the brake, the gas moving a tenth of its travel a field and the
-; brake a third. The brake is the arcade's, locking the front wheels at
-; full pedal; CUSTOM4=1 gives the earlier brake, just short of locking and
-; a tenth of its travel a field. Every hook is
+; brake a third. A press of the left button brakes at half pedal; a press
+; within half a second of the last one (a double click held) at full. The
+; brake is the arcade's, locking the front wheels at full pedal; CUSTOM4=1
+; gives the earlier brake, just short of locking and a tenth of its travel
+; a field. Every hook is
 ; installed only for CUSTOM1=2, so the other settings run exactly the
 ; release code.
 
@@ -25,6 +27,9 @@ HANDLING_FX_SOFT equ 2470	; CUSTOM4=1: just short of locking, 0.73 g
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
 HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
 				; brakes near the lock point long enough to spin the car
+HANDLING_PEDAL_HALF equ 50	; a single press's brake pedal, of 100
+HANDLING_DOUBLE equ 25		; released fields after which a new press still
+				; brakes at full pedal: half a second
 HANDLING_K_LAT equ 893		; Q6 ft/s -> Q16 long position units per field
 HANDLING_K_STEP equ 7146	; Q6 ft/s -> Q16 long position units per native step
 HANDLING_U_SCREECH equ 1730	; Q6 ft/s, 18 MPH: slower tyres do not screech
@@ -143,7 +148,10 @@ HS_GRASS equ 136		; the car is off the road
 HS_GAS equ 137			; mouse control: gas pedal, 0..100
 HS_PEDAL equ 138		; brake pedal, 0..100
 HS_HELD equ 139			; this field's buttons, bits 0 right, 2 left
-HS_SIZE equ 140
+HS_BPREV equ 140		; the left button was held the field before
+HS_BWIN equ 141			; fields left in which a press brakes at full pedal
+HS_BFULL equ 142		; this press brakes at full pedal
+HS_SIZE equ 144
 
 ; The slave's globals and Time.s lie beyond PC-relative range from this
 ; module: reach them from a local base with assembler-constant offsets.
@@ -967,13 +975,16 @@ _handling_reset:
 ; A0 = state, HS_HELD set. With mouse control the right button is the gas
 ; and the left the brake, each a pedal that moves HANDLING_PEDAL (the
 ; brake _handling_brake_rate) of 100 a field towards fully down while its
-; button is held and back while not.
+; button is held and back while not. The brake goes down half way
+; (HANDLING_PEDAL_HALF) on a press, all the way on a press after at most
+; HANDLING_DOUBLE released fields, or while a test driver's
+; _handling_pad holds bit 3 with the left button.
 ; Until the engine has started the gas is the native throttle, which the
 ; buttons do not move then either; it closes after the time ran out. Writes
-; the throttle G($991C) and brake byte G($9911) too. Clobbers D0.
+; the throttle G($991C) and brake byte G($9911) too. Clobbers D0-D1.
 _handling_pedals:
 	cmpi.b #3,-$6a08(a4)		; mouse control G($95F8)
-	bne.s .done
+	bne .done
 	move.b -$66e4(a4),d0		; throttle G($991C)
 	tst.b -$5224(a4)		; engine started G($ADDC)
 	beq.s .gas
@@ -994,15 +1005,36 @@ _handling_pedals:
 .gas:
 	move.b d0,HS_GAS(a0)
 	move.b d0,-$66e4(a4)		; throttle G($991C)
-	move.b HS_PEDAL(a0),d0
 	btst #2,HS_HELD(a0)
 	beq.s .release
+	tst.b HS_BPREV(a0)
+	bne.s .held
+	st HS_BPREV(a0)			; a press: full within the window
+	tst.b HS_BWIN(a0)
+	sne HS_BFULL(a0)
+	btst #3,_handling_pad+1(pc)
+	beq.s .held
+	st HS_BFULL(a0)
+.held:
+	move.b #HANDLING_DOUBLE+1,HS_BWIN(a0) ; the first release takes one
+	moveq #HANDLING_PEDAL_HALF,d1
+	tst.b HS_BFULL(a0)
+	beq.s .press
+	moveq #100,d1
+.press:
+	move.b HS_PEDAL(a0),d0
 	add.b _handling_brake_rate(pc),d0
-	cmpi.b #100,d0
+	cmp.b d1,d0
 	bls.s .brake
-	moveq #100,d0
+	move.b d1,d0
 	bra.s .brake
 .release:
+	sf HS_BPREV(a0)
+	tst.b HS_BWIN(a0)
+	beq.s .lifted
+	subq.b #1,HS_BWIN(a0)
+.lifted:
+	move.b HS_PEDAL(a0),d0
 	sub.b _handling_brake_rate(pc),d0
 	bcc.s .brake
 	moveq #0,d0
