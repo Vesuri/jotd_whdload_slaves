@@ -83,6 +83,15 @@ _phantom_controls:
 	tst.b -$6864(a4)
 	rts
 _phantom_after_physics:
+	IFD VERIFY_HANDLING
+	; the loop and the road's floor, as the race's own hook has them; the
+	; first step also lets go of a loop the last race ended on
+	move.l a0,-(a7)
+	lea _phantom_after_physics(pc),a0
+	adda.l #_loop_step-_phantom_after_physics,a0
+	jsr (a0)
+	movea.l (a7)+,a0
+	ENDC
 	movem.l d0-d2/a0-a1,-(a7)
 	lea _dispatch_state(pc),a0
 	tst.b -$16cf(a4)
