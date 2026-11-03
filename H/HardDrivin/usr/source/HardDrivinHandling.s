@@ -282,6 +282,8 @@ _handling_patches:
 	PL_W $bb18,$7000
 	; PERF_RANGE VERIFY_HANDLING $0bf80 $0008: walls crash as the arcade's scenery
 	PL_PSS $bf80,_handling_wall,2
+	; PERF_RANGE VERIFY_HANDLING $0bd3c $0008: no crash inside an object above the car
+	PL_PSS $bd3c,_handling_inside,2
 	; PERF_RANGE VERIFY_HANDLING $0cdf2 $0006: the wheels over the road's floor
 	PL_PS $cdf2,_road_contact
 	; PERF_RANGE VERIFY_HANDLING $0cb52 $0006: the springs, after the contact mask
@@ -418,6 +420,25 @@ _handling_speedo:
 	move.w HS_MPH(a0),-$66d4(a4)	; G($992C)
 	move.w HS_TARGET(a0),-$66da(a4)	; G($9926)
 	addi.l #$bac6-$ba90,(a7)
+	rts
+
+; Replaces CLR.B 32(A3); MOVE.W G($991E),D0 at $BD3C, where an object with
+; the car inside its faces (flag 32, set at $A386) crashes it. The test ignores
+; height, so in the stunt road's dip under the main road (92 units down) the
+; bridge's objects at ground level crashed the car passing under them. An
+; object whose base is more than HANDLING_INSIDE_BELOW above the car is
+; passed over, as the native loop does a clear flag ($BDEE).
+HANDLING_INSIDE_BELOW equ 40
+_handling_inside:
+	clr.b 32(a3)
+	move.w -$6708(a4),d0		; G($98F8), the car's Y
+	sub.w 10(a3),d0
+	cmpi.w #-HANDLING_INSIDE_BELOW,d0
+	blt.s .under
+	move.w -$66e2(a4),d0		; G($991E)
+	rts
+.under:
+	addi.l #$bdee-$bd42,(a7)
 	rts
 
 ; Replaces CLR.W G($9916) / CLR.W G($9914) at $BF80, where the pass's move
