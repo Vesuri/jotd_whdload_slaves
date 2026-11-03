@@ -1179,6 +1179,15 @@ _road_surface:
 	mulu.w #20,d7
 	lea (a1,d7.l),a3		; the last segment's first section
 	movea.l -$671c(a4),a0		; road cursor G($98E4)
+	; a native search that finds no section ($DE92) stores an
+	; uninitialised local there, far off the road: none outside the table
+	cmpa.l a1,a0
+	blo.s .none
+	cmpa.l a3,a0
+	bhi.s .none
+	move.l a0,d0
+	btst #0,d0
+	bne.s .none
 	; far from its section (off the road on the open ground): none
 	move.w (a0),d0
 	sub.w -$670a(a4),d0
