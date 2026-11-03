@@ -86,6 +86,7 @@ HE_ROLL equ 105			; rolling drag, lb
 HE_STOP equ 1500		; the forced stop, lb
 HE_K_STOP equ 87		; Q6 ft/s -> lb that stops the car in one field
 HE_WEIGHT equ 3525		; lb
+HANDLING_BANK_MIN equ 1143	; sin 4 degrees, Q14: least roll for side gravity
 HE_K_MPH equ 682		; Q6 ft/s -> MPH, after >> 16
 
 ; Axle state
@@ -1754,6 +1755,30 @@ _handling_step:
 	move.w HS_FYR(a0),d2
 	muls.w #HM_K_DT_M,d2
 	add.l d2,d1
+	; gravity down a sideways slope, W sin(roll) (roll negative with the
+	; left side down, v positive to the right): on the stunt road's 46
+	; degree bank it gives most of the turn at its speed, as in the
+	; arcade, where the tyres alone left the car climbing off the top.
+	; Below HANDLING_BANK_MIN it is left out: the main road's stray quarter
+	; degrees of roll nudged the car off the level pose the renderer
+	; draws cheaply (+1.6 ms a frame on the A500)
+	tst.w HS_CONTACT(a0)
+	beq.s .bank_done
+	lea _loop_state(pc),a1
+	tst.w LP_ACTIVE(a1)
+	bne.s .bank_done
+	move.w -$6bb0(a4),d2		; roll sine G($9450), Q14
+	cmpi.w #HANDLING_BANK_MIN,d2
+	bge.s .bank_on
+	cmpi.w #-HANDLING_BANK_MIN,d2
+	bgt.s .bank_done
+.bank_on:
+	muls.w #HE_WEIGHT,d2
+	asr.l #7,d2
+	asr.l #7,d2			; lb
+	muls.w #HM_K_DT_M,d2
+	add.l d2,d1
+.bank_done:
 	sub.l d0,d1
 	add.l HS_V(a0),d1
 	cmpi.l #HM_V_MAX,d1
