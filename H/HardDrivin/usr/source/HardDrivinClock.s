@@ -1,4 +1,5 @@
-; Arcade race timing, CUSTOM5=1 (SPS 0126 only, any CUSTOM1). The native VBL
+; Arcade race timing, CUSTOM5=1 (SPS 0126 only, any CUSTOM1); CUSTOM5=2 is the
+; same but qualifies with the Amiga's lap time (2:00 in Track.DAT), for tests. The native VBL
 ; clocks run at about half (time left) and three quarters (lap time, which
 ; depends on the interrupted X flag) of real time. These clocks count real
 ; PAL time exactly and follow the arcade's rules: time left starts at the
@@ -42,7 +43,8 @@ CS_EXPIRED equ 28		; byte
 CS_BUSY equ 29			; byte
 CS_PLAYED equ 30		; byte
 CS_QUALIFIED equ 31		; byte
-CS_SIZE equ 32
+CS_AMIGA equ 32			; byte, CUSTOM5=2: the Amiga's qualifying time
+CS_SIZE equ 34
 
 ; The slave's globals lie beyond PC-relative range from this module: reach
 ; them from a local base with assembler-constant offsets.
@@ -84,6 +86,10 @@ _clock_install:
 	move.w CL_CHAMPION(a2),d0
 	move.l d0,CS_CHAMPION(a0)
 	move.w CL_HANDICAP(a2),CS_HANDICAP(a0)
+	movea.l a3,a2			; A1 is the code for resload_Patch
+	adda.l #_ct_ct5-_clock_install,a2
+	cmpi.l #2,(a2)
+	seq CS_AMIGA(a0)
 	lea _clock_patches(pc),a0
 	movea.l a3,a2
 	adda.l #_resload-_clock_install,a2
@@ -99,6 +105,8 @@ _clock_patches:
 	PL_PSS $5a,_clock_vbl,8
 	; PERF_RANGE CUSTOM5 $07d94 $0006: start button
 	PL_PS $7d94,_clock_button_start
+	; PERF_RANGE CUSTOM5 $083fe $0006: track load, qualifying time
+	PL_PS $83fe,_clock_load_qualify
 	; PERF_RANGE CUSTOM5 $0887a $0006: race set-up, time left
 	PL_PS $887a,_clock_race_init
 	; PERF_RANGE CUSTOM5 $08880 $000e: race set-up, off-road deadline
@@ -489,12 +497,38 @@ _clock_race_init:
 	move.l d0,d1
 	bsr _clock_to_bcd
 	move.l d0,-$5100(a4)		; G($af00)
-	moveq #0,d0
-	move.w CS_HANDICAP(a0),d0
+	bsr.s _clock_qualify
+	movem.l (a7)+,d0-d1/a0-a1
+	rts
+
+; Replaces G($9794) = the track's qualifying time when the track loads, so
+; that the dash shows this one from the start. A0 = the track's record.
+_clock_load_qualify:
+	movem.l d0-d1/a0,-(a7)
+	lea _clock_state(pc),a0
+	tst.b CS_AMIGA(a0)
+	beq.s .arcade
+	movea.l 8(a7),a0
+	move.l 40(a0),-$686c(a4)
+	bra.s .done
+.arcade:
+	bsr.s _clock_qualify
+.done:
+	movem.l (a7)+,d0-d1/a0
+	rts
+
+; The qualifying time G($9794) = the champion's lap and the allowance;
+; CUSTOM5=2 keeps the track's. A0 = state. Clobbers D0-D1.
+_clock_qualify:
+	tst.b CS_AMIGA(a0)
+	bne.s .done
+	move.l CS_CHAMPION(a0),d0
+	moveq #0,d1
+	move.w CS_HANDICAP(a0),d1
 	add.l d1,d0
 	bsr _clock_to_bcd
-	move.l d0,-$686c(a4)		; G($9794)
-	movem.l (a7)+,d0-d1/a0-a1
+	move.l d0,-$686c(a4)
+.done:
 	rts
 
 ; Time left = the starting time.

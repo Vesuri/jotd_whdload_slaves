@@ -1943,7 +1943,7 @@ slv_config:
 	dc.b "C4:L:Arcade brake:Full,Soft;"
 	ENDC
 	ENDC
-	dc.b "C5:L:Race timing:Amiga,Arcade;",0
+	dc.b "C5:L:Race timing:Amiga,Arcade,Arcade with Amiga qualifying time;",0
 	EVEN
 
 slv_info:	dc.b	10,"Installer by Girv & JOTD",10,10
