@@ -6,12 +6,18 @@
 ; are sorted by their farthest corner and each object is drawn after the
 ; sections beyond its near side (its depth less its radius). Sections a
 ; structure draws with itself ($FA58, flags $F8) stay with the structure; the
-; passes before the road (type 57, low class 8) are unchanged.
+; background and type-57 passes before the road are unchanged. A car more than
+; 5 units under the ground ($FE40: in the stunt road's dip) was drawn before
+; the road, which then covered it; it is drawn by depth with the other cars.
+; A car beyond both roads' last strip points is not drawn: the road ends there
+; on the screen, and the car stood on the grass beyond it.
 DEPTH_MAX equ 255		; sections of both roads (each count is a byte)
 DEPTH_REC equ 12		; far depth.w, colour.w, polygon.l, marking.l
 
 _depth_patches:
 	PL_START
+	; PERF_RANGE VERIFY_RENDER $0fe40 $0032: cars under the ground with the others, by depth
+	PL_S $fe40,$fe72-$fe40
 	; PERF_RANGE VERIFY_RENDER $0fe72 $0006: record the plain road instead of drawing it
 	PL_PS $fe72,_depth_collect
 	; PERF_RANGE VERIFY_RENDER $0fe9e $0006: overhead objects after the road beyond them
@@ -28,6 +34,8 @@ _depth_collect:
 	movem.l d2-d7/a2-a3/a6,-(sp)
 	lea _depth_recs(pc),a6
 	moveq #0,d7			; records
+	lea _depth_extent(pc),a1
+	move.w #-$8000,(a1)
 	lea -25276(a4),a0		; surface polygons, both roads
 	movea.l -2168(a4),a1		; markings, road A
 	movea.l -5786(a4),a2		; flags
@@ -116,6 +124,30 @@ _depth_collect:
 .next:
 	cmp.w d5,d4
 	blt .section
+	; the road's extent: the farther end of its strip (it starts or ends
+	; at the camera). A0 (the next road's polygons) is kept.
+	cmpi.w #1,d5
+	ble.s .extent_done
+	lea _depth_extent(pc),a1
+	move.w 4(a3),d1
+	cmp.w 10(a3),d1
+	bge.s .e1
+	move.w 10(a3),d1
+.e1:	cmp.w (a1),d1
+	ble.s .e2
+	move.w d1,(a1)
+.e2:	move.w d5,d1
+	subq.w #1,d1
+	mulu.w #12,d1
+	neg.l d1
+	move.w 4(a3,d1.l),d2
+	cmp.w 10(a3,d1.l),d2
+	bge.s .e3
+	move.w 10(a3,d1.l),d2
+.e3:	cmp.w (a1),d2
+	ble.s .extent_done
+	move.w d2,(a1)
+.extent_done:
 	; the strip runs along the road, near to far or far to near: reverse it
 	; to far to near, so the sort below has little to move
 	move.w d7,d4
@@ -188,12 +220,26 @@ _depth_object:
 	sub.w d1,d0			; the list's depth was its far side
 .near:
 	sub.w d1,d0
+	move.w d0,-(sp)
 	bsr.s _depth_flush
+	move.w (sp)+,d2
+	cmpi.b #8,28(a2)
+	bne.s .draw
+	cmp.w _depth_extent(pc),d2	; a car beyond the road's end
+	ble.s .draw
+	movem.l (sp)+,d0-d3/a0-a1
+	movea.l (sp),a1
+	move.l a2,(sp)
+	lea _depth_none(pc),a0
+	jmp (a1)
+.draw:
 	movem.l (sp)+,d0-d3/a0-a1
 	movea.l (sp),a1
 	move.l a2,(sp)
 	movea.l 36(a2),a0
 	jmp (a1)
+_depth_none:
+	rts
 
 ; Replaces MOVEM.L (SP)+,D4-D5/A2-A3; UNLK A5; RTS of $FDD4.
 _depth_tail:
@@ -258,5 +304,6 @@ _depth_flush:
 
 _depth_count: dc.w 0
 _depth_next: dc.w 0
+_depth_extent: dc.w 0		; the farther end of the roads' strips
 _depth_recs: ds.b DEPTH_MAX*DEPTH_REC
 	even
