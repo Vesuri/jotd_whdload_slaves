@@ -93,15 +93,267 @@ _traffic_frame:
 	suba.l -$50fa(a4),a2
 	lea _traffic_bias(pc),a0
 	move.l a2,(a0)
+	bsr _traffic_follow
 	movem.l (a7)+,d0/a0
 	movea.l -$50fa(a4),a2
 	moveq #0,d4
 	rts
+; Following (MAME, 2026-11-03: a car that comes up behind a slower one in its
+; lane brakes to its speed and holds 35-40 ft back). The native traffic only
+; accelerates each car to its own target along its lane, so cars drove
+; through each other. Before the frame's updates a car with a car ahead in
+; its lane (same direction and lane byte, ahead along its segment) within
+; 40 ft (centres, 0.1791 ft a unit) is held to that car's speed, a unit below
+; it within 35 ft and two within 29 ft; its speed step then runs in full
+; (readiness cleared). A speed is route phase a field, 200 to a segment, so
+; the leader's is scaled by the two segments' lengths. The player's car is
+; not considered. The slave runs from contended memory on the A500 (about a
+; microsecond an instruction), so the cars are kept in a list ordered by lane
+; (rebuilt when a car's lane or direction changes), each pair in a lane is
+; tested once, a follower's cap waits in its companion's byte 10 (cap+1,
+; 0 none) until its own turn, and the pass runs every other frame: the cap
+; stays in byte 22 for the speed step's acceleration until the next pass.
+TRAFFIC_FOLLOW equ 223
+TRAFFIC_CLOSE equ 195
+TRAFFIC_NEAR equ 160
+TRAFFIC_ENTRY equ 6		; lane key.w (direction, lane), record.l
+_traffic_follow_list: dc.l 0	; after the companions and their map
+_traffic_follow_end: dc.l 0
+_traffic_follow_stale: dc.w -1	; rebuild the list
+_traffic_follow_turn: dc.w 0	; every other frame
+_traffic_follow:
+	movem.l d0-d7/a0-a3,-(a7)
+	lea _traffic_follow_turn(pc),a0
+	not.w (a0)
+	beq .done
+	move.w -$50fc(a4),d7
+	subq.w #1,d7
+	bmi .done
+	lea _traffic_follow_stale(pc),a0
+	tst.w (a0)
+	beq.s .listed
+	clr.w (a0)
+	bsr _traffic_follow_build
+.listed:
+	movea.l _traffic_follow_list(pc),a2
+.car:
+	movea.l 2(a2),a0
+	move.b 20(a0),d4
+	lsl.w #8,d4
+	move.b 18(a0),d4
+	cmp.w (a2),d4
+	beq.s .keyed
+	lea _traffic_follow_stale(pc),a1
+	move.w #-1,(a1)
+.keyed:
+	movea.l 8(a0),a1
+	cmpi.b #8,28(a1)
+	bne.s .apply
+	movem.w 8(a1),d4-d6		; its position
+	lea TRAFFIC_ENTRY(a2),a3
+.other:
+	cmpa.l _traffic_follow_end(pc),a3
+	bhs.s .apply
+	move.w (a3),d0
+	cmp.w (a2),d0
+	bne.s .apply			; the lane ends
+	movea.l 2(a3),a1
+	movea.l 8(a1),a1
+	cmpi.b #8,28(a1)
+	bne.s .skip
+	move.w 8(a1),d0
+	sub.w d4,d0
+	move.w d0,d3
+	bpl.s .dx
+	neg.w d3
+.dx:	cmpi.w #TRAFFIC_FOLLOW,d3
+	bhs.s .skip
+	move.w 10(a1),d1
+	sub.w d5,d1
+	move.w d1,d3
+	bpl.s .dy
+	neg.w d3
+.dy:	cmpi.w #TRAFFIC_FOLLOW,d3
+	bhs.s .skip
+	move.w 12(a1),d2
+	sub.w d6,d2
+	move.w d2,d3
+	bpl.s .dz
+	neg.w d3
+.dz:	cmpi.w #TRAFFIC_FOLLOW,d3
+	bhs.s .skip
+	bsr _traffic_follow_pair
+.skip:
+	addq.l #TRAFFIC_ENTRY,a3
+	bra.s .other
+.apply:
+	; every pair with this car has been tested
+	movea.l 2(a2),a0
+	movea.l a0,a1
+	adda.l _traffic_bias(pc),a1
+	moveq #0,d0
+	move.b 10(a1),d0
+	clr.b 10(a1)
+	move.b d0,22(a1)		; until the next pass
+	beq.s .next
+	subq.w #1,d0
+	move.b 23(a0),d1
+	ext.w d1
+	cmp.w d0,d1
+	ble.s .next
+	move.b d0,23(a0)
+	clr.b 19(a1)
+.next:
+	addq.l #TRAFFIC_ENTRY,a2
+	dbf d7,.car
+.done:
+	movem.l (a7)+,d0-d7/a0-a3
+	rts
+; A2, A3 two entries in a lane, D0-D2 the second's position less the first's
+; (each below TRAFFIC_FOLLOW). Caps the one behind. Keeps D4-D7/A2-A3.
+_traffic_follow_pair:
+	movem.l d4-d6,-(a7)
+	move.w d0,d3
+	muls.w d3,d3
+	move.w d1,d4
+	muls.w d4,d4
+	add.l d4,d3
+	move.w d2,d4
+	muls.w d4,d4
+	add.l d4,d3			; distance squared
+	cmpi.l #TRAFFIC_FOLLOW*TRAFFIC_FOLLOW,d3
+	bhs .out
+	; which is ahead, along the first's segment
+	movea.l 2(a2),a0
+	move.w 28(a0),d4
+	muls.w d0,d4
+	move.w 30(a0),d5
+	muls.w d1,d5
+	add.l d5,d4
+	move.w 32(a0),d5
+	muls.w d2,d5
+	add.l d5,d4
+	beq .out
+	bmi.s .first_ahead
+	movea.l 2(a3),a1		; A0 behind, A1 ahead
+	bra.s .ordered
+.first_ahead:
+	movea.l a0,a1
+	movea.l 2(a3),a0
+.ordered:
+	tst.b 23(a0)
+	ble.s .out			; stopped or knocked back
+	move.b 23(a1),d5
+	ext.w d5
+	ble.s .stop
+	move.l (a1),d4
+	cmp.l (a0),d4
+	beq.s .match			; the same segment
+	bsr _traffic_length
+	move.w d0,d4
+	exg a0,a1
+	bsr _traffic_length
+	exg a0,a1
+	tst.w d0
+	beq.s .match
+	mulu.w d4,d5
+	divu.w d0,d5
+	bvs.s .fastest
+	cmpi.w #127,d5
+	bls.s .match
+.fastest:
+	moveq #127,d5
+.match:
+	cmpi.l #TRAFFIC_CLOSE*TRAFFIC_CLOSE,d3
+	bhs.s .slower
+	subq.w #1,d5
+	cmpi.l #TRAFFIC_NEAR*TRAFFIC_NEAR,d3
+	bhs.s .slower
+	subq.w #1,d5
+.slower:
+	tst.w d5
+	bpl.s .least
+.stop:
+	moveq #0,d5
+.least:
+	addq.w #1,d5
+	movea.l a0,a1
+	adda.l _traffic_bias(pc),a1
+	move.b 10(a1),d0
+	beq.s .set
+	cmp.b d0,d5
+	bhs.s .out
+.set:
+	move.b d5,10(a1)
+.out:
+	movem.l (a7)+,d4-d6
+	rts
+; The list: every record by lane key, insertion sorted. Scratch D0-D3/A0-A3.
+_traffic_follow_build:
+	movea.l _traffic_memory(pc),a1
+	adda.l _traffic_extent(pc),a1
+	adda.l _traffic_extent(pc),a1
+	lea _traffic_follow_list(pc),a3
+	move.l a1,(a3)
+	movea.l a1,a3			; the list's end
+	movea.l -$50fa(a4),a2
+	move.w -$50fc(a4),d3
+	subq.w #1,d3
+.record:
+	move.b 20(a2),d0
+	lsl.w #8,d0
+	move.b 18(a2),d0
+	movea.l a3,a0
+.shift:
+	cmpa.l a1,a0
+	bls.s .place
+	cmp.w -TRAFFIC_ENTRY(a0),d0
+	bge.s .place
+	move.l -6(a0),(a0)
+	move.w -2(a0),4(a0)
+	subq.l #TRAFFIC_ENTRY,a0
+	bra.s .shift
+.place:
+	move.w d0,(a0)+
+	move.l a2,(a0)
+	addq.l #TRAFFIC_ENTRY,a3
+	lea 46(a2),a2
+	dbf d3,.record
+	lea _traffic_follow_end(pc),a0
+	move.l a3,(a0)
+	rts
+; A1 record -> D0.w its segment's length (28..32), the largest component and
+; 3/8 of the others (within 8%). Scratch D1-D2.
+_traffic_length:
+	movem.w 28(a1),d0-d2
+	tst.w d0
+	bpl.s .x
+	neg.w d0
+.x:	tst.w d1
+	bpl.s .y
+	neg.w d1
+.y:	tst.w d2
+	bpl.s .z
+	neg.w d2
+.z:	cmp.w d1,d0
+	bhs.s .xy
+	exg d0,d1
+.xy:	cmp.w d2,d0
+	bhs.s .xz
+	exg d0,d2
+.xz:	add.w d2,d1
+	move.w d1,d2
+	add.w d1,d1
+	add.w d2,d1
+	lsr.w #3,d1
+	add.w d1,d0
+	rts
 ; Slot: speed remainder/8.w0, last speed.w2, old full speed*8.w4,
-; phase remainder/128.w6, last phase.w8, reserved.b10, init.b11,
+; phase remainder/128.w6, last phase.w8, follow cap so far.b10, init.b11,
 ; phase sub-remainder/768.w12 (signed -5..5), terminal speed*8.w14,
 ; cached accel.b16/target.b17, cache valid.b18, steady readiness.b19,
-; cached target.b20/terminal.b21, reserved.l22, terminal word.w26 and
+; cached target.b20/terminal.b21, follow cap.b22 (cap+1, 0 none),
+; reserved.b23-25, terminal word.w26 and
 ; eighths mirror.w28, direction/accel/target/terminal signature.l30,
 ; prepared phase.b34. Slots use native stride46. During steady preparation,
 ; last phase.w8 holds the pending phase until the D36E publication hook.
@@ -122,9 +374,13 @@ _traffic_loaded:
 	move.w -$50fc(a4),d0
 	mulu.w #46,d0
 	move.l d0,8(a2)
-	add.l d0,d0
 	move.l d0,4(a2)
 	beq.s .done
+	add.l d0,d0
+	move.w -$50fc(a4),d1
+	mulu.w #TRAFFIC_ENTRY,d1
+	add.l d1,d0			; the following list
+	move.l d0,4(a2)
 	move.l #MEMF_PUBLIC|MEMF_CLEAR,d1
 	jsr _LVOAllocMem(a6)
 	tst.l d0
@@ -139,6 +395,8 @@ _traffic_loaded:
 	st (a0)
 	adda.w #46,a0
 	dbf d1,.mark
+	lea _traffic_follow_stale(pc),a0
+	move.w #-1,(a0)
 .done:
 	movem.l (a7)+,d0-d2/a0-a2/a6
 	movea.l -6(a5),a0
@@ -345,8 +603,18 @@ _traffic_speed_step:
 	ext.l d0
 	add.l d1,d0
 	cmp.l d2,d0
-	ble.s .publish
+	ble.s .capped
 	move.l d2,d0
+.capped:
+	; no faster than the car ahead (_traffic_follow)
+	moveq #0,d3
+	move.b 22(a1),d3
+	beq.s .publish
+	subq.w #1,d3
+	lsl.w #3,d3
+	cmp.l d3,d0
+	ble.s .publish
+	move.l d3,d0
 	bra.s .publish
 .terminal:
 	tst.w (a1)

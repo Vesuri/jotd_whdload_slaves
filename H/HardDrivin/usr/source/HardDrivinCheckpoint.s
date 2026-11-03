@@ -8,7 +8,10 @@ _checkpoint_post:
  rts
  ELSE
  movem.l d0-d7/a0-a6,-(a7)
- move.w _time_scalar_fields(pc),d0
+ ; Time.s lies beyond PC-relative range: reach it from a local base.
+ lea _checkpoint_post(pc),a0
+ adda.l #_time_scalar_fields-_checkpoint_post,a0
+ move.w (a0),d0
  beq .done
  cmpi.w #8,d0
  beq .done
