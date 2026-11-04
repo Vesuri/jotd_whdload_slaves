@@ -1013,7 +1013,8 @@ _handling_reset:
 ; button is held and back while not, the gas HANDLING_GAS_LIFT. The
 ; brake goes down to HANDLING_PEDAL_HALF on a press, all the way on a press
 ; after at most HANDLING_DOUBLE released fields, or while a test driver's
-; _handling_pad holds bit 3 with the left button.
+; _handling_pad holds bit 3 with the left button. A test driver's
+; _handling_gas of 0..100 sets the gas pedal instead of the right button.
 ; Until the engine has started the gas is the native throttle, which the
 ; buttons do not move then either; it closes after the time ran out. Writes
 ; the throttle G($991C) and brake byte G($9911) too. Clobbers D0-D1.
@@ -1023,6 +1024,11 @@ _handling_pedals:
 	move.b -$66e4(a4),d0		; throttle G($991C)
 	tst.b -$5224(a4)		; engine started G($ADDC)
 	beq.s .gas
+	move.w _handling_gas(pc),d1	; a test driver's own gas pedal
+	bmi.s .gas_buttons
+	move.b d1,d0
+	bra.s .gas
+.gas_buttons:
 	move.b HS_GAS(a0),d0
 	tst.b -$6864(a4)		; time out G($979C)
 	bne.s .lift
@@ -2242,6 +2248,7 @@ _handling_ring: dcb.w HANDLING_RING,0
 _handling_held: dcb.b HANDLING_RING,0
 _handling_curve: dc.w 1		; the mouse steering curve, 0 for a test driver
 _handling_pad: dc.w 0		; buttons a test driver holds, as HS_HELD's bits
+_handling_gas: dc.w -1		; a test driver's gas pedal 0..100, or -1: the buttons
 _handling_brake: dc.w HANDLING_FX_BRAKE ; full pedal's torque, lb ft
 _handling_brake_rate: dc.b HANDLING_PEDAL_BRAKE ; brake pedal travel per field
 	EVEN
