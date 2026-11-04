@@ -1573,6 +1573,20 @@ _handling_step:
 	bge.s .counts_low
 	move.w #-320,d0
 .counts_low:
+	; the mouse is no wheel: a third of the gain at the centre, rising
+	; to full lock at 320 counts, c (320 + 2|c|) / 960 (a test driver,
+	; which steers as the arcade's wheel, clears _handling_curve)
+	move.w _handling_curve(pc),d1
+	beq.s .counts_linear
+	move.w d0,d1
+	bpl.s .counts_abs
+	neg.w d1
+.counts_abs:
+	add.w d1,d1
+	addi.w #320,d1
+	muls.w d1,d0
+	divs.w #960,d0
+.counts_linear:
 	muls.w #HM_K_DELTA,d0
 	moveq #10,d1
 	asr.l d1,d0
@@ -2226,6 +2240,7 @@ _handling_signature: dc.b 'HDHAND01'
 _handling_state: dcb.b HS_SIZE,0
 _handling_ring: dcb.w HANDLING_RING,0
 _handling_held: dcb.b HANDLING_RING,0
+_handling_curve: dc.w 1		; the mouse steering curve, 0 for a test driver
 _handling_pad: dc.w 0		; buttons a test driver holds, as HS_HELD's bits
 _handling_brake: dc.w HANDLING_FX_BRAKE ; full pedal's torque, lb ft
 _handling_brake_rate: dc.b HANDLING_PEDAL_BRAKE ; brake pedal travel per field
