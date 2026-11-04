@@ -1303,6 +1303,50 @@ _handling_engine:
 	; the clutch slips at its capacity towards the driveline's speed and
 	; locks when the engine reaches it; locked it passes the engine torque
 	sf HS_LOCKED(a0)
+	tst.b HS_REAR+AX_SLIDE(a0)
+	beq.s .grip
+	; a sliding rear wheel has only its own small inertia: a whole field
+	; at the capacity overshot the engine's speed, and the clutch chattered
+	; at full capacity each way, which kept the wheel sliding (a coasting
+	; downshift into 1st spun the car). Pass the torque that brings the
+	; engine and the wheel to one speed in this field when the capacity
+	; allows it: (we + Te ke - wd) / (ke + r^2 kw), kw 128 per wheel lb ft
+	move.l d6,-(a7)
+	move.w d2,d0
+	muls.w d2,d0
+	moveq #13,d1
+	asr.l d1,d0			; r^2 kw, Q16 per lb ft at the clutch
+	addi.l #HE_DT_IE,d0
+	move.l d0,d6
+	move.w d7,d0
+	muls.w #HE_DT_IE,d0
+	add.l HS_WE(a0),d0
+	sub.l d3,d0
+	move.w d4,d1
+	mulu.w d6,d1			; the capacity's reach
+	tst.l d0
+	bpl.s .match_pos
+	neg.l d0
+	cmp.l d1,d0
+	bhi.s .match_cap
+	divu.w d6,d0
+	neg.w d0
+	bra.s .matched
+.match_pos:
+	cmp.l d1,d0
+	bhi.s .match_cap
+	divu.w d6,d0
+.matched:
+	move.w d0,d5			; the clutch's torque to the wheel
+	move.l (a7)+,d6
+	move.w d7,d0
+	sub.w d5,d0
+	muls.w #HE_DT_IE,d0
+	add.l HS_WE(a0),d0
+	bra .clutched
+.match_cap:
+	move.l (a7)+,d6
+.grip:
 	move.l HS_WE(a0),d1
 	cmp.l d3,d1
 	ble.s .slower
