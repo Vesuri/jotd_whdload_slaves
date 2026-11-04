@@ -1,4 +1,4 @@
-; $VER: Hard Drivin' Installer 4.0b (13.10.2026)
+; $VER: Hard Drivin' Installer 4.0b (04.11.2026)
 ; Based on the WHDLoad Install Template; game installation by Girv & JOTD.
 
 
@@ -1085,11 +1085,12 @@
 ;----------------------------
 
 (P_MakeIcons)
-; New installations enable the single release option by default. WHDLoad's
-; splash checkbox can disable it; CUSTOM2 continues to control frame delay.
+; New installations start with enhanced framerate and arcade handling.
+; WHDLoad's splash can select the other simulations; CUSTOM2 continues to
+; control frame delay.
 (tooltype
   (dest (tackon #dest #prefix))
-  (settooltype "CUSTOM1" "1")
+  (settooltype "CUSTOM1" "2")
 )
 (set #copy-file #readme-file)
 (P_CopyFile)

@@ -1,5 +1,5 @@
 ;============================================================================
-;$VER: HardDrivinWHD slave source 4.0b (13.10.2026) © 2001-2008 Halibut Software;
+;$VER: HardDrivinWHD slave source 4.0b (04.11.2026) © 2001-2008 Halibut Software;
 ; This file may not be distributed, reproduced or altered, in full or in
 ; part, in any way, without prior written permission from the author.
 ;
@@ -75,7 +75,7 @@ slv_keyexit:	equ	RAWKEY_F10
 
 
 DECL_VERSION:MACRO
-	dc.b	"4.0b (13.10.2026)"
+	dc.b	"4.0b (04.11.2026)"
 	ENDM
 	
 ;============================================================================
@@ -1943,7 +1943,13 @@ slv_config:
 	dc.b "C4:L:Arcade brake:Full,Soft;"
 	ENDC
 	ENDC
+	; CUSTOM5=2, the arcade timing with the 2:00 qualifying time, is a testing
+	; aid: it still works as a tooltype, but only test builds offer it
+	IFD VERIFY_CLOCK_TEST
 	dc.b "C5:L:Race timing:Amiga,Arcade,Arcade with Amiga qualifying time;",0
+	ELSE
+	dc.b "C5:L:Race timing:Amiga,Arcade;",0
+	ENDC
 	EVEN
 
 slv_info:	dc.b	10,"Installer by Girv & JOTD",10,10

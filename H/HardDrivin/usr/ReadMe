@@ -9,7 +9,7 @@
  PARTY HAS BEEN POINTED AT SUCH POSSIBILITIES OF DAMAGE.
 
  This install applies to "Hard Drivin'" (c) 1989/1990 Tengen/Atari/Domark.
- Version 4.0b (13.10.2026)
+ Version 4.0b (04.11.2026)
 
  Requirements:
  -------------
@@ -49,7 +49,8 @@
 
  Features:
  ---------
- Start the game from its icon. Steering and menus use the mouse.
+ Start the game from its icon. Steering and menus use the mouse; see Arcade
+ controls below for the buttons with arcade handling.
  High scores are loaded from and saved to hard disk.
 
  Keys:
@@ -60,39 +61,100 @@
  CUSTOM2 controls the existing frame delay: 0 gives maximum rendering speed;
  higher values slow rendering down.
 
- Enhanced framerate:
- The Enhanced framerate checkbox in WHDLoad enables smoother gameplay on
- accelerated Amigas. It is enabled by default in newly installed icons.
- Uncheck it to use the original simulation and renderer. Existing icons can
- enable it with CUSTOM1=1; CUSTOM1=0 disables it. Command-line launches must
- specify CUSTOM1=1 to enable it. Use CUSTOM2=0 for maximum rendering speed.
+ The options below affect only the original SPS 0126 edition. Set them in
+ the WHDLoad splash window or as tooltypes.
 
+ Simulation (CUSTOM1):
+   Original (0)
+       The original simulation and renderer.
+   Enhanced framerate (1)
+       Smoother gameplay on accelerated Amigas with the original Amiga
+       handling, including its abrupt skids.
+   Enhanced framerate with arcade handling (2)
+       As Enhanced framerate, with the car driving like the arcade
+       machine's. This is the default for newly installed icons.
+ Command-line launches must specify CUSTOM1=1 or CUSTOM1=2 to enable the
+ enhanced simulations.
+
+ Enhanced framerate:
  Movement, physics, traffic and replay timing use elapsed time. On 68020 and
  faster CPUs, physics can update every PAL field (50 times per second); the
  renderer draws as often as it can. On 68000, physics updates follow rendered
- frames. The original Amiga handling, including its abrupt skids, is retained;
- no attempt has been made to improve it. Original race-clock behaviour and
- its defects are also retained.
+ frames. Original race-clock behaviour and its defects are retained unless
+ arcade race timing is selected.
+
+ Both enhanced settings also draw the road and the objects on it in depth
+ order, so cars no longer appear in front of scenery that hides them, and
+ let traffic slow down behind a slower car in its lane instead of driving
+ through it.
 
  Rendering optimizations are selected automatically: optimized rotations and
  blitter waits on 68000, and on 68020 with the executable in Fast RAM; optimized
  rotations on 68040/68060, and the original renderer on 68030. Other untested
  configurations retain the original renderer. CUSTOM3 is not a release option.
- The option affects only the original SPS 0126 edition.
 
- This is a beta with limited human playtesting. Full-lap checks and intro
- optimization remain deferred. Enhancements can add overhead on an A500;
- they are not a promise of higher frame rates on every setup.
+ Arcade handling:
+ The car follows the arcade machine's own car model: tyre grip and slides,
+ weight transfer, springs, the engine and automatic gearbox, and the brakes.
+ The course is driven at its real scale, so speeds match the scenery. Ramps,
+ jumps and the loop follow the arcade, including falling off the loop when
+ too slow. Crashes follow the arcade's rules: a wall is only a crash when hit
+ hard, objects are a crash above about 40 MPH, and landings never are.
+
+ Arcade controls (mouse):
+   Mouse left/right  Steer. Steering is gentle around the centre and quicker
+                     towards full lock, for fine corrections at speed.
+   Right button      Gas pedal. Hold it to open the throttle (fully in about
+                     0.2 seconds); release it and the throttle closes over
+                     0.4 seconds.
+   Left button       Brake pedal. A single press brakes at about a third of
+                     the pedal, which slows the car while it still turns.
+                     Press again within half a second and hold (a double
+                     click) for full braking: the front wheels lock, and the
+                     car stops hardest but hardly steers. Release to let go.
+ Lifting off or braking in a fast corner moves weight off the rear wheels
+ and can start a slide, as in the arcade; steer into the slide to catch it.
+ The gears are automatic or manual as selected in the game. These pedals
+ apply to mouse control; other control methods keep the game's own throttle.
+
+ Arcade brake (CUSTOM4), with arcade handling:
+   Full (0)  The arcade's brake, locking the front wheels at full pedal.
+   Soft (1)  A weaker brake that stops short of locking the front wheels
+             and comes on more gradually.
+
+ Race timing (CUSTOM5), with any Simulation setting:
+   Amiga (0)   The game's own clocks.
+   Arcade (1)  The arcade's race timing: the countdown runs in real time,
+               checkpoint time limits follow the arcade (doubled unless arcade
+               handling is selected, as the other settings cross the course
+               at half speed), the difficulty in the options menu selects the
+               arcade's matching difficulty, and the championship lap needs
+               the arcade's qualifying time, shown on the dashboard from the
+               start.
+
+ This is a beta with limited human playtesting. Enhancements can add
+ overhead on an A500, and arcade handling adds more; they are not a promise
+ of higher frame rates on every setup.
 
  History:
  --------
- version 4.0b (13.10.2026) done by Vesa Halttunen:
- - added optional frame-rate-independent simulation for the SPS 0126 edition,
-   allowing smoother gameplay on faster Amigas while retaining original handling
- - adapted traffic, replays and related animation and sound timing to the
-   enhanced simulation
- - added automatic CPU-specific rendering optimizations, controlled together
-   with the simulation by the Enhanced framerate option
+ version 4.0b (04.11.2026) done by Vesa Halttunen:
+ - added a Simulation option for the SPS 0126 edition: Original, Enhanced
+   framerate, or Enhanced framerate with arcade handling, the default for
+   new installs
+ - Enhanced framerate: smoother gameplay on faster Amigas with the original
+   handling; traffic, replays and related animation and sound timing follow
+   elapsed time; automatic CPU-specific rendering optimizations
+ - arcade handling: the arcade machine's car model, driven at the course's
+   real scale, with the mouse buttons as gas and brake pedals, a steering
+   response suited to the mouse, and the arcade's ramps, jumps, loop and
+   crash rules
+ - added an Arcade brake option, Full or Soft, for arcade handling
+ - added a Race timing option, Amiga or Arcade
+ - with the enhanced settings, the road and objects are drawn in depth order
+   so cars no longer show through scenery, and traffic follows a slower car
+   in its lane instead of driving through it
+ - fixed rare renderer crashes present in the original game
  - updated the installer using the WHDLoad Install Template, retaining all
    five game editions and seven icon choices
 
@@ -166,4 +228,4 @@
  For WHDLoad, other installs and updates, see the WHDLoad website or
  Aminet's dev/misc/whdload#? and game/patch/ directories.
 
- $VER: Hard Drivin' ReadMe 4.0b (13.10.2026)
+ $VER: Hard Drivin' ReadMe 4.0b (04.11.2026)
