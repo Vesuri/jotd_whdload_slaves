@@ -7,7 +7,7 @@
 ; did. With mouse control the buttons are pedals: the right the gas, the
 ; left the brake, the gas going down a tenth of its travel a field and
 ; up a twentieth (a lift at once unloads the rear mid-corner), the brake
-; a third. A press of the left button brakes at 35% pedal; a press
+; at once. A press of the left button brakes at 35% pedal; a press
 ; within half a second of the last one (a double click held) at full. The
 ; brake is the arcade's, locking the front wheels at full pedal; CUSTOM4=1
 ; gives the earlier brake, just short of locking and a tenth of its travel
@@ -28,8 +28,8 @@ HANDLING_FX_SOFT equ 2470	; CUSTOM4=1: just short of locking, 0.73 g
 HANDLING_PEDAL equ 10		; pedal travel per field, of 100
 HANDLING_GAS_LIFT equ 5		; the gas pedal's coming back: full to closed in
 				; 0.4 s, which lifted the rear out of corners
-HANDLING_PEDAL_BRAKE equ 34	; the brake's, full in 3 fields: slower, the front
-				; brakes near the lock point long enough to spin the car
+HANDLING_PEDAL_BRAKE equ 100	; the brake's: at once, as the arcade's pedal; a
+				; slower one brakes near the lock point and turns the car
 HANDLING_PEDAL_HALF equ 35	; a single press's brake pedal, of 100: under the
 				; front's lock point (about 45%), so the car still turns
 HANDLING_DOUBLE equ 25		; released fields after which a new press still
@@ -1101,14 +1101,10 @@ _handling_engine:
 	clr.w HS_SHIFT(a0)
 	move.w #-1,HS_GEAR(a0)
 .running:
-	; the load transfer follows the tyres' force of the last step, and
-	; the brake's own while braking, as before the drivetrain: the lag
-	; would leave the front light enough to lock as the brake goes on
+	; the load transfer follows the tyres' force of the last step, also
+	; while braking: the brake torque itself loaded the front 15% beyond
+	; the arcade's axle loads, and its grip yawed a car braked in a slide
 	move.w HS_FXT(a0),d0
-	tst.w HS_BRAKE(a0)
-	beq.s .transfer
-	move.w HS_BRAKE(a0),d0
-.transfer:
 	move.w d0,HS_FXIN(a0)
 	tst.b -$16b6(a4)		; road G($E94A), else grass
 	seq HS_GRASS(a0)
